@@ -67,9 +67,16 @@ def generate(p, rng) -> Network:
   `truncated` (a closure cut off by a size parameter), or `observed` (reactions
   that fired in a simulation, each carrying `count`).
 - **Flow**: the book's flow reactor with non-selective dilution is
-  `outflow="constant-total"`. Numeric per-species flows go in `inflow` /
-  `outflow` dicts. Species held at a constant concentration are listed in
-  `extras["buffered"]`.
+  `outflow="constant-total"`. `inflow` maps species to a constant influx
+  (amount per volume per time); a numeric `outflow` is a first-order
+  removal rate, given per species (dict) or for all species (number).
+  Species held at a constant concentration are listed in `extras["buffered"]`.
+  `tests/chemistries/odes.py` applies all of these, so don't add flow terms
+  in your tests yourself.
+- **Facts without a formula** (an inhibitor with no published rate law, a
+  threshold that gates an outflow) are recorded as extra scalar keys on the
+  rate dict or in `extras`. They are data only: nothing applies them, and
+  you must not invent a formula for them.
 - **extras** reserved keys: `space`, `compartments`, `energies`,
   `conservation` (list of `{"name", "vector", optional "modulus"}`),
   `analysis`, `interaction_law`. Other keys are free-form but must be JSON.

@@ -4,24 +4,59 @@ chemistries:
   name: Ecolab
   origin: "Standish, 1994-2004"
   book: "8.2.3"
-  refs: ["[795]", "[796]"]
+  refs: ["[795]", "[796]", "arXiv:nlin/0404011", "arXiv:nlin/0004026", "https://github.com/highperformancecoder/ecolab"]
   family: evolutionary-dynamics
-  kind: framework
+  kind: generator
   constructive: true
-  S: {repr: "species of a generalised Lotka-Volterra system", definition: explicit}
+  S: {repr: "species S<label> of a generalised Lotka-Volterra ecosystem; each carries a phenotype (r_i, beta_ii, mu_i, its interaction row and column)", definition: explicit}
   R:
     definition: explicit
-    arity: 2
-    scheme: "generalised Lotka-Volterra, with MUTATION of the parameters r_i and b_ij introducing new species"
+    arity: [1, 2]
+    scheme: "n_i' = r_i n_i - n_i sum_j beta_ij n_j ; S -> 2 S (r > 0) or S -> nothing (r < 0) ; 2 S -> S (beta_ii) ; Si + Sj -> 2 Si + Sj or Si + Sj -> Sj (off-diagonal terms); a predator-prey pair beta_ij = -beta_ji becomes Sj + Si -> 2 Si"
+    notes: "speciation mutates r, beta and mu of a parent to create new species, so the species set grows and shrinks at run time"
   A:
-    reactor: ode
-    dilution: "probabilistic rounding keeps population counts integral"
-    notes: "mutation functions are chosen so offspring resemble parents and populations stay bounded"
+    reactor: [ode, well-stirred-multiset]
+    dilution: "self-limitation beta_ii > 0 and beta_ij + beta_ji >= 0 keep populations bounded; integer populations by probabilistic rounding"
+    notes: "each timestep is n <- ROUND(n + n (r - beta n)); every steps_per_cycle timesteps mutate, then condense (remove extinct species)"
   params:
-    - {name: r, type: matrix, role: kinetic}
-    - {name: B, type: matrix, role: kinetic}
-    - {name: mutation_kernel, type: callable, role: stochastic}
-    - {name: speciation_rate, type: float, role: stochastic}
-  provides: [topology, stoichiometry, rate-constants]
-  generator_ready: partial
-  phenomena: ["self-organised criticality: power-law distribution of species lifetimes"]
+    - {name: nsp, type: int, default: 20, min: 2, max: 1000, range: "panmictic_ecolab.py starts from 100 species", role: structural, meaning: "number of species in the initial random ecosystem"}
+    - {name: density, type: int, default: 100, min: 1, max: 1000000, role: population, meaning: "initial population of every species"}
+    - {name: conn, type: int, default: 3, min: 0, max: 999, role: structural, meaning: "off-diagonal interactions drawn per row of the initial beta (random_interaction(conn, 0)); must be < nsp"}
+    - {name: repro_min, type: float, default: -0.1, role: kinetic, meaning: "lower bound of the uniform initial r_i; repro_max - repro_min also scales the mutation of r"}
+    - {name: repro_max, type: float, default: 0.1, role: kinetic, meaning: "upper bound of the uniform initial r_i (0.1 in the Bedau-statistics runs)"}
+    - {name: beta_diag, type: float, default: 0.001, min: 0, role: kinetic, meaning: "initial self-interaction beta_ii (> 0); repro_max / beta_diag is roughly the carrying capacity"}
+    - {name: odiag_min, type: float, default: -0.0001, role: kinetic, meaning: "lower bound of the uniform off-diagonal values, initially and for links added by mutation (paper sign of beta)"}
+    - {name: odiag_max, type: float, default: 0.0001, role: kinetic, meaning: "upper bound of the uniform off-diagonal values; odiag_max - odiag_min also scales their mutation"}
+    - {name: mut_max, type: float, default: 0.01, min: 0, max: 1, range: "Bedau-statistics runs use 0.0002 to 0.1; panmictic_ecolab.py 0.001; 0 switches evolution off", role: stochastic, meaning: "ceiling on the evolving mutation rates mu_i, and their initial value"}
+    - {name: sp_sep, type: float, default: 0.1, min: 0, role: stochastic, meaning: "species radius rho: a species makes sp_sep r_i mu_i dt n_i mutants per mutation step"}
+    - {name: gen_bias, type: float, default: 0.0, min: -1, max: 1, role: stochastic, meaning: "generalisation bias g: > 0 favours adding interaction links on mutation, < 0 deleting them"}
+    - {name: cycles, type: int, default: 100, min: 0, max: 100000, range: "published runs last 1e6-1e7 timesteps", role: population, meaning: "generate/mutate/condense cycles run before the ecosystem is returned; 0 returns the initial random ecosystem"}
+    - {name: steps_per_cycle, type: int, default: 100, min: 1, max: 10000, role: population, meaning: "Lotka-Volterra timesteps between mutation steps (generate 100 in the Ecolab scripts)"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, initial-state]
+  fidelity: reconstructed
+  sources:
+    - "Standish, R. K. (2004). Ecolab, Webworld and self-organisation. Artificial Life IX. Eq. 1, speciation proportional to n_i r_i mu_i, boundedness and permanence conditions. https://arxiv.org/abs/nlin/0404011"
+    - "Standish, R. K. (2000). An Ecolab perspective on the Bedau evolutionary statistics. Artificial Life VII. Initialisation, carrying capacity ~100, lognormal/normal mutation with capped mu, connectivity-conserving link mutation. https://arxiv.org/abs/nlin/0004026"
+    - "Standish, R. K. EcoLab technical report, section 'The EcoLab Model' (doc/model.tex): the mutation algorithm (steps 1-6), the boundedness criterion and example input parameters. https://github.com/highperformancecoder/ecolab/blob/master/doc/model.tex"
+    - "EcoLab source: models/ecolab_model.cc (generate, ROUND, mutate, do_row_or_col, condense, lifetimes, connectivity), src/arrays.cc (fillprand, gspread, lgspread), include/sparse_mat.h (init_rand), models/panmictic_ecolab.py and models/ecolab.tcl (initialisation and run loop). https://github.com/highperformancecoder/ecolab"
+  decisions:
+    - "The book only names the model (generalised LV with mutation of r_i and b_ij, bounded populations, probabilistic rounding). Everything else is reconstructed from Standish's papers, the EcoLab technical report and the EcoLab source. Standish (1994, Complexity International 2) was not consulted; the 2004 paper defers to it for the mutation details, which the technical report and source give."
+    - "Sign convention: the network and extras use the 2004 paper's beta (n' = r n - n beta n, beta_ii > 0). The EcoLab code and technical report store b = -beta (b_ii < 0). The network maps each term to a mass-action reaction as lotka-volterra does, with time measured in EcoLab timesteps; the integer map n <- ROUND(n + n (r - beta n)) is the explicit Euler step of that ODE."
+    - "Algorithm (ecolab_model.cc): cycles of generate(steps_per_cycle), mutate, lifetimes, condense. Mutants per species = ROUND(sp_sep r_i mu_i dt n_i) and are taken out of the parent's population (clipped at n_i). Each mutant starts at population 1. The technical report writes mu alpha n / rho, but the code multiplies by sp_sep; the code is followed."
+    - "Genetic distance gdist = Exp(1) * mu_parent (fillprand draws -ln xi; the report calls this a 'Poisson' distribution). r' = r + N(0, (repro_max - repro_min) gdist). mu' and beta_ii' are multiplied by exp(N(0, gdist)) (lgspread); mu' is capped at mut_max and beta_ii' is kept >= |r'| / (0.1 INT_MAX)."
+    - "Link mutation follows do_row_or_col. The child's row and column copy the parent's, and the child-parent entry is the parent's own beta_ii. Then floor(1/|x|) - 1 links are added (values uniform in [odiag_min, odiag_max]) when x > 0 or deleted when x <= 0, with x = (2 xi - 1 + g) renormalised by 1 +/- g. Nonzero values then get N(0, (odiag_max - odiag_min) gdist). The report's '(-2, 2) stepped distribution' description differs; the code is followed."
+    - "Boundedness uses the technical report's criterion b_ij + b_ji <= 0 (paper sign: beta_ij + beta_ji >= 0) for every pair, with beta_ii > 0; together they give n.beta.n > 0 for all n > 0, so the total population cannot diverge. Where a pair violates it, the excess is removed equally from its nonzero entries: a pair with both entries set becomes an exact predator-prey pair, and a lone positive link is dropped. ecolab_model.cc instead applies one aggregate correction per mutant, which is not sufficient and reads interaction.diag[i] where new_sp[i] is meant; that variant is not reproduced."
+    - "The initial ecosystem follows panmictic_ecolab.py: r_i uniform in [repro_min, repro_max], constant beta_ii = beta_diag, conn random off-diagonal links per row (a draw that hits the diagonal is dropped, as in init_rand), values uniform in [odiag_min, odiag_max], mu_i = mut_max. The pairwise boundedness criterion is applied to it too, so the returned ecosystem is bounded from the start."
+    - "Dropped parameters: migration rates, the spatial grid and the neutral shadow model do not change the panmictic network. The init_rand sigma is dropped (the scripts use 0). Permanence (det beta > 0 is necessary, Law & Blackford 1992) is not enforced by Ecolab, since its violation drives extinction avalanches. It is reported in extras.analysis.det_beta_positive together with EcoLab's maxeig of b and May's connectivity."
+    - "extras.ecosystem holds r, beta and mu of the survivors. extras.analysis records the per-cycle history (diversity, speciations, extinctions), the lifetimes of extinct species (from first exceeding 10 individuals, EcoLab's lifetimes()), and the phylogeny of every species that ever lived."
+  reference_impl: "EcoLab models/ecolab_model.cc (https://github.com/highperformancecoder/ecolab)"
+  phenomena:
+    - "self-organised criticality: species lifetime distribution with a power-law tail (exponent about -1) at high mutation rates, lognormal at low rates (Standish 2004, fig. 1)"
+    - "diversity time spectrum ~ 1/k (Standish 2004, fig. 2)"
+    - "Bedau classes: class 2 with mutation off (diversity constant, activity unbounded), class 3 bounded diversity at intermediate rates, class 1 churn at high rates (Standish 2000)"
+    - "inverse relation between diversity and connectivity; the mutation operator conserves connectivity on average"
+    - "populations stay bounded: beta_ii > 0 is required and preserved by mutation"
+  notes: >
+    The first published coupling of population dynamics to an evolutionary
+    algorithm. Webworld is the functional-response relative that Standish
+    compares it with.

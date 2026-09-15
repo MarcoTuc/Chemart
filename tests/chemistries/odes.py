@@ -18,6 +18,15 @@ def rhs(net):
     reactants = [[(index[s], n) for s, n in r.reactants.items()] for r in net.reactions]
     rates = [r.rate for r in net.reactions]
     buffered = [index[s] for s in net.extras.get("buffered", [])]
+    influx = np.zeros(len(ids))
+    for s, value in (net.inflow or {}).items():
+        influx[index[s]] = value
+    efflux = np.zeros(len(ids))
+    if isinstance(net.outflow, dict):
+        for s, value in net.outflow.items():
+            efflux[index[s]] = value
+    elif isinstance(net.outflow, (int, float)):
+        efflux[:] = net.outflow
 
     def propensity(rate, reac, x):
         law = rate["law"]
@@ -42,7 +51,7 @@ def rhs(net):
             hill(rate, x) if rate["law"] == "hill" else propensity(rate, reac, x)
             for rate, reac in zip(rates, reactants)
         ])
-        dx = S @ v
+        dx = S @ v + influx - efflux * x
         if net.outflow == CONSTANT_TOTAL:
             dx = dx - x * dx.sum() / x.sum()
         dx[buffered] = 0.0

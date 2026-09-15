@@ -8,31 +8,66 @@ chemistries:
   family: application
   kind: generator
   constructive: false
-  S: {repr: "abstract substances; sensor readings are injected as molecules, motor commands are read from product concentrations", definition: explicit}
+  S:
+    repr: "abstract substances s1, s2, ...; sensor substances (b, c, d, e) receive sensor-driven inflow, the actuator substance a is read and consumed by the motor"
+    definition: explicit
+    notes: >
+      The GP system that evolves these graphs is constructive (mutation and
+      crossover add and remove molecules), but a single reaction graph has a
+      fixed, enumerable species set.
   R:
     definition: explicit
-    arity: variable
+    arity: [1, 2]
     scheme: >
-      Bipartite directed weighted graph G = (V, E), V = R u S with R the
-      reactions and S the substances; edges alternate types; special edges
-      S -> R carry catalytic or inhibitory weights k_i in [k_min, k_max],
-      ordinary edges carry a default k_0. Material balance is enforced.
-  A: {reactor: ode, dilution: none}
+      Bipartite directed weighted graph G = (V, E), V = R u S. Reaction nodes
+      have the types s1 -> s1' ; s1 + s2 -> s1' ; s1 -> s1' + s2 ;
+      s1 + s2 -> s1' + s2' (paper eqs. 4-7). Stoichiometric edges carry the
+      default weight k_0; a special edge S -> R carries a catalytic or
+      inhibitory weight k in [k_min, k_max]. A catalysed node becomes
+      X -> Y [k_0] plus X + C -> Y + C [k_0 k]. The graph must fulfil
+      material balance: positive species weights m with M(R) m = 0.
+  A:
+    reactor: [lattice-2d, ode]
+    dilution: "sensor substances flow in (eq. 30); the actuator substance is consumed at rate alpha above a_min (eq. 31); the 2001 lattice reactor also removes random molecules"
+    notes: >
+      Ziegler & Banzhaf (2001) simulate the graph in a 20 x 20 toroidal lattice
+      with Moore neighbourhood; Ziegler, Dittrich & Banzhaf (1998) use a
+      one-compartment ODE reactor with the same mass-action form for catalysis.
   params:
-    - {name: n_substances, type: int, role: structural}
-    - {name: n_reactions, type: int, role: structural}
-    - {name: k_min, type: float, role: kinetic}
-    - {name: k_max, type: float, role: kinetic}
-    - {name: k_0, type: float, role: kinetic, meaning: "default weight of stoichiometric edges"}
-    - {name: sensor_map, type: callable, role: structural, meaning: "which sensors inject which species"}
-    - {name: actuator_map, type: callable, role: structural, meaning: "which species drive which motors"}
-    - {name: evolution, type: enum, default: gp, range: "hand-designed | genetic-programming", role: selection}
-  provides: [topology, stoichiometry, catalysts, rate-constants, mass-conservation]
-  generator_ready: partial
-  phenomena: ["light seeking and obstacle avoidance on a Khepera robot", "evolved networks transfer between simulation and hardware up to a scale factor", "combined genetic + metabolic + signalling networks controlling chaotic dynamical systems"]
+    - {name: n_substances, type: int, default: 8, min: 2, max: 500, range: "must include the input and output substances; the evolved graph of the paper's fig. 13 has nearly 50 nodes (molecules + reactions) and 70 edges", role: structural, meaning: "number of molecule nodes |S|, including the sensor and actuator substances; the others are named s1, s2, ... (the paper numbers them; the prefix keeps '2 s2' readable)"}
+    - {name: n_reactions, type: int, default: 8, min: 0, max: 1000, role: structural, meaning: "number of reaction nodes |R|, each kept only if the graph stays materially balanced"}
+    - {name: reaction_types, type: list, default: [4, 5, 6, 7], role: structural, meaning: "allowed reaction types by the paper's equation number: 4 s1 -> s1', 5 s1 + s2 -> s1', 6 s1 -> s1' + s2, 7 s1 + s2 -> s1' + s2' (Table 1 uses all four)"}
+    - {name: p_modifier, type: float, default: 0.5, min: 0, max: 1, role: structural, meaning: "probability that a reaction node carries a catalytic or inhibitory edge (at most one per node, as in mutation case 1); not published"}
+    - {name: p_inhibitor, type: float, default: 0.5, min: 0, max: 1, role: structural, meaning: "probability that a modifier edge is inhibitory rather than catalytic; not published"}
+    - {name: k_0, type: float, default: 1.0, min: 0, role: kinetic, meaning: "default weight k_default of stoichiometric edges, the rate constant of the spontaneous reaction (1.0 in Ziegler, Dittrich & Banzhaf 1998)"}
+    - {name: k_min, type: float, default: 10.0, min: 0, role: kinetic, meaning: "lower bound of catalytic/inhibitory weights, drawn uniformly in [k_min, k_max]"}
+    - {name: k_max, type: float, default: 10.0, min: 0, range: "the 2001 paper gives no values; the default k_min = k_max = 10 is the catalytic efficiency kappa of the 1998 paper", role: kinetic, meaning: "upper bound of catalytic/inhibitory weights"}
+    - {name: sensor_map, type: dict, default: {b: [left1, left2], c: [front1, front2], d: [right1, right2], e: [back1, back2]}, role: structural, meaning: "input set I: each sensor substance and the Khepera proximity sensors whose maximum drives its inflow (eq. 29)"}
+    - {name: sensor_readings, type: dict, default: {left1: 1023, left2: 1023, front1: 1023, front2: 1023, right1: 1023, right2: 1023, back1: 1023, back2: 1023}, role: population, meaning: "current sensor values in [0, 1023] by sensor name; unlisted sensors read 0. The default is the paper's robot surrounded by obstacles"}
+    - {name: max_inflow, type: float, default: 0.1, min: 0, max: 1, role: population, meaning: "maxInflow of eq. 30: inflow of a sensor substance at maximum reading, as a fraction of the reactor volume per iteration (10% in the paper)"}
+    - {name: actuator_map, type: dict, default: {a: rotate}, role: structural, meaning: "output set O: each actuator substance and its action, one of rotate (2001: switch one motor's direction above a_min), left-motor, right-motor (1998: substance drives a wheel)"}
+    - {name: alpha, type: float, default: 0.9, min: 0, max: 1, role: population, meaning: "consumption rate alpha of the actuator substance while it is above a_min (Table 2: 0.9)"}
+    - {name: a_min, type: float, default: 0.1, min: 0, role: population, meaning: "actuator activation threshold a_min (Table 2: 0.1)"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, mass-conservation, flow]
+  fidelity: reconstructed
+  sources:
+    - "Ziegler, J. & Banzhaf, W. (2001). Evolving control metabolisms for a robot. Artificial Life 7(2):171-190. Reaction graphs sec. 3 (eqs. 4-17), material balance sec. 3.1.1, mutation sec. 3.2.1, sensors and actuators sec. 5.1-5.2 (eqs. 29-31), Tables 1-2. http://www.cs.mun.ca/~banzhaf/papers/metabolism.pdf"
+    - "Ziegler, J., Dittrich, P. & Banzhaf, W. (1998). Towards a metabolic robot control system. In Holcombe & Paton (eds.), Information Processing in Cells and Tissues, pp. 305-318. Appendix, example A: mass-action form of catalysed reactions and k = 1.0, kappa = 10. https://users.fmi.uni-jena.de/~dittrich/p/ZDB97ipcat.ps"
+  decisions:
+    - "The network is one individual of the GP system: a random reaction graph. The (mu, lambda) evolution, mutation, crossover, pathway extraction and the robot simulation act on many networks and are not generated; the v1 evolution parameter is dropped."
+    - "Reaction nodes are drawn like mutation case 4 (type uniform over reaction_types, participants uniform over all molecules, with replacement). No-op reactions and duplicate nodes are rejected. The paper's 'grow' initialisation is not described further."
+    - "Material balance (sec. 3.1.1) is tested as the existence of weights m >= 1 with M(R) m = 0, by linear programming. The paper's steps 4-6 set the independent weights to unity and check the rest, which can wrongly reject a balanced network whose positive solution needs other values. A node that would break the balance is rejected rather than penalised. Once the weight vector is unique, a node is kept iff it is orthogonal to it."
+    - "Extraction garbling: eqs. 4-7 lost their primes (printed 's1 -> s1'); they are read as s1 -> s1', etc., since the unprimed forms would be no-ops."
+    - "Catalysis: the 2001 paper only says a catalyst multiplies the rate constant by a factor. The 1998 appendix writes a catalysed reaction as a parallel mass-action channel w5 = k5 kappa [A][B][B] with k5 = k1, so a catalysed node becomes the plain reaction (k_0) plus a channel with the catalyst on both sides (k_0 k). The kappa glyph is lost in the extracted text and is restored from the table 'kappa 10'."
+    - "Inhibition has no published functional form. An inhibited node is one mass-action reaction with k_0 whose rate dict records inhibitor and k_inhibition; a simulator must choose the inhibitory factor."
+    - "Modifier edges: at most one per node, as mutation case 1 implies ('adding an inhibitor/catalyst if none is present'). The modifier is any molecule, with k ~ U[k_min, k_max]. p_modifier and p_inhibitor are not in the paper."
+    - "Rate defaults: the 2001 paper gives no k_default, k_min or k_max. The defaults k_0 = 1.0 and k_min = k_max = 10 are the 1998 paper's k_i and kappa."
+    - "Sensor inflow (eq. 30) is expressed per reactor iteration as a fraction of the reactor volume (cellsize = 1), so max_inflow = 0.1 gives 0.4 in total when all four sensor pairs read 1023, as the paper states. sensor_map and actuator_map replace the v1 callables."
+    - "Actuator outflow (eq. 31) is recorded as outflow alpha. The threshold gate [a] > a_min is not a rate law and is kept in extras.actuators. Reactor size, fill level and cycle counts (Table 2) only size the simulation and are dropped. No initial state is set: the paper fills 50% of the lattice without giving the composition."
+    - "The functional set (kernel, eq. 16) and pathways P(v, w) are analyses of a graph, not part of it, and are not computed. extras.reaction_graph lists each reaction node with its type, modifier and the indices of the network reactions that implement it."
+  phenomena: ["light seeking and obstacle avoidance on a Khepera robot (1998, hand-designed enzyme-substrate network)", "evolved networks transfer between simulation and a real Khepera, with only a scale factor on sensor inflow", "the evolved kernel uses only the front and left sensor substances to raise the motor substance (fig. 14)", "genome length grows during evolution (introns, bloat) while the kernel stays small", "combined genetic + metabolic + signalling networks controlling chaotic dynamical systems (Lones et al.)"]
   notes: >
-    The book gives an explicit graph grammar including the mass-balance
-    constraint and a shortest-path 'metabolic pathway' extraction
-    procedure. That pathway extraction is worth exposing as a Chemart
-    analysis: subgraph P(v,w) containing only nodes on the shortest path
-    from v to w, with every reaction on the path participating.
+    The paper also defines a shortest-path 'metabolic pathway' extraction,
+    the subgraph P(v, w) with every participant of each reaction on the path,
+    used by crossover. It would fit as a Chemart analysis on
+    extras.reaction_graph.

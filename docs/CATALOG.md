@@ -5,9 +5,9 @@
 
 Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rates or a rate law), **H** thermodynamics (energies and/or detailed balance). Status column: the fidelity of the implemented generator, or `todo (<book readiness>)`.
 
-- implemented: **32** of 98 (book: 4, book+decisions: 24, reconstructed: 4)
+- implemented: **40** of 98 (book: 4, book+decisions: 26, reconstructed: 10)
 - constructive (open, growing species set): **49**
-- carry their own kinetics: **40**; carry energetics: **13**
+- carry their own kinetics: **42**; carry energetics: **12**
 
 
 ## application
@@ -20,7 +20,7 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 | `ccm` | Chemical Casting Model (CCM) | generator | no | T | todo (partial) | 17.2.2 |
 | `disperser` | Chemical disperser (load balancing) | generator | no | TK | book+decisions | 17.3.1 |
 | `fraglets` | Fraglets | generator | yes | TK | todo (yes) | 16.2.1, 17.3.1 |
-| `metabolic-robot-controller` | Metabolic / artificial biochemical network robot controllers | generator | no | TK | todo (partial) | 16.1.3 |
+| `metabolic-robot-controller` | Metabolic / artificial biochemical network robot controllers | generator | no | TK | reconstructed | 16.1.3 |
 | `molecular-tsp` | Molecular Traveling Salesman | generator | yes | T | todo (yes) | 17.2.1 |
 | `music-ac` | Algorithmic chemistry for music composition | generator | yes | T | todo (no) | 16.4 |
 | `naming-game-ac` | Naming game as an artificial chemistry | generator | no | TK | book+decisions | 16.3.3 |
@@ -32,7 +32,7 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 
 | id | name | kind | constructive | tier | status | book |
 |---|---|---|---|---|---|---|
-| `automata-reaction` | Automata reaction (32-bit binary string chemistry) | generator | yes | T | todo (yes) | 10.6.1 |
+| `automata-reaction` | Automata reaction (32-bit binary string chemistry) | generator | yes | TK | reconstructed | 10.6.1 |
 | `avida` | Avida | framework | yes | T | todo (partial) | 10.7.1 |
 | `bondable-ca` | Bondable Cellular Automata (BCA) | generator | yes | TH | todo (partial) | 10.7.3 |
 | `ca-embedded-particles` | Embedded particles in cellular automata | analysis | no | T | todo (no) | 10.7.2 |
@@ -62,15 +62,15 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 | `chameleon` | Colored chameleon chemistry | generator | no | TK | book | 2.5.1 |
 | `dimerization` | Reversible dimerization | generator | no | TK | book | 2.2.4, appendix (Dimer.py) |
 | `high-order-chem` | High-order chemistry (rules as molecules) | framework | yes | T | todo (yes) | appendix |
-| `matrix-chemistry` | Matrix chemistry | generator | yes | T | todo (yes) | chapter 3 |
-| `prime-number-chemistry` | Prime number (number-division) chemistry | generator | yes | T | todo (yes) | 1, 2.5.2, appendix (NumberChem.py) |
+| `matrix-chemistry` | Matrix chemistry | generator | yes | TK | book+decisions | chapter 3 |
+| `prime-number-chemistry` | Prime number (number-division) chemistry | generator | yes | T | book+decisions | 1 (eqs. 1.4-1.5), 2.5.2, appendix (NumberChem.py, NumberChemHO divrule) |
 
 ## evolutionary-dynamics
 
 | id | name | kind | constructive | tier | status | book |
 |---|---|---|---|---|---|---|
 | `dorin-korb-ecosystem` | Dorin & Korb virtual ecosystem chemistry | generator | yes | TH | todo (partial) | 8.2.3 |
-| `ecolab` | Ecolab | framework | yes | TK | todo (partial) | 8.2.3 |
+| `ecolab` | Ecolab | generator | yes | TK | reconstructed | 8.2.3 |
 | `evolve-series` | EVOLVE virtual ecosystems | framework | yes | TH | todo (no) | 8.2.3 |
 | `jain-krishna` | Jain-Krishna autocatalytic set model | generator | yes | TK | book+decisions | 15.2.2, 15.2.3 |
 | `logistic-chemistry` | Logistic growth ('replicate and fight') | generator | no | TK | book+decisions | 7.2.4 |
@@ -78,7 +78,7 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 | `nk-landscape` | Kauffman NK model | analysis | no | TK | book+decisions | 18.4.1 |
 | `quasispecies` | Quasispecies equation | generator | no | TK | book+decisions | 7.2.7 |
 | `random-catalytic-networks` | Random catalytic reaction networks | generator | no | TK | book+decisions | 7.2.9 |
-| `rbn` | Random Boolean Networks (RBN) and RBN World | generator | no | T | todo (yes) | 18.4.2 |
+| `rbn` | Random Boolean Networks (RBN) and RBN World | generator | no | T | reconstructed | 18.4.2 |
 | `replication-death` | Replication and death | generator | no | TK | book+decisions | 7.2.1 |
 | `replicator-equation` | Replicator equation (evolutionary game dynamics) | generator | no | TK | book+decisions | 7.2.8 |
 | `selection-equation` | Selection equation under a dilution flow | generator | no | TK | book+decisions | 7.2.5 |
@@ -88,7 +88,7 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 
 | id | name | kind | constructive | tier | status | book |
 |---|---|---|---|---|---|---|
-| `arn` | Artificial Regulatory Network (ARN) | generator | no | TKH | todo (yes) | 11.3.4 |
+| `arn` | Artificial Regulatory Network (ARN) | generator | no | TK | reconstructed | 11.3.4 |
 | `bigan-conservative-crn` | Conservative random chemical reaction networks | generator | no | TKH | reconstructed | 11.3.2 |
 | `nac` | Network Artificial Chemistry (NAC) | generator | yes | T | todo (partial) | 11.3.3 |
 | `toychem` | ToyChem (graph-based toy model of chemistry) | generator | yes | TKH | todo (partial) | 11.3.1 |
@@ -108,7 +108,7 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 | id | name | kind | constructive | tier | status | book |
 |---|---|---|---|---|---|---|
 | `autopoiesis-vmu` | Varela-Maturana-Uribe autopoiesis model | generator | no | T | todo (yes) | 6.1.5 |
-| `bagley-farmer` | Bagley & Farmer autocatalytic metabolism | generator | yes | TKH | todo (partial) | 6.3.1, 7.3.1 |
+| `bagley-farmer` | Bagley & Farmer autocatalytic metabolism | generator | yes | TKH | reconstructed | 6.3.1, 7.3.1 |
 | `chemoton` | Chemoton | generator | no | TK | reconstructed | 6.1.4 |
 | `gard` | GARD (Graded Autocatalysis Replication Domain) | generator | no | TK | reconstructed | 6.2.4 |
 | `kauffman-autocatalytic-sets` | Kauffman autocatalytic sets (binary polymer model) | generator | yes | T | book+decisions | 6.3.1 |

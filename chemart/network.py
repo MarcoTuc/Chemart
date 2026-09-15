@@ -12,6 +12,11 @@ Status values:
 - ``truncated`` a closure that was cut off by a size budget
 - ``observed``  the reactions that actually fired in a simulation; each
   reaction then carries a firing ``count``
+
+Flows: ``inflow`` maps species to a constant influx (amount per unit
+volume per unit time). ``outflow`` is a first-order removal rate: a dict of
+per-species rates, a single number for every species, or ``CONSTANT_TOTAL``
+for the dilution flux that keeps the total concentration constant.
 """
 
 from __future__ import annotations
