@@ -145,7 +145,10 @@ If nothing numeric is published, turn the catalog's `phenomena` into
 property tests. `tests/chemistries/odes.py` integrates mass-action (and
 power, Michaelis-Menten, Hill, saturating) networks and supports
 `constant-total` and `buffered`; import it with `from odes import integrate, rhs`.
-Keep the file under ~10 s.
+Keep the file under ~10 s. Mark any single test that takes more than ~2 s
+with `@pytest.mark.slow`: slow tests are excluded from the default run, and
+the integrator runs them with `-m "slow or not slow"`. Your own definition of
+done below runs them too.
 
 ## 7. Definition of done
 
@@ -153,7 +156,7 @@ All three must pass, run from the repository root:
 
 ```bash
 uv run python -m chemart.catalog validate --only <id>
-CHEMART_ONLY=<id> uv run pytest -q tests/test_contract.py tests/chemistries/test_<mod>.py
+CHEMART_ONLY=<id> uv run pytest -q -m "slow or not slow" tests/test_contract.py tests/chemistries/test_<mod>.py
 uv run chemart generate <id> --format summary
 ```
 

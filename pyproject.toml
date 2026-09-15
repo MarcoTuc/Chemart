@@ -24,3 +24,7 @@ packages = ["chemart"]
 dev = [
     "pytest>=9.1.1",
 ]
+
+[tool.pytest.ini_options]
+markers = ["slow: takes more than ~2 s; excluded by default, run with -m 'slow or not slow'"]
+addopts = "-m 'not slow'"
