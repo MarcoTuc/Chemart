@@ -2,37 +2,84 @@ chemistries:
 
 - id: ikegami-hashimoto
   name: Machine-tape chemistry
+  aliases: ["machine-tape interaction", "coevolution of machines and tapes"]
   origin: "Ikegami & Hashimoto, 1995"
   book: "10.5.4"
-  refs: ["[419]", "[420]"]
+  refs: ["[419]", "[420]", "doi:10.1007/3-540-59496-5_302"]
   family: automata
   kind: generator
   constructive: true
   S:
     repr: >
-      Two separate populations. Tapes: circular binary strings, 7 bits.
-      Machines: 4-bit head + 4-bit tail + 8-bit state transition table.
+      Two separate populations. Tapes: circular 7-bit strings, species
+      T<2 hex digits> = the bits read clockwise from the tape's source (the
+      papers name a tape by its smallest rotation, extras.paper_names).
+      Machines: 16-bit words, species M<4 hex digits> = T' column, M' column,
+      head (4 bits), tail (4 bits) of a transition table
+      (tape bit, machine state) -> (tape bit', state').
     definition: implicit
   R:
     definition: implicit
     arity: 2
-    scheme: "sM + sT -> sM + sT + sM' + sT'"
+    scheme: "M + T -> M + T + M' + T'"
     notes: >
-      A machine reacts with a tape if its head matches one substring and
-      its tail a different substring; it operates on the reading frame
-      between them, giving sT'. sT' is then folded into machine sM' by
-      reading 16 bits circularly from the head binding position - so one
-      tape can yield different machines depending on the binding site.
+      M reads T if its head matches T at a site h (first match clockwise from
+      the source) and its tail at a different site (first match clockwise
+      after h). M rewrites the reading frame from h up to the tail site with
+      its table, half of the machines starting in state 0 and half in state 1,
+      giving T'. T' is translated into M' by reading 16 bits clockwise from the
+      source (7 bits reused): bits 0, 2, 4, 6 are the T' column, 1, 3, 5, 7 the
+      M' column, 8, 10, 12, 14 the head and 9, 11, 13, 15 the tail. One tape
+      encodes different machines depending on its source, so rotations of a
+      tape are different species.
   A:
-    reactor: ode
-    dilution: "population size constant; a fraction c of molecules is replaced by reaction products each update"
-    notes: "integer frequency vector <-> real concentration vector conversion with rounding"
+    reactor: [ode, well-stirred-multiset]
+    dilution: "each population has capacity N; every generation a fraction c of each is replaced by reaction products (c = d = 0.6)"
+    notes: >
+      Discrete generations on integer populations: concentrations f = n/N,
+      c N new machines and tapes shared among reacting pairs in proportion to
+      f_M f_T (eq. 4), old populations reduced by the fraction d = c, integer
+      part taken (eqs. 5-6). External noise flips bits in the reading frame
+      with probability mu_P per bit (eq. 7).
   params:
-    - {name: tape_len, type: int, default: 7, role: structural}
-    - {name: machine_len, type: int, default: 16, range: "4 head + 4 tail + 8 table", role: structural}
-    - {name: c, type: float, default: 0.6, role: population, meaning: "fraction of the reactor replaced per generation"}
-    - {name: noise, type: float, role: stochastic, meaning: "external noise level; the single most important knob - it selects between Eigen/Schuster hypercycles and double-autocatalytic core networks"}
-    - {name: compartments, type: bool, default: false, role: spatial, meaning: "encapsulate reaction systems into diffusing cells (Ikegami & Hashimoto 1997)"}
-  provides: [topology, catalysts, flow, sequence-structure-function]
-  generator_ready: yes
-  phenomena: ["low noise: simple autocatalytic loops, Eigen/Schuster hypercycles, no active mutation", "high noise: double autocatalytic networks with high active mutation", "after ~1000 generations: stable dense 'core networks' that keep their diversity even after noise is switched off"]
+    - {name: method, type: enum, default: dynamics, choices: [dynamics, closure], role: structural, meaning: "dynamics: the papers' population dynamics, observed reactions with firing counts; closure: the noise-free reaction network reachable from the seed machines and tapes (Chemart addition)"}
+    - {name: machines, type: list, default: [], range: "e.g. the minimal self-replicating loop [1002] with tapes [01]", role: structural, meaning: "seed machines as 16-bit hex strings (T' column, M' column, head, tail); empty draws n_machines random machines"}
+    - {name: tapes, type: list, default: [], range: "e.g. [01]; the papers' T1 read from another source is 04, 10, ...", role: structural, meaning: "seed tapes as 7-bit hex strings read from the source; empty draws n_tapes random tapes"}
+    - {name: n_machines, type: int, default: 10, min: 0, max: 65536, range: "papers: about 10", role: population, meaning: "number of random seed machines when machines is empty"}
+    - {name: n_tapes, type: int, default: 3, min: 0, max: 128, range: "papers: 2 or 3", role: population, meaning: "number of random seed tapes when tapes is empty"}
+    - {name: N, type: int, default: 1000, min: 1, max: 10000000, range: "not stated in the papers", role: population, meaning: "dynamics only: capacity of each population (machines, tapes); seeds share it equally"}
+    - {name: c, type: float, default: 0.6, min: 0.0, max: 1.0, range: "papers: c = d = 0.6", role: kinetic, meaning: "fraction of each population replaced by reaction products per generation (c = d_m = d_t); also the rate scale of eq. 4"}
+    - {name: noise, type: float, default: 0.05, min: 0.0, max: 1.0, range: "papers: 0.04 (minimal loop), 0.055 (oscillation), 0.07-0.08 (core networks), scans 0-0.1", role: stochastic, meaning: "dynamics only: external noise mu_P, bit-flip probability per bit of the reading frame"}
+    - {name: generations, type: int, default: 150, min: 0, max: 100000, range: "papers: 1600-3000", role: population, meaning: "dynamics only: number of generations"}
+    - {name: noise_off, type: int, default: -1, min: -1, max: 100000, range: "papers: 2000", role: stochastic, meaning: "dynamics only: generation at which external noise is turned off; -1 keeps it on"}
+    - {name: source, type: enum, default: random, choices: [random, inherit], role: stochastic, meaning: "dynamics only: source of a tape whose circular pattern is new to the population: random site (papers) or the site it was written from"}
+    - {name: max_species, type: int, default: 400, min: 2, max: 100000, role: structural, meaning: "closure only: species budget (the noise-free closure has at most 128 tapes and 128 + seed machines)"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, flow, initial-state, sequence-structure-function]
+  fidelity: reconstructed
+  sources:
+    - "Ikegami, T. & Hashimoto, T. (1995). Active mutation in self-reproducing networks of machines and tapes. Artificial Life 2(3):305-318. Author's manuscript dated May 31, 1996: model (sec. 2, eqs. 2-9, fig. 1), results (figs. 2-9, sec. 4 list of self-replicating pairs). https://drive.google.com/file/d/1WwFXhB10rx8FiTPZZjUVpQIHl6BtN73D/view (linked from https://www.sacral.c.u-tokyo.ac.jp/publications)"
+    - "Ikegami, T. & Hashimoto, T. (1995). Coevolution of machines and tapes. In Moran et al. (eds.), Advances in Artificial Life (ECAL 95), LNAI 929, 234-245. Eq. 4 with c_ij = 0 for non-reading pairs, source rule, figs. 1-6. https://web.archive.org/web/20170809083155/http://sacral.c.u-tokyo.ac.jp/pdf/ikegami_alife_1995.pdf"
+  decisions:
+    - "Bit layout from paper fig. 1, not from the prose. The prose says head and tail come first and translation starts at the reading frame; the figure translates the rewritten tape [1110110] from its source into M ebbd with the table columns in bits 0-7 (T', M' alternating) and head/tail in bits 8-15 (alternating). That layout reproduces fig. 1 exactly, gives the machines of the published pairs (M1002 <- T1, M3006 <- T5, M1222 <- T3), makes the five self-replicating pairs of sec. 4 self-replicate, and makes M1002 the machine produced by the largest number of machines (sec. 5)."
+    - "The rewrite runs over sites h .. tail-1 (fig. 1: head at site 3, tail at site 2, six steps), so L is 1-6 (the <L> axis of figs. 2-3 ends at 6). The tail is searched from h + 1 and may overlap the head."
+    - "Tapes are strings read from their source, so the 7 rotations of a circular tape are different species (one tape encodes different machines). In the dynamics, rotations share one source ('every translational invariant tape has the same source'): a product whose circular pattern is present is merged into that rotation; a new pattern gets a random source (source: random) as in the papers. Translation of the product machine is from the source of the tape that was read, as in fig. 1. The closure has no population, so it keeps rotations apart."
+    - "Normalisation: the Artificial Life text makes c N new machines and tapes per generation, the book says the population is kept constant, while ECAL eq. 4 divides by the sum over all pairs (so non-reading pairs waste production). Chemart follows the book and the Artificial Life text: the c N products are shared among reading pairs, d = c, and populations stay at N (up to integer parts). Each network reaction gets mass-action k = c/2 per initial state producing it (c when both states give the same products), and outflow constant-total: the rate equations are the continuous-time version of eqs. 4-6 without noise and integer parts, up to a rescaling of time by the sum of f_M f_T over reading pairs (checked in tests)."
+    - "Noise: the reaction terms are multiplied by 1 - eps with eps = 1 - (1 - mu_P)^L (eq. 7), and eps times the flux of each reaction and state becomes mutants, rounded stochastically to an integer ('at most eps c N mutant populations', Monte Carlo). A mutant flips each frame bit of the rewritten tape with probability mu_P conditioned on at least one flip, and its machine is translated from the mutated tape. The papers do not say whether the error hits the read or the written bit; Chemart flips the written tape."
+    - "Integer parts: populations are floored after each generation (so objects below one copy, f < 1/N, are removed); mutants are whole objects. Seeds share N equally; the papers do not give initial populations or N (default 1000)."
+    - "Observed network: every reaction that fired, with count = number of generations in which it fired. Error-free reactions carry the mass-action rate above and frame_length L (the noise factor (1 - mu_P)^L is not folded in, since noise_off changes it); reactions produced only by noise have no rate and are listed by index in extras.noise_induced. extras.analysis records per generation the distinct machines and tapes (figs. 4-6), the active mutation rate <mu_A> of eq. 9 (w/L averaged over reading pairs with weights m_i t_j and over both initial states) and the average frame length <L>."
+    - "Dropped v1 params: tape_len and machine_len (the encoding is only defined for 7-bit tapes and 16-bit machines); compartments (the cell model of [420] is not implemented: the ALife V paper is not openly available)."
+    - "Paper errata: sec. 4 lists the self-replicating pair 'Mbdd1 with T37', but bdd1's tail 0001 cannot bind T37 (two zeros); Mbdd7 is the self-replicator of T37. It also writes 'T9dd3' for M9dd3. Fig. 1 calls the rewritten tape [1110110] Te6; its value is 76 hex (T37 as a circular tape). ECAL fig. 1 names M1222's tape T41, a rotation of T3."
+    - "Sec. 4 says there are 5 possible self-replicating pairs (M1002/T1, M2004/T1, Mdffb/T3f, M9dd3/T1d, Mbdd7/T37). With this encoding all five self-replicate from initial state 1, but so do 10 more (e.g. M0000/T0, Mffff/T7f, M3446/Td); the papers do not say how the five were selected."
+  phenomena:
+    - "a machine without its description tape is washed out; a closed loop of machines producing each other's tapes is needed"
+    - "low noise: minimal self-replicating loop M1002 + T1 (Eigen-Schuster type, zero active mutation), metastable: it survives when noise is turned off"
+    - "higher noise (0.04-0.055): parasitic machines (M3006 with T5, M1222 with T3) invade and populations oscillate, with bursts of active mutation"
+    - "mid noise (0.05-0.1), after about 600-1100 generations: a core network of about 40-60 machines with high active mutation that keeps its diversity after noise is turned off (fixed point or oscillating); double autocatalytic loops (RNA-like editing) besides Eigen-Schuster loops (DNA-like replication)"
+    - "high noise: back to a minimal loop or extinction"
+    - "cell assemblies of core networks differentiate ([420], not implemented)"
+  notes: >
+    A von Neumann style replicator chemistry with separate description
+    (tapes) and constructor (machines). Machines are only 16 bits and tapes
+    7 bits, so every reaction is a table lookup; the noise-free closure of any
+    seed has at most 128 tapes. The papers' core-network phenomena need long
+    noisy runs (thousands of generations) with a capacity N they do not state.

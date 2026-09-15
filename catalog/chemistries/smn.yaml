@@ -2,26 +2,61 @@ chemistries:
 
 - id: smn
   name: String Metabolic Network (SMN)
-  origin: "Ono, Fujimoto & Ikegami, 2005"
+  aliases: ["artificial metabolic system"]
+  origin: "Ono, Fujiwara & Yuta, 2005"
   book: "18.3.1"
-  refs: ["[638]"]
+  refs: ["[638]", "https://doi.org/10.1007/11553090_72"]
   family: systems-biology
   kind: generator
   constructive: true
-  S: {repr: "strings over an 8-letter alphabet {a..h}, arbitrary length", definition: implicit}
+  S:
+    repr: "metabolites = strings over an alphabet of up to 8 letters {a..h}, arbitrary length (bounded here by max_length)"
+    definition: implicit
   R:
     definition: explicit
     arity: 2
-    scheme: "ligation/cleavage A + B <-> AB ; recombination AB + CD <-> AD + CB. Each reaction is catalysed by a corresponding enzyme encoded in the organism's genome."
+    scheme: >
+      Ligation/cleavage A + B <-> AB (eq. 18.17) and recombination
+      AB + CD <-> AD + CB (eq. 18.18), e.g. adbg + ef <-> adbgef and
+      facbaha + eefg <-> facbfg + eeaha. Each reaction is catalysed by its own
+      enzyme, and the genome of an organism is its list of enzymes; the
+      metabolism is the network of those reactions (both directions) over the
+      organism's compound set.
+    notes: "mutation (book): pick an enzyme, replace one educt with a compound already in the compound set, choose a new recombination point where applicable, add the result to the genome (gene duplication followed by mutation)"
   A:
-    reactor: [ode, compartments]
-    dilution: "regulated inflow/outflow keeps total intracellular mass stable"
+    reactor: [ode]
+    dilution: "regulated inflow/outflow keeps the total amount of substance in the cell constant (constant-total)"
+    notes: "evolution: organisms are mutated, their metabolism is run for a fixed number of timesteps, and mass in letters is the fitness used for selection; this acts across generations, outside one network"
   params:
-    - {name: alphabet_size, type: int, default: 8, role: structural}
-    - {name: rate_bias, type: float, role: kinetic, meaning: "kinetic coefficients set so that synthesising LONGER molecules is harder"}
-    - {name: initial_metabolites, type: matrix, role: population}
-    - {name: mutation, type: enum, default: "duplicate-then-mutate an enzyme", role: stochastic, meaning: "pick an enzyme, replace one educt with an existing compound, pick a new recombination point, add to the genome"}
-    - {name: fitness, type: callable, default: "total mass in letters after a fixed number of timesteps", role: selection}
-  provides: [topology, stoichiometry, catalysts, rate-constants, mass-conservation, flow]
-  generator_ready: yes
-  phenomena: ["evolved networks show a power-law community-size distribution matching 100 real organisms' metabolic networks (book fig. 18.6)"]
+    - {name: alphabet_size, type: int, default: 8, min: 2, max: 8, role: structural, meaning: "number of letters (a, b, ...); the book's SMN uses 8"}
+    - {name: n_metabolites, type: int, default: 6, min: 1, max: 1000, role: population, meaning: "number of distinct random initial metabolites (ignored when initial_metabolites or genome is given)"}
+    - {name: max_metabolite_length, type: int, default: 3, min: 1, max: 50, role: population, meaning: "random initial metabolites have a length drawn uniformly from 1 to this value"}
+    - {name: initial_metabolites, type: list, default: [], role: population, meaning: "explicit initial metabolites (resources present at the start of the organism's life); empty: the educts of an explicit genome, or random strings"}
+    - {name: n_enzymes, type: int, default: 12, min: 0, max: 10000, role: structural, meaning: "size of the random initial genome; each enzyme acts on compounds already in the compound set (ignored when genome is given)"}
+    - {name: ligation_fraction, type: float, default: 0.5, min: 0, max: 1, role: stochastic, meaning: "probability that a random enzyme is a ligation rather than a recombination"}
+    - {name: genome, type: list, default: [], role: structural, meaning: "explicit enzymes: 'A + B' for the ligation A + B <-> AB, 'A|B + C|D' for the recombination AB + CD <-> AD + CB (e.g. 'facb|aha + ee|fg'); replaces the random genome"}
+    - {name: mutations, type: int, default: 0, min: 0, max: 100000, range: "the book's control: networks grown by random mutation without selection are not modular", role: stochastic, meaning: "applications of the book's duplicate-and-mutate operator to the genome, without selection"}
+    - {name: max_length, type: int, default: 12, min: 2, max: 1000, role: structural, meaning: "longest compound allowed; random enzymes and mutations whose products are longer are redrawn (the book allows arbitrary length)"}
+    - {name: initial_amount, type: float, default: 1.0, min: 0, role: population, meaning: "initial concentration of each initial metabolite (the book gives no amounts)"}
+  provides: [topology, stoichiometry, mass-conservation, flow, initial-state]
+  fidelity: book+decisions
+  decisions:
+    - "The original paper (Ono, Fujiwara & Yuta, Artificial metabolic system: an evolutionary model for community organization in metabolic networks, ECAL 2005, LNAI 3630, pp. 716-724, https://doi.org/10.1007/11553090_72) is closed access: no open copy was found via Springer, Unpaywall, Semantic Scholar or the Internet Archive. Everything here follows book section 18.3.1."
+    - "The v1 origin 'Ono, Fujimoto & Ikegami' is wrong; bibliography entry [638] gives N. Ono, Y. Fujiwara and K. Yuta."
+    - "The book equates an enzyme with the reaction it catalyses, so enzymes are not species. Each enzyme gives two directed reactions (forward and reverse); enzymes catalysing the same reaction share them. extras.genome lists every enzyme with its notation, its reversible reaction, the indices of its two reactions and, for mutants, its parent enzyme."
+    - "No kinetics: the book says only that synthesising longer molecules is harder and gives no coefficients, so every rate is None and the v1 parameter rate_bias is dropped. The fact is recorded in extras.kinetics."
+    - "The regulated inflow/outflow keeps the amount of substance constant (the book: a larger letter mass therefore means longer compounds), which is outflow = constant-total. The composition of the inflow is not given, so there is no explicit inflow."
+    - "The book does not say how the initial genome or the initial metabolites are made. Here the initial metabolites are n_metabolites distinct random strings (or given explicitly), and the genome grows one random enzyme at a time, each acting on compounds already in the compound set (initial metabolites plus earlier products), a ligation with probability ligation_fraction and otherwise a recombination with uniform cut points. Draws that are elastic or exceed max_length are redrawn. Initial amounts are all initial_amount, a Chemart choice."
+    - "Mutation follows the book's operator: a random enzyme is duplicated, one of its two educts (chosen at random) is replaced by a different compound from the current compound set (of length >= 2 for a recombination), a new recombination point is drawn uniformly in the replaced educt only (the book says 'a new point of recombination', singular), and the mutant is added to the genome. Mutants that are elastic or exceed max_length are redrawn."
+    - "Evolution (fitness = letter mass after a fixed number of timesteps, selection across generations) needs the paper's kinetics and acts across networks, so it is not part of one network. The v1 parameters mutation (callable text) and fitness (callable) are dropped; mutations applies the operator without selection, and the fitness definition is recorded in extras.fitness."
+    - "Species are strings without internal structure beyond their letters; letter counts are conserved by both reaction classes (extras.conservation, one vector per letter)."
+  phenomena:
+    - "letter counts are conserved by ligation, cleavage and recombination"
+    - "with the amount of substance held constant, a larger letter mass means longer compounds, the fitness criterion"
+    - "evolved networks show a power-law community-size distribution close to the average of 100 organisms with large metabolic networks (book figure 18.6, 30 SMN runs)"
+    - "networks grown by random mutation without selection pressure are not modular"
+  notes: >
+    One network is the metabolism of one organism. Community-size
+    distributions (figure 18.6) are statistical results of the evolutionary
+    algorithm with the paper's kinetics and are not reproduced here. See
+    `bnc-cell` for the related bond-number chemistry of Hintze & Adami.

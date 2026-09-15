@@ -2,36 +2,78 @@ chemistries:
 
 - id: typogenetics
   name: Typogenetics
-  origin: "Hofstadter, 1979; simulated by Varetto, 1993/1998"
+  aliases: ["typographical genetics"]
+  origin: "Hofstadter, 1979; Morris, 1989; Varetto, 1993"
   book: "10.5.2; lock-and-key 11.2"
   refs: ["[391]", "[482]", "[597]", "[598]", "[882]", "[883]", "[785]"]
   family: automata
   kind: generator
   constructive: true
   S:
-    repr: "single- and double-stranded sequences over {A, C, G, T} with 3'/5' orientation; and typoenzymes, sequences of amino-acid operations translated from a strand"
+    repr: "single strands over {A, C, G, T}; species id is the strand itself, structure the enzymes it codes with their binding base ('cop-swi-rpu-ina-swi-cop:G'). Double strands exist only while enzymes work and fall apart into single strands at the end"
     definition: implicit
   R:
     definition: implicit
-    arity: "1 (self-reactions only: a strand codes for the enzymes that operate on it)"
+    arity: "1 (reaction self, the book's self-reactions) or 2 (reaction pair)"
     scheme: >
-      Translate a strand into typoenzymes (duplets, separated by AA). Each
-      enzyme binds a unit on a strand (initial binding base determined
-      non-trivially by its tertiary structure = the s/l/r binding
-      inclinations of its amino acids) and executes cut, del, swi, mvr,
-      mvl, cop on/off, ina/inc/ing/int, rpy/rpu/lpy/lpu.
+      self: s -> daughters(s); pair: g + s -> g + daughters of s under the
+      enzymes of g. The strand is translated duplet by duplet into
+      typoenzymes (AA separates enzymes); each enzyme binds a unit holding
+      its preferred base (fixed by the kinks s/l/r of its amino acids) and
+      runs cut, del, swi, mvr, mvl, cop, off, ina, inc, ing, int, rpy, rpu,
+      lpy, lpu on a two-row complex; the rows then separate into daughters.
+    notes: >
+      Enzymes of one strand run in translation order, each binding in the
+      stretch where the previous one stopped (Snare 1999, 2.6). Hofstadter
+      lets an enzyme bind any matching unit, so one strand can have several
+      outcomes; binding_tiebreak all makes each outcome a separate reaction.
+      A reaction that leaves the reactants unchanged (no binding site, or a
+      trivial enzyme) is elastic and not listed.
   A:
-    reactor: "sequential: strands interpreted one at a time; all operations coded in a strand are performed before moving on"
-    dilution: "a 'lethal factor' variant exists"
+    reactor: [sequential-vm, well-stirred-multiset]
+    dilution: "closure: none; soup: a random molecule is removed after each productive event, keeping the population size constant (Chemart addition)"
+    notes: "The book's system interprets strands one at a time (10.5.2). Varetto's simulations with limited resources and a lethal factor are not reproduced"
   params:
-    - {name: code_table, type: enum, default: "Hofstadter", range: "Hofstadter | Varetto", role: structural, meaning: "base-pair -> amino-acid map (book table 10.1); the two variants differ"}
-    - {name: strand_length, type: int, role: structural}
-    - {name: binding_tiebreak, type: enum, default: random, role: stochastic, meaning: "which unit an enzyme binds when several match"}
-    - {name: lethal_factor, type: bool, default: false, role: selection}
-  provides: [topology, sequence-structure-function]
-  generator_ready: partial
-  phenomena: ["self-replicating strands", "autocatalytic 'tanglecycles'"]
+    - {name: method, type: enum, default: closure, choices: [closure, soup], role: structural, meaning: "closure: every reaction reachable from the seed strands (status complete or truncated); soup: random draws from a population with chemart.soup, returning the reactions that fired with counts (status observed)"}
+    - {name: reaction, type: enum, default: self, choices: [self, pair], role: structural, meaning: "self: a strand's enzymes act on the strand itself (book 10.5.2, Hofstadter's puzzle); pair: the enzymes of the first strand act on the second, which is consumed, while the gene strand is a catalyst (Chemart addition)"}
+    - {name: code_table, type: enum, default: hofstadter, choices: [hofstadter, varetto], role: structural, meaning: "duplet -> amino acid table: hofstadter (GEB p. 510, book table 10.1 left) or varetto (Varetto 1993 p. 187 as given by Snare table 2.1b: GA inc, GC ing, GG int, GT ina, kinks s, r, r, l stay with the columns)"}
+    - {name: fold, type: enum, default: hofstadter, choices: [hofstadter, morris], role: structural, meaning: "binding preference from the kinks: hofstadter counts the kinks of all amino acids but the first and last (GEB p. 511); morris counts every kink (Morris 1989, Varetto 1993, book fig. 10.6). Last segment relative to the first: straight A, up (left turn) C, down (right turn) G, back T"}
+    - {name: binding_tiebreak, type: enum, default: all, choices: [all, random, leftmost, rightmost], range: "Hofstadter and Morris: any matching unit (all or random); Varetto: rightmost", role: stochastic, meaning: "which unit an enzyme binds when several hold its base: all lists every outcome as its own reaction (closure only), random draws one with the generator, leftmost/rightmost take the first/last in the bound strand's reading direction"}
+    - {name: strands, type: list, default: ["CGATTCGAATCG"], range: "Snare's self-replicators CGATTCGAATCG and CGATTAATTAATCG; GEB's TAGATCCAGTCCATCGA", role: structural, meaning: "seed strands (closure) or the strand types of the initial population (soup); an empty list draws n_random random strands of strand_length bases"}
+    - {name: n_random, type: int, default: 4, min: 1, max: 1000, role: population, meaning: "number of random seed strands when strands is empty"}
+    - {name: strand_length, type: int, default: 12, min: 1, max: 200, role: structural, meaning: "length of the random seed strands when strands is empty"}
+    - {name: max_length, type: int, default: 24, min: 1, max: 1000, role: structural, meaning: "longest daughter strand kept; an outcome with a longer daughter is dropped (closure status truncated, elastic in the soup)"}
+    - {name: max_species, type: int, default: 200, min: 1, max: 100000, role: structural, meaning: "closure only: species budget; the status becomes truncated when it cuts the closure off"}
+    - {name: max_branches, type: int, default: 1000, min: 1, max: 1000000, role: structural, meaning: "binding_tiebreak all: most distinct intermediate complexes followed while enumerating binding choices for one reactant; beyond it that reactant's reactions are dropped and the status becomes truncated"}
+    - {name: copies, type: int, default: 50, min: 1, max: 100000, role: population, meaning: "soup only: copies of each seed strand in the initial population, whose size the soup keeps constant"}
+    - {name: steps, type: int, default: 2000, min: 0, max: 10000000, role: stochastic, meaning: "soup only: number of draws (one strand for self, an ordered gene/target pair for pair)"}
+  provides: [topology, stoichiometry, catalysts, flow, initial-state, sequence-structure-function]
+  fidelity: reconstructed
+  sources:
+    - "Banzhaf & Yamamoto (2015), 10.5.2: table 10.1 (code and kinks) and fig. 10.6 (the two-enzyme reaction of CGACCCAACGATTTTTCAT with products CGACCCAACG, ATTTTTCAT, CGTTGGGT, from Morris [597])."
+    - "Snare, A. (1999). Typogenetics. BSc (Hons) thesis, School of Computer Science and Software Engineering, Monash University (book ref [785]): chapter 2 (a specification reconciling Hofstadter, Morris and Varetto: tables 2.1-2.2, the amino-acid semantics, self-application rules), 3.2-3.3 (dud and self-replicating strands) and appendix A.1 Typogenetics.py. http://web.archive.org/web/2005id_/http://www.csse.monash.edu.au/hons/projects/1999/Andrew.Snare/thesis.pdf"
+    - "Hofstadter's GEB (1979) chapter examples (pp. 508-511) as reproduced by independent implementations, used to cross-check the table, kinks and the worked example: kortschak/typo (Go; https://github.com/kortschak/typo, Example_book and TestOperateOn), mkpankov/typogenetics (Python; https://github.com/mkpankov/typogenetics, testACopyingTranslationByStage), palm86/typogenetics (Elixir; https://github.com/palm86/typogenetics, preference test), lechimp-p/Typogenetics (Haskell; https://github.com/lechimp-p/Typogenetics)."
+  decisions:
+    - "GEB itself, Morris [597, 598] (the UBC thesis page blocked downloads), Varetto [882, 883] and Kvasnicka et al. [482] (author links dead, not in the Wayback Machine) were not accessible. The machine follows Snare's specification, checked against the book's fig. 10.6 and against GEB's worked example as reproduced by three independent implementations."
+    - "Code table: Hofstadter's table agrees in book table 10.1, Snare table 2.1a and all four implementations (kinks included). Book table 10.1 prints the same table twice although the caption says the right one is Varetto's (erratum); the varetto choice uses Snare table 2.1b, which only permutes the insert amino acids of row G and keeps the kinks with the columns. Its only source here is Snare."
+    - "Binding preference: fold hofstadter counts the kinks of amino acids 2..n-1 (Snare 2.4 and Typogenetics.py; GEB p. 511 gives rpy-ina-rpu-mvr-int-mvl-cut-swi-cop preference C). fold morris counts all kinks, which is what book fig. 10.6 needs (cop-cut-mvl binds G, cop-swi-lpu-lpu-mvr binds A). A single-amino-acid enzyme binds A under fold hofstadter (Snare's choice; GEB is silent)."
+    - "GEB's worked example (p. 508) binds rpu-inc-cop-mvr-mvl-swi-lpu-int at the middle G of TAGATCCAGTCCATCGA. Under fold hofstadter that enzyme prefers T and under fold morris A, so the example's binding site is taken as given, not derived (kortschak's implementation derives G from a third kink-counting rule that contradicts p. 511)."
+    - "An inserting amino acid (ina/inc/ing/int) puts the base to the right of the bound unit and moves the enzyme onto it, with the complementary base opposite in copy mode and a gap otherwise; this reproduces GEB's worked example (products ATG and TAGATCCAGTCCACATCGA). Snare's code keeps the enzyme on the old unit, which gives GTT and TAGATCCAGTCCAACTCGA instead."
+    - "Other semantics as in Snare: cut severs both rows right of the bound unit and the enzyme continues on the left part (fig. 10.6); del leaves a gap (keeping the rows aligned, unlike Morris' shifting del) and moves right; mvr/mvl/swi into a gap or off the end stop the enzyme; rpy/rpu/lpy/lpu cross a gap in one row but not in both, and bases filled in by copy mode on the way do not end the search (fig. 10.6 needs this); on the upper strand left and right are reversed."
+    - "Self-application (Snare 2.6): enzymes run in translation order; each binds in the gap-free stretch of the row where the previous enzyme stopped, and copy mode is reset between enzymes. An enzyme with no site is skipped and the next one starts from the same position (Snare's code resets the position to 0 there)."
+    - "binding_tiebreak all enumerates every binding choice of every enzyme and gives one reaction per distinct multiset of daughters; with random the closure samples one outcome per reactant (fixed by the seed), the soup a fresh one per draw. leftmost/rightmost are in the bound strand's reading direction; rightmost is Varetto's rule (Snare 2.4)."
+    - "Stoichiometry: in self the strand is consumed and its daughters are produced (a self-replicator is s -> 2 s, so s shows as a catalyst); in pair the gene strand is translated without being consumed and appears on both sides. The book's fig. 10.6 caption ('enzymes coded by the strand operate on a copy of the same strand') fits pair with g = s, whose reaction is 2 s -> s + daughters. No rates are published, so rates are None."
+    - "Species are single strands; double-stranded complexes are intermediate states inside a reaction and always separate at the end, as in GEB's puzzle and Snare's extractstrands. The v1 strand_length is kept only for random seeds; lethal_factor is dropped because Varetto's definition was not accessible."
+    - "Truncation: strands can grow by insertion, so max_length drops outcomes with longer daughters and max_branches bounds the enumeration of binding choices; either makes the closure status truncated."
+    - "Soup (Chemart addition): chemart.soup with constant dilution; a random molecule is removed after each productive event, so outflow is constant-total. Hofstadter's generational puzzle (every strand replaced by its daughters each generation) is not a separate method."
+  reference_impl: "Snare (1999) Typogenetics.py (appendix A.1 of the thesis); kortschak/typo (Go)"
+  phenomena:
+    - "self-replicating strands built as inverted repeats: CGATTCGAATCG and CGATTAATTAATCG -> 2 copies when their enzyme binds the rightmost G (Snare 3.3, fig. 3.2)"
+    - "dud strands whose enzymes find no binding site (CGGC codes cop-inc, which binds A; Snare 3.1.1)"
+    - "a single reaction yields a variable number of products and, with free binding choice, several alternative outcomes (book 10.5.2, fig. 10.6)"
+    - "short self-replicators growing exponentially and autocatalytic 'tanglecycles' in Varetto's modified system (book 10.5.2; not reproduced here)"
   notes: >
-    Variable molecule size, variable product count, non-deterministic
-    binding: a stress test for Chemart's constructive backend. The two
-    published code tables must both be offered - results differ.
+    Variable molecule size, variable product count and non-deterministic
+    binding make this a stress test for constructive closures. The book's
+    statement that Varetto's code table differs is right, but its table
+    10.1 prints Hofstadter's table on both sides.

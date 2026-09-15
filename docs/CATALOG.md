@@ -5,9 +5,9 @@
 
 Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rates or a rate law), **H** thermodynamics (energies and/or detailed balance). Status column: the fidelity of the implemented generator, or `todo (<book readiness>)`.
 
-- implemented: **40** of 98 (book: 4, book+decisions: 26, reconstructed: 10)
-- constructive (open, growing species set): **49**
-- carry their own kinetics: **42**; carry energetics: **12**
+- implemented: **48** of 98 (book: 4, book+decisions: 27, reconstructed: 17)
+- constructive (open, growing species set): **48**
+- carry their own kinetics: **44**; carry energetics: **12**
 
 
 ## application
@@ -38,12 +38,12 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 | `ca-embedded-particles` | Embedded particles in cellular automata | analysis | no | T | todo (no) | 10.7.2 |
 | `corewar` | Core War / Redcode | framework | yes | T | todo (partial) | 10.6.2 |
 | `coreworld` | Coreworld (Venus I / Venus II) | generator | yes | T | todo (partial) | 10.6.3 |
-| `ikegami-hashimoto` | Machine-tape chemistry | generator | yes | T | todo (yes) | 10.5.4 |
+| `ikegami-hashimoto` | Machine-tape chemistry | generator | yes | TK | reconstructed | 10.5.4 |
 | `laing-molecular-machines` | Laing's artificial molecular machines | generator | yes | T | todo (no) | 10.5.1 |
-| `mccaskill-polymer-tm` | Polymers as Turing machines / pattern processing chemistry | generator | yes | T | todo (partial) | 10.5.3 |
+| `mccaskill-polymer-tm` | Polymers as Turing machines / pattern processing chemistry | generator | yes | T | reconstructed | 10.5.3 |
 | `sr-loops` | Self-replicating loops in cellular automata | generator | yes | T | todo (partial) | 10.4, 10.7.2 |
 | `tierra` | Tierra | framework | yes | T | todo (partial) | 10.6.4 |
-| `typogenetics` | Typogenetics | generator | yes | T | todo (partial) | 10.5.2 |
+| `typogenetics` | Typogenetics | generator | yes | T | reconstructed | 10.5.2 |
 
 ## bio-inspired
 
@@ -51,9 +51,9 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 |---|---|---|---|---|---|---|
 | `conrad-enzymatic` | Conrad's lock-and-key enzymatic / self-assembly processor | wet | no | TH | todo (no) | 11.2.1 |
 | `farmer-immune` | Bitstring immune system model (idiotypic network) | generator | yes | TK | book+decisions | 11.2.2 |
-| `mcs-bl` | Molecular Classifier System (MCS.bl) | generator | yes | T | todo (yes) | 11.1.1 |
-| `sac` | SAC (string-based artificial chemistry with cells) | generator | yes | T | todo (partial) | 11.1.3 |
-| `stringmol` | Stringmol | generator | yes | T | todo (yes) | 11.1.2 |
+| `mcs-bl` | Molecular Classifier System (MCS.bl) | generator | yes | TK | reconstructed | 11.1.1 |
+| `sac` | SAC (string-based artificial chemistry with cells) | generator | yes | T | reconstructed | 11.1.3 |
+| `stringmol` | Stringmol | generator | yes | T | reconstructed | 11.1.2 |
 
 ## core
 
@@ -144,7 +144,7 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 | id | name | kind | constructive | tier | status | book |
 |---|---|---|---|---|---|---|
 | `aevol` | Aevol | framework | yes | T | todo (no) | 18.1.2 |
-| `bnc-cell` | BNC (bond-number chemistry) cell model | generator | yes | T | todo (partial) | 18.3.1 |
+| `bnc-cell` | BNC (bond-number chemistry) cell model | generator | no | TK | reconstructed | 18.3.1 |
 | `cpm-grn-evodevo` | Cellular Potts + GRN evo-devo models | framework | no | TH | todo (no) | 18.6.1 |
 | `energy-gated-collision` | Arrhenius-gated collision algorithm | analysis | yes | KH | todo (yes) | 18.3.3 |
 | `french-flag` | French flag model (positional information) | generator | no | T | book+decisions | 18.6 |
@@ -153,7 +153,7 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 | `isologous-diversification` | Isologous diversification | generator | no | TK | todo (partial) | 18.5, 18.6 |
 | `michaelis-menten` | Michaelis-Menten enzyme kinetics | generator | no | TK | book+decisions | 18.2.1 |
 | `rna-folding-ac` | RNA-folding ribozyme artificial chemistry | generator | yes | TKH | todo (no) | 18.1.1 |
-| `smn` | String Metabolic Network (SMN) | generator | yes | TK | todo (yes) | 18.3.1 |
+| `smn` | String Metabolic Network (SMN) | generator | yes | T | book+decisions | 18.3.1 |
 | `srsim` | SRSim (rule-based spatial simulator) | framework | yes | T | todo (no) | 18.3.3 |
 | `synthon` | Synthon artificial chemistry | generator | yes | TK | todo (no) | 18.3.2 |
 | `tominaga-stacked-strings` | Tominaga's stackable-string chemistry | generator | yes | T | todo (no) | 18.3.2 |

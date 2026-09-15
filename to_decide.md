@@ -50,7 +50,21 @@ reaction fires is encoded in a molecule acting as an enzyme.
   `bigan-conservative-crn`, `jain-krishna` draw a topology from a
   distribution; `brusselator`, `repressilator` are written down.
 
-## 3. Scope
+## 3. Low-confidence reconstructions to revisit
+
+These generators work, are tested against every published fact that could be
+found, and record their choices in `decisions`. Their key semantics rest on
+inference, though, because the primary source was unavailable. Upgrade them if
+the sources turn up.
+
+| id | what is uncertain | what would settle it |
+|---|---|---|
+| `mccaskill-polymer-tm` | Rule framing, head positions and initial state were found by searching for the one decoding that makes the report's published replicator work. The report's evolution run (replicator survives, parasite extinct) is **not** reproduced. | McCaskill's original C program, or the later NGEN / Breyer-Ackermann-McCaskill papers in full |
+| `sac` | String-rewriting semantics (`*` shortest match, prefixes, `&` / `$` sequencing) are inferred from Suzuki's slides and the book's example; none of the three papers was obtainable. | Suzuki & Ono papers [642], [823], [826] |
+| `smn` | Built from the book alone, so there are no rate constants. | Ono, Fujiwara & Yuta, ECAL 2005 (LNAI 3630) |
+| `typogenetics` | The Varetto code table rests on one source (Snare's thesis). | Varetto 1993, Morris 1989 |
+
+## 4. Scope
 
 Agreed: frameworks and analyses are marked out of scope (not deleted);
 wet chemistries become a small section of *given* topologies.
