@@ -1,0 +1,200 @@
+# Core worked examples from Banzhaf & Yamamoto part I.
+# These are the reference chemistries: small, fully specified, and used
+# throughout the book to introduce the (S, R, A) triple.
+chemistries:
+
+- id: dimerization
+  name: Reversible dimerization
+  origin: "textbook; used as PyCellChemistry's hello-world"
+  book: "2.2.4, appendix (Dimer.py)"
+  family: core
+  kind: generator
+  constructive: false
+  S:
+    repr: "three named species A, B and the dimer C = A.B"
+    definition: explicit
+  R:
+    definition: explicit
+    arity: [1, 2]
+    scheme: "A + B --k_f--> C ; C --k_r--> A + B"
+  A:
+    reactor: [ode, ssa]
+    dilution: none
+    notes: "closed system; used to compare ODE integration with Gillespie SSA"
+  params:
+    - {name: k_f, type: float, default: 1.0, min: 0, role: kinetic, meaning: "forward (association) rate coefficient"}
+    - {name: k_r, type: float, default: 1.0, min: 0, role: kinetic, meaning: "reverse (dissociation) rate coefficient"}
+    - {name: A0, type: float, default: 2.0, min: 0, role: population, meaning: "initial concentration of A"}
+    - {name: B0, type: float, default: 1.4, min: 0, role: population, meaning: "initial concentration of B"}
+  provides: [topology, stoichiometry, rate-constants, initial-state]
+  fidelity: book
+  decisions:
+    - "NAV (N_A V) is not a parameter: it sizes a stochastic simulation, not the network. Convert rates for SSA with chemart.kinetics.k_to_c."
+  reference_impl: "PyCellChemistry Dimer.py"
+  phenomena: ["equilibrium K = k_f/k_r", "SSA fluctuates about the ODE equilibrium"]
+  notes: >
+    The trivial baseline, and the fixture for the k (macroscopic) -> c
+    (mesoscopic) conversion via the Wolkenhauer relation
+    c = k / (N_A V)^(m-1) * prod_i l_i! (book appendix, eq. 4).
+
+- id: chameleon
+  name: Colored chameleon chemistry
+  aliases: ["chameleon colony puzzle"]
+  origin: "Winkler, 2007 puzzle; formulated as an AC by Banzhaf & Yamamoto"
+  book: "2.5.1"
+  refs: ["[921]", "[922]"]
+  family: core
+  kind: generator
+  constructive: false
+  S:
+    repr: "three colors r, g, b"
+    definition: explicit
+  R:
+    definition: explicit
+    arity: 2
+    scheme: "i + j -> 2k for all i != j != k over {r,g,b}; same-color collisions are elastic"
+  A:
+    reactor: [well-stirred-multiset, ode]
+    dilution: "none needed - the rule is number-conserving (2 in, 2 out)"
+    notes: >
+      Products are inserted into the slots vacated by the reactants.
+      Time rescaling between the multiset simulation and the ODE must
+      correct for elastic collisions, which occur with probability
+      p_e = sum_i x_i^2.
+  params:
+    - {name: M, type: int, default: 5400, min: 3, role: population, meaning: "total number of chameleons (constant)"}
+    - {name: x0, type: list, default: [0.5, 0.0, 0.5], role: population, meaning: "initial colour fractions of (r, g, b), summing to 1; counts are M * x0 rounded by largest remainder"}
+  provides: [topology, stoichiometry, rate-constants, initial-state, mass-conservation]
+  fidelity: book
+  decisions:
+    - "Rate constants are 1 for all three reactions, as implied by the book's rate equations 2.40-2.42."
+    - "Default x0 follows figure 2.5 (only red and blue present at the start)."
+  reference_impl: "PyCellChemistry Chameleons.py"
+  phenomena: ["conserved total count", "relaxation to the 1/3,1/3,1/3 fixed point", "the mod-3 invariant that makes the original puzzle unsolvable"]
+  notes: >
+    extras.conservation carries the real law (1,1,1) and the two mod-3
+    invariants (r - g) and (g - b), which a real-valued nullspace
+    computation will NOT find.
+
+- id: prime-number-chemistry
+  name: Prime number (number-division) chemistry
+  aliases: ["NumberChem", "division chemistry"]
+  origin: "Banzhaf 1993 / Banzhaf, Dittrich & Rauhe"
+  book: "1, 2.5.2, appendix (NumberChem.py)"
+  refs: ["[72]", "[113]"]
+  family: core
+  kind: generator
+  constructive: true
+  S:
+    repr: "natural numbers >= 2"
+    definition: implicit
+    notes: "0 and 1 are excluded because they behave degenerately under division"
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "s1 + s2 -> s1 + s3  where s3 = s2/s1 if s1 | s2 and s2 > s1; otherwise elastic"
+  A:
+    reactor: well-stirred-multiset
+    dilution: "none - the divisor acts as a catalyst, so molecule count is constant"
+    notes: "draw two at random, order them, divide, reinject both"
+  params:
+    - {name: M, type: int, default: 100, role: population, meaning: "number of molecules in the soup"}
+    - {name: minn, type: int, default: 2, role: structural, meaning: "lower bound of the initialisation interval"}
+    - {name: maxn, type: int, default: 1000, role: structural, meaning: "upper bound; maxn >> M makes the run constructive"}
+    - {name: iterations, type: int, default: 10000, role: population, meaning: "number of collision events"}
+    - {name: seed, type: seed, role: stochastic, meaning: "RNG seed"}
+  provides: [topology, stoichiometry, initial-state, sequence-structure-function]
+  generator_ready: yes
+  reference_impl: "PyCellChemistry NumberChem.py; also expressible on HighOrderChem via divrule(m1,m2)"
+  phenomena: ["primes emerge as the non-reactive (closed) set", "sigmoidal growth of prime concentration to 1.0", "no prime factorisation - divisors are catalysts, so copies are not produced"]
+  notes: >
+    The canonical example of an implicit/constructive chemistry, and the
+    canonical argument for why a Chemart chemistry cannot always be a
+    finite matrix: |S| is unbounded, and the reachable subnetwork depends
+    on the seed multiset. Chemart must expose it as react(a,b) plus an
+    `expand(seed, limits)` reachability closure.
+
+- id: matrix-chemistry
+  name: Matrix chemistry
+  aliases: ["algorithmic chemistry (Banzhaf)", "MatrixChem"]
+  origin: "Banzhaf, 1993"
+  book: "chapter 3; revisited in 12.5, 13.2"
+  refs: ["[63]", "[64]", "[65]"]
+  family: core
+  kind: generator
+  constructive: true
+  S:
+    repr: "binary strings of length N, N a perfect square; |S| = 2^N - 1 (the all-zero 'destructor' is excluded from reacting)"
+    definition: implicit
+  R:
+    definition: implicit
+    arity: 2
+    scheme: >
+      s1 + s2 -> s1 + s2 + s3, where s1 folds into a sqrt(N) x sqrt(N)
+      operator P and acts on s2 in sqrt(N)-sized chunks:
+      s3[i + k*sqrt(N)] = sigma( sum_j P[i][j] * s2[j + k*sqrt(N)] - Theta )
+      with sigma the Heaviside step. Both reactants survive (catalytic).
+    notes: >
+      Reactions classify into self-replication (s1+s1 -> +s1), replication
+      (s1+s2 -> +s1) and heterogeneous (s1+s2 -> +s3). n_S = 2^N - 1,
+      n_R = 2^(2N) - 3*2^N + 2.
+  A:
+    reactor: [well-stirred-multiset, ode]
+    dilution: "draw a third molecule s4 at random and remove it, keeping M constant"
+    notes: >
+      Explicit algorithm; the ODE form is
+      x_i' = sum_jk W_ijk x_j x_k - x_i * Phi(t), or equivalently
+      x_i' = [B_i x_i + sum_k C_ik x_k] x_i + sum_jk W_ijk x_j x_k - x_i Phi / sum_k x_k.
+  params:
+    - {name: N, type: int, default: 9, range: "perfect square: 1, 4, 9, 16, 25, 100", role: structural, meaning: "string length; fixes |S| = 2^N - 1 and |R| = 2^2N - 3*2^N + 2"}
+    - {name: folding, type: enum, default: 1, range: "1..4 (row-major, transposed, row-snake, column-snake)", role: structural, meaning: "how a string is laid out into a matrix; changes the number of self-replicators (N=9: 14/122/18/94) and replicators (12028/21310/11822/16830)"}
+    - {name: Theta, type: float, default: 0.0, role: structural, meaning: "threshold of the squashing function; output bit is 1 iff the sum is strictly greater than Theta (book eq. 3.5 says >=, which contradicts table 3.3 - see docs/BOOK-ERRATA.md E1); Theta=0 makes the operation purely Boolean"}
+    - {name: n, type: float, default: 1.0, role: selection, meaning: "exponent in the decay probability p(k) = (I(k)/N)^n, where I(k) is the number of 1-bits; tilts selection against the all-ones 'exploitor'"}
+    - {name: M, type: int, default: 1000, role: population, meaning: "population size (constant)"}
+    - {name: destructor_elastic, type: bool, default: true, role: selection, meaning: "make all collisions with the all-zeros string elastic; without this it dominates immediately"}
+    - {name: seed_species, type: matrix, default: "s(1)..s(15)", role: population, meaning: "initial multiset"}
+  provides: [topology, stoichiometry, catalysts, initial-state, flow, sequence-structure-function]
+  generator_ready: yes
+  decisions:
+    - "Threshold is strict: an output bit is 1 iff sum_j P_ij s_j > Theta. Book eq. 3.5 says >=, which with Theta=0 maps every zero sum to 1 and contradicts table 3.3 (operator s(1) on s(2) yields s(0)). The strict form reproduces tables 3.3 and 3.5, the N=4 counts, table 3.4 and the 3.3 closure exactly."
+    - "Foldings for N > 4 (book defers to [65]): 2 = transpose, 3 = row snake (odd rows reversed), 4 = column snake (odd columns reversed). These reproduce table 3.4 exactly for N=9: 14/12028, 122/21310, 18/11822, 94/16830 self-replications/replications."
+    - "Organisations of the 4-bit system: table 12.3 lists 52 (IDs 0..51, including the empty and full sets); the prose of 12.5.2 says 54. Trust the table. Table 12.2 is table 3.3 (first folding) with the destructor row/column added, although 12.5.2 calls it 'nontopological horizontal folding'."
+    - "Bit order: s(5) = (1,0,1,0), so component s_1 is the least significant bit of the integer name. Self-replication counts i with s(i)+s(i) -> +s(i); replication counts ordered pairs i != j whose product is s(i) or s(j); the destructor s(0) is excluded and producing s(0) is an elastic collision."
+  reference_impl: "PyCellChemistry MatrixChemistry.py"
+  phenomena: ["emergence of self-replicators", "closure of the reachable species set (N=9 from s1..s15 closes at s1..s27 minus s20..s23, book 3.3)", "focusing of all mass into one self-replicator", "organisations (N=4: 52 listed in book table 12.3, IDs 0..51; the prose of 12.5.2 says 54 - see docs/BOOK-ERRATA.md E2)"]
+  notes: >
+    Best-in-class test case for Chemart's whole pipeline: it is
+    constructive but with a finite S, so `expand()` provably terminates
+    and can be checked against the book's published closure and against
+    the 51 organisations of the 4-bit system.
+
+- id: high-order-chem
+  name: High-order chemistry (rules as molecules)
+  aliases: ["HighOrderChem"]
+  origin: "Banzhaf & Yamamoto, PyCellChemistry"
+  book: "appendix"
+  family: core
+  kind: framework
+  constructive: true
+  S:
+    repr: "two multisets: data molecules (arbitrary Python objects) and rule molecules (strings holding Python calls)"
+    definition: implicit
+  R:
+    definition: implicit
+    arity: "variable - determined by the arity of the drawn rule"
+    scheme: "draw a rule 'f(m1,...,mk)'; draw k data molecules; exec; inject the returned products; reinject the rule (catalytic)"
+  A:
+    reactor: well-stirred-multiset
+    dilution: none
+  params:
+    - {name: rules, type: callable, role: structural, meaning: "the rule multiset - this IS the chemistry"}
+    - {name: seed, type: matrix, role: population, meaning: "initial data multiset"}
+  provides: [topology, sequence-structure-function]
+  generator_ready: yes
+  reference_impl: "PyCellChemistry HighOrderChem.py"
+  phenomena: ["any constructive chemistry can be re-expressed on it", "rules compete for substrate"]
+  notes: >
+    Not a chemistry but the substrate on which Chemart's constructive
+    backend should be modelled. Note the book's own caveat: it is not yet
+    truly high-order because rules cannot rewrite rules (no type tags on
+    binding sites).

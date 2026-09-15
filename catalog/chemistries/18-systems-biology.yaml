@@ -1,0 +1,373 @@
+# Chapter 18: ACs used to model real biological systems. These are the
+# entries where non-mass-action rate laws (Michaelis-Menten, Hill) and
+# structure->function maps (folding) are unavoidable.
+chemistries:
+
+- id: michaelis-menten
+  name: Michaelis-Menten enzyme kinetics
+  book: "18.2.1; also 4.4 (as an abridgement method)"
+  refs: ["[42]", "[81]", "[503]"]
+  family: systems-biology
+  kind: generator
+  constructive: false
+  S: {repr: "E, S, ES, P (elementary) or S, P (abridged)", definition: explicit}
+  R:
+    definition: explicit
+    arity: [1, 2]
+    scheme: "E + S <-ka/ka'-> ES --kb--> E + P (irreversible product formation)"
+    notes: "d[P]/dt = v_m [S] / (k_m + [S]), with v_m = kb [E0] and k_m = (ka' + kb)/ka"
+  A: {reactor: [ode, ssa], dilution: none}
+  params:
+    - {name: form, type: enum, default: elementary, choices: [elementary, abridged], role: structural, meaning: "elementary mass-action steps, or the single abridged reaction S -> P with a Michaelis-Menten rate law"}
+    - {name: ka, type: float, default: 1.0, min: 0, role: kinetic, meaning: "binding E + S -> ES"}
+    - {name: ka_rev, type: float, default: 1.0, min: 0, role: kinetic, meaning: "unbinding ES -> E + S"}
+    - {name: kb, type: float, default: 1.0, min: 0, role: kinetic, meaning: "catalytic turnover ES -> E + P"}
+    - {name: E0, type: float, default: 1.0, min: 0, role: population, meaning: "total enzyme, free + bound"}
+    - {name: S0, type: float, default: 10.0, min: 0, role: population, meaning: "initial substrate"}
+  provides: [topology, stoichiometry, rate-constants, rate-law, initial-state]
+  fidelity: book+decisions
+  decisions:
+    - "The book gives no numerical rates; all default to 1, with E0 = 1 and S0 = 10."
+    - "k_m is derived, not a parameter. In the extracted text of eq. 18.4 the prime on ka' is lost ('k_m = (k_a + k_b)/k_a'); the quasi-steady-state derivation gives k_m = (ka_rev + kb) / ka, which is used."
+  notes: >
+    The abridged form has FEWER species and reactions than the elementary
+    form but a NON-MASS-ACTION rate law; a schema that assumes mass action
+    silently changes the model.
+
+- id: hill-kinetics
+  name: Hill kinetics (cooperative binding)
+  book: "18.2.2; used by the Repressilator 19.3.2"
+  refs: ["[741]", "[916]"]
+  family: systems-biology
+  kind: generator
+  constructive: false
+  S: {repr: "gene G, protein P, complex C, gene product X", definition: explicit}
+  R:
+    definition: explicit
+    arity: "n+1"
+    scheme: "G + n P <-kf/kr-> C ; activation C -> C + X ; repression G -> G + X ; lumped rates H1 = P^n/(K^n + P^n), H2 = K^n/(K^n + P^n)"
+  A: {reactor: [ode, ssa], dilution: none}
+  params:
+    - {name: form, type: enum, default: elementary, choices: [elementary, lumped], role: structural, meaning: "elementary binding reactions (eqs. 18.5, 18.12, 18.15) or a single production reaction with a Hill rate law (eqs. 18.14, 18.16)"}
+    - {name: regulation, type: enum, default: activation, choices: [activation, repression], role: structural, meaning: "P activates (bound gene expresses) or represses (free gene expresses) X"}
+    - {name: n, type: int, default: 2, min: 1, max: 10, role: kinetic, meaning: "Hill coefficient; better read as the DEGREE OF COOPERATIVITY than as a literal molecule count. n=1 gives no sigmoid, so no switching"}
+    - {name: K, type: float, default: 1.0, min: 0, role: kinetic, meaning: "K^n = K_d = kr/kf, the dissociation constant"}
+    - {name: kf, type: float, default: 1.0, min: 0, role: kinetic, meaning: "binding rate; the unbinding rate is kf K^n"}
+    - {name: k_expr, type: float, default: 1.0, min: 0, role: kinetic, meaning: "expression rate of X (k1 or k2 in the book)"}
+    - {name: G0, type: float, default: 1.0, min: 0, role: population, meaning: "total gene = free + complexed"}
+    - {name: P0, type: float, default: 1.0, min: 0, role: population, meaning: "initial protein"}
+  provides: [topology, stoichiometry, catalysts, rate-law, rate-constants, initial-state]
+  fidelity: book+decisions
+  decisions:
+    - "The book derives both forms; `form` lets the user pick. Defaults follow figure 18.5 (G(0) = P(0) = 1) with unit rates. In the lumped form the rate dict names the regulator species ('regulator': 'P') and 'mode'."
+  notes: >
+    The book flags the idealisation explicitly: n molecules never bind
+    simultaneously, and with one gene copy and few proteins an ODE is a
+    poor approximation.
+
+- id: smn
+  name: String Metabolic Network (SMN)
+  origin: "Ono, Fujimoto & Ikegami, 2005"
+  book: "18.3.1"
+  refs: ["[638]"]
+  family: systems-biology
+  kind: generator
+  constructive: true
+  S: {repr: "strings over an 8-letter alphabet {a..h}, arbitrary length", definition: implicit}
+  R:
+    definition: explicit
+    arity: 2
+    scheme: "ligation/cleavage A + B <-> AB ; recombination AB + CD <-> AD + CB. Each reaction is catalysed by a corresponding enzyme encoded in the organism's genome."
+  A:
+    reactor: [ode, compartments]
+    dilution: "regulated inflow/outflow keeps total intracellular mass stable"
+  params:
+    - {name: alphabet_size, type: int, default: 8, role: structural}
+    - {name: rate_bias, type: float, role: kinetic, meaning: "kinetic coefficients set so that synthesising LONGER molecules is harder"}
+    - {name: initial_metabolites, type: matrix, role: population}
+    - {name: mutation, type: enum, default: "duplicate-then-mutate an enzyme", role: stochastic, meaning: "pick an enzyme, replace one educt with an existing compound, pick a new recombination point, add to the genome"}
+    - {name: fitness, type: callable, default: "total mass in letters after a fixed number of timesteps", role: selection}
+  provides: [topology, stoichiometry, catalysts, rate-constants, mass-conservation, flow]
+  generator_ready: yes
+  phenomena: ["evolved networks show a power-law community-size distribution matching 100 real organisms' metabolic networks (book fig. 18.6)"]
+
+- id: bnc-cell
+  name: BNC (bond-number chemistry) cell model
+  origin: "Hintze & Adami, 2008"
+  book: "18.3.1"
+  refs: ["[384]", "[441]"]
+  family: systems-biology
+  kind: generator
+  constructive: true
+  S:
+    repr: "linear molecules over atoms {1,2,3} with single '-' and double '=' bonds obeying a valence/bond rule; 608 valid molecules up to length 12"
+    definition: implicit
+    notes: "no branches or rings"
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "recombination: pick a cleavage point in each reactant and swap tails; only products satisfying the bond rule are valid (>5 million valid reactions)"
+  A: {reactor: lattice-2d, dilution: "cells divide when they hold enough complex metabolites; food diffuses from fixed or moving sources"}
+  params:
+    - {name: max_length, type: int, default: 12, role: structural}
+    - {name: food_set, type: matrix, default: "the 53 smallest of the 608 molecules", role: population}
+    - {name: environment, type: enum, default: static, range: "static | quasi-static (one source moves per update) | dynamic (all sources move)", role: population, meaning: "the paper's main independent variable"}
+    - {name: genome_alphabet, type: enum, default: "{0,1,2,3}", role: structural}
+    - {name: affinity_encoding, type: callable, role: structural, meaning: "gene -> (expression level, target affinity, reaction specificity)"}
+    - {name: grid, type: matrix, role: spatial}
+  provides: [topology, stoichiometry, catalysts, mass-conservation, space, compartments, flow, sequence-structure-function]
+  generator_ready: partial
+  phenomena: ["import/transform/export metabolic pathways emerge", "dynamic environments give SLOWER, LESS modular but MORE robust networks - contradicting [441], probably because the changes there are systematic rather than random"]
+
+- id: rna-folding-ac
+  name: RNA-folding ribozyme artificial chemistry
+  origin: "book ref [873] (Yamamoto-adjacent line of work), building on Vienna RNA + ToyChem"
+  book: "18.1.1"
+  refs: ["[873]", "[874]", "[875]", "[876]", "[280]", "[349]", "[389]", "[390]", "[300]", "[103]"]
+  family: systems-biology
+  kind: generator
+  constructive: true
+  S: {repr: "RNA sequences folded into secondary structures by free-energy minimisation (Vienna RNAfold)", definition: implicit}
+  R:
+    definition: implicit
+    arity: 2
+    scheme: >
+      Two-step genotype->phenotype->function map: sequence -> folded shape
+      (dot-bracket) -> catalytic function, taken from the longest loop and
+      classified with Fujita's imaginary transition structures; the actual
+      reaction is then executed by ToyChem graph rewriting.
+  A: {reactor: [ode, ssa], dilution: "food molecule inflow"}
+  params:
+    - {name: seq_length, type: int, default: 60, role: structural}
+    - {name: folding_model, type: enum, default: "Vienna Turner energies", role: thermodynamic}
+    - {name: loop_to_function_map, type: callable, role: structural, meaning: "Fujita ITS classification of the longest loop"}
+    - {name: food_molecules, type: matrix, role: population}
+    - {name: mutation_rate, type: float, role: stochastic}
+  provides: [topology, stoichiometry, energies, mass-conservation, rate-constants, sequence-structure-function]
+  generator_ready: no
+  phenomena: ["small-world connectivity with highly connected metabolites in large evolved networks", "large neutral networks in genotype space -> simultaneously robust and evolvable", "phased evolution: first forward pathway extension breaking food molecules down, later complex pathways as enzymes are reused and specialise"]
+  notes: >
+    The most 'realistic' generator in the book: real thermodynamic folding
+    + real graph chemistry. Heavy dependencies (ViennaRNA), so implement
+    as an optional extra.
+
+- id: aevol
+  name: Aevol
+  origin: "Beslon, Knibbe et al."
+  book: "18.1.2"
+  refs: ["[654]"]
+  family: systems-biology
+  kind: framework
+  constructive: true
+  S: {repr: "a DNA-like binary genome; genes are binary strings translated via a codon table into proteins", definition: implicit}
+  R:
+    definition: implicit
+    arity: 1
+    scheme: "a protein 'folds' into a mathematical function expressing its metabolic activity as a FUZZY SET, ranging from polyvalent/low-specificity to highly specialised"
+  A: {reactor: ode, dilution: none}
+  params:
+    - {name: genome_length, type: int, role: structural}
+    - {name: codon_table, type: matrix, role: structural}
+    - {name: mutation_rates, type: matrix, role: stochastic, meaning: "point, indel, duplication, deletion, translocation, inversion"}
+    - {name: environment_target, type: callable, role: selection, meaning: "the target metabolic profile"}
+  provides: [topology, sequence-structure-function]
+  generator_ready: no
+  phenomena: ["homologous gene rearrangements are important for the evolvability of regulatory networks"]
+
+- id: isologous-diversification
+  name: Isologous diversification
+  origin: "Furusawa & Kaneko, 1998-2006"
+  book: "18.5, 18.6"
+  refs: ["[301]", "[302]", "[303]", "[304]", "[840]", "[345]", "[658]"]
+  family: systems-biology
+  kind: generator
+  constructive: false
+  S: {repr: "~20 chemicals inside each cell; cells occupy slots on a 2D grid and can attach into clusters", definition: explicit}
+  R:
+    definition: explicit
+    arity: 2
+    scheme: "an autocatalytic network with feedback inside each cell, plus nutrient uptake and diffusion of chemicals to the extracellular medium"
+    notes: "CELL TYPE is defined by the ATTRACTOR of the internal concentration dynamics (period and amplitude of the oscillations), not by a discrete state"
+  A: {reactor: [lattice-2d, ode], dilution: "nutrient inflow; cells grow and divide, splitting chemicals roughly in half"}
+  params:
+    - {name: n_chemicals, type: int, default: 20, role: structural}
+    - {name: reaction_network, type: matrix, role: structural, meaning: "the intracellular autocatalytic network"}
+    - {name: diffusion, type: matrix, role: spatial}
+    - {name: adhesion, type: float, role: spatial, meaning: "controls whether small clusters detach and found new colonies"}
+    - {name: division_threshold, type: float, role: population}
+    - {name: split_noise, type: float, role: stochastic, meaning: "asymmetry at division; this small difference is AMPLIFIED into differentiation"}
+  provides: [topology, stoichiometry, space, rate-constants, compartments, flow]
+  generator_ready: partial
+  phenomena: ["spontaneous differentiation into cell types once a cluster exceeds a size threshold", "ring and stripe patterns", "life cycle of replicating multicellular clusters", "EMERGENT chemical gradients that supply positional information (contra Wolpert's imposed linear gradient)", "robustness of both cell type and pattern to cell death"]
+
+- id: french-flag
+  name: French flag model (positional information)
+  origin: "Wolpert, 1969"
+  book: "18.6"
+  refs: ["[927]", "[928]", "[929]", "[930]", "[456]", "[34]", "[265]", "[715]"]
+  family: systems-biology
+  kind: generator
+  constructive: false
+  S: {repr: "undifferentiated cells U at positions along a morphogen gradient, and their fates (blue, white, red)", definition: explicit}
+  R:
+    definition: explicit
+    arity: 1
+    scheme: "U_x -> fate_x, where the fate is chosen by the highest morphogen threshold that the concentration at x reaches"
+  A: {reactor: [lattice-2d, continuous-space], dilution: "the gradient is usually imposed, not produced"}
+  params:
+    - {name: n_cells, type: int, default: 30, min: 3, max: 200, role: structural, meaning: "cells along the gradient axis (and along the other axis in 2D)"}
+    - {name: thresholds, type: list, default: [0.667, 0.333], role: selection, meaning: "morphogen concentration thresholds; k thresholds give k+1 fates (2 thresholds: blue above the high one, white between, red below)"}
+    - {name: gradient, type: enum, default: linear, choices: [linear, exponential], role: spatial, meaning: "imposed gradient shape along x in [0, 1]: c = 1 - x or c = exp(-x / decay_length)"}
+    - {name: decay_length, type: float, default: 0.3, min: 0.001, role: spatial, meaning: "decay length of the exponential gradient"}
+    - {name: dimensions, type: enum, default: 1, choices: [1, 2], role: spatial, meaning: "1D row of cells (Wolpert's original) or its 2D extension with the gradient along x"}
+  provides: [topology, stoichiometry, space]
+  fidelity: book+decisions
+  decisions:
+    - "The model has no reaction network of its own. Chemart represents it as one unimolecular differentiation reaction per cell, U_x -> fate_x, with the imposed morphogen concentration per cell in extras.space."
+    - "The book gives no numbers: thresholds default to thirds of a linear gradient, and n_segments is implied by the number of thresholds. A self-generated gradient needs a gradient-producing chemistry and is not offered."
+  notes: >
+    Kept as a BENCHMARK: the standard target pattern for evo-devo
+    experiments. The book's criticism is that the model says nothing about
+    how the gradient is built or maintained.
+
+- id: cpm-grn-evodevo
+  name: Cellular Potts + GRN evo-devo models
+  origin: "Hogeweg, 2000; Knabe, Nehaniv & Schilstra, 2008-2011"
+  book: "18.6.1"
+  refs: ["[392]", "[466]", "[335]", "[172]", "[41]", "[464]"]
+  family: systems-biology
+  kind: framework
+  constructive: false
+  S: {repr: "cells occupying multiple CA slots (cellular Potts model); intracellular GRN nodes; diffusing morphogens", definition: explicit}
+  R:
+    definition: explicit
+    arity: variable
+    scheme: "GRN updates set cell type and adhesion; CPM surface-energy minimisation drives movement, growth, division and death; morphogens diffuse"
+  A: {reactor: lattice-2d, dilution: none}
+  params:
+    - {name: grn_nodes, type: int, default: 24, role: structural, meaning: "Hogeweg: 2 nodes for intercellular signalling, 10 for adhesion"}
+    - {name: adhesion_energies, type: matrix, role: thermodynamic, meaning: "differential adhesion is the driver of the CPM"}
+    - {name: temperature, type: float, role: thermodynamic, meaning: "CPM Metropolis temperature"}
+    - {name: mutation_rate, type: float, role: stochastic}
+    - {name: fitness, type: callable, role: selection, meaning: "Hogeweg: number of distinct cell types. Knabe: distance to a French flag"}
+  provides: [topology, space, energies, compartments]
+  generator_ready: no
+  phenomena: ["complex morphogenetic patterns evolve under a fitness function as weak as 'number of cell types'", "French flag formation from a single zygote with a self-generated morphogen gradient"]
+  notes: >
+    The book's own criticism applies to any Chemart benchmark built on
+    these: 'distance to a target pattern' is not a biologically plausible
+    fitness function.
+
+- id: synthon
+  name: Synthon artificial chemistry
+  origin: "Lenaerts & Bersini, 2009"
+  book: "18.3.2"
+  refs: ["[505]"]
+  family: systems-biology
+  kind: generator
+  constructive: true
+  S: {repr: "molecules as graphs of atoms; charged molecules, covalent and ionic bonds modelled explicitly", definition: implicit}
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "reactions as ISOMERISATIONS between ensembles: educt and product sides are isomers of each other at the ensemble level"
+  A: {reactor: ssa, dilution: none, notes: "focuses on dynamics: stochastic kinetics and coevolutionary dynamics, unlike ToyChem which focuses on structure"}
+  params:
+    - {name: atom_types, type: matrix, role: structural}
+    - {name: charge_model, type: callable, role: structural}
+    - {name: rate_model, type: callable, role: kinetic}
+  provides: [topology, stoichiometry, mass-conservation, rate-constants, sequence-structure-function]
+  generator_ready: no
+  phenomena: ["partition of the molecule set into two mirror reaction networks - a candidate explanation for homochirality"]
+
+- id: hbcb-psd
+  name: HBCB / PSD degradation-and-reuse chemistry
+  origin: "Oohashi et al."
+  book: "18.3.2"
+  refs: ["[643]"]
+  family: systems-biology
+  kind: generator
+  constructive: true
+  S: {repr: "biopolymers (BP) and biomonomers (BM) arranged in a hierarchy by covalent bond strength", definition: implicit}
+  R:
+    definition: implicit
+    arity: [1, 2]
+    scheme: "programmed self-decomposition: organisms break BPs down into reusable BMs rather than into unrecyclable fragments"
+  A: {reactor: lattice-2d, dilution: "virtual ecosystem with recycling"}
+  params:
+    - {name: bond_hierarchy, type: matrix, role: thermodynamic}
+    - {name: decomposition_strategy, type: enum, range: "to-BM (recyclable) | to-smaller (not recyclable)", role: structural}
+  provides: [topology, energies, mass-conservation]
+  generator_ready: no
+  phenomena: ["organisms that decompose to reusable monomers have an evolutionary advantage"]
+
+- id: tominaga-stacked-strings
+  name: Tominaga's stackable-string chemistry
+  origin: "Tominaga et al., 2007-2008"
+  book: "18.3.2"
+  refs: ["[855]", "[856]"]
+  family: systems-biology
+  kind: generator
+  constructive: true
+  S: {repr: "strings that can be STACKED, forming 2D patterns - double strands and more complex biomolecule-like structures", definition: implicit}
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "pattern matching and recombination on the 2D stacked layout, mimicking lock-and-key binding"
+  A: {reactor: well-stirred-multiset, dilution: none}
+  params:
+    - {name: alphabet, type: matrix, role: structural}
+    - {name: stacking_rules, type: callable, role: structural}
+  provides: [topology, sequence-structure-function]
+  generator_ready: no
+  phenomena: ["fatty acid oxidation, DNA replication, transcription and translation all expressible", "computationally universal", "reimplements the Adleman-Lipton paradigm and the Benenson DNA automaton"]
+
+- id: srsim
+  name: SRSim (rule-based spatial simulator)
+  origin: "Gruenert & Dittrich, 2010-2012"
+  book: "18.3.3"
+  refs: ["[351]", "[388]", "[415]", "[861]"]
+  family: systems-biology
+  kind: framework
+  constructive: true
+  S: {repr: "proteins with explicit 3D spatial conformation, forming complexes", definition: implicit}
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "rule-based modelling: reactions are computed on the fly from binding-site rules rather than enumerated"
+  A: {reactor: continuous-space, dilution: none}
+  params:
+    - {name: agent_rules, type: callable, role: structural}
+    - {name: geometry, type: matrix, role: spatial}
+  provides: [topology, space, sequence-structure-function]
+  generator_ready: no
+  phenomena: ["self-assembly and molecular walkers on microtubules", "the mitotic spindle checkpoint"]
+  notes: >
+    The book's answer to combinatorial explosion: never enumerate. Chemart
+    should treat 'rule-based, do not flatten' as a first-class output mode.
+
+- id: energy-gated-collision
+  name: Arrhenius-gated collision algorithm
+  book: "18.3.3"
+  refs: ["[757]", "[780]", "[870]"]
+  family: systems-biology
+  kind: analysis
+  constructive: true
+  S: {repr: "any molecules for which a kinetic energy can be computed", definition: implicit}
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "pick two molecules; if their kinetic energy exceeds the activation energy of the reaction (Arrhenius), react; otherwise elastic"
+  A: {reactor: well-stirred-multiset, dilution: none}
+  params:
+    - {name: temperature, type: float, role: thermodynamic}
+    - {name: Ea_fn, type: callable, role: thermodynamic, meaning: "activation energy as a function of the colliding reactants"}
+    - {name: kinetic_energy_fn, type: callable, role: thermodynamic}
+  provides: [energies, rate-law]
+  generator_ready: yes
+  notes: >
+    Not a chemistry but the REACTOR ALGORITHM that makes constructive
+    chemistries with different reaction speeds tractable without
+    enumerating propensities. The book notes it only pays off when elastic
+    collisions are rare. Worth shipping as a Chemart reactor backend
+    alongside SSA / tau-leaping / next-reaction / next-subvolume.

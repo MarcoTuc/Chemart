@@ -1,0 +1,451 @@
+"""Loader, validator and index generator for the Chemart chemistry catalog.
+
+The catalog is the ground truth for what Chemart can generate and the only
+specification of each generator's parameters. It is kept as YAML (one file
+per family, see catalog/SCHEMA.md) so that it stays reviewable and diffable;
+this module turns it into typed Python objects and enforces the invariants
+that the rest of the library relies on.
+
+An entry is on schema v2 exactly when its generator module
+`chemart/chemistries/<id with underscores>.py` exists; v2 entries must have
+JSON-typed parameters with defaults and provenance fields (see SCHEMA.md).
+
+    python -m chemart.catalog validate
+    python -m chemart.catalog index            # regenerates docs/CATALOG.md
+    python -m chemart.catalog status           # implementation progress
+    python -m chemart.catalog show matrix-chemistry
+    python -m chemart.catalog query --provides rate-constants --ready yes
+"""
+
+from __future__ import annotations
+
+import sys
+from collections import Counter
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Iterable
+
+import yaml
+
+ROOT = Path(__file__).resolve().parent.parent
+CATALOG_DIR = ROOT / "catalog" / "chemistries"
+MODULES_DIR = ROOT / "chemart" / "chemistries"
+
+FAMILIES = {
+    "core", "rewriting", "automata", "bio-inspired", "origin-of-life",
+    "evolutionary-dynamics", "network", "spatial", "application",
+    "systems-biology", "wet", "non-chemical",
+}
+KINDS = {"generator", "formalism", "framework", "analysis", "wet"}
+ROLES = {
+    "structural", "kinetic", "thermodynamic", "population", "spatial",
+    "stochastic", "selection",
+}
+PROVIDES = {
+    "topology", "stoichiometry", "catalysts", "rate-constants", "rate-law",
+    "energies", "thermodynamic-consistency", "mass-conservation", "flow",
+    "space", "compartments", "initial-state", "sequence-structure-function",
+}
+READINESS = {"yes", "partial", "no"}
+FIDELITY = {"book", "book+decisions", "reconstructed"}
+
+#: v2 parameter types: JSON values only.
+PARAM_TYPES = {"int", "float", "bool", "str", "enum", "list", "dict"}
+_JSON_TYPE = {
+    "int": "integer", "float": "number", "bool": "boolean", "str": "string",
+    "list": "array", "dict": "object",
+}
+
+#: Capability tiers, in increasing order of what a generator must supply.
+TIERS = {
+    "topology": {"topology"},
+    "kinetics": {"rate-constants", "rate-law"},
+    "thermodynamics": {"energies", "thermodynamic-consistency"},
+}
+
+
+@dataclass
+class Param:
+    name: str
+    role: str
+    type: str | None = None
+    default: Any = None
+    range: str | None = None
+    meaning: str | None = None
+    min: float | None = None
+    max: float | None = None
+    choices: list | None = None
+
+    def coerce(self, value: Any) -> Any:
+        """Return `value` checked (and int->float widened); raise ValueError otherwise."""
+        t = self.type
+        is_number = isinstance(value, (int, float)) and not isinstance(value, bool)
+        if t == "int":
+            ok = isinstance(value, int) and not isinstance(value, bool)
+        elif t == "float":
+            ok = is_number
+            if ok:
+                value = float(value)
+        elif t == "bool":
+            ok = isinstance(value, bool)
+        elif t == "str":
+            ok = isinstance(value, str)
+        elif t == "enum":
+            ok = value in (self.choices or [])
+        elif t == "list":
+            if isinstance(value, tuple):
+                value = list(value)
+            ok = isinstance(value, list)
+        elif t == "dict":
+            ok = isinstance(value, dict)
+        else:
+            raise ValueError(f"parameter {self.name!r} has non-JSON catalog type {t!r}")
+        if not ok:
+            raise ValueError(f"{self.name}={value!r} is invalid: expected {self.expected()}")
+        if self.min is not None and value < self.min:
+            raise ValueError(f"{self.name}={value!r} is invalid: must be >= {self.min}")
+        if self.max is not None and value > self.max:
+            raise ValueError(f"{self.name}={value!r} is invalid: must be <= {self.max}")
+        return value
+
+    def expected(self) -> str:
+        if self.type == "enum":
+            return f"one of {self.choices}"
+        return {"int": "an integer", "float": "a number", "bool": "true or false",
+                "str": "a string", "list": "a list", "dict": "an object"}.get(self.type, str(self.type))
+
+    def json_schema(self) -> dict[str, Any]:
+        schema: dict[str, Any] = {}
+        if self.type == "enum":
+            schema["enum"] = self.choices
+        elif self.type in _JSON_TYPE:
+            schema["type"] = _JSON_TYPE[self.type]
+        if self.default is not None:
+            schema["default"] = self.default
+        if self.min is not None:
+            schema["minimum"] = self.min
+        if self.max is not None:
+            schema["maximum"] = self.max
+        description = " ".join(str(self.meaning or "").split())
+        if self.range:
+            description += f" (range: {self.range})"
+        if self.type not in PARAM_TYPES:
+            description += f" [catalog type {self.type!r}, not yet normalised]"
+        schema["description"] = description.strip()
+        return schema
+
+
+@dataclass
+class Chemistry:
+    id: str
+    name: str
+    family: str
+    kind: str
+    constructive: bool
+    book: str
+    S: dict
+    R: dict
+    A: dict
+    params: list[Param] = field(default_factory=list)
+    provides: list[str] = field(default_factory=list)
+    generator_ready: str | None = None
+    fidelity: str | None = None
+    sources: list[str] = field(default_factory=list)
+    decisions: list[str] = field(default_factory=list)
+    aliases: list[str] = field(default_factory=list)
+    origin: str | None = None
+    refs: list[str] = field(default_factory=list)
+    reference_impl: str | None = None
+    phenomena: list[str] = field(default_factory=list)
+    notes: str | None = None
+    source_file: str = ""
+
+    @property
+    def module(self) -> str:
+        return f"chemart.chemistries.{self.id.replace('-', '_')}"
+
+    @property
+    def implemented(self) -> bool:
+        return (MODULES_DIR / f"{self.id.replace('-', '_')}.py").exists()
+
+    @property
+    def tiers(self) -> list[str]:
+        """Which capability tiers this chemistry can populate."""
+        have = set(self.provides)
+        return [t for t, need in TIERS.items() if have & need]
+
+    def params_by_role(self, role: str) -> list[Param]:
+        return [p for p in self.params if p.role == role]
+
+
+def load(catalog_dir: Path = CATALOG_DIR) -> list[Chemistry]:
+    entries: list[Chemistry] = []
+    for path in sorted(catalog_dir.glob("*.yaml")):
+        doc = yaml.safe_load(path.read_text())
+        for raw in doc["chemistries"]:
+            raw = dict(raw)
+            # YAML 1.1 turns bare yes/no into booleans; generator_ready is a
+            # three-valued string, so put it back.
+            ready = raw.get("generator_ready")
+            if isinstance(ready, bool):
+                raw["generator_ready"] = "yes" if ready else "no"
+            raw["params"] = [Param(**p) for p in raw.get("params", [])]
+            raw["source_file"] = path.name
+            entries.append(Chemistry(**raw))
+    return entries
+
+
+def validate(entries: Iterable[Chemistry]) -> list[str]:
+    """Return a list of problems; empty means the catalog is consistent."""
+    problems: list[str] = []
+    seen: dict[str, str] = {}
+
+    for c in entries:
+        where = f"{c.source_file}:{c.id}"
+        if c.id in seen:
+            problems.append(f"{where}: duplicate id, also in {seen[c.id]}")
+        seen[c.id] = c.source_file
+
+        if c.family not in FAMILIES:
+            problems.append(f"{where}: unknown family {c.family!r}")
+        if c.kind not in KINDS:
+            problems.append(f"{where}: unknown kind {c.kind!r}")
+        for p in c.provides:
+            if p not in PROVIDES:
+                problems.append(f"{where}: unknown capability {p!r}")
+        for name, n in Counter(p.name for p in c.params).items():
+            if n > 1:
+                problems.append(f"{where}: duplicate param {name!r}")
+        for p in c.params:
+            if p.role not in ROLES:
+                problems.append(f"{where}: param {p.name!r} has unknown role {p.role!r}")
+
+        # Semantic invariants.
+        if "stoichiometry" in c.provides and "topology" not in c.provides:
+            problems.append(f"{where}: stoichiometry implies topology")
+        if "thermodynamic-consistency" in c.provides and "rate-constants" not in c.provides:
+            problems.append(
+                f"{where}: thermodynamic consistency constrains reverse rates, "
+                "so rate-constants must also be provided"
+            )
+        for section in ("S", "R", "A"):
+            if not getattr(c, section):
+                problems.append(f"{where}: missing {section} section")
+
+        if c.implemented:
+            problems += [f"{where}: {m}" for m in _v2_problems(c)]
+        else:
+            if c.generator_ready not in READINESS:
+                problems.append(f"{where}: generator_ready must be one of {sorted(READINESS)}")
+            if c.fidelity is not None:
+                problems.append(f"{where}: fidelity is set but {c.module} does not exist")
+            if c.kind == "generator" and c.generator_ready == "yes" and not c.provides:
+                problems.append(f"{where}: a ready generator must provide something")
+
+    for path in sorted(MODULES_DIR.glob("*.py")):
+        if path.stem != "__init__" and path.stem.replace("_", "-") not in seen:
+            problems.append(f"chemart/chemistries/{path.name}: no catalog entry with this id")
+    return problems
+
+
+def _v2_problems(c: Chemistry) -> list[str]:
+    """Schema v2 invariants, enforced for entries that have a generator module."""
+    out: list[str] = []
+    if c.generator_ready is not None:
+        out.append("implemented entries replace generator_ready with fidelity")
+    if c.fidelity not in FIDELITY:
+        out.append(f"fidelity must be one of {sorted(FIDELITY)}")
+    if c.fidelity == "reconstructed" and not c.sources:
+        out.append("reconstructed entries must list their sources")
+    if c.fidelity == "book+decisions" and not c.decisions:
+        out.append("book+decisions entries must list their decisions")
+    if not c.provides:
+        out.append("implemented entries must declare provides")
+    for p in c.params:
+        if p.type not in PARAM_TYPES:
+            hint = " (seed is an argument of generate_network, not a param)" if p.type == "seed" else ""
+            out.append(f"param {p.name!r}: type {p.type!r} not in {sorted(PARAM_TYPES)}{hint}")
+            continue
+        if p.type == "enum" and not p.choices:
+            out.append(f"param {p.name!r}: enum needs choices")
+        if (p.min is not None or p.max is not None) and p.type not in ("int", "float"):
+            out.append(f"param {p.name!r}: min/max only apply to int and float")
+        if not p.meaning:
+            out.append(f"param {p.name!r}: missing meaning")
+        if p.default is None:
+            out.append(f"param {p.name!r}: missing default")
+        else:
+            try:
+                p.coerce(p.default)
+            except ValueError as err:
+                out.append(f"param {p.name!r}: default violates its own spec: {err}")
+    return out
+
+
+# --------------------------------------------------------------------------
+# Index generation
+# --------------------------------------------------------------------------
+
+_TIER_MARK = {"topology": "T", "kinetics": "K", "thermodynamics": "H"}
+
+
+def _status(c: Chemistry) -> str:
+    return c.fidelity if c.implemented else f"todo ({c.generator_ready})"
+
+
+def render_index(entries: list[Chemistry]) -> str:
+    by_family: dict[str, list[Chemistry]] = {}
+    for c in entries:
+        by_family.setdefault(c.family, []).append(c)
+
+    out: list[str] = []
+    out.append("<!-- generated by `python -m chemart.catalog index` - do not edit -->")
+    out.append("# Chemart catalog index\n")
+    out.append(
+        f"{len(entries)} chemistries collected from Banzhaf & Yamamoto, "
+        "*Artificial Chemistries* (MIT Press, 2015).\n"
+    )
+    out.append(
+        "Tier column: **T** topology, **K** kinetics (the chemistry itself "
+        "prescribes rates or a rate law), **H** thermodynamics (energies "
+        "and/or detailed balance). Status column: the fidelity of the "
+        "implemented generator, or `todo (<book readiness>)`.\n"
+    )
+
+    done = [c for c in entries if c.implemented]
+    fidelity = Counter(c.fidelity for c in done)
+    kin = sum(1 for c in entries if "kinetics" in c.tiers)
+    thermo = sum(1 for c in entries if "thermodynamics" in c.tiers)
+    constructive = sum(1 for c in entries if c.constructive)
+    out.append(
+        f"- implemented: **{len(done)}** of {len(entries)}"
+        + (" (" + ", ".join(f"{k}: {v}" for k, v in sorted(fidelity.items())) + ")" if done else "")
+        + "\n"
+        f"- constructive (open, growing species set): **{constructive}**\n"
+        f"- carry their own kinetics: **{kin}**; carry energetics: **{thermo}**\n"
+    )
+
+    for family in sorted(by_family):
+        out.append(f"\n## {family}\n")
+        out.append("| id | name | kind | constructive | tier | status | book |")
+        out.append("|---|---|---|---|---|---|---|")
+        for c in sorted(by_family[family], key=lambda c: c.id):
+            tier = "".join(_TIER_MARK[t] for t in ("topology", "kinetics", "thermodynamics") if t in c.tiers) or "-"
+            out.append(
+                f"| `{c.id}` | {c.name} | {c.kind} | "
+                f"{'yes' if c.constructive else 'no'} | {tier} | "
+                f"{_status(c)} | {c.book.split(';')[0]} |"
+            )
+    return "\n".join(out) + "\n"
+
+
+def render_status(entries: list[Chemistry]) -> str:
+    done = [c for c in entries if c.implemented]
+    lines = [f"implemented {len(done)}/{len(entries)}"]
+    for fid, n in sorted(Counter(c.fidelity for c in done).items()):
+        lines.append(f"  {fid}: {n}")
+    todo: dict[str, list[str]] = {}
+    for c in entries:
+        if not c.implemented:
+            todo.setdefault(c.family, []).append(c.id)
+    if todo:
+        lines.append("remaining:")
+        for family in sorted(todo):
+            lines.append(f"  {family}: {', '.join(sorted(todo[family]))}")
+    return "\n".join(lines)
+
+
+def _show(c: Chemistry) -> str:
+    lines = [f"# {c.name}  (`{c.id}`)", ""]
+    if c.aliases:
+        lines.append(f"aliases: {', '.join(c.aliases)}")
+    if c.origin:
+        lines.append(f"origin: {c.origin}")
+    lines += [
+        f"book: {c.book}",
+        f"family/kind: {c.family} / {c.kind}"
+        f"{'  (constructive)' if c.constructive else ''}",
+        f"provides: {', '.join(c.provides) or '-'}",
+        f"status: {_status(c)}",
+        "",
+        f"S  {c.S.get('definition', '?')}: {c.S.get('repr', '')}",
+        f"R  {c.R.get('definition', '?')}, arity {c.R.get('arity', '?')}: "
+        f"{c.R.get('scheme', '')}",
+        f"A  reactor {c.A.get('reactor', '?')}; dilution: {c.A.get('dilution', '?')}",
+        "",
+        "parameters:",
+    ]
+    for role in sorted({p.role for p in c.params}):
+        lines.append(f"  [{role}]")
+        for p in c.params_by_role(role):
+            default = "" if p.default is None else f" = {p.default}"
+            bounds = []
+            if p.choices:
+                bounds.append(f"choices {p.choices}")
+            if p.min is not None or p.max is not None:
+                bounds.append(f"[{p.min}, {p.max}]")
+            if p.range:
+                bounds.append(p.range)
+            extra = f"  ({'; '.join(bounds)})" if bounds else ""
+            lines.append(f"    {p.name}: {p.type}{default}{extra}")
+            if p.meaning:
+                lines.append(f"        {p.meaning}")
+    for title, items in (("sources", c.sources), ("decisions", c.decisions), ("phenomena", c.phenomena)):
+        if items:
+            lines += ["", f"{title}:"] + [f"  - {i}" for i in items]
+    if c.notes:
+        lines += ["", "notes:", "  " + c.notes.strip().replace("\n", "\n  ")]
+    return "\n".join(lines)
+
+
+def main(argv: list[str]) -> int:
+    cmd = argv[1] if len(argv) > 1 else "validate"
+    entries = load()
+
+    if cmd == "validate":
+        problems = validate(entries)
+        for p in problems:
+            print(p, file=sys.stderr)
+        print(f"{len(entries)} chemistries, {len(problems)} problems")
+        return 1 if problems else 0
+
+    if cmd == "index":
+        target = ROOT / "docs" / "CATALOG.md"
+        target.write_text(render_index(entries))
+        print(f"wrote {target.relative_to(ROOT)}")
+        return 0
+
+    if cmd == "status":
+        print(render_status(entries))
+        return 0
+
+    if cmd == "show":
+        wanted = argv[2]
+        for c in entries:
+            if c.id == wanted:
+                print(_show(c))
+                return 0
+        print(f"no such chemistry: {wanted}", file=sys.stderr)
+        return 1
+
+    if cmd == "query":
+        args = argv[2:]
+        provides = [args[i + 1] for i, a in enumerate(args) if a == "--provides"]
+        ready = next((args[i + 1] for i, a in enumerate(args) if a == "--ready"), None)
+        family = next((args[i + 1] for i, a in enumerate(args) if a == "--family"), None)
+        for c in entries:
+            if provides and not set(provides) <= set(c.provides):
+                continue
+            if ready and c.generator_ready != ready:
+                continue
+            if family and c.family != family:
+                continue
+            print(f"{c.id:34s} {c.name}")
+        return 0
+
+    print(__doc__)
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv))

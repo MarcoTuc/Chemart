@@ -1,0 +1,276 @@
+# Chapters 19-20: wet chemistries (in-silico models of real chemical
+# computers) and ACs applied outside chemistry and biology.
+# Most `kind: wet` entries are catalogued for their REACTION SCHEMES, which
+# Chemart can generate even though the physical system is out of scope.
+chemistries:
+
+- id: repressilator
+  name: Repressilator
+  origin: "Elowitz & Leibler, 2000"
+  book: "19.3.2; appendix (Repressilator.py)"
+  refs: ["[256]", "[518]", "[926]"]
+  family: wet
+  kind: generator
+  constructive: false
+  S: {repr: "3 genes G_i, 3 gene-protein complexes C_i, 3 mRNAs M_i, 3 repressor proteins P_i (LacI, TetR, lambda-cI)", definition: explicit}
+  R:
+    definition: explicit
+    arity: "n+1, 1"
+    scheme: >
+      G_i + n P_{i-1} <-ke/kr-> C_i  (cyclic: P3 represses G1) ;
+      G_i --km--> G_i + M_i ; M_i --kp--> M_i + P_i ;
+      M_i --mu_m--> ; P_i --mu_p-->
+  A: {reactor: [ode, ssa], dilution: "mRNA and protein decay"}
+  params:
+    - {name: n, type: int, default: 2, min: 1, max: 10, role: kinetic, meaning: "Hill coefficient (proteins per binding event); n=1 gives NO oscillations - the circuit needs a sigmoid response"}
+    - {name: ke, type: float, default: 1.0, min: 0, role: kinetic, meaning: "repressor binding"}
+    - {name: kr, type: float, default: 1.0, min: 0, role: kinetic, meaning: "repressor unbinding"}
+    - {name: km, type: float, default: 5.0, min: 0, role: kinetic, meaning: "transcription"}
+    - {name: kp, type: float, default: 1.0, min: 0, role: kinetic, meaning: "translation"}
+    - {name: mu_m, type: float, default: 0.5, min: 0, role: kinetic, meaning: "mRNA decay"}
+    - {name: mu_p, type: float, default: 0.1, min: 0, role: kinetic, meaning: "protein decay"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, initial-state]
+  fidelity: book
+  decisions:
+    - "The SSA gene copy number m is not a parameter: it sizes a stochastic simulation (V = m/N_A), not the network."
+    - "Binding is the elementary mass-action reaction of eqs. 19.1-19.3, not a lumped Hill rate law. Initial state is figure 19.18's: G1 = C2 = C3 = 1, everything else 0."
+  reference_impl: "PyCellChemistry Repressilator.py"
+  phenomena: ["sustained oscillations inside a bounded parameter region (n=2 with the default rates)", "no oscillations for n = 1", "oscillations survive stochastic noise at low gene copy number", "implemented in real E. coli"]
+
+- id: oregonator
+  name: Oregonator (Belousov-Zhabotinsky)
+  origin: "Field & Noyes, 1974"
+  book: "19.3.3"
+  refs: ["[276]", "[9]", "[13]", "[813]", "[857]"]
+  family: wet
+  kind: generator
+  constructive: false
+  S: {repr: "A, B (buffered reactants), X (autocatalyst, HBrO2), Y (inhibitor, Br-), Z (oxidised metal ion, e.g. Ce(IV)), P, Q (products)", definition: explicit}
+  R:
+    definition: explicit
+    arity: [1, 2]
+    scheme: "A + Y --k1--> X ; X + Y --k2--> P ; B + X --k3--> 2X + Z ; 2X --k4--> Q ; Z --k5--> f Y"
+  A: {reactor: [ode, continuous-space], dilution: "A and B buffered; reaction-diffusion on a grid for spatial patterns"}
+  params:
+    - {name: k1, type: float, default: 1.0, min: 0, role: kinetic, meaning: "A + Y -> X"}
+    - {name: k2, type: float, default: 10.0, min: 0, role: kinetic, meaning: "X + Y -> P"}
+    - {name: k3, type: float, default: 10.0, min: 0, role: kinetic, meaning: "B + X -> 2X + Z"}
+    - {name: k4, type: float, default: 2.5, min: 0, role: kinetic, meaning: "2X -> Q"}
+    - {name: k5, type: float, default: 1.0, min: 0, role: kinetic, meaning: "Z -> f Y"}
+    - {name: f, type: float, default: 1.0, min: 0, role: kinetic, meaning: "stoichiometric factor of inhibitor regeneration; the key bifurcation parameter"}
+    - {name: A, type: float, default: 1.0, min: 0, role: population, meaning: "buffered concentration of A"}
+    - {name: B, type: float, default: 1.0, min: 0, role: population, meaning: "buffered concentration of B"}
+    - {name: D, type: dict, default: {"X": 1.0, "Y": 1.0, "Z": 1.0}, role: spatial, meaning: "diffusion coefficient per species for the reaction-diffusion setting"}
+    - {name: lattice, type: enum, default: hexagonal, choices: [square, hexagonal], role: spatial, meaning: "grid used for reaction-diffusion (the book's patterns use a hexagonal grid)"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, space, initial-state]
+  fidelity: book+decisions
+  decisions:
+    - "Rate constants are the book's (figure 19.20). f, the buffered concentrations A and B, and the diffusion coefficients are not given; defaults are f = 1, A = B = 1, D = 1."
+    - "A real f cannot be an integer stoichiometric coefficient. Z -> f Y is emitted as Z -> floor(f) Y at rate k5 (1 - frac(f)) plus Z -> (floor(f)+1) Y at rate k5 frac(f), which gives exactly the same rate equations."
+    - "Space is recorded in extras.space (lattice, diffusion); A and B are listed in extras.buffered."
+  reference_impl: "an early PyCellChemistry variant on the Breve simulator"
+  phenomena: ["target patterns and spiral waves", "excitable medium supporting reaction-diffusion computing (logic gates, image processing, maze solving)"]
+
+- id: dna-hpp
+  name: Adleman's DNA Hamiltonian Path computation
+  origin: "Adleman, 1994"
+  book: "19.3.1"
+  refs: ["[24]", "[514]", "[370]", "[30]", "[31]"]
+  family: wet
+  kind: wet
+  constructive: false
+  S: {repr: "single-stranded DNA: each vertex v_i gets a random sequence split into v_i,in and v_i,out; each edge e_ij is the concatenated complement v_i,in-bar v_j,out-bar", definition: implicit}
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "complementary hybridisation + ligation: edge strands anneal vertex strands into paths"
+  A: {reactor: well-stirred-multiset, dilution: "solutions extracted by PCR amplification, gel electrophoresis by length, and per-vertex magnetic bead separation"}
+  params:
+    - {name: graph, type: matrix, role: structural, meaning: "the HPP instance"}
+    - {name: oligo_length, type: int, role: structural}
+    - {name: copy_number, type: float, role: population, meaning: "grows EXPONENTIALLY with problem size - Hartmanis: 200 cities would need more than the mass of the Earth"}
+  provides: [topology, sequence-structure-function]
+  generator_ready: partial
+  notes: >
+    Worth having as a generator because the encoding (vertex/edge
+    complementarity) is a clean, purely combinatorial CRN that Chemart can
+    emit for any graph. The wet limitations are documented, not simulated.
+
+- id: dna-automaton
+  name: DNA automaton (Benenson-Shapiro)
+  origin: "Shapiro 1999; Benenson et al. 2001"
+  book: "19.3.1"
+  refs: ["[767]", "[768]", "[100]"]
+  family: wet
+  kind: wet
+  constructive: false
+  S: {repr: "an input DNA molecule encoding a symbol string; transition molecules; the FokI restriction enzyme", definition: explicit}
+  R:
+    definition: explicit
+    arity: 2
+    scheme: "FokI recognises 'GGATG' and cleaves 9/13 nucleotides downstream; a transition molecule hybridises to the exposed sticky end, encoding a state transition, and the machine digests the input from the front"
+  A: {reactor: well-stirred-multiset, dilution: none}
+  params:
+    - {name: automaton, type: callable, role: structural, meaning: "the FSM to encode; the demo is 'does the input contain an even number of b'"}
+    - {name: n_states, type: int, default: 2, role: structural}
+    - {name: input_string, type: matrix, role: population}
+  provides: [topology, sequence-structure-function]
+  generator_ready: partial
+  notes: "Autonomous, unlike Adleman's. The 'digest from the front' operating mode is the same one Fraglets adopted in silico."
+
+- id: self-propelled-droplets
+  name: Self-propelled oil droplets
+  origin: "Hanczyc et al., 2007-2011"
+  book: "19.2.3"
+  refs: ["[363]", "[364]", "[365]", "[858]", "[483]", "[885]"]
+  family: wet
+  kind: wet
+  constructive: false
+  S: {repr: "oil droplet with a fatty acid precursor in an alkaline aqueous surfactant phase", definition: explicit}
+  R:
+    definition: explicit
+    arity: 1
+    scheme: "precursor hydrolyses to surfactant at the interface, breaking symmetry and driving a convective flow that propels the droplet"
+  A: {reactor: continuous-space, dilution: "fuel surfactant supply"}
+  params:
+    - {name: pH_gradient, type: callable, role: spatial}
+    - {name: fuel_supply, type: float, role: population}
+  provides: [space]
+  generator_ready: no
+  phenomena: ["chemotaxis up a pH gradient", "maze solving", "division and fusion", "rare-earth ion extraction"]
+  notes: "Protocells with no information subsystem. Out of scope for generation; catalogued for completeness."
+
+- id: mechanical-self-assembly
+  name: Mechanical self-assembly (Hosokawa)
+  origin: "Hosokawa, Shimoyama & Miura, 1994"
+  book: "20.1"
+  refs: ["[404]", "[352]", "[918]", "[919]", "[69]"]
+  family: non-chemical
+  kind: generator
+  constructive: false
+  S: {repr: "triangular plastic bodies with permanent magnets in two of three faces; x = monomer, x2..x6 = assemblies", definition: explicit}
+  R:
+    definition: explicit
+    arity: 2
+    scheme: >
+      x+x -> x2 ; x+x2 -> x3 ; x+x3 -> x4 ; x+x4 -> x5 ; x+x5 -> x6 ;
+      x2+x2 -> x4 ; x2+x3 -> x5 ; x2+x4 -> x6 ; x3+x3 -> x6
+  A:
+    reactor: ode
+    dilution: none
+    notes: "x(t+1) = x(t) + F(x(t)); F factorises into a collision probability P_c (mass-action-like, from concentration) and a bonding probability P_b (from the GEOMETRY of the encounter)"
+  params:
+    - {name: n_monomers, type: int, default: 100, min: 1, role: population, meaning: "initial number of monomers x (book figure 20.3a)"}
+    - {name: agitation_rate, type: float, default: 1.0, min: 0, role: kinetic, meaning: "collision frequency; rate = agitation_rate * P_b"}
+    - {name: P_b, type: dict, default: {}, role: kinetic, meaning: "bonding probability per pair, keyed 'x+x2' etc.; pairs not listed use 1.0"}
+  provides: [topology, stoichiometry, rate-constants, mass-conservation, initial-state]
+  fidelity: book+decisions
+  decisions:
+    - "The book gives no numerical bonding probabilities ('under reasonable assumptions'); every P_b defaults to 1 and can be overridden per pair."
+    - "The book's discrete-time update is represented by mass-action rates k = agitation_rate * P_b. extras.conservation records the monomer count (x=1 ... x6=6)."
+  phenomena: ["yield curves for x4, x5, x6 matching wet-lab experiments"]
+  notes: >
+    Proof that chemical kinetics is substrate-independent, and the cleanest
+    example of a rate coefficient that FACTORISES into an encounter term and
+    a geometric orientation term.
+
+- id: soas
+  name: Self-Organizing Assembly Systems (SOAS)
+  origin: "Frei & Di Marzo Serugendo, 2011-2012"
+  book: "20.1"
+  refs: ["[296]", "[297]"]
+  family: non-chemical
+  kind: generator
+  constructive: false
+  S: {repr: "industrial robots and workpieces as CHAM molecules", definition: explicit}
+  R:
+    definition: explicit
+    arity: variable
+    scheme: "CHAM rules (see `cham`) specifying how robots aggregate into an assembly line for a given manufacturing order"
+  A: {reactor: [maximally-parallel, compartments], dilution: none}
+  params:
+    - {name: robot_types, type: matrix, role: structural}
+    - {name: manufacturing_order, type: matrix, role: selection}
+  provides: [topology, compartments]
+  generator_ready: partial
+  phenomena: ["provably correct assembly-line configurations, verified in the Maude specification language"]
+
+- id: nuclear-reaction-networks
+  name: Nuclear reaction networks
+  book: "20.2"
+  refs: ["[187]"]
+  family: non-chemical
+  kind: generator
+  constructive: false
+  S: {repr: "nuclides and elementary particles (n, 1H, 2H, ..., e+, e-, nu_e, gamma)", definition: explicit}
+  R:
+    definition: explicit
+    arity: [1, 2]
+    scheme: >
+      e.g. 1H + 1H -> 2H + e+ + nu_e. The CNO cycle is a genuine CATALYTIC
+      cycle: 12C + 1H -> 13N + gamma ; 13N -> 13C + e+ + nu_e ;
+      13C + 1H -> 14N + gamma ; 14N + 1H -> 15O + gamma ;
+      15O -> 15N + e+ + nu_e ; 15N + 1H -> 12C + 4He.
+  A: {reactor: ode, dilution: "open: 1H flows in, 4He, e+, nu_e flow out"}
+  params:
+    - {name: network, type: enum, default: cno-cycle, choices: [cno-cycle, pp-chain, big-bang-nucleosynthesis], role: structural, meaning: "which reaction network to generate"}
+  provides: [topology, stoichiometry, mass-conservation]
+  fidelity: book+decisions
+  decisions:
+    - "Topology only. Rates depend on temperature and density through cross sections (e.g. REACLIB), which the book does not give, so cross_sections, temperature and density are not parameters."
+    - "cno-cycle is book eq. 20.4, with the book's open boundary (1H in; 4He, e+, nu_e out) recorded in extras.boundary rather than as numeric flows. pp-chain is eq. 20.3 completed with the standard pp-I branch. big-bang-nucleosynthesis is the standard 12-reaction network among n, 1H, 2H, 3H, 3He, 4He, 7Li, 7Be, standing in for figure 20.4, which only draws the network."
+    - "extras.conservation lists baryon number, charge (fully ionised nuclei) and electron lepton number, all exact."
+  phenomena: ["the CNO cycle is a closed, self-maintaining organisation with C, N, O as catalysts", "observed light-element abundances from big-bang nucleosynthesis"]
+  notes: >
+    An excellent external validation target: real cross-section libraries
+    exist (REACLIB), and the CNO cycle is a textbook chemical organisation.
+
+- id: n-economy
+  name: N-economy (natural number economy)
+  origin: "Straatman, Banzhaf et al.; after Hanel's natural number economy"
+  book: "20.3"
+  refs: ["[816]", "[377]"]
+  family: non-chemical
+  kind: generator
+  constructive: true
+  S: {repr: "natural numbers as commodities; primes are raw materials, composites are manufactured goods; 2 = labour, 3 = money", definition: implicit}
+  R:
+    definition: explicit
+    arity: variable
+    scheme: >
+      Production reactions with integer stoichiometry, e.g.
+      2x2 -> 2x5 ; 2x2 + 2x5 + 2x13 -> 3x130 ; 3x2 + 3x130 -> 6x260 ;
+      6x2 + 6x260 -> 6x104 ; 6x104 -> 13x2. Generally
+      sum_i alpha_i G_i -> sum_i beta_i G_i + sum_j G_{m+j}, with beta_i <= alpha_i.
+  A: {reactor: lattice-2d, dilution: "consumption agents; a market prices goods"}
+  params:
+    - {name: product_set, type: list, default: [2, 3, 5, 13, 104, 130, 260], role: structural, meaning: "the goods (integers >= 2); primes are raw materials, 2 is labour and 3 is money"}
+    - {name: technology, type: list, default: [{"in": {"2": 2}, "out": {"5": 2}}, {"in": {"2": 2, "5": 2, "13": 2}, "out": {"130": 3}}, {"in": {"2": 3, "130": 3}, "out": {"260": 6}}, {"in": {"2": 6, "260": 6}, "out": {"104": 6}}, {"in": {"104": 6}, "out": {"2": 13}}], role: structural, meaning: "production processes as {in: {good: amount}, out: {good: amount}}; default is book eq. 20.6"}
+  provides: [topology, stoichiometry]
+  fidelity: book+decisions
+  decisions:
+    - "Only the production system (eq. 20.6) is generated. The agent-based consumption side, the market and the grid are outside the reaction network, so agent_skills and grid are not parameters."
+    - "The earlier catalog note claimed prime factorisation gives an exact conservation law. It does not for the book's reactions (e.g. 2x2 -> 2x5), so mass-conservation is not claimed. Species carry their factorisation as structure."
+  phenomena: ["noisy rise and fall of product concentrations, equilibrating after ~300 iterations (agent simulation)"]
+
+- id: social-communication-ac
+  name: Artificial chemistry of social communication
+  origin: "Dittrich, Kron & Banzhaf, 2003"
+  book: "20.4"
+  refs: ["[234]"]
+  family: non-chemical
+  kind: generator
+  constructive: false
+  S: {repr: "messages 1..N exchanged between social agents ('ego' and 'alter')", definition: explicit}
+  R:
+    definition: explicit
+    arity: 2
+    scheme: "an agent's response to a received message is drawn from its (adapting) mapping; communication events are reactions"
+  A: {reactor: well-stirred-multiset, dilution: none}
+  params:
+    - {name: N, type: int, role: structural, meaning: "number of possible messages"}
+    - {name: n_agents, type: int, default: 2, role: population}
+    - {name: memory, type: int, role: structural}
+  provides: [topology]
+  generator_ready: no
+  phenomena: ["emergence of social order from message exchange"]

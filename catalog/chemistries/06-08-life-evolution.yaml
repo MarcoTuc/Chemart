@@ -1,0 +1,625 @@
+# Chapters 6-8 and 15: origin of life, evolutionary dynamics, ecologies and
+# constructive dynamical systems. Many of these are *reaction schemes with a
+# prescribed kinetics* rather than structure-based generators - which makes
+# them the entries that most clearly need rate constants in the output.
+chemistries:
+
+- id: kauffman-autocatalytic-sets
+  name: Kauffman autocatalytic sets (binary polymer model)
+  origin: "Kauffman, 1986; Farmer, Kauffman & Packard, 1986"
+  book: "6.3.1"
+  refs: ["[446]", "[447]", "[260]"]
+  family: origin-of-life
+  kind: generator
+  constructive: true
+  S:
+    repr: "polymers = strings over an alphabet of size B (2 for {a,b}, 4 for nucleotides, 20 for amino acids)"
+    definition: implicit
+  R:
+    definition: implicit
+    arity: [2, 1]
+    scheme: "condensation A + B <-> C + H (water), optionally catalysed by an E drawn from the same set"
+  A:
+    reactor: graph-rewrite
+    dilution: "food set inflow keeps the system out of equilibrium; water removal favours the forward direction"
+    notes: "the original analysis is graph-theoretic and static, with no kinetics"
+  params:
+    - {name: B, type: int, default: 2, role: structural, meaning: "alphabet size"}
+    - {name: L, type: int, role: structural, meaning: "max length of food-set polymers; the 'firing disk' holds about N = B^L polymers"}
+    - {name: P, type: float, role: structural, meaning: "probability that any given polymer catalyses any given reaction; critical value P_crit ~ B^(-2L)"}
+    - {name: max_length, type: int, role: structural, meaning: "truncation length for network expansion"}
+    - {name: food_set, type: matrix, default: "{a, b, aa, bb}", role: population}
+    - {name: seed, type: seed, role: stochastic}
+  provides: [topology, stoichiometry, catalysts, mass-conservation, flow, initial-state]
+  generator_ready: yes
+  phenomena: ["percolation transition at P_crit: above it, autocatalytic sets form almost surely", "larger B favours set formation, so proteins (B=20) beat RNA (B=4)"]
+  notes: >
+    The book stresses this analysis is static. Chemart should ship it as a
+    topology-only generator with an explicit `provides` that omits
+    rate-constants, and point users at `bagley-farmer` for the dynamic version.
+
+- id: bagley-farmer
+  name: Bagley & Farmer autocatalytic metabolism
+  origin: "Bagley & Farmer, 1992; Bagley, Farmer & Fontana, 1992"
+  book: "6.3.1, 7.3.1"
+  refs: ["[49]", "[50]"]
+  family: origin-of-life
+  kind: generator
+  constructive: true
+  S:
+    repr: "binary strings (polymers)"
+    definition: implicit
+  R:
+    definition: implicit
+    arity: [1, 2]
+    scheme: "reversible condensation/cleavage; only a randomly drawn subset of reactions is catalysed"
+    notes: "kinetic parameters are drawn ON THE FLY as reactions are needed - a constructive parameterisation"
+  A:
+    reactor: [ode, ssa]
+    dilution: "constant inflow of small food molecules; outflow of everything"
+  params:
+    - {name: alphabet, type: int, default: 2, role: structural}
+    - {name: firing_disk, type: matrix, role: population, meaning: "the food set of small polymers"}
+    - {name: food_influx, type: float, role: population}
+    - {name: catalysis_probability, type: float, role: structural}
+    - {name: k_spontaneous, type: float, role: kinetic, meaning: "uncatalysed forward rate"}
+    - {name: catalytic_enhancement, type: float, role: kinetic, meaning: "rate multiplier when catalysed; catalysis must accelerate BOTH directions equally to stay thermodynamically honest"}
+    - {name: concentration_threshold, type: float, role: population, meaning: "below this a species is pruned, which is how the species set stays finite"}
+    - {name: mutation_rate, type: float, role: stochastic}
+  provides: [topology, stoichiometry, catalysts, rate-constants, mass-conservation, flow, thermodynamic-consistency]
+  generator_ready: partial
+  phenomena: ["catalytic focusing: mass concentrates into a small core set, but only away from equilibrium", "metabolisms jump between fixed points under mutation - a first sign of evolution"]
+  notes: >
+    Defines an autocatalytic metabolism dynamically: an autocatalytic set
+    whose concentrations differ significantly from the uncatalysed case.
+    Chemart's canonical demo of "same topology, different kinetics,
+    different answer".
+
+- id: raf
+  name: RAF sets (reflexively autocatalytic, F-generated)
+  origin: "Hordijk & Steel, 2004-2015"
+  book: "6.3.1"
+  refs: ["[400]", "[402]", "[599]"]
+  family: origin-of-life
+  kind: analysis
+  constructive: false
+  S:
+    repr: "any given chemical reaction network plus a designated food set F"
+    definition: explicit
+  R:
+    definition: explicit
+    arity: variable
+    scheme: "a set R is RA if every reaction in R is catalysed by a molecule involved in R; F-generated if every reactant is constructible from F by reactions in R; RAF = both"
+  A:
+    reactor: "n/a - static"
+    dilution: n/a
+  params:
+    - {name: food_set, type: matrix, role: population}
+    - {name: allow_inhibition, type: bool, default: false, role: structural, meaning: "with inhibition the problem becomes NP-hard; without it there is a polynomial-time algorithm"}
+  provides: [topology, catalysts, flow]
+  generator_ready: yes
+  phenomena: ["polynomial-time maximal-RAF detection", "only LINEAR growth in catalytic activity with system size is needed for RAFs to appear, contra Kauffman's exponential claim"]
+  notes: >
+    An ANALYSIS to expose alongside chemical organisation theory. Note the
+    scope limits the authors themselves state: no dynamics, no
+    compartments, no heredity/selection.
+
+- id: gard
+  name: GARD (Graded Autocatalysis Replication Domain)
+  aliases: ["Lipid World model", "polymer GARD", "EE-GARD", "spatial GARD"]
+  origin: "Segre, Lancet et al., 1998-2001"
+  book: "6.2.4"
+  refs: ["[764]", "[765]", "[760]", "[761]", "[762]", "[763]", "[771]", "[772]", "[773]", "[490]", "[726]", "[884]"]
+  family: origin-of-life
+  kind: generator
+  constructive: false
+  S:
+    repr: "lipid types L_1..L_N outside (buffered) and A_1..A_N inside one assembly; the assembly's COMPOSITION (a 'compositional genome' / composome) carries the information"
+    definition: explicit
+  R:
+    definition: explicit
+    arity: [1, 2]
+    scheme: "L_i --k_f--> A_i ; A_i --k_b--> L_i ; L_i + A_j --beta_ij--> A_i + A_j (catalysis by lipids already in the assembly)"
+  A:
+    reactor: ssa
+    dilution: "outside lipids buffered; the assembly splits in two when it reaches N_max molecules"
+    notes: "simulated with Gillespie SSA in the original papers"
+  params:
+    - {name: N_G, type: int, default: 100, min: 2, max: 200, role: structural, meaning: "number of lipid types; the network has N_G^2 catalysed joining reactions"}
+    - {name: k_f, type: float, default: 0.01, min: 0, role: kinetic, meaning: "basal joining rate constant"}
+    - {name: k_b, type: float, default: 0.0001, min: 0, role: kinetic, meaning: "basal leaving rate constant"}
+    - {name: rho, type: float, default: 0.01, min: 0, role: population, meaning: "buffered outside concentration of every lipid type"}
+    - {name: beta_mu, type: float, default: -4.0, role: kinetic, meaning: "mean of ln(beta_ij); beta is the receptor-affinity-distribution rate enhancement"}
+    - {name: beta_sigma, type: float, default: 4.0, min: 0, role: kinetic, meaning: "standard deviation of ln(beta_ij)"}
+    - {name: N_max, type: int, default: 100, min: 2, role: population, meaning: "assembly size at which fission occurs; also the crowding capacity of joining"}
+    - {name: catalysed_leaving, type: bool, default: false, role: structural, meaning: "also accelerate leaving by beta_ij (the book's 'in both directions' reading), adding A_i + A_j -> L_i + A_j at k_b beta_ij"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, compartments, initial-state]
+  fidelity: reconstructed
+  sources:
+    - "Predicting species emergence in simulated complex pre-biotic networks. PLoS ONE 13(2): e0192871 (2018), doi:10.1371/journal.pone.0192871 - GARD rate equation, ln(beta) ~ Normal(-4, 4), k_f = 1e-2, k_b = 1e-4, rho = 1e-2, N_max = N_G = 100"
+    - "Segre, D., Ben-Eli, D. & Lancet, D. (2000). Compositional genomes: prebiotic information transfer in mutually catalytic noncovalent assemblies. PNAS 97:4112-4117 (original model; full text not accessible, parameters taken from the 2018 paper)"
+  decisions:
+    - "The book gives the reaction scheme but no numbers. The rate equation and all parameter values are from the 2018 PLoS ONE GARD paper; each term becomes one mass-action reaction with outside lipids buffered at rho (checked in tests)."
+    - "That equation accelerates only joining, while the book says catalysis acts 'in both directions'. The default follows the paper's equation; catalysed_leaving = true adds the book's reverse catalysis."
+    - "The crowding factor (1 - N/N_max) is not mass action. It is recorded on every joining rate as crowding_capacity, and fission at N_max is described in extras.compartments. beta is sampled from the seed, so the network is a random instance."
+    - "The polymer, EE and spatial variants are not generated (the former 'variant' parameter is dropped); split_size is N_max; k_i, k_minus_i and beta are replaced by the distribution parameters above. thermodynamic-consistency is not claimed, because the default catalyses only one direction."
+  phenomena: ["homeostatically stable composomes (quasi-stationary states)", "composome succession as mutations accumulate", "spontaneous symmetry breaking akin to homochirality (spatial variant)", "known evolvability limits: replication fidelity is too low"]
+  notes: >
+    A rare case where information lives in a MULTISET COMPOSITION rather
+    than a sequence. Also a clean demonstration that catalysis alone cannot
+    shift equilibrium - the flow term is mandatory.
+
+- id: chemoton
+  name: Chemoton
+  origin: "Ganti, ~1952/1971"
+  book: "6.1.4; wet computing 17.4.1"
+  refs: ["[305]", "[306]", "[204]", "[271]", "[604]", "[880]", "[949]", "[273]", "[159]"]
+  family: origin-of-life
+  kind: generator
+  constructive: false
+  S:
+    repr: "A1..A5 (metabolic cycle), X (nutrient), Y (waste), V (template monomer), pV0..pV(N-1) (double-stranded templates by replication stage), T0 (membrane precursor), T* (activated precursor), T (membrane molecule), R (polycondensation by-product), S (membrane surface)"
+    definition: explicit
+  R:
+    definition: explicit
+    arity: [1, 2]
+    scheme: >
+      Metabolism A1 + X <-> A2 ; A2 <-> A3 + Y ; A3 <-> A4 + V ; A4 <-> A5 + T0 ;
+      A5 <-> 2 A1. Templates pV0 + V <-> pV1 + R (only above [V]*) ;
+      pV_r + V -> pV_(r+1) + R ; pV_(N-1) + V -> 2 pV0 + R. Membrane
+      T0 -> T* ; T* + R <-> T ; T + S -> 2 S. Division when the surface doubles.
+  A:
+    reactor: [ode, compartments]
+    dilution: "cell division halves everything; volume Q = S^1.5"
+  params:
+    - {name: N, type: int, default: 25, min: 2, max: 1000, role: structural, meaning: "template length: monomers bound per replication round, i.e. the number of stages pV0..pV(N-1)"}
+    - {name: X, type: float, default: 100.0, min: 0, range: "the paper also uses 10 and 1", role: population, meaning: "nutrient concentration outside the cell, held constant"}
+    - {name: V_threshold, type: float, default: 35.0, min: 0, role: kinetic, meaning: "polycondensation threshold [V]*; template initiation pV0 + V -> pV1 + R only runs above it"}
+    - {name: rates, type: dict, default: {}, role: kinetic, meaning: "overrides of the paper's rate constants by name (k1..k10 forward, k1r..k6r, k9r reverse); unlisted constants keep the paper's values"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, compartments, initial-state]
+  fidelity: reconstructed
+  sources:
+    - "Fernando, C. & Di Paolo, E. (2004). The Chemoton: a model for the origin of long RNA templates. Proc. Artificial Life IX. Model I, eqs. 1-14 and appendix. https://ezequieldipaolo.net/wp-content/uploads/2019/09/chemoton.pdf"
+    - "Csendes, T. (1984). A simulation study on the chemoton. Kybernetes 13:79-85 (source of the metabolic equations and rate constants reused above)"
+  decisions:
+    - "The book describes the Chemoton only qualitatively. Reactions, rate constants (k1 = 2, k2 = k3 = k4 = 100, k5 = k6 = k7 = k8 = k9 = k10 = 10, k1r..k5r = 0.1, k6r = 1, k9r = 0.1) and initial conditions are model I of Fernando & Di Paolo (2004); each ODE term of their eqs. 1-14 is one mass-action reaction (checked in tests)."
+    - "Template replication is represented by stage: pV_r is a double strand with r extra monomers bound, and binding the last monomer releases two pV0. Initiation only runs while [V] > [V]*; this gate is recorded in that reaction's rate as threshold_species/threshold, since it is not a rate law."
+    - "Nutrient X and waste Y are environmental concentrations held constant (extras.buffered; the paper sets [X] = 100, [Y] = 0.1). Volume Q = S^1.5 and division at doubled surface act on all concentrations rather than as reactions, so they are recorded in extras.compartments."
+    - "The book's description has T and T' swapped relative to the paper; this entry follows the paper (T0 precursor, T* activated, T membrane molecule). cycle_size (the paper's wheel is fixed at 5), rate_constants, X_influx and division_criterion are replaced by the parameters above."
+  phenomena: ["synchronised growth and division", "replication time 0.455 at [X] = 100, 0.65 at [X] = 10, 2.4 at [X] = 1 (Fernando & Di Paolo)", "some robustness to noise and to food shortage", "differentiation into 'species'"]
+  notes: >
+    The classic hand-designed minimal cell. Its stoichiometric coupling is
+    exactly what makes it fragile, which makes it a good test of any
+    sensitivity-analysis tooling Chemart exports to.
+
+- id: autopoiesis-vmu
+  name: Varela-Maturana-Uribe autopoiesis model
+  origin: "Varela, Maturana & Uribe, 1974"
+  book: "6.1.5"
+  refs: ["[881]", "[557]", "[559]"]
+  family: origin-of-life
+  kind: generator
+  constructive: false
+  S:
+    repr: "three particle types on a 2D grid: substrate (O), catalyst (*), link ([O])"
+    definition: explicit
+  R:
+    definition: explicit
+    arity: [1, 3]
+    scheme: "* + 2 O -> * + [O] ; links bond to neighbouring links ; [O] -> O (spontaneous decay)"
+  A:
+    reactor: lattice-2d
+    dilution: none
+  params:
+    - {name: grid, type: matrix, role: spatial}
+    - {name: n_catalysts, type: int, default: 1, role: population}
+    - {name: substrate_density, type: float, role: population}
+    - {name: p_bond, type: float, role: kinetic}
+    - {name: p_decay, type: float, role: kinetic}
+  provides: [topology, stoichiometry, catalysts, space, initial-state]
+  generator_ready: yes
+  phenomena: ["spontaneous formation of a closed, substrate-permeable boundary", "regeneration of the boundary after decay of constituents"]
+  notes: "Satisfies the six conditions for an autopoietic unit listed in the book."
+
+- id: ono-ikegami-protocell
+  name: Ono & Ikegami autopoietic protocells
+  origin: "Ono & Ikegami, 1999-2003"
+  book: "6.3.2"
+  refs: ["[637]", "[639]", "[641]", "[538]"]
+  family: origin-of-life
+  kind: generator
+  constructive: false
+  S:
+    repr: "five species A (autocatalyst, hydrophilic), M (membrane, hydrophobic, isotropic M_i or anisotropic M_a), X (food, neutral), Y (waste, neutral), W (water, hydrophilic), on a hexagonal grid with orientation"
+    definition: explicit
+  R:
+    definition: explicit
+    arity: [1, 2]
+    scheme: "A + X -> 2A ; A + X -> A + M ; {A,M,X} -> Y (decay) ; Y -> X (recycling by an external energy source)"
+    notes: "plus hydrophobic/hydrophilic repulsion fields; anisotropic M has a directional repulsion"
+  A:
+    reactor: lattice-2d
+    dilution: "food supply rate"
+  params:
+    - {name: grid, type: matrix, role: spatial, meaning: "hexagonal lattice"}
+    - {name: X_supply, type: float, role: population, meaning: "the decisive parameter: anisotropy only pays off at LOW supply"}
+    - {name: anisotropy, type: bool, default: true, role: structural, meaning: "isotropic M gives clusters that shrink and die; anisotropic M gives dividing protocells"}
+    - {name: repulsion_strength, type: float, role: spatial}
+    - {name: rate_constants, type: matrix, role: kinetic}
+    - {name: dimensions, type: enum, default: 2, range: "2 | 3", role: spatial}
+  provides: [topology, stoichiometry, catalysts, space, rate-constants, flow]
+  generator_ready: yes
+  phenomena: ["membrane filaments -> closed, osmotically permeable protocells", "growth and division sustaining an internal metabolism", "3D: parallel membranes with tubular connections, intertwined globular filaments"]
+  notes: "No genetic material and no evolution mechanism - a self-maintenance model, not a replicator model."
+
+- id: replication-death
+  name: Replication and death
+  origin: "textbook evolutionary dynamics"
+  book: "7.2.1"
+  refs: ["[621]"]
+  family: evolutionary-dynamics
+  kind: generator
+  constructive: false
+  S: {repr: "one species X", definition: explicit}
+  R:
+    definition: explicit
+    arity: 1
+    scheme: "X --b--> 2X ; X --d--> (nothing)"
+  A: {reactor: [ode, ssa], dilution: none}
+  params:
+    - {name: b, type: float, default: 1.0, min: 0, role: kinetic, meaning: "birth (replication) rate"}
+    - {name: d, type: float, default: 0.5, min: 0, role: kinetic, meaning: "death rate"}
+    - {name: x0, type: float, default: 1.0, min: 0, role: population, meaning: "initial population"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, initial-state]
+  fidelity: book+decisions
+  decisions:
+    - "The book gives no numbers; defaults b = 1, d = 0.5, x0 = 1 give exponential growth."
+  phenomena: ["x(t) = x0 exp((b-d)t); exponential growth is the precondition for Darwinian evolution"]
+
+- id: logistic-chemistry
+  name: Logistic growth ('replicate and fight')
+  book: "7.2.4; appendix (Logistic.py)"
+  refs: ["[621]"]
+  family: evolutionary-dynamics
+  kind: generator
+  constructive: false
+  S: {repr: "one species X", definition: explicit}
+  R:
+    definition: explicit
+    arity: [1, 2]
+    scheme: "X --r--> 2X ; 2X --r/K--> X"
+  A: {reactor: [ode, ssa], dilution: "implicit, via the reverse reaction"}
+  params:
+    - {name: r, type: float, default: 1.0, min: 0, role: kinetic, meaning: "intrinsic growth rate"}
+    - {name: K, type: float, default: 1.0, min: 1.0e-9, role: population, meaning: "carrying capacity; the reverse coefficient is d = r/K"}
+    - {name: x0, type: float, default: 0.1, min: 0, role: population, meaning: "initial population"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, initial-state]
+  fidelity: book+decisions
+  decisions:
+    - "K = 1 as in figure 7.2; r and x0 are not given (defaults 1 and 0.1)."
+  reference_impl: "PyCellChemistry Logistic.py"
+  phenomena: ["sigmoid approach to K under ODE", "stochastic runs fluctuate around and OVERSHOOT K - the reaction does not enforce a hard bound"]
+
+- id: selection-equation
+  name: Selection equation under a dilution flow
+  book: "7.2.5"
+  refs: ["[621]"]
+  family: evolutionary-dynamics
+  kind: generator
+  constructive: false
+  S: {repr: "n species X_1..X_n with fitnesses f_i >= 0", definition: explicit}
+  R:
+    definition: explicit
+    arity: 1
+    scheme: "X_i --f_i--> 2 X_i ; X_i --phi--> (nothing), with phi = sum_i f_i x_i (the mean fitness)"
+  A: {reactor: [ode, ssa], dilution: "non-selective outflow phi keeps sum_i x_i = 1"}
+  params:
+    - {name: f, type: list, default: [1.0, 2.0, 3.0], role: selection, meaning: "fitness vector; its length sets the number of species"}
+    - {name: c, type: float, default: 1.0, min: 0, role: kinetic, meaning: "growth exponent in the generalised form x_i' = f_i x_i^c - phi x_i; c<1 gives survival of everybody, c=1 survival of the fittest, c>1 survival of the first"}
+    - {name: x0, type: list, default: [], role: population, meaning: "initial concentrations; empty means uniform 1/n"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, rate-law, flow, initial-state]
+  fidelity: book+decisions
+  decisions:
+    - "The dilution flux phi is outflow = 'constant-total'. For c != 1 the growth reaction carries a 'power' rate law k x^c."
+    - "The book gives no numbers; default fitnesses 1, 2, 3 and a uniform start."
+  phenomena: ["competitive exclusion", "c = 0.5 (parabolic growth) applies to template replication of short oligonucleotides and BLOCKS Darwinian evolution unless the replicators are enclosed in a dividing compartment"]
+
+- id: quasispecies
+  name: Quasispecies equation
+  origin: "Eigen, 1971; Eigen & Schuster"
+  book: "7.2.7; appendix (Quasispecies.py)"
+  refs: ["[249]", "[627]", "[621]"]
+  family: evolutionary-dynamics
+  kind: generator
+  constructive: false
+  S:
+    repr: "genome sequences of length L over an alphabet of size B; |S| = B^L"
+    definition: implicit
+  R:
+    definition: explicit
+    arity: 1
+    scheme: "X_j --f_j q_ji--> X_j + X_i ; X_i --phi--> (nothing)"
+  A: {reactor: [ode, ssa], dilution: "phi = mean fitness, population size constant"}
+  params:
+    - {name: L, type: int, default: 6, min: 1, max: 8, range: "the book's figure 7.4 uses L = 10, above the generator limit of 256 genomes", role: structural, meaning: "genome length"}
+    - {name: B, type: int, default: 2, min: 2, max: 4, role: structural, meaning: "alphabet size"}
+    - {name: m, type: float, default: 0.2, min: 0, range: "book: 0.2, 1.0, 2.0", role: stochastic, meaning: "mutations per genome; per-site rate p = m/L. Deterministic error threshold at m = 1; the stochastic threshold in finite populations is LOWER"}
+    - {name: fitness, type: enum, default: ones-fraction, choices: [ones-fraction, single-peak], role: selection, meaning: "ones-fraction: share of positions holding the highest symbol (the book's choice); single-peak: 2 for the all-highest genome, 1 otherwise"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, flow]
+  fidelity: book+decisions
+  decisions:
+    - "q_ji = (p/(B-1))^d (1-p)^(L-d), with d the Hamming distance and p = m/L. Reactions with zero rate are omitted."
+    - "The full network has up to (B^L)^2 reactions, so B^L is limited to 256 genomes. The population size N is not a parameter: it sizes a stochastic simulation. No initial state is attached: the book only says the start is random and biased toward low fitness."
+  reference_impl: "PyCellChemistry Quasispecies.py, Evolution.py, Tournament.py"
+  phenomena: ["quasispecies cloud around the fittest genotype", "error catastrophe above the threshold", "no adaptation below a minimum mutation rate"]
+
+- id: replicator-equation
+  name: Replicator equation (evolutionary game dynamics)
+  book: "7.2.8"
+  refs: ["[621]", "[563]", "[564]", "[792]"]
+  family: evolutionary-dynamics
+  kind: generator
+  constructive: false
+  S: {repr: "n strategies X_1..X_n", definition: explicit}
+  R:
+    definition: explicit
+    arity: 2
+    scheme: "X_i + X_j --a_ij--> 2X_i + X_j (a_ij > 0, cooperative/catalytic) ; X_i + X_j --(-a_ij)--> X_j (a_ij < 0, defective) ; elastic for a_ij = 0"
+  A: {reactor: [ode, ssa], dilution: "phi = sum_ij a_ij x_i x_j"}
+  params:
+    - {name: A, type: list, default: [[0.0, -1.0, 1.0], [1.0, 0.0, -1.0], [-1.0, 1.0, 0.0]], role: selection, meaning: "n x n payoff matrix a_ij; asymmetry a_ij != a_ji encodes the game. Default: rock-paper-scissors"}
+    - {name: x0, type: list, default: [], role: population, meaning: "initial frequencies; empty means uniform 1/n"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, flow, initial-state]
+  fidelity: book+decisions
+  decisions:
+    - "n is the size of A rather than a separate parameter. The book gives no game; the default is rock-paper-scissors. The dilution flux phi is outflow = 'constant-total', which equals eq. 7.24."
+    - "A diagonal term a_ii is the bimolecular self-interaction 2X_i -> 3X_i (a_ii > 0) or 2X_i -> X_i (a_ii < 0)."
+  phenomena: ["evolutionarily stable strategies (ESS)", "known to be equivalent to Lotka-Volterra with n+1 strategies"]
+  notes: "Note the catalytic form: X_j is on both sides. Net stoichiometry alone would erase it."
+
+- id: lotka-volterra
+  name: Lotka-Volterra
+  book: "7.2.8; appendix (Lotka.py); ecology 8.2.3"
+  refs: ["[621]", "[792]", "[37]", "[238]", "[593]"]
+  family: evolutionary-dynamics
+  kind: generator
+  constructive: false
+  S: {repr: "n interacting species X_1..X_n; classically prey X1 and predator X2", definition: explicit}
+  R:
+    definition: explicit
+    arity: [1, 2]
+    scheme: "X + G --ka--> 2X + G ; Y + X --kb--> 2Y ; Y --kc--> (nothing)"
+    notes: "general form x_i' = x_i (r_i + sum_j b_ij x_j)"
+  A: {reactor: [ode, ssa], dilution: none}
+  params:
+    - {name: r, type: list, default: [1.0, -1.0], role: kinetic, meaning: "spontaneous growth (>0) or death (<0) rate per species; its length sets n"}
+    - {name: B, type: list, default: [[0.0, -1.0], [1.0, 0.0]], role: kinetic, meaning: "interaction matrix b_ij: 0 none, >0 j feeds i, <0 j eats i; both >0 mutualistic, both <0 competitive, mixed antagonistic"}
+    - {name: x0, type: list, default: [5.0, 2.0], role: population, meaning: "initial concentrations"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, initial-state]
+  fidelity: book+decisions
+  decisions:
+    - "The general form (eq. 7.30) is the parameterisation. Each term becomes the mass-action reaction with the same ODE contribution, and a predator-prey pair b_ij = -b_ji > 0 becomes the single reaction X_i + X_j -> 2 X_i (eq. 7.26)."
+    - "Defaults are figure 7.5's predator-prey system (ka = kb = kc = 1, x0 = 5, y0 = 2, g0 = 1), with the constant grass G folded into r_1 = ka g0."
+    - "NAV is not a parameter: it sizes a stochastic simulation, not the network."
+  reference_impl: "PyCellChemistry Lotka.py"
+  phenomena: ["sustained oscillations around (x, y) = (kc/kb, ka g0/kb) under ODE", "erratic oscillations and extinction under SSA in small volumes", "cyclic food chains, waves, clustering"]
+
+- id: random-catalytic-networks
+  name: Random catalytic reaction networks
+  origin: "Stadler, Fontana & Miller, 1993"
+  book: "7.2.9"
+  refs: ["[792]"]
+  family: evolutionary-dynamics
+  kind: generator
+  constructive: false
+  S: {repr: "n abstract species X_1..X_n with no internal structure", definition: explicit}
+  R:
+    definition: explicit
+    arity: 2
+    scheme: "X_i + X_j --alpha^k_ij--> X_i + X_j + X_k (both reactants catalytic)"
+    notes: "x_k' = sum_ij alpha^k_ij x_i x_j - x_k phi(t), with phi = sum_ij a_ij x_i x_j and a_ij = sum_k alpha^k_ij"
+  A: {reactor: ode, dilution: "non-specific dilution flux phi"}
+  params:
+    - {name: n, type: int, role: structural}
+    - {name: density, type: float, role: structural, meaning: "fraction of alpha^k_ij set nonzero; sparse to dense"}
+    - {name: allow_direct_replication, type: bool, default: false, role: structural, meaning: "set alpha^i_ij = alpha^j_ij = 0 to forbid direct self-replication - the interesting case"}
+    - {name: alpha_distribution, type: callable, role: kinetic}
+    - {name: seed, type: seed, role: stochastic}
+  provides: [topology, stoichiometry, catalysts, rate-constants, flow]
+  generator_ready: yes
+  phenomena: ["convergence to a fixpoint where only a mutually catalytic subset survives - later recognised as a chemical organisation", "contains the replicator and Lotka-Volterra equations as special cases"]
+  notes: >
+    The structural template that the matrix chemistry, the automata
+    reaction and AlChemy all instantiate. Should be Chemart's canonical
+    'null model' generator for benchmarking organisation-finding code.
+
+- id: jain-krishna
+  name: Jain-Krishna autocatalytic set model
+  origin: "Jain & Krishna, 1998-2002"
+  book: "15.2.2, 15.2.3"
+  refs: ["[425]", "[426]", "[427]", "[428]"]
+  family: evolutionary-dynamics
+  kind: generator
+  constructive: true
+  S: {repr: "m nodes of a directed graph; only the CATALYTIC action is represented, not the underlying reactions", definition: explicit}
+  R:
+    definition: explicit
+    arity: 1
+    scheme: "edge c_ij = 1 means species i catalytically produces species j; x_i' = sum_j c_ij x_j - x_i sum_kj c_kj x_j"
+  A:
+    reactor: ode
+    dilution: "normalisation sum_i x_i = 1"
+    notes: >
+      Two timescales. Fast: integrate to the fixed point. Slow: remove the
+      species with the smallest concentration, replace it with a fresh node
+      whose in/out edges are redrawn with probability p, reset it to x0,
+      perturb the rest, renormalise, repeat.
+  params:
+    - {name: m, type: int, default: 100, role: structural, meaning: "number of nodes (state-space dimension stays constant)"}
+    - {name: p, type: float, default: 0.0025, role: structural, meaning: "edge probability on rewiring; the phase parameter"}
+    - {name: x0, type: float, role: population, meaning: "concentration given to a newly introduced node"}
+    - {name: self_loops, type: bool, default: false, role: structural, meaning: "c_ii = 0: no direct self-replicators"}
+  provides: [topology, catalysts, flow]
+  generator_ready: yes
+  phenomena: ["random phase -> growth phase (once the first small ACS appears) -> organising phase", "crashes and core shifts when a stronger ACS out-competes the incumbent", "attractor = eigenvector of the Perron-Frobenius eigenvalue lambda_1 of C"]
+  notes: >
+    Comes with a published TAXONOMY OF INNOVATIONS worth encoding as an
+    analysis output: Type A short-lived (blip, incremental); Type B
+    long-term - independent organisation (core-shift / birth of an
+    organisation / dormant) and modification of an existing organisation
+    (core-enhancing / neutral).
+
+- id: ecolab
+  name: Ecolab
+  origin: "Standish, 1994-2004"
+  book: "8.2.3"
+  refs: ["[795]", "[796]"]
+  family: evolutionary-dynamics
+  kind: framework
+  constructive: true
+  S: {repr: "species of a generalised Lotka-Volterra system", definition: explicit}
+  R:
+    definition: explicit
+    arity: 2
+    scheme: "generalised Lotka-Volterra, with MUTATION of the parameters r_i and b_ij introducing new species"
+  A:
+    reactor: ode
+    dilution: "probabilistic rounding keeps population counts integral"
+    notes: "mutation functions are chosen so offspring resemble parents and populations stay bounded"
+  params:
+    - {name: r, type: matrix, role: kinetic}
+    - {name: B, type: matrix, role: kinetic}
+    - {name: mutation_kernel, type: callable, role: stochastic}
+    - {name: speciation_rate, type: float, role: stochastic}
+  provides: [topology, stoichiometry, rate-constants]
+  generator_ready: partial
+  phenomena: ["self-organised criticality: power-law distribution of species lifetimes"]
+
+- id: urdar
+  name: Urdar
+  origin: "Frank & Fontana / Gerlee et al. (book ref [315])"
+  book: "8.2.3"
+  refs: ["[314]", "[315]", "[537]"]
+  family: evolutionary-dynamics
+  kind: generator
+  constructive: true
+  S: {repr: "binary strings as 'metabolites'; organisms carry CA rules that operate on them", definition: implicit}
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "an organism metabolises a string by applying its CA rule, converting it to a higher-entropy form; only entropy-increasing organisms replicate"
+  A: {reactor: well-stirred-multiset, dilution: "inflow of energy-rich strings"}
+  params:
+    - {name: string_len, type: int, role: structural}
+    - {name: ca_rule_space, type: matrix, role: structural}
+    - {name: influx, type: float, role: population, meaning: "lowering it increases diversity and selects for energy-efficient organisms"}
+  provides: [topology, flow, energies, sequence-structure-function]
+  generator_ready: partial
+  phenomena: ["cross-feeding ecologies (one strain lives on another's waste)", "rock-paper-scissors intransitive dominance among species, which promotes biodiversity"]
+  notes: "One of the few ACs with an explicit thermodynamic driver (entropy of the metabolised string)."
+
+- id: evolve-series
+  name: EVOLVE virtual ecosystems
+  origin: "Conrad & Pattee 1970; Rizki & Conrad; Conrad & Strizich"
+  book: "8.2.3"
+  refs: ["[191]", "[195]", "[134]", "[135]", "[714]"]
+  family: evolutionary-dynamics
+  kind: framework
+  constructive: true
+  S: {repr: "virtual organisms with genotype-encoded state transition rules; enzymes/proteins as strings with weighted critical sections", definition: implicit}
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "lock-and-key matching of a protein's critical section against a function table; secretion, light harvesting, metabolic and genetic processes"
+  A: {reactor: lattice-2d, dilution: "matter and energy conservation with recycling on death"}
+  params:
+    - {name: grid, type: matrix, role: spatial}
+    - {name: light_input, type: float, role: population}
+    - {name: critical_section_weight, type: float, role: structural}
+    - {name: recombination_rate, type: float, role: stochastic}
+  provides: [topology, space, energies, mass-conservation, flow]
+  generator_ready: no
+  phenomena: ["evolution of efficient homogeneous populations that then stop evolving (1969 model)", "emergence, extinction and re-emergence of scavenger niches (EVOLVE)"]
+
+- id: dorin-korb-ecosystem
+  name: Dorin & Korb virtual ecosystem chemistry
+  origin: "Dorin & Korb, 2011"
+  book: "8.2.3"
+  refs: ["[240]"]
+  family: evolutionary-dynamics
+  kind: generator
+  constructive: true
+  S: {repr: "virtual atoms from {A, B, C, O} floating in 2D, bonding covalently into molecules", definition: implicit}
+  R:
+    definition: implicit
+    arity: 2
+    scheme: >
+      Bond formation and breaking, each with an energy cost or release.
+      Four catalyst types: chlorophyll-like (makes A-B bonds, breaks A-O and
+      B-O), a sugar-breaker (breaks A-B), an organic decomposer (breaks C-C),
+      and an inorganic decomposer.
+    notes: "a reaction cannot proceed if its neighbourhood lacks the energy; released energy must be used in the same timestep or is lost; energy can only be stored in complex molecules"
+  A: {reactor: lattice-2d, dilution: "sunlight influx"}
+  params:
+    - {name: bond_energies, type: matrix, role: thermodynamic, meaning: "per bond type"}
+    - {name: sunlight, type: float, role: population}
+    - {name: grid, type: matrix, role: spatial}
+    - {name: catalyst_set, type: enum, default: "chlorophyll, sugar-breaker, organic decomposer, inorganic decomposer", role: structural}
+  provides: [topology, stoichiometry, catalysts, energies, mass-conservation, space, flow]
+  generator_ready: partial
+  phenomena: ["autotroph/decomposer trophic structure emerging from atom-level bookkeeping"]
+  notes: "Along with ToyChem and Bigan, one of the three energy-carrying chemistries in the book."
+
+- id: nk-landscape
+  name: Kauffman NK model
+  origin: "Kauffman, 1993"
+  book: "18.4.1; appendix (NKlandscape.py)"
+  refs: ["[447]"]
+  family: evolutionary-dynamics
+  kind: analysis
+  constructive: false
+  S: {repr: "binary genotypes of length N", definition: implicit}
+  R:
+    definition: explicit
+    arity: n/a
+    scheme: "fitness w = (1/N) sum_i w_i, where w_i is drawn at random as a function of gene i and its K epistatic partners"
+  A: {reactor: "n/a - a fitness landscape, not a reactor", dilution: n/a}
+  params:
+    - {name: N, type: int, role: structural, meaning: "number of genes"}
+    - {name: K, type: int, range: "0..N-1", role: structural, meaning: "epistatic interactions per gene: K=0 unimodal, growing K makes the landscape rugged, K=N-1 fully random"}
+    - {name: topology, type: enum, default: adjacent, range: "adjacent | random", role: structural}
+    - {name: seed, type: seed, role: stochastic}
+  provides: []
+  generator_ready: yes
+  reference_impl: "PyCellChemistry NKlandscape.py (naive epistatic matrix; does not scale)"
+  notes: >
+    Included because the book and PyCellChemistry ship it, but it produces
+    NO reaction network. Chemart should classify it as a `selection`
+    component that other chemistries can plug in as a fitness function.
+
+- id: rbn
+  name: Random Boolean Networks (RBN) and RBN World
+  origin: "Kauffman, 1969; RBN World: Faulconbridge, Stepney, Miller & Caves, 2011"
+  book: "18.4.2; subsymbolic AC 10.7.3"
+  refs: ["[445]", "[243]", "[348]", "[447]", "[591]", "[263]", "[264]", "[291]"]
+  family: evolutionary-dynamics
+  kind: generator
+  constructive: false
+  S:
+    repr: "N nodes with Boolean state; in RBN World an atom is a *bonding* RBN (bRBN) and a molecule is a network of bRBNs joined at bonding sites"
+    definition: implicit
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "RBN: synchronous update s_i(t+1) = f_i(inputs). RBN World: bond formation and cleavage between bRBNs, driven by their dynamics"
+  A: {reactor: [graph-rewrite, well-stirred-multiset], dilution: none}
+  params:
+    - {name: N, type: int, role: structural, meaning: "number of nodes"}
+    - {name: K, type: int, default: 2, role: structural, meaning: "in-degree; K=1 dead, K=2..3 'edge of chaos', large K chaotic"}
+    - {name: K_distribution, type: enum, default: constant, range: "constant | poisson | power-law", role: structural, meaning: "power-law gives scale-free GRNs which match biological data better"}
+    - {name: function_bias, type: float, role: structural, meaning: "P(output=1) in the random Boolean functions"}
+    - {name: update, type: enum, default: synchronous, range: "synchronous | asynchronous", role: structural}
+    - {name: bonding_sites, type: int, role: structural, meaning: "RBN World only"}
+  provides: [topology, sequence-structure-function]
+  generator_ready: yes
+  phenomena: ["cycle attractors interpreted as cell types (Kauffman's cell-differentiation conjecture)", "order/chaos transition as a function of K", "RBN World aims at autocatalytic sets, hypercycles and heteropolymers built from bRBNs"]
