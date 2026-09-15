@@ -2,40 +2,83 @@ chemistries:
 
 - id: p-systems
   name: P systems (membrane computing)
+  aliases: ["membrane systems", "transition P systems"]
   origin: "Paun, 1998"
   book: "9.5; multicompartment SSA 4.3; biology 18.3.2"
-  refs: ["[678]", "[679]", "[680]", "[681]", "[683]", "[661]", "[718]"]
+  refs: ["[678]", "[679]", "[680]", "[681]", "[683]", "[661]", "[718]", "[150]", "doi:10.1006/jcss.1999.1693", "doi:10.1016/S0304-3975(02)00136-6"]
   family: rewriting
   kind: formalism
   constructive: false
   S:
-    repr: "symbols over an alphabet Sigma; multisets written as strings (a^2 b^3 c)"
+    repr: >
+      symbol objects over an alphabet O, located in the regions of a tree of nested membranes
+      [1 [2 ]2 [3 ]3 ]1 (1 = skin); multisets written as strings (a^2 b^3 c). Species id =
+      object@region (a@2), with env for the environment outside the skin
     definition: explicit
   R:
     definition: explicit
     arity: variable
     scheme: >
-      multiset rewriting plus target indicators and membrane operations:
-      'abc -> a_here b_out d_in_j', 'a -> b delta' (dissolve),
-      '[a] -> [b][c]' (divide)
+      multiset rewriting u -> v with target indications on the products, here (default), out
+      (the surrounding region, the environment for the skin), in (a non-deterministically chosen
+      inner membrane) or in_j, optionally with delta (dissolve the membrane of the region):
+      aab -> a b_out c c_in; d -> d delta. Priority relations rho_i order the rules of a region.
+      Chemart syntax: 'r1: 2 a + b -> a + b@out + c + c@in', 'd -> d + delta', priorities 'r1 > r3'
+    notes: >
+      A rule u -> v in region i becomes reactions u@i -> v@target over compartment-qualified
+      species. Catalytic rules ca -> cv are ordinary rules with the catalyst on both sides.
+      Membrane division [a] -> [b][c] (P systems with active membranes [679, 683]) is not
+      implemented.
   A:
-    reactor: [maximally-parallel, compartments, ssa]
+    reactor: [maximally-parallel, compartments]
     dilution: none
     notes: >
-      Default algorithm: fire all applicable rules maximally in parallel
-      until inert. The multicompartmental Gillespie algorithm (MGA) and
-      variants replace this with rate-based scheduling for biological realism.
+      A global clock; in each step every region applies a non-deterministically chosen maximal
+      multiset of its rules (no further rule can use the remaining objects), then the products
+      move to their targets and dissolved membranes release their contents upwards. A computation
+      is successful when it halts (no rule applicable anywhere) and the output region still exists;
+      the result is the number of objects in the output region (internal output) or sent to the
+      environment (external output). Priorities are strong (a rule is not used when a rule with
+      priority over it is applicable) or weak (the higher rule takes as many objects as it can and
+      the lower rule uses the rest). The multicompartmental Gillespie algorithm (MGA) [661] and its
+      variants [718] replace this with stochastic kinetics per membrane; they are not implemented.
   params:
-    - {name: Sigma, type: matrix, role: structural, meaning: "alphabet of objects"}
-    - {name: mu, type: matrix, role: spatial, meaning: "membrane structure, e.g. [1 [2 ]2 [3 ]3 [4 [5 ]5 [6 ]6 [7 ]7 ]4 ]1"}
-    - {name: w_i, type: matrix, role: population, meaning: "initial multiset in each region i"}
-    - {name: R_i, type: callable, role: structural, meaning: "rule set per region"}
-    - {name: rho_i, type: matrix, role: structural, meaning: "priority relation over rules in region i"}
-    - {name: i_o, type: int, role: structural, meaning: "id of the output membrane"}
-  provides: [topology, stoichiometry, compartments, initial-state]
-  generator_ready: yes
-  phenomena: ["Turing universality", "space-for-time tradeoff via membrane division / worm objects", "decision problems (e.g. is n a multiple of k)"]
+    - {name: system, type: enum, default: divisibility, choices: [divisibility, n-squared, custom], role: structural, meaning: "published system: divisibility (book eq. 9.21 and fig. 9.3: is n a multiple of k? output membrane 3 is empty iff it is), n-squared (Paun 2006 fig. 3: generates n^2, n >= 1, sent to the environment), custom (membranes, objects, rules, priorities, output)"}
+    - {name: n, type: int, default: 7, min: 1, max: 1000000, range: "positive; the computation halts after about n/k + 3 steps, so raise max_steps for large n/k", role: population, meaning: "divisibility only: copies of a in membrane 2 (the number tested)"}
+    - {name: k, type: int, default: 3, min: 1, max: 1000000, role: population, meaning: "divisibility only: copies of c in membrane 2 (the divisor)"}
+    - {name: membranes, type: str, default: "", range: "labelled brackets, e.g. '[1 [2 ]2 [3 ]3 ]1'; labels are letters, digits or _, 'env' and '0' are reserved", role: spatial, meaning: "custom only: membrane structure mu"}
+    - {name: objects, type: dict, default: {}, range: "e.g. {'2': '7 a + 3 c + d'} or {'2': {'a': 7, 'c': 3, 'd': 1}}", role: population, meaning: "custom only: initial multiset w_i per region"}
+    - {name: rules, type: dict, default: {}, range: "e.g. {'2': ['r1: a + c -> c2', 'r3: d -> d + delta'], '1': ['e -> e@out', 'x -> y@in3']}; targets @here (default), @out, @in, @in<label>; delta or δ dissolves; the optional label defaults to r<position>", role: structural, meaning: "custom only: rule set R_i per region, in the explicit reaction syntax with target suffixes"}
+    - {name: priorities, type: dict, default: {}, range: "e.g. {'2': ['r1 > r3', 'r2 > r3']}; chains 'r1 > r2 > r3' allowed; closed transitively, cycles rejected", role: structural, meaning: "custom only: priority relation rho_i per region over its rule labels"}
+    - {name: output, type: str, default: "", range: "a membrane label, or 'env' / '0' for the environment", role: structural, meaning: "custom only: output region i_o"}
+    - {name: priority, type: enum, default: strong, choices: [strong, weak], role: structural, meaning: "semantics of the priority relations in the computation: strong (a lower rule is not used while a higher one is applicable; needed by the book's divisibility system) or weak (the higher rule is used maximally, the lower one on the remaining objects); Paun 2006 sec. 11"}
+    - {name: max_steps, type: int, default: 1000, min: 1, max: 10000000, range: "a halting n-squared computation with result n^2 takes 2n + 2 steps; non-halting computations stop here", role: population, meaning: "step budget of the maximally parallel computation recorded in extras.analysis (does not change the network)"}
+  provides: [topology, stoichiometry, catalysts, compartments, initial-state]
+  fidelity: reconstructed
+  sources:
+    - "Banzhaf, W. & Yamamoto, L. (2015). Artificial Chemistries, MIT Press, section 9.5: notation, target indications, dissolution, eq. 9.20, and the divisibility system eq. 9.21 / fig. 9.3 (primes and the in_3 subscript checked on the rendered PDF page 190, because the text extraction drops them)."
+    - "Paun, G. (2006). Introduction to Membrane Computing. In G. Ciobanu, G. Paun, M. J. Perez-Jimenez (eds.), Applications of Membrane Computing, Springer, pp. 1-42 (doi:10.1007/3-540-29937-8_1): maximal parallelism and the a^5 b^2 c^6 example (sec. 4), target indications and dissolution (sec. 7), the formal definition of a transition P system (sec. 8), computations, halting, internal and external output and the n^2 system of fig. 3 (sec. 9), strong and weak priorities with the ff -> f / cf -> cd delta example (sec. 11). Preprint used: https://cs.ioc.ee/yik/schools/win2007/paun/IntrodMC.pdf and http://bioinfo.uib.es/~recerca/BUM/paun.pdf"
+  decisions:
+    - "Original papers not reached: Paun's TUCS Report 208 / JCSS 61 (2000) [678], the 2002 book [680] (with the yes/no version of the divisibility system), the Paun-Rozenberg guide [681] and ppage.psystems.eu (connection refused) could not be downloaded; the formal definition and semantics come from Paun's 2006 introduction, which restates them. The yes/no divisibility system of [680] is therefore not offered."
+    - "Scope: transition P systems with symbol objects, targets here/out/in/in_j, dissolution and priorities (book 9.5). Membrane division and active membranes [679, 683], symport/antiport, promoters/inhibitors, string objects and the stochastic MGA variants [661, 718] (book 4.3, 18.3.2) are not implemented: the book gives no algorithmic detail or rate constants for them. The v1 A.reactor 'ssa' is dropped."
+    - "Priorities: the book states rho_2 = {r1 > r3, r2 > r3} and that r3 fires 'when neither r1 nor r2 can be fired', which is Paun's strong interpretation; under the weak one r3 would fire in the first step, as soon as the c are used up, and the computation would give a wrong answer. Default priority = strong; weak is available for Paun 2006 sec. 11."
+    - "Non-determinism: any maximal multiset of rules is allowed by the definition; Chemart samples one by repeatedly drawing a still-applicable rule with weight equal to the number of times it can still be applied and applying it a uniform number of times in [1, that], until no rule can take the remaining objects. An object sent 'in' goes to a uniformly chosen inner membrane. This is one admissible scheduler, not a published distribution."
+    - "Step semantics (Paun 2006 secs. 7-9): all regions choose their multisets on the configuration at the start of the step; products are delivered by the membrane structure at the start of the step (objects leaving the skin go to the environment and never return); then every membrane whose region used a delta rule dissolves, and its objects and inner membranes join the nearest upper membrane not dissolved in the same step; the skin can never dissolve (a delta rule in the skin is rejected). An 'in' target with no (such) inner membrane makes the rule inapplicable."
+    - "Halting and output: a computation halts when no rule is applicable in any region; the result is the number of objects in the output region in the halting configuration, or of objects sent to the environment when i_o = env (Paun uses i_o = 0, also accepted). A computation whose output membrane was dissolved, or that does not halt within max_steps, has result null. The terminal-object restriction T is not modelled (all objects count); catalysts are not declared separately."
+    - "Network: every rule becomes reactions over object@region species. Because dissolution changes the tree, out/in/in_j targets resolve to every region reachable in some structure (a further ancestor when the intermediate membranes have delta rules, a deeper membrane when the membranes between can dissolve), and an 'in' with several possible membranes gives one reaction per distribution of the objects, so the network is the complete set of reactions the system can perform. Status complete."
+    - "Facts without a formula: products of a delta rule keep the rule's own region (d -> d delta is the reaction d@2 -> d@2); the dissolution itself and the release of contents are recorded in extras.dissolution, priorities in extras.priorities (transitive closure, [higher, lower] pairs) and extras.priority_semantics. Reactions have no rate: P systems define none."
+    - "Book notation: the text extraction of eq. 9.21 loses the primes and the subscript; the rendered page reads R_1 = {r4: dcc' -> a_in3}, R_2 = {r1: ac -> c', r2: ac' -> c, r3: d -> d delta}, w_2 = a^n c^k d, i_o = 3. The book's 'adapted from [150, 680]' system is used as printed."
+    - "Paun 2006 fig. 3 system (n-squared): i_o is the environment, as the text says; rules r1..r3 of region 3 are a -> ab, a -> b delta, f -> ff; region 2 has b -> d, d -> de, ff -> f, cf -> cd delta; region 1 has e -> e_out, f -> f. It has no priorities: computations in which cf -> cd delta is used too early never halt because of f -> f."
+    - "v1 parameters: Sigma (the alphabet is implied by the objects and rules), mu, w_i, R_i (callable), rho_i and i_o became the system choice plus the custom JSON/text fields membranes, objects, rules, priorities and output; n and k give the divisibility input; priority and max_steps control the recorded computation."
+    - "extras: system, membranes (canonical structure), compartments (per membrane: parent, children, skin, dissolvable, rules, species; plus env), rules (id, region, label, text, dissolves, reaction indices), reaction_rules (rule id of each reaction), priorities, priority_semantics, dissolution, output_region, inapplicable_rules (rules no structure lets fire), and analysis (halted, steps, output, result, final structure and configuration, dissolutions, rule applications, a trace of the first 100 steps; divisibility adds n_multiple_of_k, n-squared result_is_square)."
+  phenomena:
+    - "divisibility (book 9.5, eq. 9.21): r1 and r2 alternately consume k copies of a per step, r3 dissolves membrane 2 once a is exhausted, and r4 puts one a into membrane 3 exactly when n is not a multiple of k"
+    - "N(Pi) = {n^2 | n >= 1} for the system of Paun 2006 fig. 3: every halting computation sends (n+1)^2 copies of e to the environment"
+    - "maximal parallelism (Paun 2006 sec. 4): on a^5 b^2 c^6 the rules aab -> abcc and bb -> aac give either a^3 b^2 c^10 or a^7 c^7 in one step"
+    - "strong vs weak priority (Paun 2006 sec. 11): with ff -> f > cf -> cd delta on fffc, the strong reading uses only ff -> f, the weak reading also uses cf -> cd delta on the remaining fc"
+    - "target indications: aab -> a b_out c c_in is used twice on a^5 b^2 c^6 (Paun 2006 sec. 7)"
+    - "computational universality, space-for-time trade-off via membrane division or worm objects, and polynomial solutions of NP-complete problems are reported in [679, 683] and are not reproduced"
   notes: >
-    Formally Pi = (Sigma, mu, w_1..w_m, (R_1,rho_1)..(R_m,rho_m), i_o).
-    The most important structured chemistry in the book for Chemart's
-    purposes: it is where compartments enter the output schema.
+    Formally Pi = (Sigma, mu, w_1..w_m, (R_1,rho_1)..(R_m,rho_m), i_o). The module also exports
+    parse_membranes, build_system, instantiate, select and run, and the published systems
+    divisibility(n, k) and N_SQUARED.

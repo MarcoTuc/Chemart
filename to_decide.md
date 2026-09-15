@@ -67,7 +67,19 @@ the sources turn up.
 | `urdar` | Invasion results reproduce; published diversity/efficiency *numbers* do not (trends do). The `on-gain` transform rule is inferred from those results. | The authors' Java program (math.chalmers.se/~torbjrn/Urdar) |
 | `combinator-chemistry` | 7 of the published reactions (thesis ch. 7 tables, 2000 paper) release a different number of copies; the count depends on the unpublished reduction order. | Speroni di Fenizio's simulator source |
 
-## 4. Scope
+## 4. Record design: per-reaction metadata
+
+Several generators need facts attached to single reactions that are not a
+rate law: L-system successor probabilities, which rule produced a reaction
+(kappa-calculus, CHAM, MGS, Gamma), threshold gates (chemoton), inhibitors
+(metabolic-robot-controller). Today they live in aligned lists under
+`extras` (e.g. `extras.probabilities[i]` for reaction i) or as extra scalar
+keys on the rate dict. Proposal from the l-systems implementer: an optional
+`Reaction.extra: dict | None`. It changes the record for every chemistry, so
+decide once all waves are in: adopt and migrate the aligned lists, or keep
+the current convention and document it.
+
+## 5. Scope
 
 Agreed: frameworks and analyses are marked out of scope (not deleted);
 wet chemistries become a small section of *given* topologies.

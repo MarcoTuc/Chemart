@@ -5,8 +5,8 @@
 
 Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rates or a rate law), **H** thermodynamics (energies and/or detailed balance). Status column: the fidelity of the implemented generator, or `todo (<book readiness>)`.
 
-- implemented: **56** of 98 (book: 4, book+decisions: 28, reconstructed: 24)
-- constructive (open, growing species set): **48**
+- implemented: **64** of 98 (book: 4, book+decisions: 28, reconstructed: 32)
+- constructive (open, growing species set): **50**
 - carry their own kinetics: **44**; carry energetics: **12**
 
 
@@ -120,15 +120,15 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 | id | name | kind | constructive | tier | status | book |
 |---|---|---|---|---|---|---|
 | `alchemy` | AlChemy (lambda-calculus chemistry) | generator | yes | TK | reconstructed | 9.1 |
-| `arms` | ARMS (Abstract Rewriting System on Multisets) | generator | no | T | todo (yes) | 9.4 |
-| `brane-calculi` | Brane calculi | formalism | yes | T | todo (no) | 9.7 |
-| `cham` | Chemical Abstract Machine (CHAM) | formalism | no | T | todo (yes) | 9.3 |
+| `arms` | ARMS (Abstract Rewriting System on Multisets) | generator | no | T | reconstructed | 9.4 |
+| `brane-calculi` | Brane calculi | formalism | yes | T | reconstructed | 9.7 |
+| `cham` | Chemical Abstract Machine (CHAM) | formalism | yes | T | reconstructed | 9.3 |
 | `combinator-chemistry` | Combinator chemistry | generator | yes | T | reconstructed | 9.8 |
-| `gamma` | Gamma / gamma-calculus | formalism | no | T | todo (yes) | 9.2 |
-| `kappa-calculus` | Kappa calculus | formalism | yes | TK | todo (partial) | 9.7 |
-| `l-systems` | L-systems | formalism | yes | T | todo (yes) | 9.8 |
-| `mgs` | MGS | formalism | yes | T | todo (partial) | 9.6 |
-| `p-systems` | P systems (membrane computing) | formalism | no | T | todo (yes) | 9.5 |
+| `gamma` | Gamma / gamma-calculus | formalism | yes | T | reconstructed | 9.2 |
+| `kappa-calculus` | Kappa calculus | formalism | yes | TK | reconstructed | 9.7 |
+| `l-systems` | L-systems | formalism | yes | T | reconstructed | 9.8 |
+| `mgs` | MGS | formalism | yes | T | reconstructed | 9.6 |
+| `p-systems` | P systems (membrane computing) | formalism | no | T | reconstructed | 9.5 |
 | `reflexive-ac` | Reflexive artificial chemistry | generator | yes | T | todo (no) | 9.8 |
 
 ## spatial

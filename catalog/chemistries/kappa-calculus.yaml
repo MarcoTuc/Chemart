@@ -2,31 +2,80 @@ chemistries:
 
 - id: kappa-calculus
   name: Kappa calculus
-  origin: "Danos & Laneve, 2004"
+  aliases: ["κ-calculus", "Kappa", "Kappa language", "rule-based modelling of site graphs"]
+  origin: "Danos & Laneve, 2004; the Kappa language: Danos, Feret, Fontana, Harmer, Krivine et al., 2007 onwards"
   book: "9.7"
-  refs: ["[208]"]
+  refs: ["[208]", "doi:10.1016/j.tcs.2004.03.065"]
   family: rewriting
   kind: formalism
   constructive: true
   S:
-    repr: "proteins with named binding sites; complexes are graphs"
+    repr: >
+      agents (proteins) with named sites; a site may carry an internal state (e.g. u/p) and a link to
+      one site of another agent. A species is a complex: a connected, fully specified site graph,
+      identified up to isomorphism. Species id and structure are its canonical Kappa expression, e.g.
+      A(x[1],c[2]),B(x[1]),C(x1{u}[2],x2{u}[.])
     definition: implicit
+    notes: >
+      Kappa site graphs are rigid (site names are distinct within an agent), so an embedding of a
+      connected pattern is fixed by the image of one agent and the canonical form is the least
+      breadth-first text over the possible roots.
   R:
-    definition: explicit
-    arity: 2
-    scheme: "graph rewriting rules expressing binding and dissociation of proteins at specific sites"
+    definition: implicit
+    arity: [1, 2]
+    scheme: >
+      rules rewrite patterns (partially specified site graphs) by binding, unbinding and changing
+      internal states, e.g. 'rule 2' A(x[_],c[.]), C(x1{u}[.]) -> A(x[_],c[2]), C(x1{u}[2]) @ 1e-4.
+      One rule stands for every reaction between complexes that contain its left-hand side; the
+      network is the closure of the rules over the complexes reachable from the initial ones.
+    notes: >
+      Components of a rule's left-hand side match distinct complexes (bimolecular); inside one
+      complex only when a unimolecular rate is given (@ k {k_uni}). Rules with three or more
+      disconnected components give reactions of that order.
   A:
-    reactor: [ssa, graph-rewrite]
+    reactor: [ode, ssa, graph-rewrite]
     dilution: none
+    notes: >
+      Kappa's native semantics is a continuous-time Monte Carlo over the site graph (KaSim) that never
+      enumerates species; Chemart flattens the rules into the equivalent mass-action reaction network
+      (KaDE's differential semantics), cut by species and complex-size budgets when polymerisation makes
+      it infinite. The unflattened model is kept in extras (rules, signatures, init, kappa file text).
   params:
-    - {name: agent_signatures, type: callable, role: structural, meaning: "protein types and their binding sites"}
-    - {name: rules, type: callable, role: structural}
-    - {name: rates, type: matrix, role: kinetic}
-  provides: [topology, stoichiometry, rate-constants, sequence-structure-function]
-  generator_ready: partial
+    - {name: model, type: enum, default: abc, choices: [abc, dimerization, polymerization, egfr, custom], role: structural, meaning: "abc: the 'Hello ABC' model of the Kappa reference guide (sec. 1.3; 10 species, 11 reactions); dimerization: its 'symmetric dimerization' rule (sec. 2.3.1.1); polymerization: its 'ambiguous molecularity' rule A(x[.]),A(y[.]) -> A(x[1]),A(y[1]) @ 0.001 {0.1} (chains and rings, truncated); egfr: the EGFR network of Blinov et al. (2006) from KaDE's benchmark egfr_net.ka (356 species, 3749 reactions); custom: signatures, rules and init"}
+    - {name: signatures, type: list, default: [], range: "e.g. ['A(x,c)', 'B(x)', 'C(x1{u p},x2{u p})']; the first state listed is the default", role: structural, meaning: "custom only: agent signatures, Kappa 4 syntax Name(site{state state ...}, ...)"}
+    - {name: rules, type: list, default: [], range: "e.g. [\"'bind' A(x[.]), B(x[.]) <-> A(x[1]), B(x[1]) @ 1e-4, 0.1\"]; edit notation A(x[./1]),B(x[./1]) @ k; unimolecular rate as @ k {k_uni}", role: kinetic, meaning: "custom only: Kappa rules with numeric rates; links [.] [n] [_] [#] [site.Agent], states {s} {#}, unwritten sites untested; agent creation and deletion are not supported"}
+    - {name: init, type: dict, default: {}, range: "e.g. {'A(),B()': 1000, 'C(x1{u},x2{u})': 10000}", role: population, meaning: "custom only: initial copies of each Kappa expression (its connected components are the initial complexes; unwritten sites take the default state and are free)"}
+    - {name: symmetry, type: enum, default: rule, choices: [rule, lhs, none], role: kinetic, meaning: "symmetry factor applied to rule rates (Kappa reference guide 3.3.1): rule = 1/|automorphisms of the left-hand side preserved on the right| (stance D, the biochemist convention), lhs = 1/|Aut(L)| (stance ND, the SSA convention), none = 1 (KaSim's default)"}
+    - {name: max_species, type: int, default: 2000, min: 1, max: 100000, range: "egfr closes at 356 species", role: structural, meaning: "species budget of the closure; reactions that would add more are dropped and status becomes truncated"}
+    - {name: max_complex_size, type: int, default: 20, min: 1, max: 1000, range: "the largest egfr complex has 14 agents; polymerization closes only under this budget", role: structural, meaning: "maximum agents in a complex; reactions producing a larger complex are dropped and status becomes truncated (KaDE's truncation option)"}
+  provides: [topology, stoichiometry, rate-constants, initial-state, mass-conservation, sequence-structure-function]
+  fidelity: reconstructed
+  sources:
+    - "Banzhaf, W. & Yamamoto, L. (2015). Artificial Chemistries, section 9.7 (one paragraph: proteins with binding sites, complexes as graphs, graph-rewriting rules for binding and dissociation)."
+    - "Danos, V. & Laneve, C. (2004). Formal molecular biology. Theoretical Computer Science 325(1):69-110 (book [208]). Proteins with sites, complexes as connected graphs, monotonic (complexation) and antimonotonic (decomplexation) reactions. https://www.cs.unibo.it/~laneve/papers/fmb.pdf"
+    - "Fontana, W., Boutillier, P., Feret, J. & Krivine, J. The Kappa Language: A Reference Guide v4. KappaLanguage.org. Sections 1.3 (ABC model and rates), 2.2-2.4 (patterns, arrow and edit notation, signatures, default states, %init), 3.2-3.3 (symmetry, rule activity, the ND/D/Null stances, eqs. 1-4), 3.5 (rate constants), 3.7 (ambiguous molecularity), appendix E (symmetries of a rule). https://kappalanguage.org/static/manual.pdf"
+    - "Camporesi, F., Feret, J. & Lý, K. Q. (2017). KaDE: a tool to compile Kappa rules into (reduced) ODE models. CMSB 2017. ODE semantics d[S]/dt = sum gamma(r) [r,R] Delta(R,S) prod [R_i], the three rate conventions, disconnected components kept apart unless a unary rate is given, truncation by complex size. https://www.di.ens.fr/~feret/CMSB2017-tool-paper/kade-tool-paper.pdf ; ground species counts of the benchmarks (egfr_net: 356): https://www.di.ens.fr/~feret/CMSB2017-tool-paper/"
+    - "KappaTools repository, examples/abc.ka (the ABC model in edit notation) and examples/benchmarks/CMSB2017-KaDe-tool-paper/BNGL/egfr_net.ka (the EGFR model in Kappa 3). https://github.com/Kappa-Dev/KappaTools"
+    - "Blinov, M. L., Faeder, J. R., Goldstein, B. & Hlavacek, W. S. (2006). A network model of early events in epidermal growth factor receptor signaling that accounts for combinatorial complexity. Biosystems 83(2-3):136-151: 356 molecular species connected by 3749 unidirectional reactions. https://pubmed.ncbi.nlm.nih.gov/16233948/"
+  decisions:
+    - "Language: the book's one paragraph and Danos & Laneve (2004) define the κ-calculus with sites that are bound, or free and visible or hidden. Chemart implements the subset of its successor, the Kappa 4 language of the reference guide, that covers exactly binding, unbinding and internal-state change: visible/hidden is an internal state {v h}. The 2004 paper's pdftotext extraction lost its Greek and symbols, so its algebraic syntax was not reproduced; the semantics (proteins with sites, complexes as connected graphs, complexation/decomplexation rules) is the same."
+    - "Not supported (ValueError): agent creation and deletion ('.' slots, + and - in edit notation), counters, tokens, %var names and algebraic rate expressions (rates are numbers). Hence agents of every type are conserved, given in extras.conservation."
+    - "v1 parameters agent_signatures (callable), rules (callable) and rates (matrix) became the model choice plus the custom signatures/rules/init lists in Kappa syntax, with rates written in the rules. Added symmetry, max_species and max_complex_size."
+    - "Flattening follows KaDE's differential semantics: each connected component of a rule's left-hand side matches its own complex; both components of a two-component rule match inside one complex only when a unimolecular rate {k} is given (KaSim instead applies a single rate to both cases). Rules with three or more components give only reactions of that order."
+    - "Rate of a flattened reaction R: k_R = sum over the embeddings of the rule into the reactant copies that yield R of gamma * Omega / prod m_i!, in molecule-count units with volume 1 (the rule rates of the published models are already per molecule). Then k_R prod x_i^m_i equals the rule activity of reference guide eq. (1), e.g. gamma n(n-1) for an A + A rule under 'none'. Reactions produced by several rules sum their rates; extras.reaction_rules lists the rules."
+    - "Symmetry convention default: 'rule' (stance D, 1/|Aut(L) preserved in R|), argued for in the reference guide's appendix E and named the biochemist convention by KaDE; 'lhs' (stance ND, SSA) and 'none' (KaSim's default, Null) are offered. The guide's prose says both '1p' and '2p' have activity k/2 under stance ND, but its eq. (1)-(2) give 2 embeddings x 1/2 x k = k; Chemart follows the equations, and the ratios the guide states ('1p' twice '2p' under D, and twice itself under ND) hold."
+    - "Species identity: the canonical Kappa expression (least breadth-first text over roots of the smallest agent type, sites in signature order, bonds numbered by appearance) is both id and structure, so isomorphic complexes are one species regardless of how they are written."
+    - "Named models: abc is the reference guide's section 1.3 model with its %var rates (on 1e-4, off 0.1, mod 1) and %init (1000 A, 1000 B, 10000 C); dimerization and polymerization are single rules printed in section 2.3.1.1 without initial amounts, so their initial_state is omitted (the seed is the free monomer). egfr translates KaDE's egfr_net.ka (Kappa 3: a bare site is free, site~state!link) programmatically into Kappa 4 with its %var values substituted; signatures are read off its %init lines; rules are labelled R1..R22 in file order."
+    - "Published counts reproduced: egfr gives 356 species and 3749 reactions, the numbers of Blinov et al. (2006) and of KaDE's ground network. The ABC network (10 species, 11 reactions) is not counted in the sources; it was derived by hand from the five rules and agrees with the generator."
+    - "Truncation: max_complex_size drops reactions whose products exceed it (KaDE offers the same truncation); max_species is expand's species budget. Either sets status truncated. polymerization is infinite: with max_complex_size n it gives chains of 1..n agents and rings of 2..n (a monomer cannot bind itself because embeddings are injective)."
+    - "Mass-action is the only law: Kappa rules carry stochastic rate constants and the flattened ODE is the mass-action system over complexes. No flow, no energies."
+  phenomena:
+    - "a handful of rules stands for many reactions: the 22 EGFR rules (37 one-way rules) flatten to 356 species and 3749 reactions (Blinov et al. 2006)"
+    - "ABC model (reference guide fig. 3): unmodified C is replaced first by singly (Cpu) then doubly phosphorylated C (Cpp); the AB complexes settle slightly below 400"
+    - "asymmetric binding polymerises (chains and, with a unimolecular rate, rings); symmetric binding gives strict dimers (reference guide 2.3.1.1)"
+    - "rule symmetries change rates: under stance D a symmetric rule that breaks its symmetry ('1p') fires twice as often as one that keeps it ('2p')"
   notes: >
-    Rule-based, combinatorially explosive species set - the archetype of a
-    chemistry that must NOT be flattened to a stoichiometric matrix by
-    default. Used for gene regulation, signal transduction, PPI networks.
-    Real tooling exists outside the book (KaSim), so Chemart should
-    interoperate rather than reimplement.
+    Rule-based, combinatorially explosive species set: the archetype of a chemistry that should not be
+    flattened blindly, which is why the flattening is budgeted and the rules themselves are kept in
+    extras.rules and extras.kappa for exporters (KaSim, KaDE). The module also exports signatures,
+    parse_rules, embed, automorphisms, canonical and kappa3_to_kappa4.

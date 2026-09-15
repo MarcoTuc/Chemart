@@ -2,6 +2,7 @@ chemistries:
 
 - id: arms
   name: ARMS (Abstract Rewriting System on Multisets)
+  aliases: ["chemical ARMS", "abstract rewriting system on multi-sets", "symbolic chemical system"]
   origin: "Suzuki & Tanaka, 1997"
   book: "9.4; ecology application 8.2.3; p53 model 18.3.2"
   refs: ["[830]", "[831]", "[832]", "[828]", "[829]"]
@@ -9,25 +10,63 @@ chemistries:
   kind: generator
   constructive: false
   S:
-    repr: "symbols from a finite alphabet A"
+    repr: "symbols from a finite alphabet A; the reaction vessel is a multiset of symbols"
     definition: explicit
   R:
     definition: explicit
     arity: variable
-    scheme: "Gamma = (A, R) with R a set of indexed multiset rewriting rules r_1..r_n"
+    scheme: >
+      Gamma = (A, R) with R a set of indexed multiset rewriting rules r_1..r_n, written in the
+      reaction syntax "3 a -> c", "a -> 2 a + 2 b" (book eq. 9.15: aaa -> c, b -> d, c -> e,
+      d -> ff, a -> abba, f -> h). A rule is heating when it enlarges the multiset
+      (|rhs| > |lhs|) and cooling when it shrinks it; input symbols are reactions ∅ -> s
+      ([831] def. 6).
   A:
-    reactor: [maximally-parallel, compartments]
-    dilution: none
+    reactor: [maximally-parallel, well-stirred-multiset]
+    dilution: "none; an optional maximal multiset size blocks inputs and rewrites that would exceed it"
     notes: >
-      A *rule order* determines the sequence of rule application; kinetics
-      is modelled as differing rule-application frequencies rather than
-      rate constants. Rewriting is sequential, free or parallel.
+      Book 9.4: a rule order fixes the sequence of rule application; kinetics is modelled as
+      differing rule-application frequencies rather than rate constants. [831] fig. 2: at each
+      iteration input symbols are injected, one rule is selected at random and applied if its left
+      side is present and the maximal size is respected; only rewrites count as steps. [831] fig. 14:
+      a heating rule is selected with probability p, a cooling rule with 1 - p.
   params:
-    - {name: alphabet, type: matrix, role: structural}
-    - {name: rules, type: callable, role: structural}
-    - {name: rule_order, type: matrix, role: structural, meaning: "priority ordering; reversing it turns a halting system into an exponentially expanding one"}
-    - {name: M0, type: matrix, role: population, meaning: "initial multiset"}
-    - {name: lambda_e, type: float, role: structural, meaning: "order parameter: ratio of heating to cooling rules; cycles emerge only at intermediate values (Langton-lambda analogue)"}
-  provides: [topology, stoichiometry, compartments, initial-state]
-  generator_ready: yes
-  phenomena: ["halting vs. exponential expansion depending on rule order", "emergence of cycles at intermediate lambda_e", "Brusselator-like oscillations", "plant/herbivore/carnivore ecology", "p53 signalling feedback loops"]
+    - {name: system, type: enum, default: book-example, choices: [book-example, ru1, brusselator, two-symbol, custom], role: structural, meaning: "rule set: book-example (book eqs. 9.13-9.16, rules r1-r6 from M0 = {a,b,a,a}), ru1 ([831] p. 132, aaa -> b, b -> a, b -> c, a -> bb, input a, maximal size 4, M0 = {a,a,a,a}), brusselator ([831] fig. 8, inputs A and B, maximal size 5000, empty M0), two-symbol ([831] 'rule set': all rules with 1-5 symbols from {a,b} on each side, maximal size 10, random M0 of 1-10 symbols), custom (rules, initial, inputs)"}
+    - {name: selection, type: enum, default: published, choices: [published, order, reverse-order, random, heating-probability], role: structural, meaning: "how rules are applied in the recorded run: published (order for book-example, heating-probability for two-symbol, random otherwise), order / reverse-order (book 9.4: one maximally parallel pass per step with rules by ascending / descending index), random ([831] fig. 2: one uniformly chosen rule per iteration), heating-probability ([831] fig. 14: a heating rule with probability p, a cooling rule with 1 - p)"}
+    - {name: p, type: float, default: 0.5, min: 0.0, max: 1.0, range: "[831] sweeps 0 to 1 in steps of 0.01", role: stochastic, meaning: "heating-probability only: probability of selecting a heating rule (a cooling rule is selected with 1 - p)"}
+    - {name: input_probability, type: float, default: 1.0, min: 0.0, max: 1.0, role: stochastic, meaning: "probability that each input symbol is injected at an iteration ([831]: 'frequency of inputs'; the published examples input at every iteration)"}
+    - {name: steps, type: int, default: 1000, min: 0, max: 100000, range: "[831] runs 1000 steps per initial state (two-symbol) and 10000 (brusselator)", role: population, meaning: "rewriting steps of the recorded run (count-step n of [831] figs. 2 and 14; one parallel pass in the ordered disciplines); the run stops earlier at a normal form or, for a deterministic ordered run, at the first repeated multiset"}
+    - {name: max_size, type: int, default: 0, min: -1, max: 1000000, role: population, meaning: "maximal multiset size: 0 keeps the system's published value (none for book-example and custom), -1 removes the limit, a positive value sets it"}
+    - {name: rule_count, type: int, default: 0, min: 0, max: 380, role: structural, meaning: "two-symbol only: 0 uses all 380 rules, otherwise a random subset of this many rules"}
+    - {name: rules, type: list, default: [], range: "e.g. ['3 a -> c', 'b -> d', 'a -> 2 a + 2 b']", role: structural, meaning: "custom only: rewriting rules r1, r2, ... in chemart reaction syntax (coefficient, space, symbol; terms joined by ' + '); an empty left side is an input rule"}
+    - {name: initial, type: dict, default: {}, range: "e.g. {a: 3, b: 1}", role: population, meaning: "custom only: initial multiset M0, symbol -> copies"}
+    - {name: inputs, type: list, default: [], range: "e.g. [a]", role: structural, meaning: "custom only: symbols input at every iteration (subject to input_probability and the maximal size)"}
+  provides: [topology, stoichiometry, catalysts, initial-state]
+  fidelity: reconstructed
+  sources:
+    - "Banzhaf, W. & Yamamoto, L. (2015). Artificial Chemistries, section 9.4 (Gamma = (A, R), eqs. 9.13-9.18: the six-rule example, forward order halting in {e,h,h}, reverse order expanding; the lambda_e order parameter with cycles at intermediate values), 8.2.3 and 18.3.2 (ecology and p53 applications, no rules given)."
+    - "Suzuki, Y. & Tanaka, H. (1998). Order parameter for a symbolic chemical system. In C. Adami, R. Belew, H. Kitano & C. Taylor (eds.), Artificial Life VI, pp. 130-139, MIT Press (book [831]). Definitions 3-7, the rewriting algorithm (figs. 2 and 14), the Ru1 example (fig. 3), the Brusselator rules (fig. 8), the lambda_e parameter (eq. 3), the two-symbol rule set and the termination/cycle results (figs. 15-17, table 2). Read from the open proceedings PDF, equations and figures checked on rendered page images: https://mitp-content-server.mit.edu/books/content/sectbyfn/books_pres_0/1431/9780262510998_ALIFE_VI.pdf?dl=1"
+  decisions:
+    - "Papers not accessible: [830] (Artif. Life Robotics 1:211-219, 1997), [828] (LNCS 2235, 2001), [829] (Artif. Life Robotics 6:129-132, 2002) and [832] (Applications of Membrane Computing, 2006) are closed access with no open copy found (Springer, OpenAlex: closed). The ecology (plant/herbivore/carnivore with herbivore-induced volatiles) and p53 rule sets are therefore not offered; the book gives no rules for them and inventing them is not allowed. The membrane (P system) structure, membrane growth and division of the 2001 ARMS are not implemented, so 'compartments' was removed from provides."
+    - "Ordered discipline: the book says rules are 'executed according to index' without defining a step. Chemart reads one step as one maximally parallel pass: rules in index order, each applied as often as its left side fits in what remains of the current multiset, products available only at the next step. This reproduces eq. 9.17 ({a,b,a,a} -> {c,d} -> {e,f,f} -> {e,h,h}) and eq. 9.18 ({a,b,a,a} -> 6 a, 6 b, 1 d) exactly."
+    - "Random discipline ([831] fig. 2): inputs happen before the rule is tried, at every iteration, and only successful rewrites count as steps; this reproduces the fig. 3 walk-through. [831] figs. 4 and 5 (Ru1 with printed rule orders) could not be reproduced by any of 16 readings of the algorithm (input before/after the rule, order advancing per iteration or per rewrite, states recorded per iteration or per rewrite); they are not used as tests."
+    - "Ru1 initial state: the text prints {a,a,f,a} with a symbol f that no rule uses, but its successors {b,a}, {c,a,a}, {c,a,a,a} only follow from {a,a,a,a}; ru1 starts from {a,a,a,a}. Figs. 4 and 5 start from {f} and keep f throughout; they are not reproduced (previous decision)."
+    - "Normal form ([831] def. 7): no selectable rule can rewrite the multiset within the maximal size and no symbol can be input. Under heating-probability, heating rules are selectable only if p > 0 and cooling rules only if p < 1; rules that keep the size (|lhs| = |rhs|) are never selected, because the published protocol gives heating p and cooling 1 - p and leaves no probability for them. An empty selected class is a failed iteration. A run is cut at 1000 + 50 * steps * |R| iterations (never reached in the published systems)."
+    - "lambda_e is computed as printed in [831] eq. 3, sum of heating-rule applications / (1 + (sum of cooling-rule applications - 1)), which equals the heating/cooling ratio; it is null when no cooling rule was applied (the paper says only that it is greater than 1 then). The book calls it 'the ratio between the number of heating rules to the number of cooling rules'; [831] counts rules used, which Chemart reads as applications."
+    - "Two-symbol rule set: [831] builds both sides by sampling a and b with replacement, lengths 1-5, 'as the overall permutation of both sides', and states eq. 4, {sum_{k=1..m} C(n+k-1, k)}^2, and 30976 rules. For n = 2, m = 5 eq. 4 gives 400, not 30976 (= 176^2), and the prose matches neither exactly. Chemart uses the multiset reading of eq. 4: all 400 pairs of multisets minus the 20 identities, 380 rules, with rule_count to sample subsets. Initial states have 1-10 symbols a/b drawn at random as in [831]."
+    - "Trajectory class in extras.analysis: 'halting' (normal form reached), 'periodic' (a deterministic ordered run repeats a multiset; its exact period is recorded and the run stops), 'recurrent' (a stochastic run revisits multisets without halting), 'non-recurrent' (no normal form and no revisit within the steps, e.g. the expanding reverse order of eq. 9.18). The paper's measures of order are recorded as revisits and kinds_of_periods (distinct return times to a multiset), with heating_uses, cooling_uses and lambda_e. These map to [831] table 2: halting with lambda_e near 0 or >> 1 (strong termination, Wolfram class I/II), many kinds of periods near lambda_e = 1 (weak termination, class III)."
+    - "Brusselator ([831] fig. 8): the paper gives no numeric rule frequencies (it only says a higher rate means a higher application frequency), so rules carry no rate and random selection is uniform. The products D and E are never removed in the published rules, so with inputs A and B the multiset fills to its maximal size of 5000; the oscillations of [831] figs. 9-11 depend on the unpublished frequencies and are not claimed."
+    - "Sequential, free and parallel rewriting (book 9.4, from [830]) are not defined in the accessible sources beyond their names; Chemart offers the ordered parallel pass of the book and the random single-rule rewriting of [831]. The rule order of [831] fig. 3 (a fixed cyclic sequence of rules) is available as run(..., sequence=...) in the module, not as a parameter."
+    - "v1 parameters: alphabet (matrix) is implied by the rules, initial multiset and inputs; rules (callable) became the system choice plus the custom rules text; rule_order (matrix) became the selection enum (order / reverse-order); M0 became initial; lambda_e is an output (analysis) controlled by p, as in [831]."
+  phenomena:
+    - "book eq. 9.17: with rules applied in index order, {a,b,a,a} -> {c,d} -> {e,f,f} -> {e,h,h}, a normal form (the system halts)"
+    - "book eq. 9.18: with the reverse rule order the multiset expands without bound ({a,b,a,a} -> 6 a, 6 b, 1 d -> ...)"
+    - "[831] figs. 15-17: with heating probability p near 0 or 1 every calculation terminates (lambda_e = 0 or no cooling); for intermediate p calculations do not terminate and many cycles with many kinds of periods appear, the most kinds near p = 0.5 (lambda_e near 1)"
+    - "[831] fig. 3: Ru1 with maximal size 4 from {a,a,a,a} and the rule order r4, r1, r3, r2 gives {a,a,a,a} -> {b,a} -> {c,a,a} -> {c,a,a,a}"
+    - "Brusselator-like oscillations of X and Y ([831] figs. 9-11, rule frequencies not published)"
+    - "plant/herbivore/carnivore ecology ([828], [829]) and p53 signalling feedback loops ([832]); rules not accessible"
+  notes: >
+    The module exports run (both disciplines, with an optional fixed rule sequence and a state trace),
+    Rule, two_symbol_rules and the published rule sets BOOK_RULES, RU1_RULES and BRUSSELATOR_RULES.
+    ARMS is a P system specialised for artificial life (book 9.5); the membrane version of [828] is
+    not implemented.
