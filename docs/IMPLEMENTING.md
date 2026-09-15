@@ -44,7 +44,9 @@ def generate(p, rng) -> Network:
 - Build explicit reactions with `chemart.helpers.explicit.network`
   (`"2 X + Y -> 3 X"`, with spaces around `+` and a space after
   coefficients). Reuse `chemart.helpers.params` for list/dict parameter checks,
-  `chemart.expand.expand` for closures of constructive chemistries, and
+  `chemart.expand.expand` for closures of constructive chemistries
+  (pass `alternatives=True` when one set of reactants can react in several
+  ways, returning a list of outcomes), and
   `chemart.soup.soup` for well-stirred multiset runs that record the reactions
   that fired.
 - Raise `ValueError` with an actionable message for invalid combinations

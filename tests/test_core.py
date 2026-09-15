@@ -94,6 +94,19 @@ def test_expand_truncates_on_budget():
     assert status == "truncated" and len(species) <= 4
 
 
+def test_expand_accepts_alternative_outcomes():
+    def two_ways(a, b):
+        """"ab" and "ba" can join either way round."""
+        if len(a) == len(b) == 1:
+            return [(a, b, a + b), (a, b, b + a)]
+        return None
+
+    species, reactions, status = expand(two_ways, ["x", "y"], ordered=False, alternatives=True)
+    assert status == "complete"
+    assert set(species) == {"x", "y", "xy", "yx", "xx", "yy"}
+    assert (("x", "y"), ("x", "y", "xy")) in reactions and (("x", "y"), ("x", "y", "yx")) in reactions
+
+
 def test_expand_tries_each_combination_once():
     calls = []
 

@@ -22,6 +22,7 @@ def expand(
     arity: int | Iterable[int] = 2,
     max_species: int = 1000,
     ordered: bool = True,
+    alternatives: bool = False,
 ) -> tuple[list[Molecule], list[tuple[tuple, tuple]], str]:
     """Compute the reaction network reachable from `seed`.
 
@@ -35,6 +36,9 @@ def expand(
         operand); False to try each multiset of reactants once.
     max_species: budget. A reaction whose novel products would exceed it is
         dropped, and the status becomes "truncated".
+    alternatives: if True, react returns an iterable of alternative
+        right-hand sides (or None), each becoming its own reaction, for
+        chemistries where one set of reactants can react in several ways.
 
     Returns (species in discovery order, reactions as (reactants, products)
     tuples deduplicated as multisets, status "complete" | "truncated").
@@ -53,21 +57,23 @@ def expand(
         for k in arities:
             for combo in _combinations(old, n, k, ordered):
                 lhs = tuple(species[i] for i in combo)
-                out = react(*lhs)
-                if out is None:
+                result = react(*lhs)
+                if result is None:
                     continue
-                rhs = tuple(out)
-                left, right = Counter(lhs), Counter(rhs)
-                if left == right:
-                    continue
-                novel = [m for m in dict.fromkeys(rhs) if m not in known]
-                if len(species) + len(novel) > max_species:
-                    truncated = True
-                    continue
-                species.extend(novel)
-                known.update(novel)
-                key = (frozenset(left.items()), frozenset(right.items()))
-                reactions.setdefault(key, (lhs, rhs))
+                left = Counter(lhs)
+                for out in (result if alternatives else (result,)):
+                    rhs = tuple(out)
+                    right = Counter(rhs)
+                    if left == right:
+                        continue
+                    novel = [m for m in dict.fromkeys(rhs) if m not in known]
+                    if len(species) + len(novel) > max_species:
+                        truncated = True
+                        continue
+                    species.extend(novel)
+                    known.update(novel)
+                    key = (frozenset(left.items()), frozenset(right.items()))
+                    reactions.setdefault(key, (lhs, rhs))
     return species, list(reactions.values()), "truncated" if truncated else "complete"
 
 

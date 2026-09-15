@@ -5,7 +5,7 @@
 
 Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rates or a rate law), **H** thermodynamics (energies and/or detailed balance). Status column: the fidelity of the implemented generator, or `todo (<book readiness>)`.
 
-- implemented: **48** of 98 (book: 4, book+decisions: 27, reconstructed: 17)
+- implemented: **56** of 98 (book: 4, book+decisions: 28, reconstructed: 24)
 - constructive (open, growing species set): **48**
 - carry their own kinetics: **44**; carry energetics: **12**
 
@@ -19,14 +19,14 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 | `brusselator` | Brusselator | generator | no | TK | book | 17.4.2, 19.3 |
 | `ccm` | Chemical Casting Model (CCM) | generator | no | T | todo (partial) | 17.2.2 |
 | `disperser` | Chemical disperser (load balancing) | generator | no | TK | book+decisions | 17.3.1 |
-| `fraglets` | Fraglets | generator | yes | TK | todo (yes) | 16.2.1, 17.3.1 |
+| `fraglets` | Fraglets | generator | yes | T | reconstructed | 16.2.1, 17.3.1 |
 | `metabolic-robot-controller` | Metabolic / artificial biochemical network robot controllers | generator | no | TK | reconstructed | 16.1.3 |
-| `molecular-tsp` | Molecular Traveling Salesman | generator | yes | T | todo (yes) | 17.2.1 |
+| `molecular-tsp` | Molecular Traveling Salesman | generator | yes | T | reconstructed | 17.2.1 |
 | `music-ac` | Algorithmic chemistry for music composition | generator | yes | T | todo (no) | 16.4 |
 | `naming-game-ac` | Naming game as an artificial chemistry | generator | no | TK | book+decisions | 16.3.3 |
 | `okamoto-switch` | Okamoto's biochemical switch | generator | no | TK | book+decisions | 17.4.1 |
 | `organization-computing` | Computing with chemical organizations | generator | no | T | book+decisions | 17.3.3 |
-| `proof-ac` | Artificial chemistry as a proof search system | generator | yes | T | todo (partial) | 16.5 |
+| `proof-ac` | Artificial chemistry as a proof search system | generator | yes | T | reconstructed | 16.5 |
 
 ## automata
 
@@ -39,7 +39,7 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 | `corewar` | Core War / Redcode | framework | yes | T | todo (partial) | 10.6.2 |
 | `coreworld` | Coreworld (Venus I / Venus II) | generator | yes | T | todo (partial) | 10.6.3 |
 | `ikegami-hashimoto` | Machine-tape chemistry | generator | yes | TK | reconstructed | 10.5.4 |
-| `laing-molecular-machines` | Laing's artificial molecular machines | generator | yes | T | todo (no) | 10.5.1 |
+| `laing-molecular-machines` | Laing's artificial molecular machines | generator | yes | T | book+decisions | 10.5.1 |
 | `mccaskill-polymer-tm` | Polymers as Turing machines / pattern processing chemistry | generator | yes | T | reconstructed | 10.5.3 |
 | `sr-loops` | Self-replicating loops in cellular automata | generator | yes | T | todo (partial) | 10.4, 10.7.2 |
 | `tierra` | Tierra | framework | yes | T | todo (partial) | 10.6.4 |
@@ -82,7 +82,7 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 | `replication-death` | Replication and death | generator | no | TK | book+decisions | 7.2.1 |
 | `replicator-equation` | Replicator equation (evolutionary game dynamics) | generator | no | TK | book+decisions | 7.2.8 |
 | `selection-equation` | Selection equation under a dilution flow | generator | no | TK | book+decisions | 7.2.5 |
-| `urdar` | Urdar | generator | yes | TH | todo (partial) | 8.2.3 |
+| `urdar` | Urdar | generator | yes | TH | reconstructed | 8.2.3 |
 
 ## network
 
@@ -119,11 +119,11 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 
 | id | name | kind | constructive | tier | status | book |
 |---|---|---|---|---|---|---|
-| `alchemy` | AlChemy (lambda-calculus chemistry) | generator | yes | T | todo (partial) | 9.1 |
+| `alchemy` | AlChemy (lambda-calculus chemistry) | generator | yes | TK | reconstructed | 9.1 |
 | `arms` | ARMS (Abstract Rewriting System on Multisets) | generator | no | T | todo (yes) | 9.4 |
 | `brane-calculi` | Brane calculi | formalism | yes | T | todo (no) | 9.7 |
 | `cham` | Chemical Abstract Machine (CHAM) | formalism | no | T | todo (yes) | 9.3 |
-| `combinator-chemistry` | Combinator chemistry | generator | yes | T | todo (partial) | 9.8 |
+| `combinator-chemistry` | Combinator chemistry | generator | yes | T | reconstructed | 9.8 |
 | `gamma` | Gamma / gamma-calculus | formalism | no | T | todo (yes) | 9.2 |
 | `kappa-calculus` | Kappa calculus | formalism | yes | TK | todo (partial) | 9.7 |
 | `l-systems` | L-systems | formalism | yes | T | todo (yes) | 9.8 |
@@ -156,7 +156,7 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 | `smn` | String Metabolic Network (SMN) | generator | yes | T | book+decisions | 18.3.1 |
 | `srsim` | SRSim (rule-based spatial simulator) | framework | yes | T | todo (no) | 18.3.3 |
 | `synthon` | Synthon artificial chemistry | generator | yes | TK | todo (no) | 18.3.2 |
-| `tominaga-stacked-strings` | Tominaga's stackable-string chemistry | generator | yes | T | todo (no) | 18.3.2 |
+| `tominaga-stacked-strings` | Tominaga's stackable-string chemistry | generator | yes | T | reconstructed | 18.3.2 |
 
 ## wet
 
