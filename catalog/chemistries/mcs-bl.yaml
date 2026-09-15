@@ -1,0 +1,39 @@
+chemistries:
+
+- id: mcs-bl
+  name: Molecular Classifier System (MCS.bl)
+  origin: "McMullin, Decraene, Kelly et al., 2007-2011; based on Holland's Broadcast Language (1975) and classifier systems"
+  book: "11.1.1"
+  refs: ["[221]", "[222]", "[224]", "[225]", "[452]", "[570]", "[395]", "[396]"]
+  family: bio-inspired
+  kind: generator
+  constructive: true
+  S:
+    repr: >
+      Broadcast devices: strings over {0, 1, *, :, #, $, %, '} containing one
+      or more broadcast units (condition part ':' action part, opened by '*').
+      '#' and '%' are single-character wildcards, '$' a multi-character
+      wildcard; % and $ on both sides mean transposition of the match;
+      "'" quotes the next symbol.
+    definition: implicit
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "S1 + S2 -> S1 + S2 + S3 (both reactants catalytic)"
+    notes: >
+      Realisable operations (book table 11.1): no reaction, activation,
+      inhibition, universal replication, self-replication, concatenation,
+      cleavage.
+  A:
+    reactor: compartments
+    dilution: "cells divide at a threshold; total cell count constant, so a division kills another cell"
+    notes: "multilevel selection: molecular reproduction inside cells + competition between cells"
+  params:
+    - {name: p_s, type: float, default: 1e-5, role: stochastic, meaning: "per-symbol mutation probability during reaction; applied as flip / insert / delete with equal probability"}
+    - {name: n_cells, type: int, default: 31, role: population}
+    - {name: cell_capacity, type: int, default: 1000000, role: population, meaning: "max molecules per cell"}
+    - {name: division_target, type: matrix, role: selection, meaning: "molecular species and count required to trigger division (e.g. 200 copies of s1); this is the higher-level selection knob"}
+    - {name: seed_molecules, type: matrix, role: population}
+  provides: [topology, catalysts, compartments, flow, sequence-structure-function]
+  generator_ready: yes
+  phenomena: ["succession of dominant cell types c0->c1->c2->c3, each a small self-maintaining string set (book table 11.2)", "selection pressure can be aimed at a chosen molecular species by changing the division criterion"]

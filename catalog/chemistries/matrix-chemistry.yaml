@@ -1,0 +1,55 @@
+chemistries:
+
+- id: matrix-chemistry
+  name: Matrix chemistry
+  aliases: ["algorithmic chemistry (Banzhaf)", "MatrixChem"]
+  origin: "Banzhaf, 1993"
+  book: "chapter 3; revisited in 12.5, 13.2"
+  refs: ["[63]", "[64]", "[65]"]
+  family: core
+  kind: generator
+  constructive: true
+  S:
+    repr: "binary strings of length N, N a perfect square; |S| = 2^N - 1 (the all-zero 'destructor' is excluded from reacting)"
+    definition: implicit
+  R:
+    definition: implicit
+    arity: 2
+    scheme: >
+      s1 + s2 -> s1 + s2 + s3, where s1 folds into a sqrt(N) x sqrt(N)
+      operator P and acts on s2 in sqrt(N)-sized chunks:
+      s3[i + k*sqrt(N)] = sigma( sum_j P[i][j] * s2[j + k*sqrt(N)] - Theta )
+      with sigma the Heaviside step. Both reactants survive (catalytic).
+    notes: >
+      Reactions classify into self-replication (s1+s1 -> +s1), replication
+      (s1+s2 -> +s1) and heterogeneous (s1+s2 -> +s3). n_S = 2^N - 1,
+      n_R = 2^(2N) - 3*2^N + 2.
+  A:
+    reactor: [well-stirred-multiset, ode]
+    dilution: "draw a third molecule s4 at random and remove it, keeping M constant"
+    notes: >
+      Explicit algorithm; the ODE form is
+      x_i' = sum_jk W_ijk x_j x_k - x_i * Phi(t), or equivalently
+      x_i' = [B_i x_i + sum_k C_ik x_k] x_i + sum_jk W_ijk x_j x_k - x_i Phi / sum_k x_k.
+  params:
+    - {name: N, type: int, default: 9, range: "perfect square: 1, 4, 9, 16, 25, 100", role: structural, meaning: "string length; fixes |S| = 2^N - 1 and |R| = 2^2N - 3*2^N + 2"}
+    - {name: folding, type: enum, default: 1, range: "1..4 (row-major, transposed, row-snake, column-snake)", role: structural, meaning: "how a string is laid out into a matrix; changes the number of self-replicators (N=9: 14/122/18/94) and replicators (12028/21310/11822/16830)"}
+    - {name: Theta, type: float, default: 0.0, role: structural, meaning: "threshold of the squashing function; output bit is 1 iff the sum is strictly greater than Theta (book eq. 3.5 says >=, which contradicts table 3.3 - see docs/BOOK-ERRATA.md E1); Theta=0 makes the operation purely Boolean"}
+    - {name: n, type: float, default: 1.0, role: selection, meaning: "exponent in the decay probability p(k) = (I(k)/N)^n, where I(k) is the number of 1-bits; tilts selection against the all-ones 'exploitor'"}
+    - {name: M, type: int, default: 1000, role: population, meaning: "population size (constant)"}
+    - {name: destructor_elastic, type: bool, default: true, role: selection, meaning: "make all collisions with the all-zeros string elastic; without this it dominates immediately"}
+    - {name: seed_species, type: matrix, default: "s(1)..s(15)", role: population, meaning: "initial multiset"}
+  provides: [topology, stoichiometry, catalysts, initial-state, flow, sequence-structure-function]
+  generator_ready: yes
+  decisions:
+    - "Threshold is strict: an output bit is 1 iff sum_j P_ij s_j > Theta. Book eq. 3.5 says >=, which with Theta=0 maps every zero sum to 1 and contradicts table 3.3 (operator s(1) on s(2) yields s(0)). The strict form reproduces tables 3.3 and 3.5, the N=4 counts, table 3.4 and the 3.3 closure exactly."
+    - "Foldings for N > 4 (book defers to [65]): 2 = transpose, 3 = row snake (odd rows reversed), 4 = column snake (odd columns reversed). These reproduce table 3.4 exactly for N=9: 14/12028, 122/21310, 18/11822, 94/16830 self-replications/replications."
+    - "Organisations of the 4-bit system: table 12.3 lists 52 (IDs 0..51, including the empty and full sets); the prose of 12.5.2 says 54. Trust the table. Table 12.2 is table 3.3 (first folding) with the destructor row/column added, although 12.5.2 calls it 'nontopological horizontal folding'."
+    - "Bit order: s(5) = (1,0,1,0), so component s_1 is the least significant bit of the integer name. Self-replication counts i with s(i)+s(i) -> +s(i); replication counts ordered pairs i != j whose product is s(i) or s(j); the destructor s(0) is excluded and producing s(0) is an elastic collision."
+  reference_impl: "PyCellChemistry MatrixChemistry.py"
+  phenomena: ["emergence of self-replicators", "closure of the reachable species set (N=9 from s1..s15 closes at s1..s27 minus s20..s23, book 3.3)", "focusing of all mass into one self-replicator", "organisations (N=4: 52 listed in book table 12.3, IDs 0..51; the prose of 12.5.2 says 54 - see docs/BOOK-ERRATA.md E2)"]
+  notes: >
+    Best-in-class test case for Chemart's whole pipeline: it is
+    constructive but with a finite S, so `expand()` provably terminates
+    and can be checked against the book's published closure and against
+    the 51 organisations of the 4-bit system.

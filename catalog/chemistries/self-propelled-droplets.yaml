@@ -1,0 +1,23 @@
+chemistries:
+
+- id: self-propelled-droplets
+  name: Self-propelled oil droplets
+  origin: "Hanczyc et al., 2007-2011"
+  book: "19.2.3"
+  refs: ["[363]", "[364]", "[365]", "[858]", "[483]", "[885]"]
+  family: wet
+  kind: wet
+  constructive: false
+  S: {repr: "oil droplet with a fatty acid precursor in an alkaline aqueous surfactant phase", definition: explicit}
+  R:
+    definition: explicit
+    arity: 1
+    scheme: "precursor hydrolyses to surfactant at the interface, breaking symmetry and driving a convective flow that propels the droplet"
+  A: {reactor: continuous-space, dilution: "fuel surfactant supply"}
+  params:
+    - {name: pH_gradient, type: callable, role: spatial}
+    - {name: fuel_supply, type: float, role: population}
+  provides: [space]
+  generator_ready: no
+  phenomena: ["chemotaxis up a pH gradient", "maze solving", "division and fusion", "rare-earth ion extraction"]
+  notes: "Protocells with no information subsystem. Out of scope for generation; catalogued for completeness."

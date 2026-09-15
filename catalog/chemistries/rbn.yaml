@@ -1,0 +1,28 @@
+chemistries:
+
+- id: rbn
+  name: Random Boolean Networks (RBN) and RBN World
+  origin: "Kauffman, 1969; RBN World: Faulconbridge, Stepney, Miller & Caves, 2011"
+  book: "18.4.2; subsymbolic AC 10.7.3"
+  refs: ["[445]", "[243]", "[348]", "[447]", "[591]", "[263]", "[264]", "[291]"]
+  family: evolutionary-dynamics
+  kind: generator
+  constructive: false
+  S:
+    repr: "N nodes with Boolean state; in RBN World an atom is a *bonding* RBN (bRBN) and a molecule is a network of bRBNs joined at bonding sites"
+    definition: implicit
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "RBN: synchronous update s_i(t+1) = f_i(inputs). RBN World: bond formation and cleavage between bRBNs, driven by their dynamics"
+  A: {reactor: [graph-rewrite, well-stirred-multiset], dilution: none}
+  params:
+    - {name: N, type: int, role: structural, meaning: "number of nodes"}
+    - {name: K, type: int, default: 2, role: structural, meaning: "in-degree; K=1 dead, K=2..3 'edge of chaos', large K chaotic"}
+    - {name: K_distribution, type: enum, default: constant, range: "constant | poisson | power-law", role: structural, meaning: "power-law gives scale-free GRNs which match biological data better"}
+    - {name: function_bias, type: float, role: structural, meaning: "P(output=1) in the random Boolean functions"}
+    - {name: update, type: enum, default: synchronous, range: "synchronous | asynchronous", role: structural}
+    - {name: bonding_sites, type: int, role: structural, meaning: "RBN World only"}
+  provides: [topology, sequence-structure-function]
+  generator_ready: yes
+  phenomena: ["cycle attractors interpreted as cell types (Kauffman's cell-differentiation conjecture)", "order/chaos transition as a function of K", "RBN World aims at autocatalytic sets, hypercycles and heteropolymers built from bRBNs"]

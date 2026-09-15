@@ -1,0 +1,23 @@
+chemistries:
+
+- id: music-ac
+  name: Algorithmic chemistry for music composition
+  origin: "Miyamoto & Tominaga (homophonic); Tominaga et al. (polyphonic)"
+  book: "16.4"
+  refs: ["[592]", "[854]"]
+  family: application
+  kind: generator
+  constructive: true
+  S: {repr: "musical patterns: note sequences and chords", definition: implicit}
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "pattern combination rules, with harmonic filters rejecting dissonant combinations"
+  A: {reactor: well-stirred-multiset, dilution: none}
+  params:
+    - {name: mode, type: enum, range: "homophonic | polyphonic", role: structural}
+    - {name: harmony_filter, type: callable, role: selection}
+    - {name: seed_patterns, type: matrix, role: population}
+  provides: [topology, sequence-structure-function]
+  generator_ready: no
+  notes: "Described only qualitatively in the book; needs the primary sources."

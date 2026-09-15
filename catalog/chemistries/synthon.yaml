@@ -1,0 +1,23 @@
+chemistries:
+
+- id: synthon
+  name: Synthon artificial chemistry
+  origin: "Lenaerts & Bersini, 2009"
+  book: "18.3.2"
+  refs: ["[505]"]
+  family: systems-biology
+  kind: generator
+  constructive: true
+  S: {repr: "molecules as graphs of atoms; charged molecules, covalent and ionic bonds modelled explicitly", definition: implicit}
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "reactions as ISOMERISATIONS between ensembles: educt and product sides are isomers of each other at the ensemble level"
+  A: {reactor: ssa, dilution: none, notes: "focuses on dynamics: stochastic kinetics and coevolutionary dynamics, unlike ToyChem which focuses on structure"}
+  params:
+    - {name: atom_types, type: matrix, role: structural}
+    - {name: charge_model, type: callable, role: structural}
+    - {name: rate_model, type: callable, role: kinetic}
+  provides: [topology, stoichiometry, mass-conservation, rate-constants, sequence-structure-function]
+  generator_ready: no
+  phenomena: ["partition of the molecule set into two mirror reaction networks - a candidate explanation for homochirality"]

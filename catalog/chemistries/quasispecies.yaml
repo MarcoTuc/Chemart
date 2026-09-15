@@ -1,0 +1,30 @@
+chemistries:
+
+- id: quasispecies
+  name: Quasispecies equation
+  origin: "Eigen, 1971; Eigen & Schuster"
+  book: "7.2.7; appendix (Quasispecies.py)"
+  refs: ["[249]", "[627]", "[621]"]
+  family: evolutionary-dynamics
+  kind: generator
+  constructive: false
+  S:
+    repr: "genome sequences of length L over an alphabet of size B; |S| = B^L"
+    definition: implicit
+  R:
+    definition: explicit
+    arity: 1
+    scheme: "X_j --f_j q_ji--> X_j + X_i ; X_i --phi--> (nothing)"
+  A: {reactor: [ode, ssa], dilution: "phi = mean fitness, population size constant"}
+  params:
+    - {name: L, type: int, default: 6, min: 1, max: 8, range: "the book's figure 7.4 uses L = 10, above the generator limit of 256 genomes", role: structural, meaning: "genome length"}
+    - {name: B, type: int, default: 2, min: 2, max: 4, role: structural, meaning: "alphabet size"}
+    - {name: m, type: float, default: 0.2, min: 0, range: "book: 0.2, 1.0, 2.0", role: stochastic, meaning: "mutations per genome; per-site rate p = m/L. Deterministic error threshold at m = 1; the stochastic threshold in finite populations is LOWER"}
+    - {name: fitness, type: enum, default: ones-fraction, choices: [ones-fraction, single-peak], role: selection, meaning: "ones-fraction: share of positions holding the highest symbol (the book's choice); single-peak: 2 for the all-highest genome, 1 otherwise"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, flow]
+  fidelity: book+decisions
+  decisions:
+    - "q_ji = (p/(B-1))^d (1-p)^(L-d), with d the Hamming distance and p = m/L. Reactions with zero rate are omitted."
+    - "The full network has up to (B^L)^2 reactions, so B^L is limited to 256 genomes. The population size N is not a parameter: it sizes a stochastic simulation. No initial state is attached: the book only says the start is random and biased toward low fitness."
+  reference_impl: "PyCellChemistry Quasispecies.py, Evolution.py, Tournament.py"
+  phenomena: ["quasispecies cloud around the fittest genotype", "error catastrophe above the threshold", "no adaptation below a minimum mutation rate"]

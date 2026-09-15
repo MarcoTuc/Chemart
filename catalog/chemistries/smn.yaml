@@ -1,0 +1,27 @@
+chemistries:
+
+- id: smn
+  name: String Metabolic Network (SMN)
+  origin: "Ono, Fujimoto & Ikegami, 2005"
+  book: "18.3.1"
+  refs: ["[638]"]
+  family: systems-biology
+  kind: generator
+  constructive: true
+  S: {repr: "strings over an 8-letter alphabet {a..h}, arbitrary length", definition: implicit}
+  R:
+    definition: explicit
+    arity: 2
+    scheme: "ligation/cleavage A + B <-> AB ; recombination AB + CD <-> AD + CB. Each reaction is catalysed by a corresponding enzyme encoded in the organism's genome."
+  A:
+    reactor: [ode, compartments]
+    dilution: "regulated inflow/outflow keeps total intracellular mass stable"
+  params:
+    - {name: alphabet_size, type: int, default: 8, role: structural}
+    - {name: rate_bias, type: float, role: kinetic, meaning: "kinetic coefficients set so that synthesising LONGER molecules is harder"}
+    - {name: initial_metabolites, type: matrix, role: population}
+    - {name: mutation, type: enum, default: "duplicate-then-mutate an enzyme", role: stochastic, meaning: "pick an enzyme, replace one educt with an existing compound, pick a new recombination point, add to the genome"}
+    - {name: fitness, type: callable, default: "total mass in letters after a fixed number of timesteps", role: selection}
+  provides: [topology, stoichiometry, catalysts, rate-constants, mass-conservation, flow]
+  generator_ready: yes
+  phenomena: ["evolved networks show a power-law community-size distribution matching 100 real organisms' metabolic networks (book fig. 18.6)"]

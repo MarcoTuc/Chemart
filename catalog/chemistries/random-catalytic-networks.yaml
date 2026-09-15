@@ -1,0 +1,32 @@
+chemistries:
+
+- id: random-catalytic-networks
+  name: Random catalytic reaction networks
+  origin: "Stadler, Fontana & Miller, 1993"
+  book: "7.2.9"
+  refs: ["[792]"]
+  family: evolutionary-dynamics
+  kind: generator
+  constructive: false
+  S: {repr: "n abstract species X_1..X_n with no internal structure", definition: explicit}
+  R:
+    definition: explicit
+    arity: 2
+    scheme: "X_i + X_j --alpha^k_ij--> X_i + X_j + X_k (both reactants catalytic)"
+    notes: "x_k' = sum_ij alpha^k_ij x_i x_j - x_k phi(t), with phi = sum_ij a_ij x_i x_j and a_ij = sum_k alpha^k_ij"
+  A: {reactor: ode, dilution: "non-specific dilution flux phi"}
+  params:
+    - {name: n, type: int, default: 10, min: 2, max: 60, role: structural, meaning: "number of species"}
+    - {name: density, type: float, default: 0.1, min: 0, max: 1, role: structural, meaning: "probability that a given reaction X_i + X_j -> X_i + X_j + X_k exists; sparse to dense"}
+    - {name: allow_direct_replication, type: bool, default: false, role: structural, meaning: "allow k = i or k = j; the book's interesting case forbids direct self-replication"}
+    - {name: alpha_distribution, type: enum, default: uniform, choices: [uniform, exponential], role: kinetic, meaning: "distribution of the rate alpha of an existing reaction: uniform on [0, 1) or exponential with mean 1"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, flow]
+  fidelity: book+decisions
+  decisions:
+    - "The book gives the reaction scheme, the ODE and the direct-replication switch, but not how alpha is drawn. Each existing reaction gets alpha from `alpha_distribution` (default uniform on [0, 1))."
+    - "Reactions are sampled per unordered reactant pair {i, j}. In the ODE the ordered terms alpha^k_ij and alpha^k_ji describe the same reaction, so one rate per pair loses nothing. The dilution phi is outflow = 'constant-total'."
+  phenomena: ["convergence to a fixpoint where only a mutually catalytic subset survives - later recognised as a chemical organisation", "contains the replicator and Lotka-Volterra equations as special cases"]
+  notes: >
+    The structural template that the matrix chemistry, the automata reaction
+    and AlChemy all instantiate: Chemart's canonical 'null model' generator
+    for benchmarking organisation-finding code.

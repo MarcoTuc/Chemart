@@ -1,0 +1,40 @@
+chemistries:
+
+- id: chameleon
+  name: Colored chameleon chemistry
+  aliases: ["chameleon colony puzzle"]
+  origin: "Winkler, 2007 puzzle; formulated as an AC by Banzhaf & Yamamoto"
+  book: "2.5.1"
+  refs: ["[921]", "[922]"]
+  family: core
+  kind: generator
+  constructive: false
+  S:
+    repr: "three colors r, g, b"
+    definition: explicit
+  R:
+    definition: explicit
+    arity: 2
+    scheme: "i + j -> 2k for all i != j != k over {r,g,b}; same-color collisions are elastic"
+  A:
+    reactor: [well-stirred-multiset, ode]
+    dilution: "none needed - the rule is number-conserving (2 in, 2 out)"
+    notes: >
+      Products are inserted into the slots vacated by the reactants.
+      Time rescaling between the multiset simulation and the ODE must
+      correct for elastic collisions, which occur with probability
+      p_e = sum_i x_i^2.
+  params:
+    - {name: M, type: int, default: 5400, min: 3, role: population, meaning: "total number of chameleons (constant)"}
+    - {name: x0, type: list, default: [0.5, 0.0, 0.5], role: population, meaning: "initial colour fractions of (r, g, b), summing to 1; counts are M * x0 rounded by largest remainder"}
+  provides: [topology, stoichiometry, rate-constants, initial-state, mass-conservation]
+  fidelity: book
+  decisions:
+    - "Rate constants are 1 for all three reactions, as implied by the book's rate equations 2.40-2.42."
+    - "Default x0 follows figure 2.5 (only red and blue present at the start)."
+  reference_impl: "PyCellChemistry Chameleons.py"
+  phenomena: ["conserved total count", "relaxation to the 1/3,1/3,1/3 fixed point", "the mod-3 invariant that makes the original puzzle unsolvable"]
+  notes: >
+    extras.conservation carries the real law (1,1,1) and the two mod-3
+    invariants (r - g) and (g - b), which a real-valued nullspace
+    computation will NOT find.

@@ -1,0 +1,41 @@
+chemistries:
+
+- id: p-systems
+  name: P systems (membrane computing)
+  origin: "Paun, 1998"
+  book: "9.5; multicompartment SSA 4.3; biology 18.3.2"
+  refs: ["[678]", "[679]", "[680]", "[681]", "[683]", "[661]", "[718]"]
+  family: rewriting
+  kind: formalism
+  constructive: false
+  S:
+    repr: "symbols over an alphabet Sigma; multisets written as strings (a^2 b^3 c)"
+    definition: explicit
+  R:
+    definition: explicit
+    arity: variable
+    scheme: >
+      multiset rewriting plus target indicators and membrane operations:
+      'abc -> a_here b_out d_in_j', 'a -> b delta' (dissolve),
+      '[a] -> [b][c]' (divide)
+  A:
+    reactor: [maximally-parallel, compartments, ssa]
+    dilution: none
+    notes: >
+      Default algorithm: fire all applicable rules maximally in parallel
+      until inert. The multicompartmental Gillespie algorithm (MGA) and
+      variants replace this with rate-based scheduling for biological realism.
+  params:
+    - {name: Sigma, type: matrix, role: structural, meaning: "alphabet of objects"}
+    - {name: mu, type: matrix, role: spatial, meaning: "membrane structure, e.g. [1 [2 ]2 [3 ]3 [4 [5 ]5 [6 ]6 [7 ]7 ]4 ]1"}
+    - {name: w_i, type: matrix, role: population, meaning: "initial multiset in each region i"}
+    - {name: R_i, type: callable, role: structural, meaning: "rule set per region"}
+    - {name: rho_i, type: matrix, role: structural, meaning: "priority relation over rules in region i"}
+    - {name: i_o, type: int, role: structural, meaning: "id of the output membrane"}
+  provides: [topology, stoichiometry, compartments, initial-state]
+  generator_ready: yes
+  phenomena: ["Turing universality", "space-for-time tradeoff via membrane division / worm objects", "decision problems (e.g. is n a multiple of k)"]
+  notes: >
+    Formally Pi = (Sigma, mu, w_1..w_m, (R_1,rho_1)..(R_m,rho_m), i_o).
+    The most important structured chemistry in the book for Chemart's
+    purposes: it is where compartments enter the output schema.

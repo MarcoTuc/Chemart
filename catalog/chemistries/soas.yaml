@@ -1,0 +1,22 @@
+chemistries:
+
+- id: soas
+  name: Self-Organizing Assembly Systems (SOAS)
+  origin: "Frei & Di Marzo Serugendo, 2011-2012"
+  book: "20.1"
+  refs: ["[296]", "[297]"]
+  family: non-chemical
+  kind: generator
+  constructive: false
+  S: {repr: "industrial robots and workpieces as CHAM molecules", definition: explicit}
+  R:
+    definition: explicit
+    arity: variable
+    scheme: "CHAM rules (see `cham`) specifying how robots aggregate into an assembly line for a given manufacturing order"
+  A: {reactor: [maximally-parallel, compartments], dilution: none}
+  params:
+    - {name: robot_types, type: matrix, role: structural}
+    - {name: manufacturing_order, type: matrix, role: selection}
+  provides: [topology, compartments]
+  generator_ready: partial
+  phenomena: ["provably correct assembly-line configurations, verified in the Maude specification language"]

@@ -1,0 +1,32 @@
+chemistries:
+
+- id: high-order-chem
+  name: High-order chemistry (rules as molecules)
+  aliases: ["HighOrderChem"]
+  origin: "Banzhaf & Yamamoto, PyCellChemistry"
+  book: "appendix"
+  family: core
+  kind: framework
+  constructive: true
+  S:
+    repr: "two multisets: data molecules (arbitrary Python objects) and rule molecules (strings holding Python calls)"
+    definition: implicit
+  R:
+    definition: implicit
+    arity: "variable - determined by the arity of the drawn rule"
+    scheme: "draw a rule 'f(m1,...,mk)'; draw k data molecules; exec; inject the returned products; reinject the rule (catalytic)"
+  A:
+    reactor: well-stirred-multiset
+    dilution: none
+  params:
+    - {name: rules, type: callable, role: structural, meaning: "the rule multiset - this IS the chemistry"}
+    - {name: seed, type: matrix, role: population, meaning: "initial data multiset"}
+  provides: [topology, sequence-structure-function]
+  generator_ready: yes
+  reference_impl: "PyCellChemistry HighOrderChem.py"
+  phenomena: ["any constructive chemistry can be re-expressed on it", "rules compete for substrate"]
+  notes: >
+    Not a chemistry but the substrate on which Chemart's constructive
+    backend should be modelled. Note the book's own caveat: it is not yet
+    truly high-order because rules cannot rewrite rules (no type tags on
+    binding sites).

@@ -1,0 +1,23 @@
+chemistries:
+
+- id: social-communication-ac
+  name: Artificial chemistry of social communication
+  origin: "Dittrich, Kron & Banzhaf, 2003"
+  book: "20.4"
+  refs: ["[234]"]
+  family: non-chemical
+  kind: generator
+  constructive: false
+  S: {repr: "messages 1..N exchanged between social agents ('ego' and 'alter')", definition: explicit}
+  R:
+    definition: explicit
+    arity: 2
+    scheme: "an agent's response to a received message is drawn from its (adapting) mapping; communication events are reactions"
+  A: {reactor: well-stirred-multiset, dilution: none}
+  params:
+    - {name: N, type: int, role: structural, meaning: "number of possible messages"}
+    - {name: n_agents, type: int, default: 2, role: population}
+    - {name: memory, type: int, role: structural}
+  provides: [topology]
+  generator_ready: no
+  phenomena: ["emergence of social order from message exchange"]

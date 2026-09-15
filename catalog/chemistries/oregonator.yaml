@@ -1,0 +1,35 @@
+chemistries:
+
+- id: oregonator
+  name: Oregonator (Belousov-Zhabotinsky)
+  origin: "Field & Noyes, 1974"
+  book: "19.3.3"
+  refs: ["[276]", "[9]", "[13]", "[813]", "[857]"]
+  family: wet
+  kind: generator
+  constructive: false
+  S: {repr: "A, B (buffered reactants), X (autocatalyst, HBrO2), Y (inhibitor, Br-), Z (oxidised metal ion, e.g. Ce(IV)), P, Q (products)", definition: explicit}
+  R:
+    definition: explicit
+    arity: [1, 2]
+    scheme: "A + Y --k1--> X ; X + Y --k2--> P ; B + X --k3--> 2X + Z ; 2X --k4--> Q ; Z --k5--> f Y"
+  A: {reactor: [ode, continuous-space], dilution: "A and B buffered; reaction-diffusion on a grid for spatial patterns"}
+  params:
+    - {name: k1, type: float, default: 1.0, min: 0, role: kinetic, meaning: "A + Y -> X"}
+    - {name: k2, type: float, default: 10.0, min: 0, role: kinetic, meaning: "X + Y -> P"}
+    - {name: k3, type: float, default: 10.0, min: 0, role: kinetic, meaning: "B + X -> 2X + Z"}
+    - {name: k4, type: float, default: 2.5, min: 0, role: kinetic, meaning: "2X -> Q"}
+    - {name: k5, type: float, default: 1.0, min: 0, role: kinetic, meaning: "Z -> f Y"}
+    - {name: f, type: float, default: 1.0, min: 0, role: kinetic, meaning: "stoichiometric factor of inhibitor regeneration; the key bifurcation parameter"}
+    - {name: A, type: float, default: 1.0, min: 0, role: population, meaning: "buffered concentration of A"}
+    - {name: B, type: float, default: 1.0, min: 0, role: population, meaning: "buffered concentration of B"}
+    - {name: D, type: dict, default: {"X": 1.0, "Y": 1.0, "Z": 1.0}, role: spatial, meaning: "diffusion coefficient per species for the reaction-diffusion setting"}
+    - {name: lattice, type: enum, default: hexagonal, choices: [square, hexagonal], role: spatial, meaning: "grid used for reaction-diffusion (the book's patterns use a hexagonal grid)"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, space, initial-state]
+  fidelity: book+decisions
+  decisions:
+    - "Rate constants are the book's (figure 19.20). f, the buffered concentrations A and B, and the diffusion coefficients are not given; defaults are f = 1, A = B = 1, D = 1."
+    - "A real f cannot be an integer stoichiometric coefficient. Z -> f Y is emitted as Z -> floor(f) Y at rate k5 (1 - frac(f)) plus Z -> (floor(f)+1) Y at rate k5 frac(f), which gives exactly the same rate equations."
+    - "Space is recorded in extras.space (lattice, diffusion); A and B are listed in extras.buffered."
+  reference_impl: "an early PyCellChemistry variant on the Breve simulator"
+  phenomena: ["target patterns and spiral waves", "excitable medium supporting reaction-diffusion computing (logic gates, image processing, maze solving)"]

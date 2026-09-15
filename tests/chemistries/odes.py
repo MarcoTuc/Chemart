@@ -23,6 +23,8 @@ def rhs(net):
         law = rate["law"]
         if law == "mass-action":
             return rate["k"] * np.prod([x[i] ** n for i, n in reac])
+        if law == "saturating":
+            return rate["k"] * np.prod([(x[i] / (1.0 + x[i] / rate["K"])) ** n for i, n in reac])
         (i, _), = reac
         if law == "power":
             return rate["k"] * max(x[i], 0.0) ** rate["order"]

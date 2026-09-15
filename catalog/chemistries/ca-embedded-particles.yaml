@@ -1,0 +1,30 @@
+chemistries:
+
+- id: ca-embedded-particles
+  name: Embedded particles in cellular automata
+  origin: "Hordijk, Crutchfield & Mitchell, 1996-1998"
+  book: "10.7.2"
+  refs: ["[398]", "[399]"]
+  family: automata
+  kind: analysis
+  constructive: false
+  S:
+    repr: "moving boundaries between homogeneous CA domains, visible as space-time structures after filtering"
+    definition: implicit
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "particle collisions in the space-time diagram produce, annihilate or transform particles"
+  A:
+    reactor: lattice-2d
+    dilution: none
+  params:
+    - {name: rule, type: int, role: structural, meaning: "CA rule number"}
+    - {name: r, type: int, default: 3, role: spatial, meaning: "CA radius"}
+    - {name: lattice_len, type: int, default: 75, role: spatial}
+  provides: [topology]
+  generator_ready: no
+  notes: >
+    A *method for reading a CRN out of a CA*, not a chemistry to generate.
+    Relevant to Chemart as an import path: given a CA, produce the particle
+    catalogue and interaction table.

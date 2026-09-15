@@ -1,0 +1,32 @@
+chemistries:
+
+- id: disperser
+  name: Chemical disperser (load balancing)
+  origin: "Meyer & Tschudin, 2009"
+  book: "17.3.1; appendix (Disperser.py)"
+  refs: ["[576]", "[580]", "[941]"]
+  family: application
+  kind: generator
+  constructive: false
+  S: {repr: "job molecules X_i (one species per node) and catalysts C_i_j (one per directed link, located at node i)", definition: explicit}
+  R:
+    definition: explicit
+    arity: 2
+    scheme: "C_ij + X_i --k--> C_ij + X_j, for all (i,j) in E"
+  A: {reactor: [ssa, compartments], dilution: none}
+  params:
+    - {name: graph, type: list, default: [[1, 2], [1, 3], [1, 4], [2, 3]], role: spatial, meaning: "undirected links [u, v] of the network; every link carries a catalyst in each direction"}
+    - {name: k, type: float, default: 1.0, min: 0, role: kinetic, meaning: "rate coefficient, the same for all links; node degree then sets the outflow rate"}
+    - {name: catalyst_concentration, type: float, default: 1.0, min: 0, role: population, meaning: "concentration of every catalyst C_i_j, held constant and equal everywhere"}
+    - {name: initial_jobs, type: dict, default: {"4": 1000}, role: population, meaning: "node id (as a string) -> initial number of job molecules; other nodes start empty"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, compartments, initial-state]
+  fidelity: book+decisions
+  decisions:
+    - "The book's 4-node topology (figure 17.3) is only drawn. Edges 1-2, 1-3, 1-4, 2-3 are the graph consistent with the text: after injection at node 4, nodes 2 and 3 are the farthest; after injection at node 2, node 4 is."
+    - "Catalyst concentration is not given numerically; default 1. extras.compartments maps each node to its X and outgoing C species."
+  reference_impl: "PyCellChemistry Disperser.py"
+  phenomena: ["provable convergence to the network-wide average x_bar = sum_i x_i(0)/n, stable under injection and deletion (1000 jobs on 4 nodes -> 250 each)"]
+  notes: >
+    The cleanest 'chemistry as a provable distributed algorithm' example:
+    mass conservation means the algorithm can never produce a negative
+    load, and the ODE can be checked for convergence and stability directly.

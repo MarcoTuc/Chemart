@@ -1,0 +1,40 @@
+chemistries:
+
+- id: alchemy
+  name: AlChemy (lambda-calculus chemistry)
+  aliases: ["lambda chemistry", "Fontana's algorithmic chemistry"]
+  origin: "Fontana, 1992; Fontana & Buss, 1994"
+  book: "9.1"
+  refs: ["[281]", "[282]", "[283]", "[284]"]
+  family: rewriting
+  kind: generator
+  constructive: true
+  S:
+    repr: "normal forms of untyped lambda-expressions over A = {lambda, ., (, )} u V"
+    definition: implicit
+    notes: "molecules must be normal forms so that objects are stable"
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "s1 + s2 -> s1 + s2 + NF((s1) s2)"
+    notes: >
+      Both reactants are catalysts. Since the untyped lambda-calculus is
+      not strongly normalising, reduction is bounded by a time/memory
+      budget; exceeding it makes the collision elastic.
+  A:
+    reactor: well-stirred-multiset
+    dilution: "remove a random molecule per product; M constant"
+  params:
+    - {name: M, type: int, default: 1000, range: "1000..3000", role: population, meaning: "reactor size"}
+    - {name: reduction_budget, type: int, role: structural, meaning: "max reduction steps / memory before declaring the collision elastic"}
+    - {name: filter, type: enum, default: none, range: "none | no-copy (level 1) | no-copy+no-glue (level 2)", role: selection, meaning: "filter conditions; forbidding reactions that reproduce a reactant is what pushes the system from L0 to L1 organisations"}
+    - {name: init_generator, type: callable, role: population, meaning: "random lambda-expression generator (depth/size distribution)"}
+    - {name: seed, type: seed, role: stochastic}
+  provides: [topology, catalysts, flow, sequence-structure-function]
+  generator_ready: partial
+  notes: >
+    Fully specified conceptually, but the book does not fix the random
+    lambda-term generator or the exact reduction budget - Chemart must
+    choose and document these. Historically the most important AC:
+    the notions of closure, self-maintenance and organisation come from here.
+  phenomena: ["L0 organisations (a few coupled replicators forming a hypercycle)", "L1 organisations (large, possibly infinite, self-maintaining sets, stable against random injection)", "L2 organisations (two coexisting L1s coupled by 'glue' species)", "syntactic convergence of survivors - the system exhausts its novelty"]

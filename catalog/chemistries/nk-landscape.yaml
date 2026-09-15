@@ -1,0 +1,30 @@
+chemistries:
+
+- id: nk-landscape
+  name: Kauffman NK model
+  origin: "Kauffman, 1993"
+  book: "18.4.1; appendix (NKlandscape.py)"
+  refs: ["[447]"]
+  family: evolutionary-dynamics
+  kind: analysis
+  constructive: false
+  S: {repr: "binary genotypes of length N", definition: implicit}
+  R:
+    definition: explicit
+    arity: 1
+    scheme: "fitness w = (1/N) sum_i w_i, where w_i is drawn at random as a function of gene i and its K epistatic partners; genotypes replicate at their fitness with point mutations: X_g -> 2 X_g ; X_g -> X_g + X_h"
+  A: {reactor: ode, dilution: "constant-total dilution (replicator-mutator dynamics)"}
+  params:
+    - {name: N, type: int, default: 6, min: 1, max: 10, role: structural, meaning: "number of genes; the network has 2^N genotypes"}
+    - {name: K, type: int, default: 2, min: 0, max: 9, range: "0..N-1", role: structural, meaning: "epistatic partners per gene: K=0 unimodal, growing K makes the landscape rugged, K=N-1 fully random"}
+    - {name: topology, type: enum, default: adjacent, choices: [adjacent, random], role: structural, meaning: "partners of gene i: the next K genes (circularly) or K random other genes"}
+    - {name: mu, type: float, default: 0.01, min: 0, max: 1, role: stochastic, meaning: "per-gene mutation probability during replication"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, flow]
+  fidelity: book+decisions
+  decisions:
+    - "The book defines only the landscape. As an analysis entry it is exposed through the network that evolves on it: every genotype replicates at its fitness, exact copies at W (1-mu)^N and single point mutants at W mu (1-mu)^(N-1) each (multiple mutations are omitted), under constant-total dilution. The landscape, epistatic partners, local optima and global optimum are in extras.analysis."
+    - "Index convention (book figure 18.9): the table entry for gene i is indexed by the bits of its partners followed by its own bit, e.g. j = g_k g_i for K = 1."
+  reference_impl: "PyCellChemistry NKlandscape.py (naive epistatic matrix; does not scale)"
+  notes: >
+    Mainly a fitness function other chemistries can plug in; the network
+    form lets it go through the same interface.

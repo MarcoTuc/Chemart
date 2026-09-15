@@ -1,0 +1,43 @@
+chemistries:
+
+- id: swarm-chemistry
+  name: Swarm Chemistry
+  origin: "Sayama, 2009-2011"
+  book: "11.4.2"
+  refs: ["[746]", "[747]", "[748]", "[749]", "[709]", "[259]"]
+  family: spatial
+  kind: generator
+  constructive: false
+  S:
+    repr: "self-propelled particles in continuous 2D or 3D; a 'species' is a parameter tuple (a kinetic recipe), not a structure"
+    definition: explicit
+  R:
+    definition: implicit
+    arity: variable
+    scheme: >
+      Boid-like kinetic interaction rather than transformation: within
+      radius R_i, steer to the local centre, align to the local mean
+      velocity, avoid collisions, steer randomly; otherwise stray randomly;
+      relax toward the type's normal speed.
+  A:
+    reactor: continuous-space
+    dilution: none
+  params:
+    - {name: R_i, type: float, range: "0..300 px", role: spatial, meaning: "local perception radius"}
+    - {name: Vn_i, type: float, range: "0..20 px/step", role: kinetic, meaning: "normal speed"}
+    - {name: Vm_i, type: float, range: "0..40 px/step", role: kinetic, meaning: "maximum speed"}
+    - {name: c1_i, type: float, range: "0..1 (1/step^2)", role: kinetic, meaning: "strength of cohesive force"}
+    - {name: c2_i, type: float, range: "0..1 (1/step)", role: kinetic, meaning: "strength of aligning force"}
+    - {name: c3_i, type: float, range: "0..100 (px^2/step^2)", role: kinetic, meaning: "strength of separating force"}
+    - {name: c4_i, type: float, range: "0..0.5", role: stochastic, meaning: "probability of random steering"}
+    - {name: c5_i, type: float, range: "0..1", role: kinetic, meaning: "tendency of self-propulsion"}
+    - {name: recipe, type: matrix, role: population, meaning: "list of (count, R, Vn, Vm, c1..c5) per particle type"}
+  provides: [space, rate-law]
+  generator_ready: yes
+  phenomena: ["segregation", "oscillatory and rotating collective motion", "cell-division-like behaviour with two particle types", "3D variants"]
+  notes: >
+    IMPORTANT NEGATIVE CASE for the output schema: swarm chemistry has NO
+    stoichiometry at all. Species are never created or destroyed; the
+    "reaction" is a force law. Chemart must be able to declare
+    `provides: [space, rate-law]` with an empty stoichiometric matrix and
+    still export something useful (the force law + recipe).

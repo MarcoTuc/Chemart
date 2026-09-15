@@ -1,0 +1,31 @@
+chemistries:
+
+- id: combinator-chemistry
+  name: Combinator chemistry
+  origin: "Speroni di Fenizio, 2000"
+  book: "9.8; organisations 12"
+  refs: ["[790]", "[791]"]
+  family: rewriting
+  kind: generator
+  constructive: true
+  S:
+    repr: "combinators - strings over a finite alphabet, or combinators themselves (S, K, I basis)"
+    definition: implicit
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "application + reduction, as in AlChemy but with combinators replacing lambda-terms; a reaction may yield a whole multiset of products"
+  A:
+    reactor: well-stirred-multiset
+    dilution: "population size may vary (unlike AlChemy/matrix chemistry)"
+  params:
+    - {name: basis, type: enum, default: "SKI", role: structural}
+    - {name: reduction_budget, type: int, role: structural}
+    - {name: M, type: int, role: population}
+  provides: [topology, catalysts, sequence-structure-function]
+  generator_ready: partial
+  phenomena: ["emergence of organisations", "avoids lambda-calculus alpha-conversion bookkeeping"]
+  notes: >
+    Chemart should prefer this over AlChemy as the first constructive
+    lambda-family generator: combinators need no variable binding, so the
+    normal-form computation is far simpler and faster.

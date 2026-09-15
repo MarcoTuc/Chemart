@@ -1,0 +1,25 @@
+chemistries:
+
+- id: selection-equation
+  name: Selection equation under a dilution flow
+  book: "7.2.5"
+  refs: ["[621]"]
+  family: evolutionary-dynamics
+  kind: generator
+  constructive: false
+  S: {repr: "n species X_1..X_n with fitnesses f_i >= 0", definition: explicit}
+  R:
+    definition: explicit
+    arity: 1
+    scheme: "X_i --f_i--> 2 X_i ; X_i --phi--> (nothing), with phi = sum_i f_i x_i (the mean fitness)"
+  A: {reactor: [ode, ssa], dilution: "non-selective outflow phi keeps sum_i x_i = 1"}
+  params:
+    - {name: f, type: list, default: [1.0, 2.0, 3.0], role: selection, meaning: "fitness vector; its length sets the number of species"}
+    - {name: c, type: float, default: 1.0, min: 0, role: kinetic, meaning: "growth exponent in the generalised form x_i' = f_i x_i^c - phi x_i; c<1 gives survival of everybody, c=1 survival of the fittest, c>1 survival of the first"}
+    - {name: x0, type: list, default: [], role: population, meaning: "initial concentrations; empty means uniform 1/n"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, rate-law, flow, initial-state]
+  fidelity: book+decisions
+  decisions:
+    - "The dilution flux phi is outflow = 'constant-total'. For c != 1 the growth reaction carries a 'power' rate law k x^c."
+    - "The book gives no numbers; default fitnesses 1, 2, 3 and a uniform start."
+  phenomena: ["competitive exclusion", "c = 0.5 (parabolic growth) applies to template replication of short oligonucleotides and BLOCKS Darwinian evolution unless the replicators are enclosed in a dividing compartment"]

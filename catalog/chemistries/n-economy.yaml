@@ -1,0 +1,29 @@
+chemistries:
+
+- id: n-economy
+  name: N-economy (natural number economy)
+  origin: "Straatman, Banzhaf et al.; after Hanel's natural number economy"
+  book: "20.3"
+  refs: ["[816]", "[377]"]
+  family: non-chemical
+  kind: generator
+  constructive: true
+  S: {repr: "natural numbers as commodities; primes are raw materials, composites are manufactured goods; 2 = labour, 3 = money", definition: implicit}
+  R:
+    definition: explicit
+    arity: variable
+    scheme: >
+      Production reactions with integer stoichiometry, e.g.
+      2x2 -> 2x5 ; 2x2 + 2x5 + 2x13 -> 3x130 ; 3x2 + 3x130 -> 6x260 ;
+      6x2 + 6x260 -> 6x104 ; 6x104 -> 13x2. Generally
+      sum_i alpha_i G_i -> sum_i beta_i G_i + sum_j G_{m+j}, with beta_i <= alpha_i.
+  A: {reactor: lattice-2d, dilution: "consumption agents; a market prices goods"}
+  params:
+    - {name: product_set, type: list, default: [2, 3, 5, 13, 104, 130, 260], role: structural, meaning: "the goods (integers >= 2); primes are raw materials, 2 is labour and 3 is money"}
+    - {name: technology, type: list, default: [{"in": {"2": 2}, "out": {"5": 2}}, {"in": {"2": 2, "5": 2, "13": 2}, "out": {"130": 3}}, {"in": {"2": 3, "130": 3}, "out": {"260": 6}}, {"in": {"2": 6, "260": 6}, "out": {"104": 6}}, {"in": {"104": 6}, "out": {"2": 13}}], role: structural, meaning: "production processes as {in: {good: amount}, out: {good: amount}}; default is book eq. 20.6"}
+  provides: [topology, stoichiometry]
+  fidelity: book+decisions
+  decisions:
+    - "Only the production system (eq. 20.6) is generated. The agent-based consumption side, the market and the grid are outside the reaction network, so agent_skills and grid are not parameters."
+    - "The earlier catalog note claimed prime factorisation gives an exact conservation law. It does not for the book's reactions (e.g. 2x2 -> 2x5), so mass-conservation is not claimed. Species carry their factorisation as structure."
+  phenomena: ["noisy rise and fall of product concentrations, equilibrating after ~300 iterations (agent simulation)"]

@@ -1,0 +1,32 @@
+chemistries:
+
+- id: hill-kinetics
+  name: Hill kinetics (cooperative binding)
+  book: "18.2.2; used by the Repressilator 19.3.2"
+  refs: ["[741]", "[916]"]
+  family: systems-biology
+  kind: generator
+  constructive: false
+  S: {repr: "gene G, protein P, complex C, gene product X", definition: explicit}
+  R:
+    definition: explicit
+    arity: "n+1"
+    scheme: "G + n P <-kf/kr-> C ; activation C -> C + X ; repression G -> G + X ; lumped rates H1 = P^n/(K^n + P^n), H2 = K^n/(K^n + P^n)"
+  A: {reactor: [ode, ssa], dilution: none}
+  params:
+    - {name: form, type: enum, default: elementary, choices: [elementary, lumped], role: structural, meaning: "elementary binding reactions (eqs. 18.5, 18.12, 18.15) or a single production reaction with a Hill rate law (eqs. 18.14, 18.16)"}
+    - {name: regulation, type: enum, default: activation, choices: [activation, repression], role: structural, meaning: "P activates (bound gene expresses) or represses (free gene expresses) X"}
+    - {name: n, type: int, default: 2, min: 1, max: 10, role: kinetic, meaning: "Hill coefficient; better read as the DEGREE OF COOPERATIVITY than as a literal molecule count. n=1 gives no sigmoid, so no switching"}
+    - {name: K, type: float, default: 1.0, min: 0, role: kinetic, meaning: "K^n = K_d = kr/kf, the dissociation constant"}
+    - {name: kf, type: float, default: 1.0, min: 0, role: kinetic, meaning: "binding rate; the unbinding rate is kf K^n"}
+    - {name: k_expr, type: float, default: 1.0, min: 0, role: kinetic, meaning: "expression rate of X (k1 or k2 in the book)"}
+    - {name: G0, type: float, default: 1.0, min: 0, role: population, meaning: "total gene = free + complexed"}
+    - {name: P0, type: float, default: 1.0, min: 0, role: population, meaning: "initial protein"}
+  provides: [topology, stoichiometry, catalysts, rate-law, rate-constants, initial-state]
+  fidelity: book+decisions
+  decisions:
+    - "The book derives both forms; `form` lets the user pick. Defaults follow figure 18.5 (G(0) = P(0) = 1) with unit rates. In the lumped form the rate dict names the regulator species ('regulator': 'P') and 'mode'."
+  notes: >
+    The book flags the idealisation explicitly: n molecules never bind
+    simultaneously, and with one gene copy and few proteins an ODE is a
+    poor approximation.

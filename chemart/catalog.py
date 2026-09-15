@@ -2,7 +2,8 @@
 
 The catalog is the ground truth for what Chemart can generate and the only
 specification of each generator's parameters. It is kept as YAML (one file
-per family, see catalog/SCHEMA.md) so that it stays reviewable and diffable;
+per chemistry, `catalog/chemistries/<id>.yaml`, see catalog/SCHEMA.md) so
+that it stays reviewable and diffable;
 this module turns it into typed Python objects and enforces the invariants
 that the rest of the library relies on.
 
@@ -404,6 +405,10 @@ def main(argv: list[str]) -> int:
 
     if cmd == "validate":
         problems = validate(entries)
+        if "--only" in argv:
+            wanted = argv[argv.index("--only") + 1]
+            module = f"chemart/chemistries/{wanted.replace('-', '_')}.py"
+            problems = [p for p in problems if p.startswith(f"{wanted}.yaml:{wanted}:") or p.startswith(module)]
         for p in problems:
             print(p, file=sys.stderr)
         print(f"{len(entries)} chemistries, {len(problems)} problems")

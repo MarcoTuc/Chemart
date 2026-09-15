@@ -1,0 +1,35 @@
+chemistries:
+
+- id: okamoto-switch
+  name: Okamoto's biochemical switch
+  origin: "Okamoto, Sakai & Hayashi, 1987-1993"
+  book: "17.4.1"
+  refs: ["[632]", "[633]", "[634]", "[635]", "[631]", "[386]", "[387]", "[539]"]
+  family: application
+  kind: generator
+  constructive: false
+  S: {repr: "inputs I1, I2; substrates X1..X4; enzyme cofactors A and B (the outputs)", definition: explicit}
+  R:
+    definition: explicit
+    arity: [1, 2]
+    scheme: >
+      I1 -> X1 ; I2 -> X3 ; A + X3 --k2--> B + X4 ; B + X1 --k1--> A + X2 ;
+      X2 --k3--> ; X4 --k4--> ; plus I1 -> I2 to drive the inputs across each other
+  A: {reactor: ode, dilution: "X2 and X4 decay out"}
+  params:
+    - {name: k1, type: float, default: 5.0e+4, min: 0, role: kinetic, meaning: "B + X1 -> A + X2"}
+    - {name: k2, type: float, default: 5.0e+4, min: 0, role: kinetic, meaning: "A + X3 -> B + X4"}
+    - {name: k3, type: float, default: 10.0, min: 0, role: kinetic, meaning: "decay of X2"}
+    - {name: k4, type: float, default: 10.0, min: 0, role: kinetic, meaning: "decay of X4"}
+    - {name: k_in, type: float, default: 1.0, min: 0, role: kinetic, meaning: "production of X1 from I1 and of X3 from I2"}
+    - {name: k_conv, type: float, default: 0.006, min: 0, role: kinetic, meaning: "conversion I1 -> I2; sets when the inputs cross and hence the switching time"}
+    - {name: I1_0, type: float, default: 100.0, min: 0, role: population, meaning: "initial concentration of input I1"}
+    - {name: I2_0, type: float, default: 80.0, min: 0, role: population, meaning: "initial concentration of input I2"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, initial-state]
+  fidelity: book+decisions
+  decisions:
+    - "Inputs are 'controlled externally ... not affected although consumed' (book), so input reactions are written I1 -> I1 + X1 and I2 -> I2 + X3, with rate k_in (not given in the book; default 1)."
+    - "The book's I1/I2 profiles are reproduced as in its simulation: I1(0) = 100, I2(0) = 80 and an irreversible I1 -> I2. k_conv = 0.006 makes the inputs cross at about 17.5 s, as in figure 17.5 (top)."
+    - "Known discrepancy: with the reactions as printed, X1 (X3) is never lost while A (B) is saturated, so surplus substrate accumulates and the flip lags the crossing by ~18 s at the defaults, instead of 'a few seconds' in figure 17.5. The original cyclic-enzyme model [633] has reversible enzyme steps and substrate influx/efflux that the book omits; the paper was not accessible, so the book's scheme is kept."
+    - "Other initial concentrations are the book's: X1 = X3 = 0, X2 = X4 = 8, A = 1, B = 0."
+  phenomena: ["bistability: A and B flip within seconds of the inputs crossing", "switching time tunable via the input conversion rate", "composable into chemical neurons, logic gates, finite state machines and a Turing-universal chemical computer"]

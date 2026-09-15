@@ -1,0 +1,47 @@
+chemistries:
+
+- id: farmer-immune
+  name: Bitstring immune system model (idiotypic network)
+  origin: "Farmer, Packard & Perelson, 1986"
+  book: "11.2.2"
+  refs: ["[261]", "[262]", "[214]", "[287]", "[288]"]
+  family: bio-inspired
+  kind: generator
+  constructive: true
+  S:
+    repr: "antibodies X_i as binary strings with two binding sites (epitope e, paratope p); antigens Y_j with an epitope"
+    definition: implicit
+  R:
+    definition: explicit
+    arity: [1, 2]
+    scheme: >
+      Recognition of an epitope by a paratope replicates the recogniser and
+      destroys the recognised. Matching specificity:
+      m_ij = sum_k G( sum_n [ e_i(n+k) XOR p_j(n) ] - s + 1 ),
+      G(x)=x for x>0 else 0, over all alignments -l_p < k < l_e.
+  A:
+    reactor: [ode, ssa]
+    dilution: "metadynamics: periodically drop species below a concentration threshold and inject new ones"
+    notes: >
+      x_i' = c[ sum_j m_ji x_i x_j - k1 sum_j m_ij x_i x_j + sum_j m_ji x_i y_j ] - k2 x_i
+      y_i' = -k3 sum_j m_ij x_j y_i
+  params:
+    - {name: N, type: int, default: 10, min: 1, max: 100, role: population, meaning: "number of antibody species"}
+    - {name: M, type: int, default: 2, min: 0, max: 20, role: population, meaning: "number of foreign antigens"}
+    - {name: l_e, type: int, default: 8, min: 1, max: 64, role: structural, meaning: "epitope length (bits)"}
+    - {name: l_p, type: int, default: 8, min: 1, max: 64, role: structural, meaning: "paratope length (bits)"}
+    - {name: s, type: int, default: 6, min: 1, role: structural, meaning: "matching threshold: an alignment counts when at least s bits are complementary"}
+    - {name: c, type: float, default: 1.0, min: 0, role: kinetic, meaning: "weight of the interactive part vs. spontaneous decay"}
+    - {name: k1, type: float, default: 1.0, min: 0, role: kinetic, meaning: "suppression vs. stimulation weight, antibody-antibody"}
+    - {name: k2, type: float, default: 0.5, min: 0, role: kinetic, meaning: "spontaneous antibody decay rate"}
+    - {name: k3, type: float, default: 1.0, min: 0, role: kinetic, meaning: "suppression weight, antibody-antigen"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, sequence-structure-function]
+  fidelity: book+decisions
+  decisions:
+    - "Strings are random bits from the seed. Each term of eqs. 11.5-11.6 is one mass-action reaction whose rate the matching strengths prescribe: stimulation X_i + X_j -> 2X_i + X_j (c m_ji), suppression X_i + X_j -> X_j (c k1 m_ij), antigen stimulation X_i + Y_j -> 2X_i + Y_j (c m), antigen removal Y_j + X_i -> X_i (k3 m), decay X_i -> (k2). A self-interaction i = j uses 2X_i on the left."
+    - "The book says strings bind when 's > min(l_e, l_p)', which contradicts its own definition of G. Here an alignment contributes when at least s bits are complementary, which is what eq. 11.4 computes."
+    - "The book gives no parameter values; defaults are N = 10, M = 2, 8-bit sites, s = 6, c = k1 = k3 = 1, k2 = 0.5. Metadynamics (mutation and replacement) acts between network snapshots and is not generated; mutation_ops is dropped."
+  phenomena: ["clonal selection", "idiotypic network memory", "constructive dynamics via metadynamics"]
+  notes: >
+    One of very few entries where the chemistry itself PRESCRIBES rate
+    coefficients (from the structural match m_ij) rather than leaving them free.

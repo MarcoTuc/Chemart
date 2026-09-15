@@ -1,0 +1,35 @@
+chemistries:
+
+- id: fraglets
+  name: Fraglets
+  origin: "Tschudin, 2003"
+  book: "16.2.1, 17.3.1; appendix (Fraglets.py, NetFraglets.py)"
+  refs: ["[862]", "[575]", "[576]", "[577]", "[578]", "[579]", "[580]", "[581]", "[594]", "[595]", "[864]", "[914]", "[935]", "[936]", "[942]", "[943]", "[753]"]
+  family: application
+  kind: generator
+  constructive: true
+  S:
+    repr: "strings (fraglets) of symbols; the head symbols are the instruction, the tail is data. A fraglet is simultaneously a data packet and a program fragment."
+    definition: implicit
+  R:
+    definition: implicit
+    arity: [1, 2]
+    scheme: >
+      Unimolecular: dup [dup A B t] -> [A B B t]; exch [exch A B C t] -> [A C B t];
+      nop [nop t] -> [t]; split [split s1 * t] -> [s1],[t]; send A[send B t] -> B[t].
+      Bimolecular: match [match A t1],[A t2] -> [t1 t2];
+      matchp [matchp A t1],[A t2] -> [matchp A t1],[t1 t2] (catalytic/persistent).
+    notes: "rules operate only on the FRONT symbols, which is what makes execution cheap and mirrors packet-header processing"
+  A:
+    reactor: [compartments, ssa]
+    dilution: "originally maximally parallel; later mass-action scheduling with Gillespie SSA / next reaction method across a network of vessels"
+    notes: "each network node is a reaction vessel; send moves a fraglet between vessels"
+  params:
+    - {name: topology, type: matrix, role: spatial, meaning: "network graph of nodes/vessels"}
+    - {name: seed_code, type: matrix, role: population, meaning: "the persistent (catalytic) program fraglets injected at each node"}
+    - {name: rate_constants, type: matrix, role: kinetic, meaning: "per-rule k; essential - the maximally parallel semantics was abandoned because autocatalytic growth, decay, replicator competition and diffusion speed all depend on rates"}
+    - {name: scheduler, type: enum, default: ssa, range: "maximal-parallel | ssa | next-reaction", role: structural}
+  provides: [topology, stoichiometry, catalysts, rate-constants, compartments, initial-state, sequence-structure-function]
+  generator_ready: yes
+  reference_impl: "PyCellChemistry Fraglets.py / NetFraglets.py; upstream Fraglets simulator"
+  phenomena: ["Confirmed Delivery Protocol as an active protocol that carries its own code", "flow control with credits", "self-healing multipath routing", "resilient link load balancing", "autocatalytic recovery from code-deletion attacks", "known evolvability problems: code bloat, tail buildup, broken pathways"]

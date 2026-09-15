@@ -1,0 +1,36 @@
+chemistries:
+
+- id: gamma
+  name: Gamma / gamma-calculus
+  aliases: ["general abstract multiset manipulation"]
+  origin: "Banatre & Le Metayer, 1990; gamma-calculus: Banatre, Fradet & Radenac"
+  book: "9.2"
+  refs: ["[55]", "[56]", "[57]", "[58]"]
+  family: rewriting
+  kind: formalism
+  constructive: false
+  S:
+    repr: "elements of a multiset (numbers, tuples, or - in the gamma-calculus - programs)"
+    definition: explicit
+  R:
+    definition: explicit
+    arity: variable
+    scheme: "name : x1,...,xn -> y1,...,ym  <= C(x1,...,xn)   (reaction action guarded by a reaction condition)"
+  A:
+    reactor: maximally-parallel
+    dilution: none
+    notes: >
+      Non-deterministic and order-independent; computation terminates when
+      the multiset becomes inert. Re-injecting new input restarts it, so
+      a Gamma program is a self-updating reactive system.
+  params:
+    - {name: rules, type: callable, role: structural, meaning: "the (action, condition) pairs"}
+    - {name: initial_multiset, type: matrix, role: population}
+    - {name: higher_order, type: bool, default: false, role: structural, meaning: "gamma-calculus: programs are themselves molecules (gamma(P)<C>.M)"}
+  provides: [topology, sequence-structure-function]
+  generator_ready: yes
+  phenomena: ["max: x,y -> y <= x<=y", "sort: (i,x),(j,y) -> (i,y),(j,x) <= i>=j and x>=y", "primes: x,y -> y/x <= y mod x = 0"]
+  notes: >
+    Purely qualitative - no rate constants, no time. Useful to Chemart as
+    a *front-end language* for writing explicit chemistries, and as the
+    ancestor of Fraglets/CHAM/ARMS.

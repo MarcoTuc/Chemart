@@ -1,0 +1,29 @@
+chemistries:
+
+- id: nac
+  name: Network Artificial Chemistry (NAC)
+  origin: "Suzuki, 2007-2009"
+  book: "11.3.3; folding 18.1.1"
+  refs: ["[824]", "[825]", "[827]"]
+  family: network
+  kind: generator
+  constructive: true
+  S:
+    repr: "nodes of a graph; each node is a string decodable into a program for a von Neumann machine housed in the node. Nodes are hydrophilic or hydrophobic."
+    definition: implicit
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "graph rewiring: covalent and hydrogen bonds as directed edges, weak van der Waals interactions as undirected edges"
+  A:
+    reactor: graph-rewrite
+    dilution: none
+  params:
+    - {name: n_nodes, type: int, role: population}
+    - {name: hydrophilic_fraction, type: float, role: structural}
+    - {name: initial_edges, type: matrix, role: spatial, meaning: "random initial wiring"}
+    - {name: programs, type: callable, role: structural, meaning: "node programs; hand-designed splitase and replicase exist"}
+  provides: [topology, space, sequence-structure-function]
+  generator_ready: partial
+  phenomena: ["node chains fold into clusters comparable to enzymes with a catalytic site", "hydrophilic clustering into a cell-like structure", "centrosome-driven cell division"]
+  notes: "An abstract stand-in for water-mediated hydrophobic/hydrophilic interaction without atomistic cost."

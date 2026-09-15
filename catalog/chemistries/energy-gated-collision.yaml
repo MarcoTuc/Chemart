@@ -1,0 +1,27 @@
+chemistries:
+
+- id: energy-gated-collision
+  name: Arrhenius-gated collision algorithm
+  book: "18.3.3"
+  refs: ["[757]", "[780]", "[870]"]
+  family: systems-biology
+  kind: analysis
+  constructive: true
+  S: {repr: "any molecules for which a kinetic energy can be computed", definition: implicit}
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "pick two molecules; if their kinetic energy exceeds the activation energy of the reaction (Arrhenius), react; otherwise elastic"
+  A: {reactor: well-stirred-multiset, dilution: none}
+  params:
+    - {name: temperature, type: float, role: thermodynamic}
+    - {name: Ea_fn, type: callable, role: thermodynamic, meaning: "activation energy as a function of the colliding reactants"}
+    - {name: kinetic_energy_fn, type: callable, role: thermodynamic}
+  provides: [energies, rate-law]
+  generator_ready: yes
+  notes: >
+    Not a chemistry but the REACTOR ALGORITHM that makes constructive
+    chemistries with different reaction speeds tractable without
+    enumerating propensities. The book notes it only pays off when elastic
+    collisions are rare. Worth shipping as a Chemart reactor backend
+    alongside SSA / tau-leaping / next-reaction / next-subvolume.

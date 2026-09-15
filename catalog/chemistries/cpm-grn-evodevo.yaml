@@ -1,0 +1,29 @@
+chemistries:
+
+- id: cpm-grn-evodevo
+  name: Cellular Potts + GRN evo-devo models
+  origin: "Hogeweg, 2000; Knabe, Nehaniv & Schilstra, 2008-2011"
+  book: "18.6.1"
+  refs: ["[392]", "[466]", "[335]", "[172]", "[41]", "[464]"]
+  family: systems-biology
+  kind: framework
+  constructive: false
+  S: {repr: "cells occupying multiple CA slots (cellular Potts model); intracellular GRN nodes; diffusing morphogens", definition: explicit}
+  R:
+    definition: explicit
+    arity: variable
+    scheme: "GRN updates set cell type and adhesion; CPM surface-energy minimisation drives movement, growth, division and death; morphogens diffuse"
+  A: {reactor: lattice-2d, dilution: none}
+  params:
+    - {name: grn_nodes, type: int, default: 24, role: structural, meaning: "Hogeweg: 2 nodes for intercellular signalling, 10 for adhesion"}
+    - {name: adhesion_energies, type: matrix, role: thermodynamic, meaning: "differential adhesion is the driver of the CPM"}
+    - {name: temperature, type: float, role: thermodynamic, meaning: "CPM Metropolis temperature"}
+    - {name: mutation_rate, type: float, role: stochastic}
+    - {name: fitness, type: callable, role: selection, meaning: "Hogeweg: number of distinct cell types. Knabe: distance to a French flag"}
+  provides: [topology, space, energies, compartments]
+  generator_ready: no
+  phenomena: ["complex morphogenetic patterns evolve under a fitness function as weak as 'number of cell types'", "French flag formation from a single zygote with a self-generated morphogen gradient"]
+  notes: >
+    The book's own criticism applies to any Chemart benchmark built on
+    these: 'distance to a target pattern' is not a biologically plausible
+    fitness function.

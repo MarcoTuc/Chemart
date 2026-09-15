@@ -1,0 +1,29 @@
+chemistries:
+
+- id: brusselator
+  name: Brusselator
+  origin: "Prigogine & Lefever, 1968"
+  book: "17.4.2, 19.3; ARMS 9.4"
+  refs: ["[675]"]
+  family: application
+  kind: generator
+  constructive: false
+  S: {repr: "A, B (buffered), X, Y (dynamic), D, E (waste)", definition: explicit}
+  R:
+    definition: explicit
+    arity: [1, 2, 3]
+    scheme: "A --k1--> X ; B + X --k2--> Y + D ; 2X + Y --k3--> 3X ; X --k4--> E"
+  A: {reactor: [ode, ssa], dilution: "A and B held constant by buffering"}
+  params:
+    - {name: a, type: float, default: 1.0, min: 0, role: population, meaning: "[A], held constant"}
+    - {name: b, type: float, default: 3.0, min: 0, role: population, meaning: "[B], held constant; sustained oscillations require b > 1 + a^2 when all k_i = 1"}
+    - {name: k1, type: float, default: 1.0, min: 0, role: kinetic, meaning: "A -> X"}
+    - {name: k2, type: float, default: 1.0, min: 0, role: kinetic, meaning: "B + X -> Y + D"}
+    - {name: k3, type: float, default: 1.0, min: 0, role: kinetic, meaning: "2X + Y -> 3X"}
+    - {name: k4, type: float, default: 1.0, min: 0, role: kinetic, meaning: "X -> E"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, initial-state]
+  fidelity: book
+  decisions:
+    - "Buffered species A and B are listed in extras.buffered: their concentrations stay at a and b although the reactions consume them. Initial X, Y, D, E are 0, as in figure 17.6."
+  phenomena: ["limit-cycle oscillations for b > 1 + a^2 (all k_i = 1); damped oscillations to (X, Y) = (a, b/a) below"]
+  notes: "The trimolecular step 2X + Y -> 3X is physically unrealistic; the book keeps it because it simplifies the analysis. A good test that Chemart handles arity-3 reactions and the associated l_i! factor in the k->c conversion."

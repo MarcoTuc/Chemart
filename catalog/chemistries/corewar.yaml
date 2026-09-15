@@ -1,0 +1,30 @@
+chemistries:
+
+- id: corewar
+  name: Core War / Redcode
+  origin: "Dewdney, 1984"
+  book: "10.6.2"
+  refs: ["[229]", "[440]", "[432]"]
+  family: automata
+  kind: framework
+  constructive: true
+  S:
+    repr: "Redcode instructions occupying cells of a cyclic shared memory (core)"
+    definition: implicit
+  R:
+    definition: implicit
+    arity: "not well defined - 'reaction' = one program executing over another's code"
+    scheme: "no explicit molecule-level reactions; interaction is code overwrite"
+  A:
+    reactor: sequential-vm
+    dilution: "processes die on DAT; process queue length is bounded"
+  params:
+    - {name: core_size, type: int, role: spatial}
+    - {name: instruction_set, type: enum, default: "DAT MOV ADD SUB MUL DIV MOD JMP JMZ JMN DJN SPL CMP SEQ SNE SLT NOP LDP STP", role: structural}
+    - {name: max_processes, type: int, role: population}
+  provides: [topology, space]
+  generator_ready: partial
+  notes: >
+    Ancestor of Coreworld/Tierra/Avida. Only marginally a chemistry - the
+    book itself notes there are no explicitly defined reactions between
+    molecules, and even identifying an individual is hard.

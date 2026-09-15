@@ -1,0 +1,37 @@
+chemistries:
+
+- id: typogenetics
+  name: Typogenetics
+  origin: "Hofstadter, 1979; simulated by Varetto, 1993/1998"
+  book: "10.5.2; lock-and-key 11.2"
+  refs: ["[391]", "[482]", "[597]", "[598]", "[882]", "[883]", "[785]"]
+  family: automata
+  kind: generator
+  constructive: true
+  S:
+    repr: "single- and double-stranded sequences over {A, C, G, T} with 3'/5' orientation; and typoenzymes, sequences of amino-acid operations translated from a strand"
+    definition: implicit
+  R:
+    definition: implicit
+    arity: "1 (self-reactions only: a strand codes for the enzymes that operate on it)"
+    scheme: >
+      Translate a strand into typoenzymes (duplets, separated by AA). Each
+      enzyme binds a unit on a strand (initial binding base determined
+      non-trivially by its tertiary structure = the s/l/r binding
+      inclinations of its amino acids) and executes cut, del, swi, mvr,
+      mvl, cop on/off, ina/inc/ing/int, rpy/rpu/lpy/lpu.
+  A:
+    reactor: "sequential: strands interpreted one at a time; all operations coded in a strand are performed before moving on"
+    dilution: "a 'lethal factor' variant exists"
+  params:
+    - {name: code_table, type: enum, default: "Hofstadter", range: "Hofstadter | Varetto", role: structural, meaning: "base-pair -> amino-acid map (book table 10.1); the two variants differ"}
+    - {name: strand_length, type: int, role: structural}
+    - {name: binding_tiebreak, type: enum, default: random, role: stochastic, meaning: "which unit an enzyme binds when several match"}
+    - {name: lethal_factor, type: bool, default: false, role: selection}
+  provides: [topology, sequence-structure-function]
+  generator_ready: partial
+  phenomena: ["self-replicating strands", "autocatalytic 'tanglecycles'"]
+  notes: >
+    Variable molecule size, variable product count, non-deterministic
+    binding: a stress test for Chemart's constructive backend. The two
+    published code tables must both be offered - results differ.

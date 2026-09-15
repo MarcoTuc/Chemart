@@ -1,0 +1,22 @@
+chemistries:
+
+- id: hbcb-psd
+  name: HBCB / PSD degradation-and-reuse chemistry
+  origin: "Oohashi et al."
+  book: "18.3.2"
+  refs: ["[643]"]
+  family: systems-biology
+  kind: generator
+  constructive: true
+  S: {repr: "biopolymers (BP) and biomonomers (BM) arranged in a hierarchy by covalent bond strength", definition: implicit}
+  R:
+    definition: implicit
+    arity: [1, 2]
+    scheme: "programmed self-decomposition: organisms break BPs down into reusable BMs rather than into unrecyclable fragments"
+  A: {reactor: lattice-2d, dilution: "virtual ecosystem with recycling"}
+  params:
+    - {name: bond_hierarchy, type: matrix, role: thermodynamic}
+    - {name: decomposition_strategy, type: enum, range: "to-BM (recyclable) | to-smaller (not recyclable)", role: structural}
+  provides: [topology, energies, mass-conservation]
+  generator_ready: no
+  phenomena: ["organisms that decompose to reusable monomers have an evolutionary advantage"]

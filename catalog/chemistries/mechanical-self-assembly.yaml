@@ -1,0 +1,35 @@
+chemistries:
+
+- id: mechanical-self-assembly
+  name: Mechanical self-assembly (Hosokawa)
+  origin: "Hosokawa, Shimoyama & Miura, 1994"
+  book: "20.1"
+  refs: ["[404]", "[352]", "[918]", "[919]", "[69]"]
+  family: non-chemical
+  kind: generator
+  constructive: false
+  S: {repr: "triangular plastic bodies with permanent magnets in two of three faces; x = monomer, x2..x6 = assemblies", definition: explicit}
+  R:
+    definition: explicit
+    arity: 2
+    scheme: >
+      x+x -> x2 ; x+x2 -> x3 ; x+x3 -> x4 ; x+x4 -> x5 ; x+x5 -> x6 ;
+      x2+x2 -> x4 ; x2+x3 -> x5 ; x2+x4 -> x6 ; x3+x3 -> x6
+  A:
+    reactor: ode
+    dilution: none
+    notes: "x(t+1) = x(t) + F(x(t)); F factorises into a collision probability P_c (mass-action-like, from concentration) and a bonding probability P_b (from the GEOMETRY of the encounter)"
+  params:
+    - {name: n_monomers, type: int, default: 100, min: 1, role: population, meaning: "initial number of monomers x (book figure 20.3a)"}
+    - {name: agitation_rate, type: float, default: 1.0, min: 0, role: kinetic, meaning: "collision frequency; rate = agitation_rate * P_b"}
+    - {name: P_b, type: dict, default: {}, role: kinetic, meaning: "bonding probability per pair, keyed 'x+x2' etc.; pairs not listed use 1.0"}
+  provides: [topology, stoichiometry, rate-constants, mass-conservation, initial-state]
+  fidelity: book+decisions
+  decisions:
+    - "The book gives no numerical bonding probabilities ('under reasonable assumptions'); every P_b defaults to 1 and can be overridden per pair."
+    - "The book's discrete-time update is represented by mass-action rates k = agitation_rate * P_b. extras.conservation records the monomer count (x=1 ... x6=6)."
+  phenomena: ["yield curves for x4, x5, x6 matching wet-lab experiments"]
+  notes: >
+    Proof that chemical kinetics is substrate-independent, and the cleanest
+    example of a rate coefficient that FACTORISES into an encounter term and
+    a geometric orientation term.

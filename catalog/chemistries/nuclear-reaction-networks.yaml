@@ -1,0 +1,31 @@
+chemistries:
+
+- id: nuclear-reaction-networks
+  name: Nuclear reaction networks
+  book: "20.2"
+  refs: ["[187]"]
+  family: non-chemical
+  kind: generator
+  constructive: false
+  S: {repr: "nuclides and elementary particles (n, 1H, 2H, ..., e+, e-, nu_e, gamma)", definition: explicit}
+  R:
+    definition: explicit
+    arity: [1, 2]
+    scheme: >
+      e.g. 1H + 1H -> 2H + e+ + nu_e. The CNO cycle is a genuine CATALYTIC
+      cycle: 12C + 1H -> 13N + gamma ; 13N -> 13C + e+ + nu_e ;
+      13C + 1H -> 14N + gamma ; 14N + 1H -> 15O + gamma ;
+      15O -> 15N + e+ + nu_e ; 15N + 1H -> 12C + 4He.
+  A: {reactor: ode, dilution: "open: 1H flows in, 4He, e+, nu_e flow out"}
+  params:
+    - {name: network, type: enum, default: cno-cycle, choices: [cno-cycle, pp-chain, big-bang-nucleosynthesis], role: structural, meaning: "which reaction network to generate"}
+  provides: [topology, stoichiometry, mass-conservation]
+  fidelity: book+decisions
+  decisions:
+    - "Topology only. Rates depend on temperature and density through cross sections (e.g. REACLIB), which the book does not give, so cross_sections, temperature and density are not parameters."
+    - "cno-cycle is book eq. 20.4, with the book's open boundary (1H in; 4He, e+, nu_e out) recorded in extras.boundary rather than as numeric flows. pp-chain is eq. 20.3 completed with the standard pp-I branch. big-bang-nucleosynthesis is the standard 12-reaction network among n, 1H, 2H, 3H, 3He, 4He, 7Li, 7Be, standing in for figure 20.4, which only draws the network."
+    - "extras.conservation lists baryon number, charge (fully ionised nuclei) and electron lepton number, all exact."
+  phenomena: ["the CNO cycle is a closed, self-maintaining organisation with C, N, O as catalysts", "observed light-element abundances from big-bang nucleosynthesis"]
+  notes: >
+    An excellent external validation target: real cross-section libraries
+    exist (REACLIB), and the CNO cycle is a textbook chemical organisation.

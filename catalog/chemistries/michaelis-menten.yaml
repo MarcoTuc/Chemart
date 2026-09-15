@@ -1,0 +1,32 @@
+chemistries:
+
+- id: michaelis-menten
+  name: Michaelis-Menten enzyme kinetics
+  book: "18.2.1; also 4.4 (as an abridgement method)"
+  refs: ["[42]", "[81]", "[503]"]
+  family: systems-biology
+  kind: generator
+  constructive: false
+  S: {repr: "E, S, ES, P (elementary) or S, P (abridged)", definition: explicit}
+  R:
+    definition: explicit
+    arity: [1, 2]
+    scheme: "E + S <-ka/ka'-> ES --kb--> E + P (irreversible product formation)"
+    notes: "d[P]/dt = v_m [S] / (k_m + [S]), with v_m = kb [E0] and k_m = (ka' + kb)/ka"
+  A: {reactor: [ode, ssa], dilution: none}
+  params:
+    - {name: form, type: enum, default: elementary, choices: [elementary, abridged], role: structural, meaning: "elementary mass-action steps, or the single abridged reaction S -> P with a Michaelis-Menten rate law"}
+    - {name: ka, type: float, default: 1.0, min: 0, role: kinetic, meaning: "binding E + S -> ES"}
+    - {name: ka_rev, type: float, default: 1.0, min: 0, role: kinetic, meaning: "unbinding ES -> E + S"}
+    - {name: kb, type: float, default: 1.0, min: 0, role: kinetic, meaning: "catalytic turnover ES -> E + P"}
+    - {name: E0, type: float, default: 1.0, min: 0, role: population, meaning: "total enzyme, free + bound"}
+    - {name: S0, type: float, default: 10.0, min: 0, role: population, meaning: "initial substrate"}
+  provides: [topology, stoichiometry, rate-constants, rate-law, initial-state]
+  fidelity: book+decisions
+  decisions:
+    - "The book gives no numerical rates; all default to 1, with E0 = 1 and S0 = 10."
+    - "k_m is derived, not a parameter. In the extracted text of eq. 18.4 the prime on ka' is lost ('k_m = (k_a + k_b)/k_a'); the quasi-steady-state derivation gives k_m = (ka_rev + kb) / ka, which is used."
+  notes: >
+    The abridged form has FEWER species and reactions than the elementary
+    form but a NON-MASS-ACTION rate law; a schema that assumes mass action
+    silently changes the model.

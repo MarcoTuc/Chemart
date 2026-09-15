@@ -1,0 +1,33 @@
+chemistries:
+
+- id: rna-folding-ac
+  name: RNA-folding ribozyme artificial chemistry
+  origin: "book ref [873] (Yamamoto-adjacent line of work), building on Vienna RNA + ToyChem"
+  book: "18.1.1"
+  refs: ["[873]", "[874]", "[875]", "[876]", "[280]", "[349]", "[389]", "[390]", "[300]", "[103]"]
+  family: systems-biology
+  kind: generator
+  constructive: true
+  S: {repr: "RNA sequences folded into secondary structures by free-energy minimisation (Vienna RNAfold)", definition: implicit}
+  R:
+    definition: implicit
+    arity: 2
+    scheme: >
+      Two-step genotype->phenotype->function map: sequence -> folded shape
+      (dot-bracket) -> catalytic function, taken from the longest loop and
+      classified with Fujita's imaginary transition structures; the actual
+      reaction is then executed by ToyChem graph rewriting.
+  A: {reactor: [ode, ssa], dilution: "food molecule inflow"}
+  params:
+    - {name: seq_length, type: int, default: 60, role: structural}
+    - {name: folding_model, type: enum, default: "Vienna Turner energies", role: thermodynamic}
+    - {name: loop_to_function_map, type: callable, role: structural, meaning: "Fujita ITS classification of the longest loop"}
+    - {name: food_molecules, type: matrix, role: population}
+    - {name: mutation_rate, type: float, role: stochastic}
+  provides: [topology, stoichiometry, energies, mass-conservation, rate-constants, sequence-structure-function]
+  generator_ready: no
+  phenomena: ["small-world connectivity with highly connected metabolites in large evolved networks", "large neutral networks in genotype space -> simultaneously robust and evolvable", "phased evolution: first forward pathway extension breaking food molecules down, later complex pathways as enzymes are reused and specialise"]
+  notes: >
+    The most 'realistic' generator in the book: real thermodynamic folding
+    + real graph chemistry. Heavy dependencies (ViennaRNA), so implement
+    as an optional extra.

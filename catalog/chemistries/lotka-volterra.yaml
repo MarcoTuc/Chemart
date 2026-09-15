@@ -1,0 +1,28 @@
+chemistries:
+
+- id: lotka-volterra
+  name: Lotka-Volterra
+  book: "7.2.8; appendix (Lotka.py); ecology 8.2.3"
+  refs: ["[621]", "[792]", "[37]", "[238]", "[593]"]
+  family: evolutionary-dynamics
+  kind: generator
+  constructive: false
+  S: {repr: "n interacting species X_1..X_n; classically prey X1 and predator X2", definition: explicit}
+  R:
+    definition: explicit
+    arity: [1, 2]
+    scheme: "X + G --ka--> 2X + G ; Y + X --kb--> 2Y ; Y --kc--> (nothing)"
+    notes: "general form x_i' = x_i (r_i + sum_j b_ij x_j)"
+  A: {reactor: [ode, ssa], dilution: none}
+  params:
+    - {name: r, type: list, default: [1.0, -1.0], role: kinetic, meaning: "spontaneous growth (>0) or death (<0) rate per species; its length sets n"}
+    - {name: B, type: list, default: [[0.0, -1.0], [1.0, 0.0]], role: kinetic, meaning: "interaction matrix b_ij: 0 none, >0 j feeds i, <0 j eats i; both >0 mutualistic, both <0 competitive, mixed antagonistic"}
+    - {name: x0, type: list, default: [5.0, 2.0], role: population, meaning: "initial concentrations"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, initial-state]
+  fidelity: book+decisions
+  decisions:
+    - "The general form (eq. 7.30) is the parameterisation. Each term becomes the mass-action reaction with the same ODE contribution, and a predator-prey pair b_ij = -b_ji > 0 becomes the single reaction X_i + X_j -> 2 X_i (eq. 7.26)."
+    - "Defaults are figure 7.5's predator-prey system (ka = kb = kc = 1, x0 = 5, y0 = 2, g0 = 1), with the constant grass G folded into r_1 = ka g0."
+    - "NAV is not a parameter: it sizes a stochastic simulation, not the network."
+  reference_impl: "PyCellChemistry Lotka.py"
+  phenomena: ["sustained oscillations around (x, y) = (kc/kb, ka g0/kb) under ODE", "erratic oscillations and extinction under SSA in small volumes", "cyclic food chains, waves, clustering"]

@@ -5,6 +5,7 @@ module `chemart/chemistries/<id>.py` exists.
 """
 
 import json
+import os
 import time
 
 import pytest
@@ -16,6 +17,10 @@ from chemart.network import Network
 
 ENTRIES = {c.id: c for c in catalog.load()}
 IMPLEMENTED = sorted(i for i, c in ENTRIES.items() if c.implemented)
+# CHEMART_ONLY=id1,id2 restricts the contract to those chemistries (used by
+# agents implementing one chemistry while others are in progress).
+if os.environ.get("CHEMART_ONLY"):
+    IMPLEMENTED = [i for i in os.environ["CHEMART_ONLY"].split(",") if i in ENTRIES]
 
 
 @pytest.mark.parametrize("cid", IMPLEMENTED)

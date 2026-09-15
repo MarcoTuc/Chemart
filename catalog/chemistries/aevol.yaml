@@ -1,0 +1,24 @@
+chemistries:
+
+- id: aevol
+  name: Aevol
+  origin: "Beslon, Knibbe et al."
+  book: "18.1.2"
+  refs: ["[654]"]
+  family: systems-biology
+  kind: framework
+  constructive: true
+  S: {repr: "a DNA-like binary genome; genes are binary strings translated via a codon table into proteins", definition: implicit}
+  R:
+    definition: implicit
+    arity: 1
+    scheme: "a protein 'folds' into a mathematical function expressing its metabolic activity as a FUZZY SET, ranging from polyvalent/low-specificity to highly specialised"
+  A: {reactor: ode, dilution: none}
+  params:
+    - {name: genome_length, type: int, role: structural}
+    - {name: codon_table, type: matrix, role: structural}
+    - {name: mutation_rates, type: matrix, role: stochastic, meaning: "point, indel, duplication, deletion, translocation, inversion"}
+    - {name: environment_target, type: callable, role: selection, meaning: "the target metabolic profile"}
+  provides: [topology, sequence-structure-function]
+  generator_ready: no
+  phenomena: ["homologous gene rearrangements are important for the evolvability of regulatory networks"]

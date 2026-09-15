@@ -1,0 +1,24 @@
+chemistries:
+
+- id: urdar
+  name: Urdar
+  origin: "Frank & Fontana / Gerlee et al. (book ref [315])"
+  book: "8.2.3"
+  refs: ["[314]", "[315]", "[537]"]
+  family: evolutionary-dynamics
+  kind: generator
+  constructive: true
+  S: {repr: "binary strings as 'metabolites'; organisms carry CA rules that operate on them", definition: implicit}
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "an organism metabolises a string by applying its CA rule, converting it to a higher-entropy form; only entropy-increasing organisms replicate"
+  A: {reactor: well-stirred-multiset, dilution: "inflow of energy-rich strings"}
+  params:
+    - {name: string_len, type: int, role: structural}
+    - {name: ca_rule_space, type: matrix, role: structural}
+    - {name: influx, type: float, role: population, meaning: "lowering it increases diversity and selects for energy-efficient organisms"}
+  provides: [topology, flow, energies, sequence-structure-function]
+  generator_ready: partial
+  phenomena: ["cross-feeding ecologies (one strain lives on another's waste)", "rock-paper-scissors intransitive dominance among species, which promotes biodiversity"]
+  notes: "One of the few ACs with an explicit thermodynamic driver (entropy of the metabolised string)."

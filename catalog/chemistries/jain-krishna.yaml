@@ -1,0 +1,41 @@
+chemistries:
+
+- id: jain-krishna
+  name: Jain-Krishna autocatalytic set model
+  origin: "Jain & Krishna, 1998-2002"
+  book: "15.2.2, 15.2.3"
+  refs: ["[425]", "[426]", "[427]", "[428]"]
+  family: evolutionary-dynamics
+  kind: generator
+  constructive: true
+  S: {repr: "m nodes of a directed graph; only the CATALYTIC action is represented, not the underlying reactions", definition: explicit}
+  R:
+    definition: explicit
+    arity: 1
+    scheme: "c_ij = 1 means X_j catalyses the production of X_i: X_j -> X_j + X_i ; x_i' = sum_j c_ij x_j - x_i sum_kj c_kj x_j"
+  A:
+    reactor: ode
+    dilution: "normalisation sum_i x_i = 1"
+    notes: >
+      Two timescales. Fast: integrate to the fixed point. Slow: remove a
+      species with the smallest concentration, replace it with a fresh node
+      whose in/out edges are redrawn with probability p, reset, repeat.
+  params:
+    - {name: m, type: int, default: 100, min: 2, max: 300, role: structural, meaning: "number of nodes (the state-space dimension stays constant)"}
+    - {name: p, type: float, default: 0.0025, min: 0, max: 1, role: structural, meaning: "link probability, both initially and on rewiring; the phase parameter"}
+    - {name: graph_updates, type: int, default: 0, min: 0, max: 20000, range: "the book's run finds the first autocatalytic set at update 2854 (m = 100, p = 0.0025)", role: population, meaning: "slow-timescale steps (least-fit node replaced) applied before the network is returned; 0 returns the initial random graph"}
+    - {name: self_loops, type: bool, default: false, role: structural, meaning: "allow c_ii = 1 (direct self-replicators); the model sets c_ii = 0"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, flow, initial-state]
+  fidelity: book+decisions
+  decisions:
+    - "The book's prose says c_ij is 'a catalytic function of species i on species j', but eq. 15.7 (x_i' = sum_j c_ij x_j ...) needs j to catalyse i. The equation is followed: c_ij = 1 becomes X_j -> X_j + X_i with rate 1, under constant-total dilution."
+    - "The fast attractor is the Perron-Frobenius eigenvector of C, recorded as the initial state. When there is no autocatalytic set (eigenvalue 0), (C + I)^m is iterated instead, which concentrates on the ends of the longest chains. Ties for the least-populated node are broken at random."
+    - "After a replacement the book perturbs the remaining concentrations. That has no effect when the next attractor is computed exactly, so it is not modelled. extras.analysis records the eigenvalue and the attractor's support."
+    - "x0, the concentration given to a new node, only matters for numerical integration, so it is not a parameter."
+  phenomena: ["random phase -> growth phase (once the first small ACS appears) -> organising phase", "crashes and core shifts when a stronger ACS out-competes the incumbent", "attractor = eigenvector of the Perron-Frobenius eigenvalue lambda_1 of C"]
+  notes: >
+    Comes with a published TAXONOMY OF INNOVATIONS worth encoding as an
+    analysis output: Type A short-lived (blip, incremental); Type B
+    long-term - independent organisation (core-shift / birth of an
+    organisation / dormant) and modification of an existing organisation
+    (core-enhancing / neutral).

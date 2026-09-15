@@ -1,0 +1,27 @@
+chemistries:
+
+- id: ccm
+  name: Chemical Casting Model (CCM)
+  origin: "Kanada, 1992-1994"
+  book: "17.2.2"
+  refs: ["[438]", "[439]"]
+  family: application
+  kind: generator
+  constructive: false
+  S: {repr: "atoms with a type and a state, optionally connected by links; the whole working memory is ONE point in search space", definition: explicit}
+  R:
+    definition: explicit
+    arity: variable
+    scheme: "LHS -> RHS pattern rewriting, applied only if the sum of Local Order Degrees increases"
+  A:
+    reactor: well-stirred-multiset
+    dilution: none
+    notes: "an annealing variant adds a per-atom 'frustration' (kinetic energy) that is added to the LOD and lets uphill moves happen; frustration grows by a factor c on each elastic collision and resets on reaction"
+  params:
+    - {name: problem, type: enum, range: "graph-colouring | N-queens | TSP", role: structural}
+    - {name: LOD, type: callable, role: selection, meaning: "local order degree: a 1-atom or 2-atom evaluation function; only LOCAL quality is measured"}
+    - {name: c, type: float, role: stochastic, meaning: "frustration growth factor (annealing rate)"}
+    - {name: catalysts, type: bool, default: false, role: structural, meaning: "adding a catalyst reduces rule locality -> faster convergence but more local optima"}
+  provides: [topology, sequence-structure-function]
+  generator_ready: partial
+  phenomena: ["convergence to global optima despite purely local evaluation", "near-lock-free parallelism: access conflicts act as harmless low-intensity noise"]

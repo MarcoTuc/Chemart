@@ -1,0 +1,41 @@
+chemistries:
+
+- id: stringmol
+  name: Stringmol
+  origin: "Hickinbotham, Clark, Stepney et al. (University of York), 2010-2011"
+  book: "11.1.2"
+  refs: ["[379]", "[380]", "[381]", "[783]"]
+  family: bio-inspired
+  kind: generator
+  constructive: true
+  S:
+    repr: >
+      Strings over Sigma = 26 template codes (A..Z) + 7 function codes
+      ($ > ^ ? = % }). Each molecule carries a sequence, a pointer vector
+      (flow / instruction / write / read), an activity vector, and a status
+      flag (unbound | active | passive).
+    definition: implicit
+  R:
+    definition: implicit
+    arity: 2
+    scheme: >
+      Two molecules bind with some probability if close in the topology.
+      A Smith-Waterman alignment against a COMPLEMENTARITY table (offset 13
+      in the template alphabet; function codes are self-complementary)
+      picks the best-matching segments and hence the binding offset.
+      One molecule becomes the enzyme; execution of its function codes
+      produces products.
+    notes: "opcodes: $ search, > move, ^ toggle, ? if, = copy, % cleave, } end"
+  A:
+    reactor: [well-stirred-multiset, lattice-2d]
+    dilution: "fixed-capacity container; parasites compete for space"
+  params:
+    - {name: complement_offset, type: int, default: 13, role: structural, meaning: "distance defining template complementarity"}
+    - {name: copy_error, type: float, default: 1e-5, role: stochastic, meaning: "per-symbol substitution rate on '=' (copy); insertions/deletions are rarer"}
+    - {name: bind_probability, type: float, role: stochastic}
+    - {name: capacity, type: int, role: population}
+    - {name: seed_replicase, type: matrix, role: population, meaning: "hand-designed self-replicator; many alternatives exist"}
+  provides: [topology, catalysts, flow, sequence-structure-function]
+  generator_ready: yes
+  reference_impl: "stringmol (upstream, open source)"
+  phenomena: ["extinction events", "characteristic sweeps and slow sweeps", "neutral drift", "subpopulations of non-lethal parasites", "rapid sweep cascades", "emergence of hypercycles when a dominant species loses self-replication"]

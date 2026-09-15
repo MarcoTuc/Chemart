@@ -1,0 +1,23 @@
+chemistries:
+
+- id: dna-automaton
+  name: DNA automaton (Benenson-Shapiro)
+  origin: "Shapiro 1999; Benenson et al. 2001"
+  book: "19.3.1"
+  refs: ["[767]", "[768]", "[100]"]
+  family: wet
+  kind: wet
+  constructive: false
+  S: {repr: "an input DNA molecule encoding a symbol string; transition molecules; the FokI restriction enzyme", definition: explicit}
+  R:
+    definition: explicit
+    arity: 2
+    scheme: "FokI recognises 'GGATG' and cleaves 9/13 nucleotides downstream; a transition molecule hybridises to the exposed sticky end, encoding a state transition, and the machine digests the input from the front"
+  A: {reactor: well-stirred-multiset, dilution: none}
+  params:
+    - {name: automaton, type: callable, role: structural, meaning: "the FSM to encode; the demo is 'does the input contain an even number of b'"}
+    - {name: n_states, type: int, default: 2, role: structural}
+    - {name: input_string, type: matrix, role: population}
+  provides: [topology, sequence-structure-function]
+  generator_ready: partial
+  notes: "Autonomous, unlike Adleman's. The 'digest from the front' operating mode is the same one Fraglets adopted in silico."

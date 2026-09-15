@@ -120,7 +120,23 @@ Non-generator entries follow the same contract. Analyses (`raf`, `nk-landscape`,
 
 Tests already verified for W3 (this session): matrix chemistry table 3.3; 4 self-replications / 76 replications at N=4; at N=9, foldings 1–4 give 14/12028, 122/21310, 18/11822, 94/16830; table 3.5 row 165; closure of s1..s15 at N=9 = s1..s27 minus s20..s23.
 
-At the end of each wave: full suite green; then ask the user whether to commit.
+At the end of each wave: full suite green, then commit (agreed: one commit per wave, plus infrastructure commits).
+
+### Parallel implementation (from W2 on)
+
+Remaining chemistries are implemented by parallel agents, one per chemistry,
+8 per batch, in the shared working tree:
+- The catalog is split into one YAML file per chemistry, so each agent owns
+  exactly `chemart/chemistries/<mod>.py`, `catalog/chemistries/<id>.yaml` and
+  `tests/chemistries/test_<mod>.py`. Shared files are integrator-only; agents
+  request changes in their report.
+- Every agent follows [`IMPLEMENTING.md`](IMPLEMENTING.md) and must pass its
+  definition of done: `python -m chemart.catalog validate --only <id>`,
+  `CHEMART_ONLY=<id> pytest tests/test_contract.py tests/chemistries/test_<mod>.py`,
+  and `chemart generate <id>`.
+- After each batch the integrator reviews the reports (decisions, sources),
+  applies requested shared changes, runs the full suite, regenerates
+  `docs/CATALOG.md`, and commits.
 
 ## Verification
 

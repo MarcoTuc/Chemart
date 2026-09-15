@@ -1,0 +1,25 @@
+chemistries:
+
+- id: replication-death
+  name: Replication and death
+  origin: "textbook evolutionary dynamics"
+  book: "7.2.1"
+  refs: ["[621]"]
+  family: evolutionary-dynamics
+  kind: generator
+  constructive: false
+  S: {repr: "one species X", definition: explicit}
+  R:
+    definition: explicit
+    arity: 1
+    scheme: "X --b--> 2X ; X --d--> (nothing)"
+  A: {reactor: [ode, ssa], dilution: none}
+  params:
+    - {name: b, type: float, default: 1.0, min: 0, role: kinetic, meaning: "birth (replication) rate"}
+    - {name: d, type: float, default: 0.5, min: 0, role: kinetic, meaning: "death rate"}
+    - {name: x0, type: float, default: 1.0, min: 0, role: population, meaning: "initial population"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, initial-state]
+  fidelity: book+decisions
+  decisions:
+    - "The book gives no numbers; defaults b = 1, d = 0.5, x0 = 1 give exponential growth."
+  phenomena: ["x(t) = x0 exp((b-d)t); exponential growth is the precondition for Darwinian evolution"]

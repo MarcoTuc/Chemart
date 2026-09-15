@@ -1,0 +1,27 @@
+chemistries:
+
+- id: brane-calculi
+  name: Brane calculi
+  origin: "Cardelli, 2004"
+  book: "9.7"
+  refs: ["[157]", "[269]"]
+  family: rewriting
+  kind: formalism
+  constructive: true
+  S:
+    repr: "nested membranes; computation happens ON membranes rather than inside compartments"
+    definition: implicit
+  R:
+    definition: explicit
+    arity: variable
+    scheme: "endocytosis, exocytosis, budding (membrane split), mating (membrane fusion)"
+  A:
+    reactor: compartments
+    dilution: none
+  params:
+    - {name: membrane_actions, type: callable, role: structural}
+    - {name: initial_structure, type: matrix, role: spatial}
+  provides: [topology, compartments]
+  generator_ready: no
+  phenomena: ["viral infection", "molecular pumps", "ion channels", "transport of molecular cargo by synthetic containers"]
+  notes: "Contrast with P systems: the membrane is the active element, not the container."

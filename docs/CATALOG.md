@@ -5,16 +5,16 @@
 
 Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rates or a rate law), **H** thermodynamics (energies and/or detailed balance). Status column: the fidelity of the implemented generator, or `todo (<book readiness>)`.
 
-- implemented: **25** of 98 (book: 4, book+decisions: 18, reconstructed: 3)
+- implemented: **32** of 98 (book: 4, book+decisions: 24, reconstructed: 4)
 - constructive (open, growing species set): **49**
-- carry their own kinetics: **38**; carry energetics: **13**
+- carry their own kinetics: **40**; carry energetics: **13**
 
 
 ## application
 
 | id | name | kind | constructive | tier | status | book |
 |---|---|---|---|---|---|---|
-| `acgp` | Algorithmic Chemistry GP (ACGP) | generator | no | T | todo (yes) | 16.6 |
+| `acgp` | Algorithmic Chemistry GP (ACGP) | generator | no | T | book+decisions | 16.6 |
 | `analog-function-crn` | Analog computation of algebraic functions with concentrations | generator | no | TK | book+decisions | 17.4.3 |
 | `brusselator` | Brusselator | generator | no | TK | book | 17.4.2, 19.3 |
 | `ccm` | Chemical Casting Model (CCM) | generator | no | T | todo (partial) | 17.2.2 |
@@ -50,7 +50,7 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 | id | name | kind | constructive | tier | status | book |
 |---|---|---|---|---|---|---|
 | `conrad-enzymatic` | Conrad's lock-and-key enzymatic / self-assembly processor | wet | no | TH | todo (no) | 11.2.1 |
-| `farmer-immune` | Bitstring immune system model (idiotypic network) | generator | yes | TK | todo (yes) | 11.2.2 |
+| `farmer-immune` | Bitstring immune system model (idiotypic network) | generator | yes | TK | book+decisions | 11.2.2 |
 | `mcs-bl` | Molecular Classifier System (MCS.bl) | generator | yes | T | todo (yes) | 11.1.1 |
 | `sac` | SAC (string-based artificial chemistry with cells) | generator | yes | T | todo (partial) | 11.1.3 |
 | `stringmol` | Stringmol | generator | yes | T | todo (yes) | 11.1.2 |
@@ -72,12 +72,12 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 | `dorin-korb-ecosystem` | Dorin & Korb virtual ecosystem chemistry | generator | yes | TH | todo (partial) | 8.2.3 |
 | `ecolab` | Ecolab | framework | yes | TK | todo (partial) | 8.2.3 |
 | `evolve-series` | EVOLVE virtual ecosystems | framework | yes | TH | todo (no) | 8.2.3 |
-| `jain-krishna` | Jain-Krishna autocatalytic set model | generator | yes | T | todo (yes) | 15.2.2, 15.2.3 |
+| `jain-krishna` | Jain-Krishna autocatalytic set model | generator | yes | TK | book+decisions | 15.2.2, 15.2.3 |
 | `logistic-chemistry` | Logistic growth ('replicate and fight') | generator | no | TK | book+decisions | 7.2.4 |
 | `lotka-volterra` | Lotka-Volterra | generator | no | TK | book+decisions | 7.2.8 |
-| `nk-landscape` | Kauffman NK model | analysis | no | - | todo (yes) | 18.4.1 |
+| `nk-landscape` | Kauffman NK model | analysis | no | TK | book+decisions | 18.4.1 |
 | `quasispecies` | Quasispecies equation | generator | no | TK | book+decisions | 7.2.7 |
-| `random-catalytic-networks` | Random catalytic reaction networks | generator | no | TK | todo (yes) | 7.2.9 |
+| `random-catalytic-networks` | Random catalytic reaction networks | generator | no | TK | book+decisions | 7.2.9 |
 | `rbn` | Random Boolean Networks (RBN) and RBN World | generator | no | T | todo (yes) | 18.4.2 |
 | `replication-death` | Replication and death | generator | no | TK | book+decisions | 7.2.1 |
 | `replicator-equation` | Replicator equation (evolutionary game dynamics) | generator | no | TK | book+decisions | 7.2.8 |
@@ -89,7 +89,7 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 | id | name | kind | constructive | tier | status | book |
 |---|---|---|---|---|---|---|
 | `arn` | Artificial Regulatory Network (ARN) | generator | no | TKH | todo (yes) | 11.3.4 |
-| `bigan-conservative-crn` | Conservative random chemical reaction networks | generator | no | TKH | todo (yes) | 11.3.2 |
+| `bigan-conservative-crn` | Conservative random chemical reaction networks | generator | no | TKH | reconstructed | 11.3.2 |
 | `nac` | Network Artificial Chemistry (NAC) | generator | yes | T | todo (partial) | 11.3.3 |
 | `toychem` | ToyChem (graph-based toy model of chemistry) | generator | yes | TKH | todo (partial) | 11.3.1 |
 
@@ -111,7 +111,7 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 | `bagley-farmer` | Bagley & Farmer autocatalytic metabolism | generator | yes | TKH | todo (partial) | 6.3.1, 7.3.1 |
 | `chemoton` | Chemoton | generator | no | TK | reconstructed | 6.1.4 |
 | `gard` | GARD (Graded Autocatalysis Replication Domain) | generator | no | TK | reconstructed | 6.2.4 |
-| `kauffman-autocatalytic-sets` | Kauffman autocatalytic sets (binary polymer model) | generator | yes | T | todo (yes) | 6.3.1 |
+| `kauffman-autocatalytic-sets` | Kauffman autocatalytic sets (binary polymer model) | generator | yes | T | book+decisions | 6.3.1 |
 | `ono-ikegami-protocell` | Ono & Ikegami autopoietic protocells | generator | no | TK | todo (yes) | 6.3.2 |
 | `raf` | RAF sets (reflexively autocatalytic, F-generated) | analysis | no | T | todo (yes) | 6.3.1 |
 

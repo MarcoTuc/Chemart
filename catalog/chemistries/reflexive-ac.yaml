@@ -1,0 +1,23 @@
+chemistries:
+
+- id: reflexive-ac
+  name: Reflexive artificial chemistry
+  origin: "Salzberg, 2007"
+  book: "9.8"
+  refs: ["[737]"]
+  family: rewriting
+  kind: generator
+  constructive: true
+  S:
+    repr: "finite state machines and their input data, deconstructed into a graph"
+    definition: implicit
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "a graph rewrites a graph, and in principle itself"
+  A:
+    reactor: graph-rewrite
+    dilution: none
+  provides: [topology, sequence-structure-function]
+  generator_ready: no
+  notes: "Described in one sentence in the book; needs the primary source before implementation."

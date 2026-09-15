@@ -1,0 +1,46 @@
+chemistries:
+
+- id: gard
+  name: GARD (Graded Autocatalysis Replication Domain)
+  aliases: ["Lipid World model", "polymer GARD", "EE-GARD", "spatial GARD"]
+  origin: "Segre, Lancet et al., 1998-2001"
+  book: "6.2.4"
+  refs: ["[764]", "[765]", "[760]", "[761]", "[762]", "[763]", "[771]", "[772]", "[773]", "[490]", "[726]", "[884]"]
+  family: origin-of-life
+  kind: generator
+  constructive: false
+  S:
+    repr: "lipid types L_1..L_N outside (buffered) and A_1..A_N inside one assembly; the assembly's COMPOSITION (a 'compositional genome' / composome) carries the information"
+    definition: explicit
+  R:
+    definition: explicit
+    arity: [1, 2]
+    scheme: "L_i --k_f--> A_i ; A_i --k_b--> L_i ; L_i + A_j --beta_ij--> A_i + A_j (catalysis by lipids already in the assembly)"
+  A:
+    reactor: ssa
+    dilution: "outside lipids buffered; the assembly splits in two when it reaches N_max molecules"
+    notes: "simulated with Gillespie SSA in the original papers"
+  params:
+    - {name: N_G, type: int, default: 100, min: 2, max: 200, role: structural, meaning: "number of lipid types; the network has N_G^2 catalysed joining reactions"}
+    - {name: k_f, type: float, default: 0.01, min: 0, role: kinetic, meaning: "basal joining rate constant"}
+    - {name: k_b, type: float, default: 0.0001, min: 0, role: kinetic, meaning: "basal leaving rate constant"}
+    - {name: rho, type: float, default: 0.01, min: 0, role: population, meaning: "buffered outside concentration of every lipid type"}
+    - {name: beta_mu, type: float, default: -4.0, role: kinetic, meaning: "mean of ln(beta_ij); beta is the receptor-affinity-distribution rate enhancement"}
+    - {name: beta_sigma, type: float, default: 4.0, min: 0, role: kinetic, meaning: "standard deviation of ln(beta_ij)"}
+    - {name: N_max, type: int, default: 100, min: 2, role: population, meaning: "assembly size at which fission occurs; also the crowding capacity of joining"}
+    - {name: catalysed_leaving, type: bool, default: false, role: structural, meaning: "also accelerate leaving by beta_ij (the book's 'in both directions' reading), adding A_i + A_j -> L_i + A_j at k_b beta_ij"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, compartments, initial-state]
+  fidelity: reconstructed
+  sources:
+    - "Predicting species emergence in simulated complex pre-biotic networks. PLoS ONE 13(2): e0192871 (2018), doi:10.1371/journal.pone.0192871 - GARD rate equation, ln(beta) ~ Normal(-4, 4), k_f = 1e-2, k_b = 1e-4, rho = 1e-2, N_max = N_G = 100"
+    - "Segre, D., Ben-Eli, D. & Lancet, D. (2000). Compositional genomes: prebiotic information transfer in mutually catalytic noncovalent assemblies. PNAS 97:4112-4117 (original model; full text not accessible, parameters taken from the 2018 paper)"
+  decisions:
+    - "The book gives the reaction scheme but no numbers. The rate equation and all parameter values are from the 2018 PLoS ONE GARD paper; each term becomes one mass-action reaction with outside lipids buffered at rho (checked in tests)."
+    - "That equation accelerates only joining, while the book says catalysis acts 'in both directions'. The default follows the paper's equation; catalysed_leaving = true adds the book's reverse catalysis."
+    - "The crowding factor (1 - N/N_max) is not mass action. It is recorded on every joining rate as crowding_capacity, and fission at N_max is described in extras.compartments. beta is sampled from the seed, so the network is a random instance."
+    - "The polymer, EE and spatial variants are not generated (the former 'variant' parameter is dropped); split_size is N_max; k_i, k_minus_i and beta are replaced by the distribution parameters above. thermodynamic-consistency is not claimed, because the default catalyses only one direction."
+  phenomena: ["homeostatically stable composomes (quasi-stationary states)", "composome succession as mutations accumulate", "spontaneous symmetry breaking akin to homochirality (spatial variant)", "known evolvability limits: replication fidelity is too low"]
+  notes: >
+    A rare case where information lives in a MULTISET COMPOSITION rather
+    than a sequence. Also a clean demonstration that catalysis alone cannot
+    shift equilibrium - the flow term is mandatory.

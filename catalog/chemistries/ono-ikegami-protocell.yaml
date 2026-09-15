@@ -1,0 +1,32 @@
+chemistries:
+
+- id: ono-ikegami-protocell
+  name: Ono & Ikegami autopoietic protocells
+  origin: "Ono & Ikegami, 1999-2003"
+  book: "6.3.2"
+  refs: ["[637]", "[639]", "[641]", "[538]"]
+  family: origin-of-life
+  kind: generator
+  constructive: false
+  S:
+    repr: "five species A (autocatalyst, hydrophilic), M (membrane, hydrophobic, isotropic M_i or anisotropic M_a), X (food, neutral), Y (waste, neutral), W (water, hydrophilic), on a hexagonal grid with orientation"
+    definition: explicit
+  R:
+    definition: explicit
+    arity: [1, 2]
+    scheme: "A + X -> 2A ; A + X -> A + M ; {A,M,X} -> Y (decay) ; Y -> X (recycling by an external energy source)"
+    notes: "plus hydrophobic/hydrophilic repulsion fields; anisotropic M has a directional repulsion"
+  A:
+    reactor: lattice-2d
+    dilution: "food supply rate"
+  params:
+    - {name: grid, type: matrix, role: spatial, meaning: "hexagonal lattice"}
+    - {name: X_supply, type: float, role: population, meaning: "the decisive parameter: anisotropy only pays off at LOW supply"}
+    - {name: anisotropy, type: bool, default: true, role: structural, meaning: "isotropic M gives clusters that shrink and die; anisotropic M gives dividing protocells"}
+    - {name: repulsion_strength, type: float, role: spatial}
+    - {name: rate_constants, type: matrix, role: kinetic}
+    - {name: dimensions, type: enum, default: 2, range: "2 | 3", role: spatial}
+  provides: [topology, stoichiometry, catalysts, space, rate-constants, flow]
+  generator_ready: yes
+  phenomena: ["membrane filaments -> closed, osmotically permeable protocells", "growth and division sustaining an internal metabolism", "3D: parallel membranes with tubular connections, intertwined globular filaments"]
+  notes: "No genetic material and no evolution mechanism - a self-maintenance model, not a replicator model."

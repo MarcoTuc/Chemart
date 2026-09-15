@@ -1,0 +1,36 @@
+chemistries:
+
+- id: toychem
+  name: ToyChem (graph-based toy model of chemistry)
+  origin: "Benko, Flamm & Stadler, 2003-2006"
+  book: "11.3.1; used in the RNA AC of 18.1.1"
+  refs: ["[102]", "[103]", "[104]", "[105]", "[333]", "[300]"]
+  family: network
+  kind: generator
+  constructive: true
+  S:
+    repr: "molecules as graphs of atoms with hybrid orbitals derived from VSEPR rules; abstracted into an orbital graph carrying sigma/pi/other bonds"
+    definition: implicit
+    notes: "parameterised for H, C, N, O, P, S"
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "graph rewriting driven by outer-orbital overlap; conserves mass and atom types; energies come from an extended-Hueckel-style orbital treatment"
+  A:
+    reactor: [ode, ssa]
+    dilution: none
+    notes: "the implementation emits ODEs for the generated network automatically"
+  params:
+    - {name: atom_types, type: enum, default: "H C N O P S", role: structural}
+    - {name: energy_params, type: matrix, role: thermodynamic, meaning: "orbital energy parameters per atom type"}
+    - {name: expansion_depth, type: int, role: structural, meaning: "how far to expand the reaction network from the seed molecules"}
+    - {name: barrier_cutoff, type: float, role: thermodynamic, meaning: "max activation energy for a reaction to be retained"}
+  provides: [topology, stoichiometry, energies, thermodynamic-consistency, mass-conservation, rate-constants, sequence-structure-function]
+  generator_ready: partial
+  phenomena: ["reaction networks with the 'look and feel' of real chemistry", "generic connectivity and degree-distribution statistics"]
+  notes: >
+    THE reference case for Chemart's thermodynamic tier. It is the only
+    chemistry in the book that computes activation energies from first
+    principles and can therefore hand back Arrhenius rate constants and a
+    genuine mass-conservation vector. Any output schema that cannot carry
+    per-species energies and per-reaction barriers fails on this entry.

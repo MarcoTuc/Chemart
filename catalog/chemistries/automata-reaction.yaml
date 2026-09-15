@@ -1,0 +1,40 @@
+chemistries:
+
+- id: automata-reaction
+  name: Automata reaction (32-bit binary string chemistry)
+  aliases: ["Dittrich-Banzhaf automata chemistry"]
+  origin: "Dittrich & Banzhaf, 1998"
+  book: "10.6.1"
+  refs: ["[233]"]
+  family: automata
+  kind: generator
+  constructive: true
+  S:
+    repr: "binary strings of exactly 32 bits (one machine word)"
+    definition: implicit
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "s1 + s2 -> s1 + s2 + s3"
+    notes: >
+      s1 is mapped to a finite state automaton by reading successive 4-bit
+      groups as machine codes; the automaton runs on s2 in an I/O register
+      (read-write) against an operator register holding s1 (read-only).
+      Every string can act as automaton and/or operand with equal probability.
+  A:
+    reactor: [well-stirred-multiset, lattice-2d]
+    dilution: "replace a random molecule; M constant"
+    notes: "designed to 'respect the medium' - fast enough for M ~ 10^6 over ~10^4 generations"
+  params:
+    - {name: word_len, type: int, default: 32, role: structural}
+    - {name: opcode_width, type: int, default: 4, role: structural}
+    - {name: M, type: int, default: 1000000, range: "up to ~1e6", role: population}
+    - {name: topology, type: enum, default: well-mixed, range: "well-mixed | 2d-grid", role: spatial}
+    - {name: forbid_exact_replication, type: bool, default: false, role: selection, meaning: "make exact self-replication elastic; this is what drives complexity increase"}
+  provides: [topology, catalysts, flow, space, sequence-structure-function]
+  generator_ready: yes
+  phenomena: ["dominance of self-replicators", "catalytic networks", "syntactic/semantic closure of emergent organisations (confirming Fontana)", "'self-evolution': variation and selection with no explicit mutation operator and no fitness function", "spontaneous emergence of recombination", "lazy->eager replicator transitions"]
+  notes: >
+    The best cost/benefit constructive chemistry in the book: 32-bit words,
+    trivially vectorisable, large populations, and it reproduces the
+    qualitative results of AlChemy at a fraction of the compute.

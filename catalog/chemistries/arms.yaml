@@ -1,0 +1,33 @@
+chemistries:
+
+- id: arms
+  name: ARMS (Abstract Rewriting System on Multisets)
+  origin: "Suzuki & Tanaka, 1997"
+  book: "9.4; ecology application 8.2.3; p53 model 18.3.2"
+  refs: ["[830]", "[831]", "[832]", "[828]", "[829]"]
+  family: rewriting
+  kind: generator
+  constructive: false
+  S:
+    repr: "symbols from a finite alphabet A"
+    definition: explicit
+  R:
+    definition: explicit
+    arity: variable
+    scheme: "Gamma = (A, R) with R a set of indexed multiset rewriting rules r_1..r_n"
+  A:
+    reactor: [maximally-parallel, compartments]
+    dilution: none
+    notes: >
+      A *rule order* determines the sequence of rule application; kinetics
+      is modelled as differing rule-application frequencies rather than
+      rate constants. Rewriting is sequential, free or parallel.
+  params:
+    - {name: alphabet, type: matrix, role: structural}
+    - {name: rules, type: callable, role: structural}
+    - {name: rule_order, type: matrix, role: structural, meaning: "priority ordering; reversing it turns a halting system into an exponentially expanding one"}
+    - {name: M0, type: matrix, role: population, meaning: "initial multiset"}
+    - {name: lambda_e, type: float, role: structural, meaning: "order parameter: ratio of heating to cooling rules; cycles emerge only at intermediate values (Langton-lambda analogue)"}
+  provides: [topology, stoichiometry, compartments, initial-state]
+  generator_ready: yes
+  phenomena: ["halting vs. exponential expansion depending on rule order", "emergence of cycles at intermediate lambda_e", "Brusselator-like oscillations", "plant/herbivore/carnivore ecology", "p53 signalling feedback loops"]

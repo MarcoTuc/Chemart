@@ -1,0 +1,31 @@
+chemistries:
+
+- id: coreworld
+  name: Coreworld (Venus I / Venus II)
+  origin: "Rasmussen et al., 1990/1992"
+  book: "10.6.3"
+  refs: ["[696]", "[697]"]
+  family: automata
+  kind: generator
+  constructive: true
+  S:
+    repr: "instructions in a cyclic core memory with periodic boundaries; 'organisms' are collections of instructions working together (hard to individuate)"
+    definition: implicit
+  R:
+    definition: implicit
+    arity: variable
+    scheme: "execution of code belonging to another molecule counts as a reaction"
+  A:
+    reactor: sequential-vm
+    dilution: "bounded execution-pointer queue"
+    notes: "Venus I updates all pointers before writing back (parallel); Venus II executes the top pointer sequentially"
+  params:
+    - {name: resource_influx, type: float, role: population, meaning: "computational resource refilled per address per step; the key phase parameter ('desert' vs 'jungle')"}
+    - {name: max_operation_radius, type: int, role: spatial, meaning: "limit on relative addressing; promotes locality"}
+    - {name: pointer_injection_rate, type: float, role: stochastic, meaning: "rate of starting new randomly-initialised execution pointers"}
+    - {name: mov_mutation_rate, type: float, role: stochastic, meaning: "probability that copied data is mutated on MOV"}
+    - {name: queue_len, type: int, role: population}
+    - {name: mode, type: enum, default: venus-ii, range: "venus-i (parallel) | venus-ii (sequential)", role: structural}
+  provides: [topology, space, flow]
+  generator_ready: partial
+  phenomena: ["desert condition (low influx): simple cyclic structures dominate", "jungle condition (high influx): richer diversity and cooperating structures", "spontaneous emergence of self-replicators (Pargellis)"]

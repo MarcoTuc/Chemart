@@ -1,0 +1,27 @@
+chemistries:
+
+- id: isologous-diversification
+  name: Isologous diversification
+  origin: "Furusawa & Kaneko, 1998-2006"
+  book: "18.5, 18.6"
+  refs: ["[301]", "[302]", "[303]", "[304]", "[840]", "[345]", "[658]"]
+  family: systems-biology
+  kind: generator
+  constructive: false
+  S: {repr: "~20 chemicals inside each cell; cells occupy slots on a 2D grid and can attach into clusters", definition: explicit}
+  R:
+    definition: explicit
+    arity: 2
+    scheme: "an autocatalytic network with feedback inside each cell, plus nutrient uptake and diffusion of chemicals to the extracellular medium"
+    notes: "CELL TYPE is defined by the ATTRACTOR of the internal concentration dynamics (period and amplitude of the oscillations), not by a discrete state"
+  A: {reactor: [lattice-2d, ode], dilution: "nutrient inflow; cells grow and divide, splitting chemicals roughly in half"}
+  params:
+    - {name: n_chemicals, type: int, default: 20, role: structural}
+    - {name: reaction_network, type: matrix, role: structural, meaning: "the intracellular autocatalytic network"}
+    - {name: diffusion, type: matrix, role: spatial}
+    - {name: adhesion, type: float, role: spatial, meaning: "controls whether small clusters detach and found new colonies"}
+    - {name: division_threshold, type: float, role: population}
+    - {name: split_noise, type: float, role: stochastic, meaning: "asymmetry at division; this small difference is AMPLIFIED into differentiation"}
+  provides: [topology, stoichiometry, space, rate-constants, compartments, flow]
+  generator_ready: partial
+  phenomena: ["spontaneous differentiation into cell types once a cluster exceeds a size threshold", "ring and stripe patterns", "life cycle of replicating multicellular clusters", "EMERGENT chemical gradients that supply positional information (contra Wolpert's imposed linear gradient)", "robustness of both cell type and pattern to cell death"]

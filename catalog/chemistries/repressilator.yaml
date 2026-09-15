@@ -1,0 +1,34 @@
+chemistries:
+
+- id: repressilator
+  name: Repressilator
+  origin: "Elowitz & Leibler, 2000"
+  book: "19.3.2; appendix (Repressilator.py)"
+  refs: ["[256]", "[518]", "[926]"]
+  family: wet
+  kind: generator
+  constructive: false
+  S: {repr: "3 genes G_i, 3 gene-protein complexes C_i, 3 mRNAs M_i, 3 repressor proteins P_i (LacI, TetR, lambda-cI)", definition: explicit}
+  R:
+    definition: explicit
+    arity: "n+1, 1"
+    scheme: >
+      G_i + n P_{i-1} <-ke/kr-> C_i  (cyclic: P3 represses G1) ;
+      G_i --km--> G_i + M_i ; M_i --kp--> M_i + P_i ;
+      M_i --mu_m--> ; P_i --mu_p-->
+  A: {reactor: [ode, ssa], dilution: "mRNA and protein decay"}
+  params:
+    - {name: n, type: int, default: 2, min: 1, max: 10, role: kinetic, meaning: "Hill coefficient (proteins per binding event); n=1 gives NO oscillations - the circuit needs a sigmoid response"}
+    - {name: ke, type: float, default: 1.0, min: 0, role: kinetic, meaning: "repressor binding"}
+    - {name: kr, type: float, default: 1.0, min: 0, role: kinetic, meaning: "repressor unbinding"}
+    - {name: km, type: float, default: 5.0, min: 0, role: kinetic, meaning: "transcription"}
+    - {name: kp, type: float, default: 1.0, min: 0, role: kinetic, meaning: "translation"}
+    - {name: mu_m, type: float, default: 0.5, min: 0, role: kinetic, meaning: "mRNA decay"}
+    - {name: mu_p, type: float, default: 0.1, min: 0, role: kinetic, meaning: "protein decay"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, initial-state]
+  fidelity: book
+  decisions:
+    - "The SSA gene copy number m is not a parameter: it sizes a stochastic simulation (V = m/N_A), not the network."
+    - "Binding is the elementary mass-action reaction of eqs. 19.1-19.3, not a lumped Hill rate law. Initial state is figure 19.18's: G1 = C2 = C3 = 1, everything else 0."
+  reference_impl: "PyCellChemistry Repressilator.py"
+  phenomena: ["sustained oscillations inside a bounded parameter region (n=2 with the default rates)", "no oscillations for n = 1", "oscillations survive stochastic noise at low gene copy number", "implemented in real E. coli"]

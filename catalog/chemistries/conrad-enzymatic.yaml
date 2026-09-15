@@ -1,0 +1,28 @@
+chemistries:
+
+- id: conrad-enzymatic
+  name: Conrad's lock-and-key enzymatic / self-assembly processor
+  origin: "Conrad, 1974-1992"
+  book: "11.2.1; also 17.1.2 (emergence vs. programmability tradeoff)"
+  refs: ["[193]", "[194]", "[196]", "[954]", "[722]"]
+  family: bio-inspired
+  kind: wet
+  constructive: false
+  S:
+    repr: "signalling molecules with shapes; adaptor and effector molecules"
+    definition: explicit
+  R:
+    definition: implicit
+    arity: variable
+    scheme: "shape-complementary self-assembly into a macromolecular mosaic that binds an adaptor and triggers a signalling cascade"
+  A:
+    reactor: well-stirred-multiset
+    dilution: none
+    notes: "computation = free energy minimisation; a downhill dynamical process"
+  provides: [topology, energies]
+  generator_ready: no
+  notes: >
+    Conceptual/wet. Its lasting contribution to Chemart is the
+    emergence-vs-programmability tradeoff: "a system cannot at the same
+    time be effectively programmable, amenable to evolution by variation
+    and selection, and computationally efficient."

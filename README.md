@@ -21,7 +21,7 @@ can actually hand back — topology only, or kinetics, or energetics.
   standardised output record should be instead
 - [`catalog/SCHEMA.md`](catalog/SCHEMA.md) — field definitions
 - [`catalog/chemistries/`](catalog/chemistries/) — the catalog itself,
-  one YAML file per family
+  one YAML file per chemistry
 
 At a glance:
 

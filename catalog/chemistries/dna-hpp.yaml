@@ -1,0 +1,26 @@
+chemistries:
+
+- id: dna-hpp
+  name: Adleman's DNA Hamiltonian Path computation
+  origin: "Adleman, 1994"
+  book: "19.3.1"
+  refs: ["[24]", "[514]", "[370]", "[30]", "[31]"]
+  family: wet
+  kind: wet
+  constructive: false
+  S: {repr: "single-stranded DNA: each vertex v_i gets a random sequence split into v_i,in and v_i,out; each edge e_ij is the concatenated complement v_i,in-bar v_j,out-bar", definition: implicit}
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "complementary hybridisation + ligation: edge strands anneal vertex strands into paths"
+  A: {reactor: well-stirred-multiset, dilution: "solutions extracted by PCR amplification, gel electrophoresis by length, and per-vertex magnetic bead separation"}
+  params:
+    - {name: graph, type: matrix, role: structural, meaning: "the HPP instance"}
+    - {name: oligo_length, type: int, role: structural}
+    - {name: copy_number, type: float, role: population, meaning: "grows EXPONENTIALLY with problem size - Hartmanis: 200 cities would need more than the mass of the Earth"}
+  provides: [topology, sequence-structure-function]
+  generator_ready: partial
+  notes: >
+    Worth having as a generator because the encoding (vertex/edge
+    complementarity) is a clean, purely combinatorial CRN that Chemart can
+    emit for any graph. The wet limitations are documented, not simulated.

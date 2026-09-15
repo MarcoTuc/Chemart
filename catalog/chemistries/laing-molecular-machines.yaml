@@ -1,0 +1,31 @@
+chemistries:
+
+- id: laing-molecular-machines
+  name: Laing's artificial molecular machines
+  origin: "Laing, 1972-1977"
+  book: "10.5.1"
+  refs: ["[484]", "[485]", "[486]", "[487]", "[488]"]
+  family: automata
+  kind: generator
+  constructive: true
+  S:
+    repr: "symbol strings (usually binary) that exist in two forms: passive data strings and active machine strings (sequences of instructions with a 3D shape, allowing branches and loops)"
+    definition: implicit
+  R:
+    definition: implicit
+    arity: 2
+    scheme: >
+      Two molecules attach at one position each. The active one executes
+      the instruction at the binding site on the passive one: move left/right,
+      read, write. Both binding positions advance.
+  A:
+    reactor: compartments
+    dilution: "not specified - Laing gave no explicit dynamics"
+    notes: "artificial organisms are compartments containing molecules of this chemistry"
+  params:
+    - {name: instruction_set, type: enum, default: "w(1), w(0), TT, CT, L, R, NOP", role: structural}
+    - {name: string_length, type: int, role: structural}
+  provides: [topology, sequence-structure-function, compartments]
+  generator_ready: no
+  phenomena: ["universal computation", "self-reproduction by self-inspection and self-description"]
+  notes: "Historically first; no dynamics was ever simulated. Implement only if the self-inspection/self-description distinction is wanted as a demo."

@@ -1,0 +1,37 @@
+chemistries:
+
+- id: cham
+  name: Chemical Abstract Machine (CHAM)
+  origin: "Berry & Boudol, 1990"
+  book: "9.3"
+  refs: ["[113]", "[422]"]
+  family: rewriting
+  kind: formalism
+  constructive: false
+  S:
+    repr: "terms of an algebra; a whole solution can itself be enclosed by a membrane and become a molecule"
+    definition: explicit
+  R:
+    definition: explicit
+    arity: variable
+    scheme: "s1,...,sk -> s1',...,sl' ; classified as heating (a -> b...c), cooling (a...c -> b), and reaction rules"
+    notes: >
+      Four general laws govern rule application: reaction, chemical law,
+      membrane law (a subsolution evolves independently), airlock law
+      (a molecule crosses a membrane: s1 <| M).
+  A:
+    reactor: [maximally-parallel, compartments]
+    dilution: none
+    notes: "arbitrarily many transformations per step provided no molecule is used twice; non-deterministic choice when several rules apply"
+  params:
+    - {name: heating_rules, type: callable, role: structural}
+    - {name: cooling_rules, type: callable, role: structural}
+    - {name: reaction_rules, type: callable, role: structural}
+    - {name: membrane_structure, type: matrix, role: spatial}
+  provides: [topology, compartments]
+  generator_ready: yes
+  notes: >
+    Heating/cooling reversibility is a genuinely useful primitive for
+    Chemart: it is the only place in the book where a rewriting formalism
+    marks pairs of rules as thermodynamic inverses. Applied to industrial
+    robot self-assembly in SOAS (see `soas`).

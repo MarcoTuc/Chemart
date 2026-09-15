@@ -1,6 +1,7 @@
 # Chemart catalog schema
 
-One YAML file per family; each file is a mapping `chemistries: [ ... ]`.
+One YAML file per chemistry, `catalog/chemistries/<id>.yaml`; each file is a
+mapping `chemistries: [ <the entry> ]`.
 Every entry uses the fields below. Fields marked (req) must be present.
 
 The catalog is the **only specification of each generator's parameters**:

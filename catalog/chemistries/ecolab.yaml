@@ -1,0 +1,27 @@
+chemistries:
+
+- id: ecolab
+  name: Ecolab
+  origin: "Standish, 1994-2004"
+  book: "8.2.3"
+  refs: ["[795]", "[796]"]
+  family: evolutionary-dynamics
+  kind: framework
+  constructive: true
+  S: {repr: "species of a generalised Lotka-Volterra system", definition: explicit}
+  R:
+    definition: explicit
+    arity: 2
+    scheme: "generalised Lotka-Volterra, with MUTATION of the parameters r_i and b_ij introducing new species"
+  A:
+    reactor: ode
+    dilution: "probabilistic rounding keeps population counts integral"
+    notes: "mutation functions are chosen so offspring resemble parents and populations stay bounded"
+  params:
+    - {name: r, type: matrix, role: kinetic}
+    - {name: B, type: matrix, role: kinetic}
+    - {name: mutation_kernel, type: callable, role: stochastic}
+    - {name: speciation_rate, type: float, role: stochastic}
+  provides: [topology, stoichiometry, rate-constants]
+  generator_ready: partial
+  phenomena: ["self-organised criticality: power-law distribution of species lifetimes"]

@@ -1,0 +1,35 @@
+chemistries:
+
+- id: acgp
+  name: Algorithmic Chemistry GP (ACGP)
+  aliases: ["sequenceless register machine programs"]
+  origin: "Banzhaf & Lasarczyk, 2004-2008"
+  book: "16.6"
+  refs: ["[74]", "[75]", "[497]", "[498]"]
+  family: application
+  kind: generator
+  constructive: false
+  S: {repr: "registers r0..r(n-1) of a virtual machine (species) and their contents (concentrations)", definition: explicit}
+  R:
+    definition: explicit
+    arity: [1, 2]
+    scheme: "an instruction r3 <- r1 op r2 is read as a reaction r1 + r2 -> r3"
+  A:
+    reactor: well-stirred-multiset
+    dilution: none
+    notes: "start() picks a random instruction and next() steps randomly - the program is a MULTISET of instructions with no execution order, so behaviour is the average over orderings"
+  params:
+    - {name: n_registers, type: int, default: 12, min: 2, max: 128, role: structural, meaning: "number of registers"}
+    - {name: n_instructions, type: int, default: 100, min: 1, max: 10000, role: structural, meaning: "multiset size; the multiplicity of an instruction is its importance, which gives fault tolerance"}
+    - {name: input_registers, type: list, default: [0, 1, 2, 3], role: structural, meaning: "read-only registers where input is fed; never written"}
+    - {name: output_registers, type: list, default: [11], role: structural, meaning: "registers the answer is read from"}
+  provides: [topology, stoichiometry, catalysts]
+  fidelity: book+decisions
+  decisions:
+    - "The generator samples one random program: n_instructions instructions with uniformly random operand registers, a random writable destination (not an input register) and an operator from {+, -, *, /}. Each instruction is the reaction of eq. 16.9, repeated instructions stay repeated (multiset), and extras.program lists the instructions in reaction order."
+    - "Evolution of programs (population, generations, executions_per_eval) acts on populations of such networks and is not part of one network, so those parameters are dropped."
+  phenomena: ["evolves classifiers (e.g. UCI thyroid) as bipartite register/instruction graphs", "robust to instruction deletion", "trivially parallelisable - no coordination between instruction executions"]
+  notes: >
+    The inverse case: here a CRN is READ OUT of a program rather than
+    generated. The bipartite graph (registers = species, instructions =
+    reactions) is exactly the SBML/BioNetGen bipartite view.

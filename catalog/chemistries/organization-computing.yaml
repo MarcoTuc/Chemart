@@ -1,0 +1,38 @@
+chemistries:
+
+- id: organization-computing
+  name: Computing with chemical organizations
+  origin: "Matsumaru, Speroni di Fenizio, Centler & Dittrich, 2006-2011"
+  book: "17.3.3"
+  refs: ["[550]", "[551]", "[552]", "[553]", "[554]", "[555]", "[506]"]
+  family: application
+  kind: generator
+  constructive: false
+  S:
+    repr: "two species per Boolean variable: x0 for x=0 and x1 for x=1; information is encoded by PRESENCE/ABSENCE, not concentration"
+    definition: explicit
+  R:
+    definition: explicit
+    arity: variable
+    scheme: >
+      XOR gate: a0+b0 -> c0 ; a0+b1 -> c1 ; a1+b0 -> c1 ; a1+b1 -> c0,
+      plus annihilation x0 + x1 -> (nothing) for each variable.
+      Maximal independent set: s0_j + s1_j -> ;
+      s0_j + s0_k + ... + s0_l -> n_i s1_i (over the n_i neighbours of v_i) ;
+      s1_j -> s0_i for all (v_j, v_i) in E.
+  A: {reactor: [ode, ssa], dilution: none}
+  params:
+    - {name: problem, type: enum, default: xor, choices: [xor, maximal-independent-set], role: structural, meaning: "which chemical program of the book to generate"}
+    - {name: a, type: bool, default: false, role: population, meaning: "XOR input a; its species a0 or a1 is put in the initial state"}
+    - {name: b, type: bool, default: true, role: population, meaning: "XOR input b; its species b0 or b1 is put in the initial state"}
+    - {name: graph, type: list, default: [[0, 1], [1, 2], [2, 3]], role: structural, meaning: "undirected edges [u, v] of the maximal-independent-set instance"}
+  provides: [topology, stoichiometry, initial-state]
+  fidelity: book+decisions
+  decisions:
+    - "No rates: the book's analysis is organisational (which species survive), not kinetic."
+    - "The book gives no MIS instance; the default graph is a 4-vertex path. Edges are undirected, so eq. 17.7 applies in both directions. Inputs a and b only affect the XOR program."
+  phenomena: ["the surviving organisation IS the answer; 15 organisations in the XOR Hasse diagram", "flip-flops, oscillators, NAND chains", "robustness: perturbing the system makes it fall back into the solution organisation, an attractor"]
+  notes: >
+    Its shortcoming (one species per variable state) is precisely why the
+    output schema needs to carry the ORGANISATION LATTICE as a first-class
+    analysis product, not just the matrix.

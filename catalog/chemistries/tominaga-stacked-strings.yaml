@@ -1,0 +1,22 @@
+chemistries:
+
+- id: tominaga-stacked-strings
+  name: Tominaga's stackable-string chemistry
+  origin: "Tominaga et al., 2007-2008"
+  book: "18.3.2"
+  refs: ["[855]", "[856]"]
+  family: systems-biology
+  kind: generator
+  constructive: true
+  S: {repr: "strings that can be STACKED, forming 2D patterns - double strands and more complex biomolecule-like structures", definition: implicit}
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "pattern matching and recombination on the 2D stacked layout, mimicking lock-and-key binding"
+  A: {reactor: well-stirred-multiset, dilution: none}
+  params:
+    - {name: alphabet, type: matrix, role: structural}
+    - {name: stacking_rules, type: callable, role: structural}
+  provides: [topology, sequence-structure-function]
+  generator_ready: no
+  phenomena: ["fatty acid oxidation, DNA replication, transcription and translation all expressible", "computationally universal", "reimplements the Adleman-Lipton paradigm and the Benenson DNA automaton"]

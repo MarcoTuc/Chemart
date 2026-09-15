@@ -1,0 +1,32 @@
+chemistries:
+
+- id: l-systems
+  name: L-systems
+  origin: "Lindenmayer, 1968; Prusinkiewicz & Lindenmayer, 1990"
+  book: "9.8"
+  refs: ["[512]", "[677]", "[376]", "[443]"]
+  family: rewriting
+  kind: formalism
+  constructive: true
+  S:
+    repr: "strings over an alphabet, interpreted as turtle commands"
+    definition: implicit
+  R:
+    definition: explicit
+    arity: 1
+    scheme: "context-free or context-sensitive productions applied in PARALLEL (unlike formal grammars, which rewrite sequentially)"
+  A:
+    reactor: maximally-parallel
+    dilution: none
+  params:
+    - {name: axiom, type: matrix, role: population}
+    - {name: productions, type: callable, role: structural}
+    - {name: iterations, type: int, role: population}
+    - {name: stochastic, type: bool, default: false, role: stochastic}
+  provides: [topology, space]
+  generator_ready: yes
+  notes: >
+    Included for completeness. Growth/development, not chemistry: there is
+    no conservation, no kinetics, and the "reaction" is unary. In Chemart
+    it belongs in a `developmental` category with a warning that its
+    stoichiometric export is degenerate.

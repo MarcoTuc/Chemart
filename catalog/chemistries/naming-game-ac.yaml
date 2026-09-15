@@ -1,0 +1,33 @@
+chemistries:
+
+- id: naming-game-ac
+  name: Naming game as an artificial chemistry
+  origin: "De Beule, Hovig & Benson (book ref [212]); after Steels' naming games"
+  book: "16.3.3"
+  refs: ["[212]", "[804]", "[805]", "[806]", "[809]"]
+  family: application
+  kind: generator
+  constructive: false
+  S: {repr: "one meaning molecule M, word molecules S_j and adaptor/code molecules C_j for j = 1..N_s", definition: explicit}
+  R:
+    definition: explicit
+    arity: [2, 3]
+    scheme: >
+      M + C_j --ks--> S_j ; M + S_j --kc--> C_j ;
+      M + S_j + C_j --ka--> 2 S_j ;
+      M + S_j + C_k --kappa1--> M + S_j + C_j ;
+      M + S_k + C_j --kappa2--> M + S_j + C_j   (k != j)
+  A: {reactor: ode, dilution: none}
+  params:
+    - {name: N_s, type: int, default: 3, min: 1, max: 20, role: structural, meaning: "number of competing names for the meaning"}
+    - {name: ks, type: float, default: 1.0, min: 0, role: kinetic, meaning: "word production M + C_j -> S_j"}
+    - {name: kc, type: float, default: 1.0, min: 0, role: kinetic, meaning: "code production M + S_j -> C_j"}
+    - {name: ka, type: float, default: 1.0, min: 0, role: kinetic, meaning: "replication of a successful word"}
+    - {name: kappa1, type: float, default: 1.0, min: 0, role: kinetic, meaning: "replacement of a mismatching adaptor"}
+    - {name: kappa2, type: float, default: 1.0, min: 0, role: kinetic, meaning: "replacement of a mismatching word"}
+  provides: [topology, stoichiometry, catalysts, rate-constants]
+  fidelity: book+decisions
+  decisions:
+    - "In the text of eqs. 16.5-16.6 the mismatch marks are lost (both read M + S_j + C_j -> M + S_j + C_j). Following the prose ('eliminate mismatching words (resp. adaptors) by replacing them with matching ones'), they are M + S_j + C_k -> M + S_j + C_j and M + S_k + C_j -> M + S_j + C_j for every k != j."
+    - "Reactions 16.2-16.4 consume M as printed. The book gives no rate values or initial state; all rates default to 1 and no initial state is attached."
+  phenomena: ["lateral inhibition dynamics converging to a shared lexicon, reproducing Steels' agent-based results in ODE form"]

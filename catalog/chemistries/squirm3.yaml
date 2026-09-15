@@ -1,0 +1,43 @@
+chemistries:
+
+- id: squirm3
+  name: Squirm3
+  origin: "Hutton, 2002-2007"
+  book: "11.4.1"
+  refs: ["[411]", "[412]", "[529]"]
+  family: spatial
+  kind: generator
+  constructive: true
+  S:
+    repr: "atoms with a type T in {a..f} and an integer state S; molecules are bonded atom groups moving as a unit"
+    definition: implicit
+  R:
+    definition: explicit
+    arity: [2, 3]
+    scheme: >
+      Three reaction classes: association (x_g + y_h -> x_i y_j),
+      dissociation (x_g y_h -> x_i + y_j) and transformation
+      (state changes in bonded pairs). Rules may be *specific* (fixed types)
+      or *general* (type variables). Enzymatic reactions add a catalyst
+      z(i) whose state i encodes the entire reaction via
+      i = 2(2(|T|(|T|(|S|(|S|(|S| g + h) + j) + k) + x) + y) + b1) + b2 + S,
+      and i is read from a base-4 genetic string over {a,b,c,d}.
+  A:
+    reactor: [lattice-2d, continuous-space]
+    dilution: "periodic flooding erases regions and replenishes single atoms"
+    notes: "Moore or von Neumann neighbourhood on a grid, or a reaction radius in continuous space"
+  params:
+    - {name: T, type: enum, default: "a b c d e f", role: structural, meaning: "atom types; |T| enters the enzyme encoding"}
+    - {name: S, type: int, role: structural, meaning: "number of atom states; also enters the encoding"}
+    - {name: rules, type: callable, role: structural, meaning: "the rule table; the book's self-replicator uses R1..R8 (table 11.5), the membrane version 41 rules"}
+    - {name: space, type: enum, default: grid, range: "grid-moore | grid-vn | continuous", role: spatial}
+    - {name: reaction_radius, type: float, role: spatial}
+    - {name: flood_period, type: int, role: selection, meaning: "how often regions are wiped and refilled - the selection pressure"}
+    - {name: seed_molecule, type: matrix, default: "e8-a1-b1-f1", role: population}
+  provides: [topology, stoichiometry, catalysts, space, mass-conservation, initial-state]
+  generator_ready: yes
+  phenomena: ["template self-replication of an arbitrary a..d sequence flanked by e and f", "genetically encoded enzymes", "membrane-enclosed replicating cells", "evolution under flooding"]
+  notes: >
+    Atoms are indivisible and never created or destroyed, so Squirm3 has a
+    real atom-conservation law - a good positive control for Chemart's
+    conservation-law detection.

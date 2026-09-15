@@ -1,0 +1,25 @@
+chemistries:
+
+- id: srsim
+  name: SRSim (rule-based spatial simulator)
+  origin: "Gruenert & Dittrich, 2010-2012"
+  book: "18.3.3"
+  refs: ["[351]", "[388]", "[415]", "[861]"]
+  family: systems-biology
+  kind: framework
+  constructive: true
+  S: {repr: "proteins with explicit 3D spatial conformation, forming complexes", definition: implicit}
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "rule-based modelling: reactions are computed on the fly from binding-site rules rather than enumerated"
+  A: {reactor: continuous-space, dilution: none}
+  params:
+    - {name: agent_rules, type: callable, role: structural}
+    - {name: geometry, type: matrix, role: spatial}
+  provides: [topology, space, sequence-structure-function]
+  generator_ready: no
+  phenomena: ["self-assembly and molecular walkers on microtubules", "the mitotic spindle checkpoint"]
+  notes: >
+    The book's answer to combinatorial explosion: never enumerate. Chemart
+    should treat 'rule-based, do not flatten' as a first-class output mode.

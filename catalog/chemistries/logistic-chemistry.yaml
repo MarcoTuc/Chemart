@@ -1,0 +1,25 @@
+chemistries:
+
+- id: logistic-chemistry
+  name: Logistic growth ('replicate and fight')
+  book: "7.2.4; appendix (Logistic.py)"
+  refs: ["[621]"]
+  family: evolutionary-dynamics
+  kind: generator
+  constructive: false
+  S: {repr: "one species X", definition: explicit}
+  R:
+    definition: explicit
+    arity: [1, 2]
+    scheme: "X --r--> 2X ; 2X --r/K--> X"
+  A: {reactor: [ode, ssa], dilution: "implicit, via the reverse reaction"}
+  params:
+    - {name: r, type: float, default: 1.0, min: 0, role: kinetic, meaning: "intrinsic growth rate"}
+    - {name: K, type: float, default: 1.0, min: 1.0e-9, role: population, meaning: "carrying capacity; the reverse coefficient is d = r/K"}
+    - {name: x0, type: float, default: 0.1, min: 0, role: population, meaning: "initial population"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, initial-state]
+  fidelity: book+decisions
+  decisions:
+    - "K = 1 as in figure 7.2; r and x0 are not given (defaults 1 and 0.1)."
+  reference_impl: "PyCellChemistry Logistic.py"
+  phenomena: ["sigmoid approach to K under ODE", "stochastic runs fluctuate around and OVERSHOOT K - the reaction does not enforce a hard bound"]

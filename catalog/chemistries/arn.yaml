@@ -1,0 +1,47 @@
+chemistries:
+
+- id: arn
+  name: Artificial Regulatory Network (ARN)
+  origin: "Banzhaf, 2003"
+  book: "11.3.4; GRN modelling 18.4.3; morphogenesis 18.6.1"
+  refs: ["[67]", "[68]", "[73]", "[478]", "[479]", "[480]", "[504]", "[521]", "[522]", "[172]"]
+  family: network
+  kind: generator
+  constructive: false
+  S:
+    repr: "a single bitstring genome divided into 32-bit portions; genes are marked by a promoter and encode 32-bit proteins"
+    definition: implicit
+  R:
+    definition: implicit
+    arity: variable
+    scheme: >
+      A 160-bit gene (5 x 32-bit segments) is translated to a 32-bit protein
+      by MAJORITY VOTING over the 5 segments, bit by bit. Proteins act as
+      TFs binding the enhancer and inhibitor sites upstream of each promoter;
+      binding strength grows with bitwise complementarity (XOR popcount).
+  A:
+    reactor: ode
+    dilution: "concentrations normalised: sum_i c_i = 1"
+    notes: >
+      dc_i/dt = delta (a_i - h_i) c_i / sum_j c_j
+      a_i = (1/N) sum_j c_j exp(beta (d^a_j - d_max))
+      h_i = (1/N) sum_j c_j exp(beta (d^h_j - d_max))
+      Maps onto Arrhenius with E_a = d_max - d_j and beta = RT.
+  params:
+    - {name: genome_length, type: int, role: structural}
+    - {name: promoter_pattern, type: matrix, default: "a fixed 32-bit pattern", role: structural, meaning: "what marks a gene; its density controls how many genes a random genome carries"}
+    - {name: segments_per_gene, type: int, default: 5, role: structural}
+    - {name: protein_len, type: int, default: 32, role: structural}
+    - {name: d_max, type: int, default: 32, role: structural}
+    - {name: beta, type: float, role: kinetic, meaning: "matching-strength scaling; the RT analogue"}
+    - {name: delta, type: float, role: kinetic, meaning: "overall rate scaling"}
+    - {name: link_threshold, type: float, role: structural, meaning: "complementarity above which a regulatory edge is drawn in the static topology"}
+    - {name: genome_source, type: enum, default: random, range: "random | gene-duplication-and-divergence", role: structural, meaning: "duplication+divergence is what yields small-world and scale-free topologies; random genomes give nothing interesting"}
+  provides: [topology, rate-law, energies, initial-state, sequence-structure-function]
+  generator_ready: yes
+  reference_impl: "described fully in the book; several independent implementations exist"
+  phenomena: ["scale-free / small-world topology under duplication+divergence", "attractor dynamics dominated by a subset of genes", "network motifs matching natural GRNs", "heterochrony", "evolvable to target concentration dynamics"]
+  notes: >
+    Important edge case for the output schema: the ARN's dynamics is NOT
+    mass action on a stoichiometric matrix - it is a normalised
+    exponential-response ODE. Exporting only S loses the model entirely.

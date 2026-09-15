@@ -1,0 +1,24 @@
+chemistries:
+
+- id: evolve-series
+  name: EVOLVE virtual ecosystems
+  origin: "Conrad & Pattee 1970; Rizki & Conrad; Conrad & Strizich"
+  book: "8.2.3"
+  refs: ["[191]", "[195]", "[134]", "[135]", "[714]"]
+  family: evolutionary-dynamics
+  kind: framework
+  constructive: true
+  S: {repr: "virtual organisms with genotype-encoded state transition rules; enzymes/proteins as strings with weighted critical sections", definition: implicit}
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "lock-and-key matching of a protein's critical section against a function table; secretion, light harvesting, metabolic and genetic processes"
+  A: {reactor: lattice-2d, dilution: "matter and energy conservation with recycling on death"}
+  params:
+    - {name: grid, type: matrix, role: spatial}
+    - {name: light_input, type: float, role: population}
+    - {name: critical_section_weight, type: float, role: structural}
+    - {name: recombination_rate, type: float, role: stochastic}
+  provides: [topology, space, energies, mass-conservation, flow]
+  generator_ready: no
+  phenomena: ["evolution of efficient homogeneous populations that then stop evolving (1969 model)", "emergence, extinction and re-emergence of scavenger niches (EVOLVE)"]

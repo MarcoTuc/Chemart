@@ -10,9 +10,15 @@ from __future__ import annotations
 from math import factorial, prod
 from typing import Any
 
-#: law name -> required parameters
-#: ("power" is k [X]^order for a reaction with a single reactant species, e.g.
-#: the generalised selection equation x' = f x^c.)
+#: law name -> required parameters. Rate of a reaction with reactant
+#: multiplicities n_i:
+#:   mass-action       k prod_i [X_i]^n_i
+#:   power             k [X]^order (single reactant species; generalised selection x' = f x^c)
+#:   michaelis-menten  vmax [S] / (km + [S])      (single reactant S)
+#:   hill              vmax h, h = [R]^n/(K^n + [R]^n) ("mode": "activation") or 1 - h
+#:                     ("repression"), for the species named by "regulator"
+#:   saturating        k prod_i ([X_i] / (1 + [X_i]/K))^n_i   (crowding, Bigan et al. 2013)
+#:   arrhenius         A exp(-Ea / RT) prod_i [X_i]^n_i
 RATE_LAWS: dict[str, tuple[str, ...]] = {
     "mass-action": ("k",),
     "power": ("k", "order"),

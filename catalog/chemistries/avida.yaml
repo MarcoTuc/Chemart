@@ -1,0 +1,37 @@
+chemistries:
+
+- id: avida
+  name: Avida
+  origin: "Adami & Brown, 1994"
+  book: "10.7.1; ecology 8.2.3; evolving distributed algorithms 17.3.2"
+  refs: ["[19]", "[16]", "[21]", "[22]", "[567]", "[628]", "[629]", "[467]", "[468]"]
+  family: automata
+  kind: framework
+  constructive: true
+  S:
+    repr: "an assembler program occupying one cell of a 2D lattice"
+    definition: implicit
+  R:
+    definition: implicit
+    arity: 1
+    scheme: "s --E--> s + s'  (unimolecular, replicator type; E is CPU time consumed, i.e. 'energy')"
+  A:
+    reactor: lattice-2d
+    dilution: "offspring displaces a neighbour; max population = grid size"
+    notes: "parallel execution by time slicing; resources with inflow/outflow reward tasks"
+  params:
+    - {name: grid, type: matrix, role: spatial, meaning: "2D lattice dimensions = carrying capacity"}
+    - {name: instruction_set, type: enum, default: "heads-based (shift-r/l, if-n-equ, if-less, if-label, add, sub, nand, inc, dec, push, pop, swap-stk, swap, IO, jmp-head, get-head, mov-head, set-flow, h-search, h-copy, h-alloc, h-divide, nop-A/B/C)", role: structural}
+    - {name: mutation_rates, type: matrix, role: stochastic, meaning: "copy / insert / delete rates"}
+    - {name: tasks, type: callable, role: selection, meaning: "external fitness: logic operations on I/O registers, rewarded with CPU time"}
+    - {name: resources, type: matrix, role: population, meaning: "resource pools with inflow and outflow rates"}
+    - {name: demes, type: int, role: selection, meaning: "subpopulations for group selection; with germline replication this is what let synchronization/desynchronization algorithms evolve"}
+    - {name: ancestor, type: matrix, role: population}
+  provides: [topology, space, flow, catalysts]
+  generator_ready: partial
+  reference_impl: "Avida (upstream C++); Nanopond is a <1000-line 2D Tierra/Avida hybrid"
+  phenomena: ["evolution of complex features from simple ones", "host-parasite ecologies", "evolved decentralised synchronization and desynchronization", "quantitative match to E. coli population dynamics"]
+  notes: >
+    Chemart should wrap Avida rather than reimplement it, and expose the
+    per-organism reaction s -> 2s plus the resource in/out flows as the
+    exported CRN.

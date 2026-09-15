@@ -1,0 +1,38 @@
+chemistries:
+
+- id: bondable-ca
+  name: Bondable Cellular Automata (BCA)
+  origin: "Gross, Banzhaf et al., 2011"
+  book: "10.7.3"
+  refs: ["[372]", "[373]", "[264]"]
+  family: automata
+  kind: generator
+  constructive: true
+  S:
+    repr: "an atom is a 1D binary CA with periodic boundaries and width w; a molecule is a set of bonded atoms; atom type = Wolfram rule number 0..255"
+    definition: implicit
+  R:
+    definition: implicit
+    arity: 2
+    scheme: >
+      Association / dissociation driven by an OBSERVABLE of the atoms'
+      dynamics (mean polarity after settling). Bonding strength is set by
+      the longest contiguous complementary binary run; once bonded, each
+      CA's neighbourhood is influenced by the other, which can strengthen
+      or weaken the bond.
+  A:
+    reactor: well-stirred-multiset
+    dilution: none
+  params:
+    - {name: w, type: int, default: 12, role: structural, meaning: "CA width in bits"}
+    - {name: rule_set, type: matrix, default: "0..255", role: structural, meaning: "available atom types"}
+    - {name: settle_iterations, type: int, default: "2, 8, 32, 128, 512, 2048", role: structural, meaning: "iterations before the mean polarity observable is read"}
+    - {name: bond_threshold, type: float, role: structural}
+  provides: [topology, energies, sequence-structure-function]
+  generator_ready: partial
+  phenomena: ["a 'periodic table' of the 256 rules ordered by settled mean polarity (book fig. 10.16)"]
+  notes: >
+    Called a *subsymbolic* AC: reactivity is not declared but read off an
+    emergent property of an internal dynamical system. Mean polarity plays
+    the role of an energy-like state variable, so it is one of the few
+    entries where `energies` is meaningful without real thermodynamics.

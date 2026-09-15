@@ -1,0 +1,23 @@
+chemistries:
+
+- id: proof-ac
+  name: Artificial chemistry as a proof search system
+  origin: "Fontana & Buss (Curry-Howard link); Bersini / Casti (book refs [147],[148])"
+  book: "16.5"
+  refs: ["[284]", "[147]", "[148]", "[406]", "[620]"]
+  family: application
+  kind: generator
+  constructive: true
+  S: {repr: "clauses of first-order predicate calculus (or lambda-terms, under the Curry-Howard isomorphism)", definition: implicit}
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "binary resolution: two clauses unify and produce a new clause; existence of a molecule = truth of the proposition"
+  A: {reactor: well-stirred-multiset, dilution: "dead-end clauses accumulate; the proof is read off the construction sequence"}
+  params:
+    - {name: axioms, type: matrix, role: population, meaning: "the theory A = {A_1..A_n}"}
+    - {name: target, type: matrix, role: selection, meaning: "the proposition P to prove"}
+    - {name: max_collisions, type: int, role: population}
+  provides: [topology, sequence-structure-function]
+  generator_ready: partial
+  phenomena: ["parallel, stochastic proof search; the proof is the reaction pathway that produced the target molecule"]

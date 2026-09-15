@@ -1,0 +1,36 @@
+chemistries:
+
+- id: kauffman-autocatalytic-sets
+  name: Kauffman autocatalytic sets (binary polymer model)
+  origin: "Kauffman, 1986; Farmer, Kauffman & Packard, 1986"
+  book: "6.3.1"
+  refs: ["[446]", "[447]", "[260]"]
+  family: origin-of-life
+  kind: generator
+  constructive: true
+  S:
+    repr: "polymers = strings over an alphabet of size B (a, b for B = 2), up to a maximum length"
+    definition: implicit
+  R:
+    definition: implicit
+    arity: [1, 2, 3]
+    scheme: "condensation A + B -> AB and cleavage AB -> A + B for every split of every polymer, each optionally catalysed by a polymer E: A + B + E <-> AB + E"
+  A:
+    reactor: graph-rewrite
+    dilution: "food set inflow keeps the system out of equilibrium"
+    notes: "the original analysis is graph-theoretic and static, with no kinetics"
+  params:
+    - {name: B, type: int, default: 2, min: 2, max: 4, role: structural, meaning: "alphabet size"}
+    - {name: max_length, type: int, default: 5, min: 2, max: 8, role: structural, meaning: "longest polymer in the network (at most 512 polymers in total)"}
+    - {name: P, type: float, default: 0.05, min: 0, max: 1, range: "critical value P_crit ~ B^(-2L) for a firing disk of polymers up to length L (eq. 6.3)", role: structural, meaning: "probability that a given polymer catalyses a given condensation/cleavage pair"}
+    - {name: food_set, type: list, default: ["a", "b", "aa", "bb"], role: population, meaning: "the firing disk of polymers supplied from outside (book figure 6.12)"}
+  provides: [topology, stoichiometry, catalysts, mass-conservation, flow, initial-state]
+  fidelity: book+decisions
+  decisions:
+    - "Built as the binary polymer model: all polymers up to max_length, every split of every polymer as a reversible condensation/cleavage pair, and each polymer catalysing each pair (both directions) with probability P."
+    - "Water (H in eq. 6.2) is left out, as in the usual formulation of the polymer model. No rates: the book's analysis is static. The food set is recorded in extras.food_set, and monomer counts per letter are exact conservation laws (extras.conservation)."
+    - "The earlier parameter L (maximum food-set length) is replaced by an explicit food_set; the book's default food set is {a, b, aa, bb}."
+  phenomena: ["percolation transition at P_crit: above it, autocatalytic sets form almost surely", "larger B favours set formation, so proteins (B=20) beat RNA (B=4)"]
+  notes: >
+    Topology only; see `bagley-farmer` for the dynamic version. RAF analysis
+    (`raf`) applies directly to this network.

@@ -1,0 +1,30 @@
+chemistries:
+
+- id: analog-function-crn
+  name: Analog computation of algebraic functions with concentrations
+  origin: "Hjelmfelt et al.; Deckard & Sauro; Dittrich et al."
+  book: "17.4.3"
+  refs: ["[141]", "[220]", "[511]", "[386]"]
+  family: application
+  kind: generator
+  constructive: false
+  S: {repr: "one species per input (X1, X2) and the output Y; values are concentrations", definition: explicit}
+  R:
+    definition: explicit
+    arity: [1, 2]
+    scheme: "sqrt: X --k1--> X + Y ; 2Y --k2--> (nothing), giving y = sqrt(k1 x / (2 k2)); k1 = 2 k2 gives y = sqrt(x)"
+  A: {reactor: ode, dilution: "the result is read at steady state"}
+  params:
+    - {name: function, type: enum, default: sqrt, choices: [sqrt, square, add, multiply, divide], role: structural, meaning: "the function computed at steady state as [Y]"}
+    - {name: x1, type: float, default: 4.0, min: 0, role: population, meaning: "first input concentration"}
+    - {name: x2, type: float, default: 2.0, min: 0, role: population, meaning: "second input concentration (add, multiply, divide)"}
+  provides: [topology, stoichiometry, catalysts, rate-constants, initial-state]
+  fidelity: book+decisions
+  decisions:
+    - "sqrt is the book's network with k1 = 2, k2 = 1 (eqs. 17.18-17.24)."
+    - "The other functions are not in the book. They are the analogous mass-action networks, each checked against its steady state in the tests: square 2X1 -> 2X1 + Y, Y -> ; add X1 -> X1 + Y, X2 -> X2 + Y, Y -> ; multiply X1 + X2 -> X1 + X2 + Y, Y -> ; divide X1 -> X1 + Y, X2 + Y -> X2."
+    - "extras.readout names the output species and its expected steady state."
+  notes: >
+    The book lists the shortcomings honestly: no negative numbers, must
+    wait for steady state, not every system HAS a steady state, and
+    composition needs disjoint species per stage, which does not scale.

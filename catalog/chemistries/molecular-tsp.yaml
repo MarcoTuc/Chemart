@@ -1,0 +1,31 @@
+chemistries:
+
+- id: molecular-tsp
+  name: Molecular Traveling Salesman
+  origin: "Banzhaf, 1990-1995"
+  book: "17.2.1"
+  refs: ["[62]"]
+  family: application
+  kind: generator
+  constructive: true
+  S: {repr: "data strings s = (s0, s1..sN) where s0 is the fitness and s1..sN a tour permutation; plus machine molecules", definition: implicit}
+  R:
+    definition: implicit
+    arity: [2, 3]
+    scheme: >
+      A machine picks n_op strings, modifies them, evaluates
+      l(s) = sum_i sqrt((x_{i+1}-x_i)^2 + (y_{i+1}-y_i)^2), and releases
+      the n_op best. Machine types: E (exchange two cities), C (cut and
+      reinsert a segment), I (cut, invert and reinsert), R (recombine two
+      tours; n_op = 2).
+  A: {reactor: well-stirred-multiset, dilution: "worse strings discarded by the machine"}
+  params:
+    - {name: N, type: int, role: structural, meaning: "number of cities"}
+    - {name: M, type: int, role: population, meaning: "number of data strings"}
+    - {name: machine_counts, type: matrix, role: structural, meaning: "how many E-, C-, I-, R-machines; the R fraction trades convergence speed for diversity"}
+    - {name: city_coords, type: matrix, role: structural, meaning: "the problem instance"}
+    - {name: fitness_fn, type: callable, role: selection, meaning: "swap this and the same chemistry solves other problems"}
+  provides: [topology, sequence-structure-function]
+  generator_ready: yes
+  reference_impl: "re-implemented by the authors on PyCellChemistry"
+  phenomena: ["convergence to near-optimal tours by purely local machine-string collisions, with no global information"]

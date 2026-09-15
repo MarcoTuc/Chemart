@@ -1,0 +1,29 @@
+chemistries:
+
+- id: mgs
+  name: MGS
+  aliases: ["un modele general de simulation"]
+  origin: "Giavitto & Michel, 2001"
+  book: "9.6; biology 18.3.2"
+  refs: ["[317]", "[319]", "[320]", "[321]", "[322]"]
+  family: rewriting
+  kind: formalism
+  constructive: true
+  S:
+    repr: "topological collections: monoidal collections (sets, multisets, sequences), maps, labelled graphs / regular grids"
+    definition: implicit
+  R:
+    definition: explicit
+    arity: variable
+    scheme: "trans name = { pattern / guard => replacement }  applied over a collection's neighbourhood structure"
+  A:
+    reactor: [graph-rewrite, maximally-parallel]
+    dilution: none
+    notes: "integrates CA, CHAM, P systems and L-systems into one rule system; targets dynamical systems with a dynamical structure, (DS)^2"
+  params:
+    - {name: collection_type, type: enum, range: "seq | bag | set | map | graph | grid", role: spatial}
+    - {name: transformations, type: callable, role: structural}
+  provides: [topology, space, compartments, sequence-structure-function]
+  generator_ready: partial
+  phenomena: ["neighbour-swap sort on a sequence", "EcoRI restriction-enzyme cleavage of a DNA sequence into a TUBE bag", "Anabaena filament growth", "cAMP signalling"]
+  notes: "Chemart can borrow its collection typing as the space abstraction."

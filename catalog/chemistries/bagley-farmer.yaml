@@ -1,0 +1,38 @@
+chemistries:
+
+- id: bagley-farmer
+  name: Bagley & Farmer autocatalytic metabolism
+  origin: "Bagley & Farmer, 1992; Bagley, Farmer & Fontana, 1992"
+  book: "6.3.1, 7.3.1"
+  refs: ["[49]", "[50]"]
+  family: origin-of-life
+  kind: generator
+  constructive: true
+  S:
+    repr: "binary strings (polymers)"
+    definition: implicit
+  R:
+    definition: implicit
+    arity: [1, 2]
+    scheme: "reversible condensation/cleavage; only a randomly drawn subset of reactions is catalysed"
+    notes: "kinetic parameters are drawn ON THE FLY as reactions are needed - a constructive parameterisation"
+  A:
+    reactor: [ode, ssa]
+    dilution: "constant inflow of small food molecules; outflow of everything"
+  params:
+    - {name: alphabet, type: int, default: 2, role: structural}
+    - {name: firing_disk, type: matrix, role: population, meaning: "the food set of small polymers"}
+    - {name: food_influx, type: float, role: population}
+    - {name: catalysis_probability, type: float, role: structural}
+    - {name: k_spontaneous, type: float, role: kinetic, meaning: "uncatalysed forward rate"}
+    - {name: catalytic_enhancement, type: float, role: kinetic, meaning: "rate multiplier when catalysed; catalysis must accelerate BOTH directions equally to stay thermodynamically honest"}
+    - {name: concentration_threshold, type: float, role: population, meaning: "below this a species is pruned, which is how the species set stays finite"}
+    - {name: mutation_rate, type: float, role: stochastic}
+  provides: [topology, stoichiometry, catalysts, rate-constants, mass-conservation, flow, thermodynamic-consistency]
+  generator_ready: partial
+  phenomena: ["catalytic focusing: mass concentrates into a small core set, but only away from equilibrium", "metabolisms jump between fixed points under mutation - a first sign of evolution"]
+  notes: >
+    Defines an autocatalytic metabolism dynamically: an autocatalytic set
+    whose concentrations differ significantly from the uncatalysed case.
+    Chemart's canonical demo of "same topology, different kinetics,
+    different answer".

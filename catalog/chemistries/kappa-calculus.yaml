@@ -1,0 +1,32 @@
+chemistries:
+
+- id: kappa-calculus
+  name: Kappa calculus
+  origin: "Danos & Laneve, 2004"
+  book: "9.7"
+  refs: ["[208]"]
+  family: rewriting
+  kind: formalism
+  constructive: true
+  S:
+    repr: "proteins with named binding sites; complexes are graphs"
+    definition: implicit
+  R:
+    definition: explicit
+    arity: 2
+    scheme: "graph rewriting rules expressing binding and dissociation of proteins at specific sites"
+  A:
+    reactor: [ssa, graph-rewrite]
+    dilution: none
+  params:
+    - {name: agent_signatures, type: callable, role: structural, meaning: "protein types and their binding sites"}
+    - {name: rules, type: callable, role: structural}
+    - {name: rates, type: matrix, role: kinetic}
+  provides: [topology, stoichiometry, rate-constants, sequence-structure-function]
+  generator_ready: partial
+  notes: >
+    Rule-based, combinatorially explosive species set - the archetype of a
+    chemistry that must NOT be flattened to a stoichiometric matrix by
+    default. Used for gene regulation, signal transduction, PPI networks.
+    Real tooling exists outside the book (KaSim), so Chemart should
+    interoperate rather than reimplement.

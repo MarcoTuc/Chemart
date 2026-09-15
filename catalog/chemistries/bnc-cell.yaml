@@ -1,0 +1,29 @@
+chemistries:
+
+- id: bnc-cell
+  name: BNC (bond-number chemistry) cell model
+  origin: "Hintze & Adami, 2008"
+  book: "18.3.1"
+  refs: ["[384]", "[441]"]
+  family: systems-biology
+  kind: generator
+  constructive: true
+  S:
+    repr: "linear molecules over atoms {1,2,3} with single '-' and double '=' bonds obeying a valence/bond rule; 608 valid molecules up to length 12"
+    definition: implicit
+    notes: "no branches or rings"
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "recombination: pick a cleavage point in each reactant and swap tails; only products satisfying the bond rule are valid (>5 million valid reactions)"
+  A: {reactor: lattice-2d, dilution: "cells divide when they hold enough complex metabolites; food diffuses from fixed or moving sources"}
+  params:
+    - {name: max_length, type: int, default: 12, role: structural}
+    - {name: food_set, type: matrix, default: "the 53 smallest of the 608 molecules", role: population}
+    - {name: environment, type: enum, default: static, range: "static | quasi-static (one source moves per update) | dynamic (all sources move)", role: population, meaning: "the paper's main independent variable"}
+    - {name: genome_alphabet, type: enum, default: "{0,1,2,3}", role: structural}
+    - {name: affinity_encoding, type: callable, role: structural, meaning: "gene -> (expression level, target affinity, reaction specificity)"}
+    - {name: grid, type: matrix, role: spatial}
+  provides: [topology, stoichiometry, catalysts, mass-conservation, space, compartments, flow, sequence-structure-function]
+  generator_ready: partial
+  phenomena: ["import/transform/export metabolic pathways emerge", "dynamic environments give SLOWER, LESS modular but MORE robust networks - contradicting [441], probably because the changes there are systematic rather than random"]

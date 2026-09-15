@@ -1,0 +1,38 @@
+chemistries:
+
+- id: ikegami-hashimoto
+  name: Machine-tape chemistry
+  origin: "Ikegami & Hashimoto, 1995"
+  book: "10.5.4"
+  refs: ["[419]", "[420]"]
+  family: automata
+  kind: generator
+  constructive: true
+  S:
+    repr: >
+      Two separate populations. Tapes: circular binary strings, 7 bits.
+      Machines: 4-bit head + 4-bit tail + 8-bit state transition table.
+    definition: implicit
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "sM + sT -> sM + sT + sM' + sT'"
+    notes: >
+      A machine reacts with a tape if its head matches one substring and
+      its tail a different substring; it operates on the reading frame
+      between them, giving sT'. sT' is then folded into machine sM' by
+      reading 16 bits circularly from the head binding position - so one
+      tape can yield different machines depending on the binding site.
+  A:
+    reactor: ode
+    dilution: "population size constant; a fraction c of molecules is replaced by reaction products each update"
+    notes: "integer frequency vector <-> real concentration vector conversion with rounding"
+  params:
+    - {name: tape_len, type: int, default: 7, role: structural}
+    - {name: machine_len, type: int, default: 16, range: "4 head + 4 tail + 8 table", role: structural}
+    - {name: c, type: float, default: 0.6, role: population, meaning: "fraction of the reactor replaced per generation"}
+    - {name: noise, type: float, role: stochastic, meaning: "external noise level; the single most important knob - it selects between Eigen/Schuster hypercycles and double-autocatalytic core networks"}
+    - {name: compartments, type: bool, default: false, role: spatial, meaning: "encapsulate reaction systems into diffusing cells (Ikegami & Hashimoto 1997)"}
+  provides: [topology, catalysts, flow, sequence-structure-function]
+  generator_ready: yes
+  phenomena: ["low noise: simple autocatalytic loops, Eigen/Schuster hypercycles, no active mutation", "high noise: double autocatalytic networks with high active mutation", "after ~1000 generations: stable dense 'core networks' that keep their diversity even after noise is switched off"]

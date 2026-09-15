@@ -1,0 +1,34 @@
+chemistries:
+
+- id: tierra
+  name: Tierra
+  origin: "Ray, 1991"
+  book: "10.6.4"
+  refs: ["[701]", "[702]", "[818]"]
+  family: automata
+  kind: framework
+  constructive: true
+  S:
+    repr: "self-replicating assembler programs in a shared core; 32 instructions, 5 bits each, no numeric operands"
+    definition: implicit
+  R:
+    definition: implicit
+    arity: 1
+    scheme: "s -> s + s' (replication, with mutation); parasitism is one program executing another's code"
+  A:
+    reactor: sequential-vm
+    dilution: "the 'reaper' queue kills programs when allocated memory exceeds a threshold, prioritising those that accumulated error penalties"
+  params:
+    - {name: soup_size, type: int, role: spatial}
+    - {name: mutation_rate, type: float, role: stochastic, meaning: "cosmic-ray + copy-error rates"}
+    - {name: reaper_threshold, type: float, role: selection, meaning: "memory fill fraction that triggers culling"}
+    - {name: slice_size, type: int, role: population, meaning: "CPU time slice per creature"}
+    - {name: ancestor, type: matrix, role: population, meaning: "hand-written seed self-replicator (80 instructions in Ray's original)"}
+  provides: [topology, space, flow]
+  generator_ready: partial
+  phenomena: ["program length optimisation", "parasites, immunity, hyperparasites", "cooperative organisations"]
+  notes: >
+    Key innovations vs. Core War: template addressing via NOP0/NOP1
+    patterns, memory allocation and protection (which is what makes an
+    individual identifiable), and an explicit fitness pressure. Note the
+    book's caveat: self-replicators do NOT arise spontaneously in Tierra.

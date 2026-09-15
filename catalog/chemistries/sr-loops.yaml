@@ -1,0 +1,37 @@
+chemistries:
+
+- id: sr-loops
+  name: Self-replicating loops in cellular automata
+  aliases: ["Langton loop", "SDSR loop", "evoloop"]
+  origin: "von Neumann 1966; Langton 1984; Byl 1989; Reggia 1993; Sayama 1999-2004"
+  book: "10.4, 10.7.2; ecology 8.2.3"
+  refs: ["[495]", "[705]", "[744]", "[745]", "[738]", "[739]", "[779]", "[453]"]
+  family: automata
+  kind: generator
+  constructive: true
+  S:
+    repr: >
+      Two readings. (a) Micro: a cell state IS a molecule (quiescent = absent);
+      state transitions are movement and reaction. (b) Macro: an emergent
+      loop pattern is a molecule and loop-loop interactions are reactions.
+    definition: implicit
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "loop -> 2 loops (replication); loop -> dissolved (structural dissolution, Sayama's addition)"
+  A:
+    reactor: lattice-2d
+    dilution: "bounded space; loops must keep replicating to hold their concentration"
+  params:
+    - {name: n_states, type: int, default: 8, range: "29 (von Neumann), 8 (Langton), 6 (Byl), 8 with 5 cells (Reggia)", role: structural}
+    - {name: neighbourhood, type: enum, default: von-neumann, range: "von-neumann | moore", role: spatial}
+    - {name: grid, type: matrix, role: spatial}
+    - {name: dissolution, type: bool, default: true, role: selection, meaning: "Sayama's SDSR: loops dissolve after replication, which is what makes evolution possible"}
+    - {name: seed_loop, type: matrix, role: population}
+  provides: [topology, space]
+  generator_ready: partial
+  phenomena: ["self-replication without universal construction", "in bounded space: competition, shrinking loop size, species clustering into islands", "robustness to hardware errors", "changing 'concentrations' of loop species over time"]
+  notes: >
+    The clearest case in the book where 'what is a molecule' depends on
+    the observer. Chemart's export for it must be a *coarse-grained*
+    species assignment supplied by the user, not something derivable.

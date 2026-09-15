@@ -1,0 +1,35 @@
+chemistries:
+
+- id: dimerization
+  name: Reversible dimerization
+  origin: "textbook; used as PyCellChemistry's hello-world"
+  book: "2.2.4, appendix (Dimer.py)"
+  family: core
+  kind: generator
+  constructive: false
+  S:
+    repr: "three named species A, B and the dimer C = A.B"
+    definition: explicit
+  R:
+    definition: explicit
+    arity: [1, 2]
+    scheme: "A + B --k_f--> C ; C --k_r--> A + B"
+  A:
+    reactor: [ode, ssa]
+    dilution: none
+    notes: "closed system; used to compare ODE integration with Gillespie SSA"
+  params:
+    - {name: k_f, type: float, default: 1.0, min: 0, role: kinetic, meaning: "forward (association) rate coefficient"}
+    - {name: k_r, type: float, default: 1.0, min: 0, role: kinetic, meaning: "reverse (dissociation) rate coefficient"}
+    - {name: A0, type: float, default: 2.0, min: 0, role: population, meaning: "initial concentration of A"}
+    - {name: B0, type: float, default: 1.4, min: 0, role: population, meaning: "initial concentration of B"}
+  provides: [topology, stoichiometry, rate-constants, initial-state]
+  fidelity: book
+  decisions:
+    - "NAV (N_A V) is not a parameter: it sizes a stochastic simulation, not the network. Convert rates for SSA with chemart.kinetics.k_to_c."
+  reference_impl: "PyCellChemistry Dimer.py"
+  phenomena: ["equilibrium K = k_f/k_r", "SSA fluctuates about the ODE equilibrium"]
+  notes: >
+    The trivial baseline, and the fixture for the k (macroscopic) -> c
+    (mesoscopic) conversion via the Wolkenhauer relation
+    c = k / (N_A V)^(m-1) * prod_i l_i! (book appendix, eq. 4).

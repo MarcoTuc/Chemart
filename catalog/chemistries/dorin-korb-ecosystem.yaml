@@ -1,0 +1,30 @@
+chemistries:
+
+- id: dorin-korb-ecosystem
+  name: Dorin & Korb virtual ecosystem chemistry
+  origin: "Dorin & Korb, 2011"
+  book: "8.2.3"
+  refs: ["[240]"]
+  family: evolutionary-dynamics
+  kind: generator
+  constructive: true
+  S: {repr: "virtual atoms from {A, B, C, O} floating in 2D, bonding covalently into molecules", definition: implicit}
+  R:
+    definition: implicit
+    arity: 2
+    scheme: >
+      Bond formation and breaking, each with an energy cost or release.
+      Four catalyst types: chlorophyll-like (makes A-B bonds, breaks A-O and
+      B-O), a sugar-breaker (breaks A-B), an organic decomposer (breaks C-C),
+      and an inorganic decomposer.
+    notes: "a reaction cannot proceed if its neighbourhood lacks the energy; released energy must be used in the same timestep or is lost; energy can only be stored in complex molecules"
+  A: {reactor: lattice-2d, dilution: "sunlight influx"}
+  params:
+    - {name: bond_energies, type: matrix, role: thermodynamic, meaning: "per bond type"}
+    - {name: sunlight, type: float, role: population}
+    - {name: grid, type: matrix, role: spatial}
+    - {name: catalyst_set, type: enum, default: "chlorophyll, sugar-breaker, organic decomposer, inorganic decomposer", role: structural}
+  provides: [topology, stoichiometry, catalysts, energies, mass-conservation, space, flow]
+  generator_ready: partial
+  phenomena: ["autotroph/decomposer trophic structure emerging from atom-level bookkeeping"]
+  notes: "Along with ToyChem and Bigan, one of the three energy-carrying chemistries in the book."

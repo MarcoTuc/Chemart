@@ -1,0 +1,39 @@
+chemistries:
+
+- id: prime-number-chemistry
+  name: Prime number (number-division) chemistry
+  aliases: ["NumberChem", "division chemistry"]
+  origin: "Banzhaf 1993 / Banzhaf, Dittrich & Rauhe"
+  book: "1, 2.5.2, appendix (NumberChem.py)"
+  refs: ["[72]", "[113]"]
+  family: core
+  kind: generator
+  constructive: true
+  S:
+    repr: "natural numbers >= 2"
+    definition: implicit
+    notes: "0 and 1 are excluded because they behave degenerately under division"
+  R:
+    definition: implicit
+    arity: 2
+    scheme: "s1 + s2 -> s1 + s3  where s3 = s2/s1 if s1 | s2 and s2 > s1; otherwise elastic"
+  A:
+    reactor: well-stirred-multiset
+    dilution: "none - the divisor acts as a catalyst, so molecule count is constant"
+    notes: "draw two at random, order them, divide, reinject both"
+  params:
+    - {name: M, type: int, default: 100, role: population, meaning: "number of molecules in the soup"}
+    - {name: minn, type: int, default: 2, role: structural, meaning: "lower bound of the initialisation interval"}
+    - {name: maxn, type: int, default: 1000, role: structural, meaning: "upper bound; maxn >> M makes the run constructive"}
+    - {name: iterations, type: int, default: 10000, role: population, meaning: "number of collision events"}
+    - {name: seed, type: seed, role: stochastic, meaning: "RNG seed"}
+  provides: [topology, stoichiometry, initial-state, sequence-structure-function]
+  generator_ready: yes
+  reference_impl: "PyCellChemistry NumberChem.py; also expressible on HighOrderChem via divrule(m1,m2)"
+  phenomena: ["primes emerge as the non-reactive (closed) set", "sigmoidal growth of prime concentration to 1.0", "no prime factorisation - divisors are catalysts, so copies are not produced"]
+  notes: >
+    The canonical example of an implicit/constructive chemistry, and the
+    canonical argument for why a Chemart chemistry cannot always be a
+    finite matrix: |S| is unbounded, and the reachable subnetwork depends
+    on the seed multiset. Chemart must expose it as react(a,b) plus an
+    `expand(seed, limits)` reachability closure.

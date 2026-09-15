@@ -1,0 +1,30 @@
+chemistries:
+
+- id: raf
+  name: RAF sets (reflexively autocatalytic, F-generated)
+  origin: "Hordijk & Steel, 2004-2015"
+  book: "6.3.1"
+  refs: ["[400]", "[402]", "[599]"]
+  family: origin-of-life
+  kind: analysis
+  constructive: false
+  S:
+    repr: "any given chemical reaction network plus a designated food set F"
+    definition: explicit
+  R:
+    definition: explicit
+    arity: variable
+    scheme: "a set R is RA if every reaction in R is catalysed by a molecule involved in R; F-generated if every reactant is constructible from F by reactions in R; RAF = both"
+  A:
+    reactor: "n/a - static"
+    dilution: n/a
+  params:
+    - {name: food_set, type: matrix, role: population}
+    - {name: allow_inhibition, type: bool, default: false, role: structural, meaning: "with inhibition the problem becomes NP-hard; without it there is a polynomial-time algorithm"}
+  provides: [topology, catalysts, flow]
+  generator_ready: yes
+  phenomena: ["polynomial-time maximal-RAF detection", "only LINEAR growth in catalytic activity with system size is needed for RAFs to appear, contra Kauffman's exponential claim"]
+  notes: >
+    An ANALYSIS to expose alongside chemical organisation theory. Note the
+    scope limits the authors themselves state: no dynamics, no
+    compartments, no heredity/selection.
