@@ -2,37 +2,93 @@ chemistries:
 
 - id: bondable-ca
   name: Bondable Cellular Automata (BCA)
-  origin: "Gross, Banzhaf et al., 2011"
+  aliases: ["BCA", "sub-symbolic cellular automata chemistry"]
+  origin: "Hatcher, Banzhaf & Yu, 2011"
   book: "10.7.3"
-  refs: ["[372]", "[373]", "[264]"]
+  refs: ["[372]", "[373]", "[264]", "doi:10.7551/978-0-262-29714-1-ch051"]
   family: automata
   kind: generator
   constructive: true
   S:
-    repr: "an atom is a 1D binary CA with periodic boundaries and width w; a molecule is a set of bonded atoms; atom type = Wolfram rule number 0..255"
+    repr: >
+      An atom is a 1-d binary CA of width w with periodic (closed) boundaries;
+      its type is the Wolfram rule number 0..255 that runs it. A molecule is a
+      chain of bonded atoms, identified by its atom types, its cell states and
+      the alignment offset of each bond, minimised over the chain and its
+      reverse.
     definition: implicit
+    notes: >
+      Species are the molecules reached by the closure; the structure string
+      r<rule>:<cells>~+<offset>~r<rule>:<cells> carries the whole molecule, so
+      two molecules with the same skeleton but different cell states are
+      different species (r90-r165, r90-r165#2).
   R:
     definition: implicit
-    arity: 2
+    arity: [1, 2]
     scheme: >
-      Association / dissociation driven by an OBSERVABLE of the atoms'
-      dynamics (mean polarity after settling). Bonding strength is set by
-      the longest contiguous complementary binary run; once bonded, each
-      CA's neighbourhood is influenced by the other, which can strengthen
-      or weaken the bond.
+      Association A + B -> AB and dissociation AB -> A + B, both driven by
+      OBSERVABLES of the atoms' dynamics rather than declared. Two molecules
+      bond end to end when their settled mean polarities satisfy the polarity
+      criterion and the strongest cyclic alignment of the two facing atoms has a
+      contiguous complementary run of at least bond_threshold cells. Once
+      bonded, each CA's neighbourhood is influenced by the other inside that
+      run, which can strengthen or weaken the bond; a bond that has fallen below
+      the threshold breaks and each fragment settles again.
+    notes: >
+      No rate constants: the book gives no kinetics, so every reaction carries
+      rate None. Molecules are chains, so each atom bonds at most two partners.
   A:
     reactor: well-stirred-multiset
     dilution: none
+    notes: >
+      The model's reactor is collisions in a well-stirred mixture. Chemart
+      returns the reaction closure of the seed atom types
+      (chemart.expand.expand over arities 1 and 2) instead of one sampled
+      collision sequence, so the network is reproducible without a population;
+      status becomes truncated when max_species binds.
   params:
-    - {name: w, type: int, default: 12, role: structural, meaning: "CA width in bits"}
-    - {name: rule_set, type: matrix, default: "0..255", role: structural, meaning: "available atom types"}
-    - {name: settle_iterations, type: int, default: "2, 8, 32, 128, 512, 2048", role: structural, meaning: "iterations before the mean polarity observable is read"}
-    - {name: bond_threshold, type: float, role: structural}
-  provides: [topology, energies, sequence-structure-function]
-  generator_ready: partial
-  phenomena: ["a 'periodic table' of the 256 rules ordered by settled mean polarity (book fig. 10.16)"]
+    - {name: w, type: int, default: 12, min: 3, max: 16, range: "book fig. 10.16 is drawn for w = 12", role: structural, meaning: "CA width in cells on a periodic ring; an atom has 2^w configurations, so wide rings settle slowly"}
+    - {name: atom_types, type: list, default: [0, 18, 90, 110, 165, 184, 204, 255], range: "the full periodic table is all 256 rules; its closure is far larger than the default species budget", role: structural, meaning: "Wolfram rule numbers 0..255 seeded into the reactor; each becomes one atom species, settled from the standard start"}
+    - {name: bond_threshold, type: int, default: 10, min: 1, max: 16, range: "must be <= w; 6-8 make almost everything bond and the closure runs into max_species", role: structural, meaning: "smallest bonding strength (longest contiguous complementary run) at which a bond forms and survives"}
+    - {name: polarity_rule, type: enum, default: opposite-sign, choices: [opposite-sign, sum-zero, any], role: structural, meaning: "the polarity condition two colliding molecules must meet: settled mean polarities of opposite sign, summing to zero within 0.5, or no condition"}
+    - {name: coupling, type: enum, default: replace, choices: [replace, xor, none], role: structural, meaning: "how a bonded cell's neighbourhood is influenced by the partner: the facing neighbour is taken from the partner's aligned cell, exclusive-ored with it, or (none) not coupled at all, which is the control that switches the book's interaction off"}
+    - {name: settle_iterations, type: int, default: 256, min: 2, max: 65536, range: "the shading of fig. 10.16 tops out at 2048; free atoms at w = 12 all settle by iteration 28", role: structural, meaning: "iterations allowed for the dynamics to reach an attractor before the observable is read; a trajectory that has not closed is reported unsettled and averaged over its second half"}
+    - {name: max_atoms, type: int, default: 3, min: 2, max: 12, role: structural, meaning: "largest molecule the closure will build, in atoms per chain"}
+    - {name: max_species, type: int, default: 200, min: 1, role: structural, meaning: "species budget of the closure; the status becomes truncated if it binds (the default closure completes at 23 species)"}
+  provides: [topology, stoichiometry, mass-conservation, sequence-structure-function]
+  fidelity: book+decisions
+  sources:
+    - "Banzhaf & Yamamoto (2015), section 10.7.3 and figures 10.15-10.16: atoms as 1-d binary CAs with closed boundaries, mean polarity as the observable, bonding strength as the largest contiguous sequence of complementary binary numbers, the coupled neighbourhood once bonded, and the 'periodic table' of the 256 rules by settled mean polarity."
+    - "Hatcher, M., Banzhaf, W. & Yu, T. (2011). Bondable cellular automata. In Proc. 11th European Conference on Artificial Life (ECAL 2011), pages 326-333, MIT Press. doi:10.7551/978-0-262-29714-1-ch051 (book ref [373]). NOT accessible: MIT Press Direct serves it behind Cloudflare and no open copy was found; see decisions."
+    - "Faulconbridge, Stepney, Miller & Caves (2011). RBN-World: a sub-symbolic artificial chemistry (book ref [264]), the system in which the sub-symbolic idea was first discussed; implemented separately as the rbn-world model of catalog id rbn."
+  decisions:
+    - "Authorship corrected: the v1 entry said 'Gross, Banzhaf et al., 2011'. The book's bibliography [373] is M. Hatcher, W. Banzhaf and T. Yu, 'Bondable cellular automata', ECAL 2011, 326-333, and the book's own text credits [373] and [372] (Hatcher, unpublished, 2013) for figures 10.15 and 10.16. The book prints the ECAL-2011 entry with '2001', a typo; Crossref and OpenAlex both give 2011 for doi:10.7551/978-0-262-29714-1-ch051."
+    - "Neither [373] nor [372] was accessible, so fidelity is book+decisions: the model comes from book 10.7.3 and its two figures, and every gap below was filled under the constraint that the result must reproduce figure 10.16, which it does."
+    - "The settling procedure is nowhere in the book's text; it was recovered from figure 10.16 itself. The figure places 202 of the 256 rules in columns -12..+12 and lists the remaining 54 in a wide block below the table. Column 0 of the table is empty and the block holds exactly the density-preserving rules (204 identity, 170 and 240 shift, 184 traffic, 232 majority, 51 inversion), so the block is the polarity-0 column, drawn separately because 54 boxes do not fit in one column."
+    - "Recovered procedure: every atom starts from floor(w / 2) contiguous ones on the ring (a balanced start, which is why the density-preserving rules sit at 0); the settled mean polarity is the mean of (ones - zeros) over the attractor cycle, and the settling iteration is the transient before it ('the transition time of the dynamical system made up of that CA', fig. 10.16 caption). This reproduces the figure for all 256 rules within +-0.5 and exactly for 226. A search over all 4096 initial conditions of width 12 found none better: the contiguous half-block, and only it up to rotation, attains that score (alternating cells score 16/256, a single seed cell 92/256)."
+    - "The alternative reading of 'settles', that the polarity becomes constant and non-settling rules are the 54 unplaced ones, was tested and rejected: it scores 144/256, and it would leave the identity rule 204 (polarity constant at 0 from the start) unplaced."
+    - "30 rules have a fractional cycle mean and are drawn at the nearest integer column. The 8 whose mean is exactly +-2.5 (26, 82, 167, 181 drawn toward zero; 154, 166, 180, 210 drawn away from it) are split 4/4, so the figure's own tie-breaking is inconsistent; the test therefore accepts +-0.5 and additionally pins the 226 exact values."
+    - "Mean polarity is reported on the figure's scale: ones - zeros in -w..+w, i.e. w times the per-cell mean of +-1. For a molecule it is averaged over its atoms, keeping the same scale."
+    - "Bonding strength (fig. 10.15, 'largest contiguous sequence of complementary binary numbers') is maximised over the w cyclic alignments of one ring against the other, ties going to the smallest offset. The book does not say whether the rings may be rotated against each other; allowing every alignment is what makes the quantity symmetric, which the figure's single green bar per pair implies."
+    - "Coupling law: the book says only that 'each cell in an atom is influenced by the neighborhood cells of the other (bonded) atom'. Chemart implements it as, inside the bonded run, the neighbour that faces the partner being taken from the partner's aligned cell, which keeps the neighbourhood three cells wide and so keeps Wolfram's 256 rules meaningful. coupling=xor is offered as the other natural reading and coupling=none as the control that switches the interaction off. The bonded run is recomputed from the current cells at every step, so a bond can grow or shrink, which is the book's 'might lead to an increase in bonding or a decrease'."
+    - "Association criterion: the book says reactions are 'observed under the right polarity conditions' without giving them. opposite-sign (the default) makes bonding the polarity analogue of the complementary-cell bond; sum-zero and any are offered as alternatives. Molecules bond end to end, in whichever of the four orientations of the two chains gives the strongest bond."
+    - "Dissociation: after the coupled molecule settles, it splits at the first bond whose run has fallen below bond_threshold, and each fragment settles again on its own. The book only says molecules 'can collide to form larger molecules or, alternatively, decay'."
+    - "Molecules are chains: figure 10.15 shows two atoms bonded side by side, and each atom is given at most two partners. Branched molecules and rings are not built. Species identity is the canonical chain code minimised over the chain and its reverse, so it is invariant under the molecule's symmetry."
+    - "settle_iterations caps the search for an attractor. A free atom of width w has only 2^w configurations, but a coupled molecule's joint state space is 2^(n*w), so its transient need not be short; without the cap a single association can run for millions of steps. A trajectory that has not closed within the cap is reported unsettled in extras.analysis.unsettled_molecules and its observable averaged over the second half. At w = 12 every free atom settles by iteration 28, so the cap never binds for the periodic table."
+    - "v1 parameters: rule_set (type matrix, default '0..255') becomes atom_types, a list of rule numbers; settle_iterations, whose v1 default was the figure's shading legend '2, 8, 32, 128, 512, 2048' rather than a value, becomes an integer cap; bond_threshold gains a default. max_atoms and max_species are added to bound the closure."
+    - "energies dropped from provides: the v1 note called mean polarity 'an energy-like state variable', but it is an observable of the dynamics, not a per-species energy, and the book gives no energy scale or thermodynamics. Bond strengths and molecule polarities are reported in extras.analysis instead."
+    - "No rate constants or rate laws: the book gives no kinetics for BCA, so every reaction carries rate None rather than an invented number."
+  phenomena:
+    - "a 'periodic table' of the 256 rules ordered by settled mean polarity (book fig. 10.16): 20 rules settle at -12 (the ring dies to all zeros), 20 at +12 (all ones) and 54 at 0"
+    - "density-preserving rules (204 identity, 170 and 240 shift, 184 traffic, 232 majority) hold the balanced start's polarity and so settle at 0"
+    - "every rule at w = 12 settles within 28 iterations, well inside the largest shading bucket (2048) of fig. 10.16"
+    - "reactivity is read off an observable of an internal dynamical system rather than declared: a sub-symbolic artificial chemistry"
+    - "bonding strength is symmetric and bounded by w, and two rings that are equal up to a half-ring rotation are fully complementary"
+    - "once bonded, the coupled neighbourhoods change each atom's trajectory, so a bond can strengthen or weaken and molecules decay"
   notes: >
-    Called a *subsymbolic* AC: reactivity is not declared but read off an
-    emergent property of an internal dynamical system. Mean polarity plays
-    the role of an energy-like state variable, so it is one of the few
-    entries where `energies` is meaningful without real thermodynamics.
+    Called a *sub-symbolic* AC: reactivity is not declared but read off an
+    emergent property of an internal dynamical system, an idea first discussed
+    for RBNs in [264] (catalog id rbn, model rbn-world). Figure 10.16 is the
+    published result this entry reproduces: it is recoverable in full from the
+    book's own page, and pinning the settling procedure against it is what fixes
+    the parts of the model the text leaves open.

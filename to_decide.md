@@ -65,6 +65,7 @@ the sources turn up.
 | `typogenetics` | The Varetto code table rests on one source (Snare's thesis). | Varetto 1993, Morris 1989 |
 | `laing-molecular-machines` | Laing's main result, self-reproduction by self-inspection, is **not** modelled: no readable source defines the synthesize/activate/convert instructions. Built from the book plus secondary descriptions. | Laing 1977 on U. Michigan Deep Blue, or his 1977 Binghamton dissertation (both open but blocked automated download; fetch by hand) |
 | `urdar` | Invasion results reproduce; published diversity/efficiency *numbers* do not (trends do). The `on-gain` transform rule is inferred from those results. | The authors' Java program (math.chalmers.se/~torbjrn/Urdar) |
+| `ono-ikegami-protocell` | The book's headline phenomena are **not** reproduced: membrane filaments never close into protocells, no closed membrane retains autocatalyst (`enclosed_A = 0` in every run), and no growth/division occurs. Only the accessible 1D predecessor's published constants and the book's reaction set are tested. The anisotropy field `F[k,o]` — likely the thing that makes closure work — is the implementer's third attempt and is a reconstruction. | Ono & Ikegami [639], [641] (paywalled); [538] for the 3D extension |
 | `reflexive-ac` | The product construction (reflexive composition of two finite-state machines) is read off Salzberg & Sayama's 2025 restatement, not off the 2007 paper, which is paywalled; that paper's own elastic rules, reactor and results are unverified. Two figures of the 2025 paper (12, 13) are not reproduced. | Salzberg 2007, BioSystems 87:1-12, and his two 2006 papers |
 | `combinator-chemistry` | 7 of the published reactions (thesis ch. 7 tables, 2000 paper) release a different number of copies; the count depends on the unpublished reduction order. | Speroni di Fenizio's simulator source |
 
@@ -108,6 +109,25 @@ yet. Before Chemart is published, decide one of:
    own GPL-2 notice, and license Chemart itself permissively;
 3. drop the two warriors and keep only the recorded pMARS core hashes, losing
    readability in two tests.
+
+## 7. Conventions the genome-carrying chemistries disagree on
+
+Raised by the `aevol` implementer; they affect `tierra`, `avida`, `aevol`,
+`stringmol` and `squirm3` alike, so decide once rather than per chemistry.
+
+**7a. How much structure to store.** Every genotype currently carries its
+full genome as `Species.structure`, so `aevol`'s default network is ~1 MB of
+JSON and a long run is several MB. Options: keep it (self-contained records,
+but large), store genomes only for the ancestor and the final population, or
+store a hash plus a lookup table in `extras`. Note the record is meant to be
+JSON that an LLM can read, which argues against multi-MB defaults.
+
+**7b. Which non-replication events are reactions.** `aevol` puts gene
+expression (`G -> G + P1 + … + Pk`) in the network alongside the replication
+events, so its protein species actually react. `avida` and `tierra` keep
+analogous non-replication events (task completions, instruction execution) in
+`extras` instead. Both readings are defensible; they should not coexist
+unexamined, since `provides` and any cross-chemistry comparison depend on it.
 
 Also worth a pass at the same time: every chemistry ported from upstream
 source (`stringmol`, `tierra`, `avida`, `corewar`, `coreworld`,

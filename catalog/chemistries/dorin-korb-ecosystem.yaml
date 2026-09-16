@@ -2,29 +2,72 @@ chemistries:
 
 - id: dorin-korb-ecosystem
   name: Dorin & Korb virtual ecosystem chemistry
-  origin: "Dorin & Korb, 2011"
+  origin: "Dorin & Korb, 2007"
   book: "8.2.3"
-  refs: ["[240]"]
-  family: evolutionary-dynamics
+  refs: ["[240]", "doi:10.1007/978-3-540-74913-4_11", "https://bridges.monash.edu/articles/report/Building_Virtual_Ecosystems_from_Artificial_Chemistry/20365353"]
+  family: spatial
   kind: generator
   constructive: true
-  S: {repr: "virtual atoms from {A, B, C, O} floating in 2D, bonding covalently into molecules", definition: implicit}
+  S:
+    repr: "molecules = covalently bonded clusters of square virtual atoms from {A, B, C, O} plus the four catalyst atoms {K, EAB, ECC, EO}, identified by the canonical (isomorphism-invariant) bond graph"
+    definition: implicit
+    notes: "valences come from the appendix's electron shells (A:1, B:2:3, O:2:1, C:2:4:4, K:2:2, enzymes 2:2) and rule 2 (a bond needs both a free outer electron and a free slot): A, B, O are monovalent, C tetravalent, every catalyst divalent"
   R:
     definition: implicit
-    arity: 2
+    arity: [1, 2]
     scheme: >
-      Bond formation and breaking, each with an energy cost or release.
-      Four catalyst types: chlorophyll-like (makes A-B bonds, breaks A-O and
-      B-O), a sugar-breaker (breaks A-B), an organic decomposer (breaks C-C),
-      and an inorganic decomposer.
-    notes: "a reaction cannot proceed if its neighbourhood lacks the energy; released energy must be used in the same timestep or is lost; energy can only be stored in complex molecules"
-  A: {reactor: lattice-2d, dilution: "sunlight influx"}
+      One bond of table 1 made or broken per event, between two atoms that share
+      a grid edge: A-B, C-C, A-O, B-O, C-O. Making a bond releases its bond
+      energy and breaking it costs the same, so the negative bonds (A-B "sugar",
+      C-C "biomass") are the ones that store energy. The paper's three named
+      reactions follow: AO + BO -(K, sunlight)-> AB + 2 O (photosynthesis),
+      O + AB -(EAB)-> A + BO + energy (respiration), C + C -(energy)-> C2
+      (biosynthesis).
+    notes: "a catalyst acts when one of the two reacting atoms neighbours it: K makes A-B and breaks A-O and B-O, EAB breaks A-B, ECC breaks C-C and makes C-O, EO breaks A-O and B-O; a reaction whose neighbourhood lacks the energy cannot proceed; released energy must be used in the same time step or is lost; energy can only be stored in complex molecules"
+  A:
+    reactor: lattice-2d
+    dilution: "none: the atom inventory is closed, so every atom count is conserved exactly"
+    notes: "each step: molecules drift one square (rigid, no collisions), then every adjacent pair is tried in random order; energy released is pooled in the spatially contiguous cluster of atoms around the site and sunlight (a sin function of time, per atom) is added to it for chlorophyll-catalysed reactions only"
   params:
-    - {name: bond_energies, type: matrix, role: thermodynamic, meaning: "per bond type"}
-    - {name: sunlight, type: float, role: population}
-    - {name: grid, type: matrix, role: spatial}
-    - {name: catalyst_set, type: enum, default: "chlorophyll, sugar-breaker, organic decomposer, inorganic decomposer", role: structural}
-  provides: [topology, stoichiometry, catalysts, energies, mass-conservation, space, flow]
-  generator_ready: partial
-  phenomena: ["autotroph/decomposer trophic structure emerging from atom-level bookkeeping"]
-  notes: "Along with ToyChem and Bigan, one of the three energy-carrying chemistries in the book."
+    - {name: width, type: int, default: 18, min: 4, max: 400, range: "paper-scale grids are hundreds of cells wide", role: spatial, meaning: "grid width in cells (one square atom per cell)"}
+    - {name: height, type: int, default: 18, min: 4, max: 400, role: spatial, meaning: "grid height in cells"}
+    - {name: steps, type: int, default: 150, min: 0, max: 100000, range: "long runs use thousands of steps", role: population, meaning: "simulation time steps; one step is one movement phase followed by one reaction phase"}
+    - {name: atoms, type: dict, default: {A: 28, B: 28, O: 36, C: 24}, role: structural, meaning: "initial number of free atoms of each building block A, B, C, O"}
+    - {name: catalysts, type: dict, default: {K: 4, EAB: 4, ECC: 4, EO: 4}, role: structural, meaning: "initial number of free catalyst atoms: K chlorophyll, EAB sugar-breaker, ECC organic decomposer, EO inorganic decomposer"}
+    - {name: structures, type: enum, default: all, choices: [none, photoautotroph, decomposer, all], role: structural, meaning: "which of the paper's organism bodies to seed: the figure 5 photosynthetic autotroph (a C box with chlorophyll and the sugar enzyme on opposite inner walls around a vacuole) and the figure 6 decomposer (a C-C body carrying ECC on a C-O spacer)"}
+    - {name: light_amplitude, type: float, default: 8.0, min: 0.0, role: thermodynamic, meaning: "peak sunlight energy incident per atom per step; 0 switches the light off"}
+    - {name: light_period, type: float, default: 24.0, min: 1.0, role: thermodynamic, meaning: "period in steps of the sin function that governs incident sunlight"}
+    - {name: energy_high, type: int, default: 8, min: 2, max: 1000, role: thermodynamic, meaning: "the magnitude table 1 calls 'high' (the A-B sugar bond energy)"}
+    - {name: energy_low, type: int, default: 1, min: 1, max: 999, role: thermodynamic, meaning: "the magnitude table 1 calls 'low' (C-C, A-O, B-O and C-O bond energies)"}
+    - {name: p_low, type: float, default: 0.01, min: 0.0, max: 1.0, role: kinetic, meaning: "per-step probability table 1 calls 'low'"}
+    - {name: p_moderate, type: float, default: 0.1, min: 0.0, max: 1.0, role: kinetic, meaning: "per-step probability table 1 calls 'moderate'"}
+    - {name: p_high, type: float, default: 0.9, min: 0.0, max: 1.0, role: kinetic, meaning: "per-step probability table 1 calls 'high', including every catalysed entry"}
+    - {name: move_probability, type: float, default: 0.8, min: 0.0, max: 1.0, role: spatial, meaning: "probability that a molecule attempts a one-square move in a random direction in a step"}
+  provides: [topology, stoichiometry, catalysts, energies, mass-conservation, space, initial-state]
+  fidelity: reconstructed
+  sources:
+    - "Dorin, A. & Korb, K. B. (2007). Building Virtual Ecosystems from Artificial Chemistry. Advances in Artificial Life (ECAL 2007), LNCS 4648, 103-112. https://doi.org/10.1007/978-3-540-74913-4_11"
+    - "Dorin, A. & Korb, K. B. (2007). Building Virtual Ecosystems from Artificial Chemistry. Monash University Technical Report 2007/212 (the full version, used here): table 1 (the bond table), sections 2.1-2.2 (catalysts, energy neighbourhoods, sunlight, movement), sections 3.1.1-3.1.3 (photosynthesis, respiration, biosynthesis), figures 5-6 (autotroph and decomposer bodies) and the appendix (bonding rules, electron shells, known atoms and molecules). https://bridges.monash.edu/articles/report/Building_Virtual_Ecosystems_from_Artificial_Chemistry/20365353"
+  decisions:
+    - "The paper gives no numbers: table 1 grades probabilities as low/moderate/high and bond energies as +/- low/high, and section 4 states that no run with all organism types had been performed, so nothing quantitative is published. The three levels are parameters (p_low 0.01, p_moderate 0.1, p_high 0.9) and so are the two magnitudes (energy_low 1, energy_high 8). Energies are integers so that the energy ledger balances exactly."
+    - "Table 1 is implemented verbatim, including two entries the book's summary omits: ECC also catalyses *making* C-O bonds (the spacer of the figure 6 decomposer), and the catalysed break of A-O and B-O is credited to chlorophyll as well as to the inorganic enzyme."
+    - "Table 1 names enzAO and enzBO separately, but section 2.1 counts four catalyst types, so one inorganic decomposer EO covers both A-O and B-O. The appendix names four enzymes EA-ED without mapping them to functions; catalysts are named for their function here (K chlorophyll, EAB, ECC, EO)."
+    - "Valences are derived, not assumed: appendix rule 2 (a bond needs a free outer-shell electron and a free slot) with shell capacities 2, 4, 8 gives A 1, B 1, O 1, C 4, K 2, enzymes 2, which is what the appendix's known molecules (A-B, A-O, B-O 'one only since O has run out of electrons', C chains, K-C-K) show."
+    - "Only the five bonds of table 1 form or break. The appendix's K-C anchor bonds have no probabilities or energy, so bonds inside a seeded organism body are static anchors that never react ('any otherwise legal bond the Designer God doesn't want can simply be made to hurdle an absurd energy threshold')."
+    - "Energy pools are spatial, not per molecule: section 2.1 says released energy reaches 'any continuous atomic structure that contacts directly or indirectly (through intermediate neighbours) the reaction site', so the pool is the contact cluster of touching atoms. This is what lets respiration at an enzyme wall pay for biosynthesis elsewhere in the body. Atoms do not move during the reaction phase, so the clusters are fixed while reactions fire."
+    - "Sunlight is 'incident on all atoms at a rate governed by a parameterized sin function': each cluster receives floor(light_amplitude * max(0, sin(2 pi t / light_period)) * atoms) per step, spendable only by chlorophyll-catalysed reactions. Light is spent before the bond-energy pool, and anything left in either pool at the end of a step is dissipated."
+    - "The grid is a torus and the neighbourhood is von Neumann (atoms are squares that bond along shared edges). Movement is per molecule, rigid, one square, rejected on any collision."
+    - "Species identity is the canonical bond graph, so lattice conformation (how a molecule is folded on the grid) is not part of it, while constitutional isomers with different bond graphs are different species. Ids are the atom formula for one- and two-atom molecules and formula plus a certificate hash beyond that."
+    - "The network is the set of reactions that fired in one run (status observed, with counts). Catalysts appear on both sides whenever the catalysing atom belongs to a molecule that is not itself a reactant."
+    - "Photosynthesis is three elementary bond events, not one: chlorophyll breaks A-O and breaks B-O, then makes A-B, so the freed A and B compete with the 'high' probability of re-forming A-O and B-O. The sugar yield therefore turns on a ratio table 1 leaves unquantified. In the soup, where A and B are plentiful, sugar is made steadily; an isolated figure 5 autotroph, whose vacuole holds one A and one B, makes it only in some runs (seed 5 at the default parameters is one)."
+    - "A free C can only bond where a reaction has just released energy into its contact cluster, so biomass and its decomposition concentrate around the seeded bodies and dense patches. The default therefore seeds both organism bodies (structures: all); with structures: none the soup is lively but builds almost no C-C biomass."
+  phenomena:
+    - "a trophic structure emerges from atom-level bookkeeping: chlorophyll fixes sunlight into A-B sugar bonds, the sugar enzyme releases that energy again, the released energy pays for C-C biosynthesis, and the decomposers break C-C and A-O/B-O bonds to return atoms to the inorganic pool"
+    - "sugar is made only where energy is available: with the light switched off no A-B bond is ever formed, since only sunlight can pay the high A-B bond energy"
+    - "the figure 5 autotroph runs the whole cycle on its own: with nothing else on the grid, the chlorophyll on one inner wall turns the A-O and B-O trapped in its vacuole into A-B sugar, and the enzyme on the opposite wall respires that sugar again"
+    - "atoms are never created or destroyed, and every joule is either stored in a bond, spent on one, or dissipated in the step it was released"
+  notes: >
+    Along with ToyChem and Bigan, one of the three energy-carrying chemistries
+    in the book. The paper is a feasibility argument rather than a results
+    paper: it specifies the chemistry and hand-designs organism bodies, and
+    states that a run with all organism types present had not yet been done.

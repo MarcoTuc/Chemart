@@ -5,9 +5,9 @@
 
 Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rates or a rate law), **H** thermodynamics (energies and/or detailed balance). Status column: the fidelity of the implemented generator, or `todo (<book readiness>)`.
 
-- implemented: **72** of 98 (book: 4, book+decisions: 29, reconstructed: 39)
+- implemented: **80** of 98 (book: 4, book+decisions: 30, reconstructed: 46)
 - constructive (open, growing species set): **51**
-- carry their own kinetics: **44**; carry energetics: **12**
+- carry their own kinetics: **43**; carry energetics: **12**
 
 
 ## application
@@ -34,14 +34,14 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 |---|---|---|---|---|---|---|
 | `automata-reaction` | Automata reaction (32-bit binary string chemistry) | generator | yes | TK | reconstructed | 10.6.1 |
 | `avida` | Avida | generator | yes | T | reconstructed | 10.7.1 |
-| `bondable-ca` | Bondable Cellular Automata (BCA) | generator | yes | TH | todo (partial) | 10.7.3 |
+| `bondable-ca` | Bondable Cellular Automata (BCA) | generator | yes | T | book+decisions | 10.7.3 |
 | `ca-embedded-particles` | Embedded particles in cellular automata | analysis | no | T | todo (no) | 10.7.2 |
 | `corewar` | Core War / Redcode | generator | yes | T | reconstructed | 10.6.2 |
 | `coreworld` | Coreworld (VENUS) | generator | yes | T | reconstructed | 10.6.3 |
 | `ikegami-hashimoto` | Machine-tape chemistry | generator | yes | TK | reconstructed | 10.5.4 |
 | `laing-molecular-machines` | Laing's artificial molecular machines | generator | yes | T | book+decisions | 10.5.1 |
 | `mccaskill-polymer-tm` | Polymers as Turing machines / pattern processing chemistry | generator | yes | T | reconstructed | 10.5.3 |
-| `sr-loops` | Self-replicating loops in cellular automata | generator | yes | T | todo (partial) | 10.4, 10.7.2 |
+| `sr-loops` | Self-replicating loops in cellular automata | generator | yes | T | reconstructed | 10.4, 10.7.2 |
 | `tierra` | Tierra | generator | yes | T | reconstructed | 10.6.4 |
 | `typogenetics` | Typogenetics | generator | yes | T | reconstructed | 10.5.2 |
 
@@ -69,7 +69,6 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 
 | id | name | kind | constructive | tier | status | book |
 |---|---|---|---|---|---|---|
-| `dorin-korb-ecosystem` | Dorin & Korb virtual ecosystem chemistry | generator | yes | TH | todo (partial) | 8.2.3 |
 | `ecolab` | Ecolab | generator | yes | TK | reconstructed | 8.2.3 |
 | `evolve-series` | EVOLVE virtual ecosystems | framework | yes | TH | todo (no) | 8.2.3 |
 | `jain-krishna` | Jain-Krishna autocatalytic set model | generator | yes | TK | book+decisions | 15.2.2, 15.2.3 |
@@ -107,12 +106,12 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 
 | id | name | kind | constructive | tier | status | book |
 |---|---|---|---|---|---|---|
-| `autopoiesis-vmu` | Varela-Maturana-Uribe autopoiesis model | generator | no | T | todo (yes) | 6.1.5 |
+| `autopoiesis-vmu` | Varela-Maturana-Uribe autopoiesis model | generator | no | T | reconstructed | 6.1.5 |
 | `bagley-farmer` | Bagley & Farmer autocatalytic metabolism | generator | yes | TKH | reconstructed | 6.3.1, 7.3.1 |
 | `chemoton` | Chemoton | generator | no | TK | reconstructed | 6.1.4 |
 | `gard` | GARD (Graded Autocatalysis Replication Domain) | generator | no | TK | reconstructed | 6.2.4 |
 | `kauffman-autocatalytic-sets` | Kauffman autocatalytic sets (binary polymer model) | generator | yes | T | book+decisions | 6.3.1 |
-| `ono-ikegami-protocell` | Ono & Ikegami autopoietic protocells | generator | no | TK | todo (yes) | 6.3.2 |
+| `ono-ikegami-protocell` | Ono & Ikegami autopoietic protocells | generator | no | TH | reconstructed | 6.3.2 |
 | `raf` | RAF sets (reflexively autocatalytic, F-generated) | analysis | no | T | todo (yes) | 6.3.1 |
 
 ## rewriting
@@ -135,15 +134,16 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 
 | id | name | kind | constructive | tier | status | book |
 |---|---|---|---|---|---|---|
+| `dorin-korb-ecosystem` | Dorin & Korb virtual ecosystem chemistry | generator | yes | TH | reconstructed | 8.2.3 |
 | `flow-ac` | Flow artificial chemistry | generator | no | TK | reconstructed | 11.4.3 |
-| `squirm3` | Squirm3 | generator | yes | T | todo (yes) | 11.4.1 |
-| `swarm-chemistry` | Swarm Chemistry | generator | no | K | todo (yes) | 11.4.2 |
+| `squirm3` | Squirm3 | generator | yes | T | reconstructed | 11.4.1 |
+| `swarm-chemistry` | Swarm Chemistry | generator | no | TK | reconstructed | 11.4.2 |
 
 ## systems-biology
 
 | id | name | kind | constructive | tier | status | book |
 |---|---|---|---|---|---|---|
-| `aevol` | Aevol | framework | yes | T | todo (no) | 18.1.2 |
+| `aevol` | Aevol | generator | yes | T | reconstructed | 18.1.2 |
 | `bnc-cell` | BNC (bond-number chemistry) cell model | generator | no | TK | reconstructed | 18.3.1 |
 | `cpm-grn-evodevo` | Cellular Potts + GRN evo-devo models | framework | no | TH | todo (no) | 18.6.1 |
 | `energy-gated-collision` | Arrhenius-gated collision algorithm | analysis | yes | KH | todo (yes) | 18.3.3 |

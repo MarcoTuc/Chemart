@@ -9,7 +9,7 @@ chemistries:
   kind: generator
   constructive: false
   S:
-    repr: "self-propelled particles in continuous 2D or 3D; a 'species' is a parameter tuple (a kinetic recipe), not a structure"
+    repr: "self-propelled particles in continuous 2D or 3D; a 'species' is a parameter tuple (a kinetic recipe) (R, V_normal, V_max, c1..c5), not a structure"
     definition: explicit
   R:
     definition: implicit
@@ -18,26 +18,91 @@ chemistries:
       Boid-like kinetic interaction rather than transformation: within
       radius R_i, steer to the local centre, align to the local mean
       velocity, avoid collisions, steer randomly; otherwise stray randomly;
-      relax toward the type's normal speed.
+      relax toward the type's normal speed. No species is created or
+      destroyed, so the network has no reactions; the law is in
+      extras.interaction_law. The only transformation Sayama defines is at
+      the level of recipes (recipe_transmission): a particle that loses a
+      collision adopts its neighbour's recipe, which is exported as the
+      observed catalytic events A + B -> 2 B.
   A:
     reactor: continuous-space
     dilution: none
+    notes: "synchronous discrete-time update of every particle; unbounded space (no walls, no wrapping); particles are initially scattered uniformly in a cube of side `space` with velocity components uniform in [-5, 5)"
   params:
-    - {name: R_i, type: float, range: "0..300 px", role: spatial, meaning: "local perception radius"}
-    - {name: Vn_i, type: float, range: "0..20 px/step", role: kinetic, meaning: "normal speed"}
-    - {name: Vm_i, type: float, range: "0..40 px/step", role: kinetic, meaning: "maximum speed"}
-    - {name: c1_i, type: float, range: "0..1 (1/step^2)", role: kinetic, meaning: "strength of cohesive force"}
-    - {name: c2_i, type: float, range: "0..1 (1/step)", role: kinetic, meaning: "strength of aligning force"}
-    - {name: c3_i, type: float, range: "0..100 (px^2/step^2)", role: kinetic, meaning: "strength of separating force"}
-    - {name: c4_i, type: float, range: "0..0.5", role: stochastic, meaning: "probability of random steering"}
-    - {name: c5_i, type: float, range: "0..1", role: kinetic, meaning: "tendency of self-propulsion"}
-    - {name: recipe, type: matrix, role: population, meaning: "list of (count, R, Vn, Vm, c1..c5) per particle type"}
-  provides: [space, rate-law]
-  generator_ready: yes
-  phenomena: ["segregation", "oscillatory and rotating collective motion", "cell-division-like behaviour with two particle types", "3D variants"]
+    - name: recipe
+      type: enum
+      default: turbulent-runner
+      choices: [blobs, linear-oscillator, turbulent-runner, playing-catch, recombining-blobs,
+                wedding-ring, rotary, swinger, jelly-fish, no-wait-this-way, pulsating-eye,
+                chaos-cells, fast-walker-slow-follower, aggressive-predator, cell-with-two-nuclei,
+                multicellularity, insurmountable-wall, cell-division, uzushio, custom]
+      role: structural
+      meaning: "which published recipe to run; all but cell-division are Sayama's sample recipes, cell-division is Erskine & Herrmann's two-species swarm (their table 1); 'custom' uses custom_recipe"
+    - name: custom_recipe
+      type: list
+      default: []
+      role: structural
+      meaning: "rows [count, R, V_normal, V_max, c1, c2, c3, c4, c5] in Sayama's recipe order, each parameter within the ranges of book table 11.6; used only when recipe = custom"
+    - name: particles
+      type: int
+      default: 120
+      min: 2
+      max: 300
+      role: population
+      meaning: "total number of particles; the recipe's counts are rescaled proportionally, keeping at least one of each type (Sayama's simulator caps a swarm at 300)"
+    - name: steps
+      type: int
+      default: 300
+      min: 0
+      max: 20000
+      role: kinetic
+      meaning: "simulated time steps; the order parameters are averaged over the last 10%"
+      range: "Sayama's and Erskine's runs are 2000-10000 steps"
+    - name: dimensions
+      type: int
+      default: 2
+      min: 2
+      max: 3
+      role: spatial
+      meaning: "2D (the 2009 system) or 3D (the 2012 system); the law is identical in both"
+    - name: space
+      type: float
+      default: 0.0
+      min: 0.0
+      role: spatial
+      meaning: "edge in pixels of the cube the particles are initially scattered in; 0 means auto, i.e. the box that keeps the density of Sayama's 300 particles in a 300 px box, which is the density his recipes are tuned to"
+      range: "Sayama's simulator always uses 300 px with up to 300 particles"
+    - name: recipe_transmission
+      type: bool
+      default: false
+      role: structural
+      meaning: "run the evolutionary variant, in which a particle that loses a collision (within 10 px) adopts the nearest other species; the observed adoptions become the reactions A + B -> 2 B"
+    - name: competition
+      type: enum
+      default: faster
+      choices: [faster, slower, behind, majority-relative]
+      role: selection
+      meaning: "which of Sayama's competition functions decides a collision when recipe_transmission is on"
+  provides: [topology, stoichiometry, catalysts, rate-law, space, initial-state]
+  fidelity: reconstructed
+  sources:
+    - "H. Sayama (2009). Swarm Chemistry. Artificial Life 15(1):105-114, doi:10.1162/artl.2009.15.1.15100 (the system, its parameters and the interactive-evolution experiments)"
+    - "H. Sayama, Swarm Chemistry home page and source release SwarmChemistry-1.3.0-src.tar.gz: https://bingweb.binghamton.edu/~sayama/SwarmChemistry/ - SwarmPopulationSimulator.simulateSwarmBehavior and SwarmIndividual.accelerate give the exact update equations and constants; the page's 18 sample recipes (Blobs, Linear Oscillator, Rotary, Wedding Ring, Swinger, Jelly Fish, Cell with Two Nuclei, Multicellularity, ...) are transcribed verbatim"
+    - "H. Sayama (2011). Seeking open-ended evolution in Swarm Chemistry. Proc. Third IEEE Symposium on Artificial Life, 186-193 - the evolutionary variant, implemented from its released code: https://bingweb.binghamton.edu/~sayama/SwarmChemistry/evolutionary-swarm-chemistry.zip (SwarmPopulationSimulator.losing and the transmission-by-collision block)"
+    - "A. Erskine & J. M. Herrmann (2013). Cell division behaviour in a heterogeneous swarm environment. Proc. ECAL 2013, MIT Press, 35-42: https://web.archive.org/web/2016id_/http://mitpress.mit.edu/sites/default/files/titles/content/ecal13/978-0-262-31709-2-ch006.pdf - the two-species cell-division recipe (their table 1, 300:50 mix) and the spatial-entropy / KL-divergence measures"
+  decisions:
+    - "The book states the rules in words only (11.4.2) and gives just the parameter ranges of table 11.6. Every equation, constant and default is taken from Sayama's own source release: acceleration a_i = c1 (<x> - x_i) + c2 (<v> - v_i) + c3 sum_j (x_i - x_j)/|x_i - x_j|^2 over the neighbours within R_i (|x_i - x_j|^2 clamped to 0.001), random steering adds a uniform [-5, 5) vector with probability c4, a lone particle strays by a uniform [-0.5, 0.5) vector, the velocity is clipped to V_max, pace keeping adds c5 (V_normal - |v|) v/|v| and clips again, and finally x += v. Erskine & Herrmann print the same law, with pace keeping in the equivalent form v <- c5 (V_normal/|v|) v + (1 - c5) v."
+    - "There are genuinely no reactions: particles only move. The default network therefore has an empty reaction list (summary() says so), species are the recipe's ingredients with their published parameter tuple as structure, initial_state holds the particle counts, and the law, the simulated configuration and the measured order parameters are in extras.interaction_law, extras.space and extras.analysis. `rate-law` and the stoichiometric tags are claimed because the transmission mode produces catalytic reactions, not because the default network does."
+    - "recipe_transmission reproduces the 2011 evolutionary variant, with one deviation: there each particle carries a whole multi-ingredient recipe and re-samples its parameters from it, while Chemart treats each ingredient as the transmissible identity, so an adoption is exactly A + B -> 2 B. Mutation at transmission (rate 0.1 in the released code) and the random re-sampling of parameters are switched off, because both would create species that are not in the catalogued recipe; the competition functions faster/slower/behind/majority-relative are the released ones, the majority/stochastic variants are not offered. Transmission is applied synchronously to all particles in a step, whereas the Java loop applies it sequentially."
+    - "Sayama's simulator caps a swarm at 300 particles and his recipes are written as counts; `particles` rescales those counts proportionally (keeping at least one of each ingredient, as boundPopulationSize does) so that the default run takes well under a second. The recipe counts themselves are the published ones. Recipe parameters are printed rounded to two decimals by Sayama's own recipe window, so the published tuples are used exactly as printed."
+    - "The v1 parameters R_i, Vn_i, Vm_i, c1_i..c5_i and the `recipe` matrix are replaced by a named-recipe enum plus custom_recipe (a list of rows), because in this chemistry those numbers are the species, not knobs of the reactor. Order parameters (polarization, rotation about the centre of mass, segregation index, cluster count, radius of gyration, speed ratio) are Chemart's, except the spatial entropy H = -sum P(k) log P(k) over 10^d patches and its KL divergence, which are Erskine & Herrmann's."
+    - "The published recipes contain no rate constants and no time unit beyond the step, so no rate dict is ever emitted; the observed transmission reactions carry firing counts only."
+    - "Erskine & Herrmann do not state the box their particles start in, and their runs are 2000-10000 ticks in 3D. Chemart reproduces the part of their result that is robust at Chemart's scale and in 2D, which is what they describe for 2D: the red species collects inside the yellow one (extras.analysis.mean_radius) as a single blob while the yellow shell breaks up (inside-out division). Repeated division and the 3D toroid are not asserted."
+  phenomena: ["segregation of particle types", "oscillatory and rotating collective motion", "cell-division-like behaviour with two particle types", "3D variants", "pace keeping: a swarm relaxes to its type's normal speed"]
   notes: >
     IMPORTANT NEGATIVE CASE for the output schema: swarm chemistry has NO
-    stoichiometry at all. Species are never created or destroyed; the
-    "reaction" is a force law. Chemart must be able to declare
-    `provides: [space, rate-law]` with an empty stoichiometric matrix and
-    still export something useful (the force law + recipe).
+    stoichiometry at all in its basic form. Species are never created or
+    destroyed; the "reaction" is a force law, exported as
+    extras.interaction_law with an empty reaction list. Only the
+    evolutionary variant, where particles adopt each other's recipes, has
+    anything resembling stoichiometry (A + B -> 2 B).
