@@ -23,6 +23,7 @@ from __future__ import annotations
 import sys
 from collections import Counter
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -179,7 +180,8 @@ class Chemistry:
         return [p for p in self.params if p.role == role]
 
 
-def load(catalog_dir: Path = CATALOG_DIR) -> list[Chemistry]:
+@lru_cache(maxsize=None)
+def _parse(catalog_dir: Path) -> tuple[Chemistry, ...]:
     entries: list[Chemistry] = []
     for path in sorted(catalog_dir.glob("*.yaml")):
         doc = yaml.safe_load(path.read_text())
@@ -193,7 +195,24 @@ def load(catalog_dir: Path = CATALOG_DIR) -> list[Chemistry]:
             raw["params"] = [Param(**p) for p in raw.get("params", [])]
             raw["source_file"] = path.name
             entries.append(Chemistry(**raw))
-    return entries
+    return tuple(entries)
+
+
+def load(catalog_dir: Path = CATALOG_DIR) -> list[Chemistry]:
+    """Return the catalog entries, parsing the YAML at most once per directory.
+
+    Callers each get their own list, so nothing is shared but the entries
+    themselves, which no caller mutates. `Chemistry.implemented` stats the
+    filesystem on every access, so a cached entry still reports fresh
+    implementation status as generator modules appear.
+
+    A process that writes a catalog file and re-reads it must call
+    `load.cache_clear()` first; the CLI is a fresh process each time.
+    """
+    return list(_parse(catalog_dir))
+
+
+load.cache_clear = _parse.cache_clear  # type: ignore[attr-defined]
 
 
 def validate(entries: Iterable[Chemistry]) -> list[str]:
