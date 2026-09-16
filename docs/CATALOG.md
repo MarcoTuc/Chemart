@@ -5,9 +5,9 @@
 
 Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rates or a rate law), **H** thermodynamics (energies and/or detailed balance). Status column: the fidelity of the implemented generator, or `todo (<book readiness>)`.
 
-- implemented: **80** of 98 (book: 4, book+decisions: 30, reconstructed: 46)
+- implemented: **88** of 98 (book: 4, book+decisions: 31, reconstructed: 53)
 - constructive (open, growing species set): **51**
-- carry their own kinetics: **43**; carry energetics: **12**
+- carry their own kinetics: **44**; carry energetics: **12**
 
 
 ## application
@@ -35,7 +35,7 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 | `automata-reaction` | Automata reaction (32-bit binary string chemistry) | generator | yes | TK | reconstructed | 10.6.1 |
 | `avida` | Avida | generator | yes | T | reconstructed | 10.7.1 |
 | `bondable-ca` | Bondable Cellular Automata (BCA) | generator | yes | T | book+decisions | 10.7.3 |
-| `ca-embedded-particles` | Embedded particles in cellular automata | analysis | no | T | todo (no) | 10.7.2 |
+| `ca-embedded-particles` | Embedded particles in cellular automata | analysis | no | T | reconstructed | 10.7.2 |
 | `corewar` | Core War / Redcode | generator | yes | T | reconstructed | 10.6.2 |
 | `coreworld` | Coreworld (VENUS) | generator | yes | T | reconstructed | 10.6.3 |
 | `ikegami-hashimoto` | Machine-tape chemistry | generator | yes | TK | reconstructed | 10.5.4 |
@@ -70,7 +70,7 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 | id | name | kind | constructive | tier | status | book |
 |---|---|---|---|---|---|---|
 | `ecolab` | Ecolab | generator | yes | TK | reconstructed | 8.2.3 |
-| `evolve-series` | EVOLVE virtual ecosystems | framework | yes | TH | todo (no) | 8.2.3 |
+| `evolve-series` | EVOLVE virtual ecosystems | generator | yes | TH | book+decisions | 8.2.3 |
 | `jain-krishna` | Jain-Krishna autocatalytic set model | generator | yes | TK | book+decisions | 15.2.2, 15.2.3 |
 | `logistic-chemistry` | Logistic growth ('replicate and fight') | generator | no | TK | book+decisions | 7.2.4 |
 | `lotka-volterra` | Lotka-Volterra | generator | no | TK | book+decisions | 7.2.8 |
@@ -89,7 +89,7 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 |---|---|---|---|---|---|---|
 | `arn` | Artificial Regulatory Network (ARN) | generator | no | TK | reconstructed | 11.3.4 |
 | `bigan-conservative-crn` | Conservative random chemical reaction networks | generator | no | TKH | reconstructed | 11.3.2 |
-| `nac` | Network Artificial Chemistry (NAC) | generator | yes | T | todo (partial) | 11.3.3 |
+| `nac` | Network Artificial Chemistry (NAC) | generator | yes | T | reconstructed | 11.3.3 |
 | `toychem` | ToyChem (graph-based toy model of chemistry) | generator | yes | TKH | todo (partial) | 11.3.1 |
 
 ## non-chemical
@@ -100,7 +100,7 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 | `n-economy` | N-economy (natural number economy) | generator | yes | T | book+decisions | 20.3 |
 | `nuclear-reaction-networks` | Nuclear reaction networks | generator | no | T | book+decisions | 20.2 |
 | `soas` | Self-Organizing Assembly Systems (SOAS) | generator | yes | T | reconstructed | 20.1 |
-| `social-communication-ac` | Artificial chemistry of social communication | generator | no | T | todo (no) | 20.4 |
+| `social-communication-ac` | Artificial chemistry of social communication | generator | no | T | reconstructed | 20.4 |
 
 ## origin-of-life
 
@@ -112,7 +112,7 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 | `gard` | GARD (Graded Autocatalysis Replication Domain) | generator | no | TK | reconstructed | 6.2.4 |
 | `kauffman-autocatalytic-sets` | Kauffman autocatalytic sets (binary polymer model) | generator | yes | T | book+decisions | 6.3.1 |
 | `ono-ikegami-protocell` | Ono & Ikegami autopoietic protocells | generator | no | TH | reconstructed | 6.3.2 |
-| `raf` | RAF sets (reflexively autocatalytic, F-generated) | analysis | no | T | todo (yes) | 6.3.1 |
+| `raf` | RAF sets (reflexively autocatalytic, F-generated) | analysis | no | T | reconstructed | 6.3.1 |
 
 ## rewriting
 
@@ -145,16 +145,16 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 |---|---|---|---|---|---|---|
 | `aevol` | Aevol | generator | yes | T | reconstructed | 18.1.2 |
 | `bnc-cell` | BNC (bond-number chemistry) cell model | generator | no | TK | reconstructed | 18.3.1 |
-| `cpm-grn-evodevo` | Cellular Potts + GRN evo-devo models | framework | no | TH | todo (no) | 18.6.1 |
+| `cpm-grn-evodevo` | Cellular Potts + GRN evo-devo models | framework | no | TH | reconstructed | 18.6.1 |
 | `energy-gated-collision` | Arrhenius-gated collision algorithm | analysis | yes | KH | todo (yes) | 18.3.3 |
 | `french-flag` | French flag model (positional information) | generator | no | T | book+decisions | 18.6 |
 | `hbcb-psd` | HBCB / PSD degradation-and-reuse chemistry | generator | yes | TH | todo (no) | 18.3.2 |
 | `hill-kinetics` | Hill kinetics (cooperative binding) | generator | no | TK | book+decisions | 18.2.2 |
-| `isologous-diversification` | Isologous diversification | generator | no | TK | todo (partial) | 18.5, 18.6 |
+| `isologous-diversification` | Isologous diversification | generator | no | TK | reconstructed | 18.5, 18.6 |
 | `michaelis-menten` | Michaelis-Menten enzyme kinetics | generator | no | TK | book+decisions | 18.2.1 |
 | `rna-folding-ac` | RNA-folding ribozyme artificial chemistry | generator | yes | TKH | todo (no) | 18.1.1 |
 | `smn` | String Metabolic Network (SMN) | generator | yes | T | book+decisions | 18.3.1 |
-| `srsim` | SRSim (rule-based spatial simulator) | framework | yes | T | todo (no) | 18.3.3 |
+| `srsim` | SRSim (rule-based spatial simulator) | framework | yes | TK | reconstructed | 18.3.3 |
 | `synthon` | Synthon artificial chemistry | generator | yes | TK | todo (no) | 18.3.2 |
 | `tominaga-stacked-strings` | Tominaga's stackable-string chemistry | generator | yes | T | reconstructed | 18.3.2 |
 

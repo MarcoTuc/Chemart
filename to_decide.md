@@ -62,9 +62,11 @@ the sources turn up.
 | `mccaskill-polymer-tm` | Rule framing, head positions and initial state were found by searching for the one decoding that makes the report's published replicator work. The report's evolution run (replicator survives, parasite extinct) is **not** reproduced. | McCaskill's original C program, or the later NGEN / Breyer-Ackermann-McCaskill papers in full |
 | `sac` | String-rewriting semantics (`*` shortest match, prefixes, `&` / `$` sequencing) are inferred from Suzuki's slides and the book's example; none of the three papers was obtainable. | Suzuki & Ono papers [642], [823], [826] |
 | `smn` | Built from the book alone, so there are no rate constants. | Ono, Fujiwara & Yuta, ECAL 2005 (LNAI 3630) |
+| `nac` | Only NAC's **passive layer** (graph rewiring, polarity demixing) is implemented, from Suzuki's archived JSAI 2004 slides. The active layer — node programs, polymerase/helicase/splitase/replicase, centrosome-driven division, chain folding — is absent, not invented, because every paper specifying it is closed. Same author and same problem as `sac`. | Suzuki [824], [825], [827]; the ALife IX 2004 NAC paper |
 | `typogenetics` | The Varetto code table rests on one source (Snare's thesis). | Varetto 1993, Morris 1989 |
 | `laing-molecular-machines` | Laing's main result, self-reproduction by self-inspection, is **not** modelled: no readable source defines the synthesize/activate/convert instructions. Built from the book plus secondary descriptions. | Laing 1977 on U. Michigan Deep Blue, or his 1977 Binghamton dissertation (both open but blocked automated download; fetch by hand) |
 | `urdar` | Invasion results reproduce; published diversity/efficiency *numbers* do not (trends do). The `on-gain` transform rule is inferred from those results. | The authors' Java program (math.chalmers.se/~torbjrn/Urdar) |
+| `evolve-series` | **The weakest entry in the mart.** None of the six EVOLVE publications was obtainable (all closed, no repository copy, archive.org down all session), so the function table, matter/energy economy, matching semantics and population rules are all reconstruction from one book paragraph plus abstracts. Whether Conrad's actual machinery resembles it at all is unknown. | Conrad & Pattee 1970; Conrad & Strizich 1985; Rizki & Conrad 1985; Brewster & Conrad 1999 — any full text at all |
 | `ono-ikegami-protocell` | The book's headline phenomena are **not** reproduced: membrane filaments never close into protocells, no closed membrane retains autocatalyst (`enclosed_A = 0` in every run), and no growth/division occurs. Only the accessible 1D predecessor's published constants and the book's reaction set are tested. The anisotropy field `F[k,o]` — likely the thing that makes closure work — is the implementer's third attempt and is a reconstruction. | Ono & Ikegami [639], [641] (paywalled); [538] for the 3D extension |
 | `reflexive-ac` | The product construction (reflexive composition of two finite-state machines) is read off Salzberg & Sayama's 2025 restatement, not off the 2007 paper, which is paywalled; that paper's own elastic rules, reactor and results are unverified. Two figures of the 2025 paper (12, 13) are not reproduced. | Salzberg 2007, BioSystems 87:1-12, and his two 2006 papers |
 | `combinator-chemistry` | 7 of the published reactions (thesis ch. 7 tables, 2000 paper) release a different number of copies; the count depends on the unpublished reduction order. | Speroni di Fenizio's simulator source |
@@ -110,6 +112,11 @@ yet. Before Chemart is published, decide one of:
 3. drop the two warriors and keep only the recorded pMARS core hashes, losing
    readability in two tests.
 
+Also worth a pass at the same time: every chemistry ported from upstream
+source (`stringmol`, `tierra`, `avida`, `corewar`, `coreworld`,
+`high-order-chem`) should say in `sources` which upstream license its port
+derives from.
+
 ## 7. Conventions the genome-carrying chemistries disagree on
 
 Raised by the `aevol` implementer; they affect `tierra`, `avida`, `aevol`,
@@ -129,7 +136,33 @@ analogous non-replication events (task completions, instruction execution) in
 `extras` instead. Both readings are defensible; they should not coexist
 unexamined, since `provides` and any cross-chemistry comparison depend on it.
 
-Also worth a pass at the same time: every chemistry ported from upstream
-source (`stringmol`, `tierra`, `avida`, `corewar`, `coreworld`,
-`high-order-chem`) should say in `sources` which upstream license its port
-derives from.
+## 8. A catalysed Michaelis-Menten rate law?
+
+Raised by the `isologous-diversification` implementer. Kaneko & Yomo's
+eq. (1) has the enzyme-proportional saturating term
+
+    e1 · x(j) · x(m) / (1 + x(m)/x_M)
+
+which is not in `chemart.kinetics.RATE_LAWS`. It was emitted as mass-action
+`k=e1` (its correct dilute limit) with `saturation`, `saturated_species` and
+`x_M` as extra scalar keys — the documented fallback, but a degradation: the
+published law *is* known here, it simply has no vocabulary entry.
+
+Proposal: add `catalysed-michaelis-menten` with params `(k, K)` plus an
+enzyme species key, propensity `k·[E]·[S]/(1 + [S]/K)`. This shape recurs
+across the enzyme-kinetics literature, so it likely serves more than one
+entry.
+
+Two things to settle before adopting, both cross-cutting:
+1. **Survey first.** Several chemistries may have degraded similar laws to
+   extra keys. Adding the law without migrating them leaves the catalog
+   inconsistent in a way `provides: rate-law` would misreport.
+2. **`tests/chemistries/odes.py` needs the same change.** It unpacks
+   michaelis-menten as `(i, _), = reac`, so it cannot integrate *any* MM
+   reaction that has a second (catalyst) reactant. Latent today because
+   every chemistry degrades instead of emitting one; it becomes a real bug
+   the moment this law lands.
+
+Deliberately not adopted mid-wave: the rate-law vocabulary is part of the
+record format, and changing it while 90+ entries are already written is a
+migration, not an addition.

@@ -58,6 +58,10 @@ def generate(p, rng) -> Network:
   internal structure (bitstring, λ-term, program, graph), put it in
   `Species(id, structure=...)` as a string.
 - **Stoichiometry** is positive integers. Catalysts appear on both sides.
+  Build the two sides from *lists*, not from a dict literal: `Counter({a: 1,
+  b: 1})` silently collapses to a single entry when `a == b`, which loses
+  clonal offspring and identical reactants. `Reaction.of([a, b], [c])` and
+  `Counter([a, b])` are safe; see `tierra.py`.
 - **Rates** are `None` (topology only) or a dict whose `law` is in
   `chemart.kinetics.RATE_LAWS`: `mass-action`, `power`, `michaelis-menten`,
   `hill`, `saturating`, `arrhenius`. Read the definitions in
