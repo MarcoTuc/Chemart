@@ -65,6 +65,7 @@ the sources turn up.
 | `typogenetics` | The Varetto code table rests on one source (Snare's thesis). | Varetto 1993, Morris 1989 |
 | `laing-molecular-machines` | Laing's main result, self-reproduction by self-inspection, is **not** modelled: no readable source defines the synthesize/activate/convert instructions. Built from the book plus secondary descriptions. | Laing 1977 on U. Michigan Deep Blue, or his 1977 Binghamton dissertation (both open but blocked automated download; fetch by hand) |
 | `urdar` | Invasion results reproduce; published diversity/efficiency *numbers* do not (trends do). The `on-gain` transform rule is inferred from those results. | The authors' Java program (math.chalmers.se/~torbjrn/Urdar) |
+| `reflexive-ac` | The product construction (reflexive composition of two finite-state machines) is read off Salzberg & Sayama's 2025 restatement, not off the 2007 paper, which is paywalled; that paper's own elastic rules, reactor and results are unverified. Two figures of the 2025 paper (12, 13) are not reproduced. | Salzberg 2007, BioSystems 87:1-12, and his two 2006 papers |
 | `combinator-chemistry` | 7 of the published reactions (thesis ch. 7 tables, 2000 paper) release a different number of copies; the count depends on the unpublished reduction order. | Speroni di Fenizio's simulator source |
 
 ## 4. Record design: per-reaction metadata
@@ -81,7 +82,34 @@ the current convention and document it.
 
 ## 5. Scope
 
+Note: the repository has no `LICENSE` file and `pyproject.toml` declares no
+license, so nothing is in conflict today — but see §6 before publishing.
+
 Agreed: frameworks and analyses are marked out of scope (not deleted);
 wet chemistries become a small section of *given* topologies.
-Undecided: whether `tierra` / `avida` / `corewar` (framework-like but
-algorithmic) ever get wrappers.
+Settled by implementation: `tierra`, `avida`, `corewar` and `coreworld` are
+not wrappers but minimal faithful re-implementations, and their `kind` moved
+from `framework` to `generator`. `aevol` and `high-order-chem` are still
+`framework`.
+
+## 6. Licensing
+
+`tests/chemistries/test_corewar.py` embeds two Redcode warriors verbatim from
+the pMARS distribution — Validate 1.1R and Rave, both by Stefan Strack, GPL-2
+— with attribution in the file. They are what make the pMARS cross-checks
+readable (Validate is *the* MARS conformance program).
+
+The repository currently declares no license at all, so there is no conflict
+yet. Before Chemart is published, decide one of:
+
+1. license Chemart GPL-2-or-later (simplest, but it is the strongest copyleft
+   of anything vendored so far);
+2. keep the warriors in a separate `tests/fixtures/pmars/` directory with its
+   own GPL-2 notice, and license Chemart itself permissively;
+3. drop the two warriors and keep only the recorded pMARS core hashes, losing
+   readability in two tests.
+
+Also worth a pass at the same time: every chemistry ported from upstream
+source (`stringmol`, `tierra`, `avida`, `corewar`, `coreworld`,
+`high-order-chem`) should say in `sources` which upstream license its port
+derives from.

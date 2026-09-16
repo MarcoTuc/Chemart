@@ -2,22 +2,74 @@ chemistries:
 
 - id: reflexive-ac
   name: Reflexive artificial chemistry
+  aliases: ["graph-based reflexive artificial chemistry", "graph-constructing graphs", "reflexive composition of state machines"]
   origin: "Salzberg, 2007"
   book: "9.8"
-  refs: ["[737]"]
+  refs: ["[737]", "doi:10.1016/j.biosystems.2005.12.008", "doi:10.7551/mitpress/1429.003.0084", "arXiv:2505.07186"]
   family: rewriting
   kind: generator
   constructive: true
   S:
-    repr: "finite state machines and their input data, deconstructed into a graph"
+    repr: >
+      finite state machines (Mealy machines) drawn as labelled directed graphs: every node has at most one
+      link per input symbol, labelled input/output, and one node is the current state (the pointer). Input
+      data are graphs of the same kind (missing links allowed). Species id: canonical text with nodes numbered
+      breadth-first from the pointer, node j listing destination/output per input, e.g. the adding machine
+      M45 at S0 is 0/0,1/0;1/1,0/1
     definition: implicit
+    notes: "only the part reachable from the pointer is kept, so pointed isomorphic graphs are one species; two-state two-symbol machines may be named by number (M45, M61@S1)"
   R:
     definition: implicit
     arity: 2
-    scheme: "a graph rewrites a graph, and in principle itself"
+    scheme: "s1 + s2 -> s1 + s2 + s1 o s2: the reachable composite state graph of s1 (sender) and s2 (receiver) under reflexive composition; elastic if it has more than max_states nodes"
+    notes: >
+      Reflexive composition (Salzberg & Sayama 2025, eqs. 1-2): on input i the composite outputs
+      phi_r(phi_s(i)) and moves to (delta_r(phi_s(i)), delta_s(i)), the two machines swapping the sender
+      and receiver roles at every step, so neither is only processor or only data. A graph composed with
+      itself reads its own structure (s + s -> 2 s + s o s). Repeated composition is the n-machine
+      lattice of eqs. 3-4, and state spaces grow exponentially.
   A:
-    reactor: graph-rewrite
-    dilution: none
-  provides: [topology, sequence-structure-function]
-  generator_ready: no
-  notes: "Described in one sentence in the book; needs the primary source before implementation."
+    reactor: [graph-rewrite, well-stirred-multiset]
+    dilution: "closure: none; soup: each reactive collision adds the product and removes a random molecule (population M constant)"
+    notes: "The source describes the reaction and its products, not a reactor; the flow-reactor soup is the book's standard AC reactor, a Chemart choice."
+  params:
+    - {name: method, type: enum, default: closure, choices: [closure, soup], role: structural, meaning: "closure: every composition reachable from the seed machines (chemart.expand over ordered pairs), complete or cut off by max_species; soup: a stochastic flow reactor of M molecules, observed reactions with firing counts"}
+    - {name: machines, type: list, default: ["M45"], range: "e.g. ['M45', 'M61'], ['M54'], ['0/0,1/1;1/1,0/1@1']; the arXiv:2505.07186 machines of interest are M7, M44, M45, M54, M60, M61", role: structural, meaning: "seed machines: elementary numbers M<n> (optionally @S0/@S1 for the pointer) or machine texts 'dest/out,...;...' with '-' for a missing link and optional '@j' pointer; all must share the alphabet. Empty: M random machines"}
+    - {name: M, type: int, default: 50, min: 2, max: 100000, role: population, meaning: "soup: reactor size (given machines are split equally); without machines, the number of random machines drawn (closure seeds or initial soup population)"}
+    - {name: states, type: int, default: 2, min: 1, max: 1000, role: population, meaning: "random machines: number of states before trimming to the part reachable from state 0; links are uniform over states and outputs"}
+    - {name: symbols, type: int, default: 2, min: 1, max: 16, range: "the sources use the binary alphabet {0, 1}", role: structural, meaning: "random machines: input/output alphabet size k"}
+    - {name: max_states, type: int, default: 64, min: 1, max: 100000, role: structural, meaning: "largest product accepted: a composition with more reachable nodes is elastic"}
+    - {name: max_species, type: int, default: 100, min: 1, max: 100000, role: structural, meaning: "closure only: species budget; reactions that would add more are dropped and status becomes truncated"}
+    - {name: collisions, type: int, default: 2000, min: 0, max: 10000000, role: population, meaning: "soup only: number of collisions (elastic ones included)"}
+  provides: [topology, stoichiometry, catalysts, flow, initial-state, sequence-structure-function]
+  fidelity: reconstructed
+  sources:
+    - "Banzhaf, W. & Yamamoto, L. (2015). Artificial Chemistries, section 9.8 (one sentence: finite state machines and their input data deconstructed into a graph that rewrites a graph, and in principle itself)."
+    - "Salzberg, C. (2007). A graph-based reflexive artificial chemistry. BioSystems 87(1):1-12 (book [737]); abstract only, the full text was not accessible: FSM machine graph and input string dissolved into one space of directed graphs, graphs interact with their own topology to generate a product, self-similar topologies, novel reaction pathways and open-ended diversity. https://pubmed.ncbi.nlm.nih.gov/16733079/"
+    - "Salzberg, C. & Sayama, H. (2025). Reflexive composition of elementary state machines, with an application to the reversal of cellular automata rule 90. arXiv:2505.07186: the formulation of the 'composite state machine' introduced in Salzberg 2006a, 2006b and 2007 (Mealy machine G = (Q, A, delta, phi); reflexive composition eqs. 1-4 with sender/receiver alternation; composition generating exponentially larger state-space graphs), the naming scheme of Table 1, Table 2, figs. 2-17. https://arxiv.org/abs/2505.07186"
+    - "Salzberg, C., Sayama, H. & Ikegami, T. (2004). A tangled hierarchy of graph-constructing graphs. Artificial Life IX, pp. 495-500, MIT Press (open access): Mealy machines with a shared input/output alphabet, tapes as chains of links, pointers to the current states, symmetric engagement of machine and tape graphs. https://doi.org/10.7551/mitpress/1429.003.0084"
+  decisions:
+    - "The primary source [737] and its companions (Salzberg 2006a, ALife X; 2006b, Artificial Life 12:487-512) were not accessible (paywalled; no preprint, thesis or archived copy found). The reaction is reconstructed from the 2025 restatement of the formulation by the same author, which says the earlier studies composed distinct sender and receiver machines repeatedly into exponentially larger state-space graphs. The exact product construction, elastic conditions and reactor of the 2007 paper are therefore Chemart's reading, not a transcription."
+    - "Molecule: a deterministic Mealy machine over the alphabet {0..k-1} with a pointer (the current state, the dark node of the 2025 figures), trimmed to the nodes reachable from the pointer. Missing links are allowed so that input data (e.g. the tape chains of the 2004 paper, with a symbol playing xi) are graphs of the same kind; a composite link exists only if both links it passes through exist."
+    - "Product s1 o s2: the composite of eqs. 1-2 with s1 as sender, whose node (x, y) holds the sender-position and receiver-position states; after each input the machines swap positions (the 2025 'folding'). For distinct species the node also records which machine sends, so the product has at most 2|s1||s2| nodes; for s + s the machines are identical and it has at most |s|^2 (the uniform lattice of the 2025 paper). Its pointer is the pair of reactant pointers and only reachable nodes are kept."
+    - "Reaction scheme: both reactants are catalysts, s1 + s2 -> s1 + s2 + s1 o s2, as in the book's constructive chemistries (AlChemy, eq. 9.4); the 2007 abstract says only that interacting graphs 'generate a product'. Ordered pairs: s1 o s2 and s2 o s1 differ."
+    - "Not modelled: the 2004 graph-constructing-graph machinery (xi-flows chosen by a decision tree over N-loops, translation of the output string by codons into construction-head instructions that grow and fold the graph). The 2025 restatement does not use it, and the 2004 paper leaves conflict resolution open."
+    - "Elastic boundary: products with more than max_states reachable nodes (Chemart choice, since state counts multiply at every composition). No rates are published, so reactions carry rate None."
+    - "Canonical id: breadth-first numbering from the pointer with links taken in input order; for accessible deterministic graphs this is a complete isomorphism invariant, so no general graph canonisation is needed."
+    - "Soup: chemart.soup with constant dilution draws an ordered pair (sender, receiver), adds the product and removes a random molecule; initial population: the given machines in equal copies, or M random machines (duplicates allowed). Random machines have uniform links over states and outputs, trimmed from state 0. These are Chemart choices; the defaults (closure from M45, M = 50, 2000 collisions, max_states 64, max_species 100) are small, not published values."
+    - "The v1 entry had no parameters; all parameters are new. v1 said 'dilution: none', which holds for the closure; the soup is an added reactor."
+    - "Published numbers checked by computation: Table 1 encoding (M61 = 00111101, M45 = 00101101), 76 machines unique under complement and mirror, the Table 2 equivalents, transposition M45 <-> M54 and M60 -> M60 (fig. 17, footnote 3), M45 equal to rule 90 on even steps with the fig. 7 boundary inputs, M54 even steps as rule-90 preimages with the eqs. 6-7 inputs, M44 inverted by flipping the lattice. The fig. 12 caption's input sequence (0 up to t = 5, then 1, 1) was not reproduced: with the constraint algorithm as described, the run from two centred 1 cells needs input 1 at t = 0; the figure's step indexing cannot be recovered from the text. Likewise fig. 13's statement that M60 with the same initial states and boundary inputs has the same even rows as M54 did not hold when M60 was fed M54's inputs, so only M54's reversal is tested."
+  phenomena:
+    - "composition multiplies state spaces: repeated composition yields exponentially larger, self-similar state-space graphs (M45 gives 2, 4, 16, 32, 64 states)"
+    - "a graph composed with itself reads its own structure (reflexivity): s + s -> 2 s + s o s"
+    - "the n-fold composite of a machine is the lattice of reflexive composition (arXiv:2505.07186 eqs. 3-4)"
+    - "M45 (adding machine modulo 2) reproduces elementary CA rule 90 and the Sierpinski triangle on even steps (figs. 5-7)"
+    - "M54 and M60 run rule 90 backwards: each even step is a rule-90 preimage of the previous one (figs. 10-15); M45 and M54 are transposes of each other (fig. 17)"
+    - "M44 shows reversible billiard-ball dynamics, inverted by flipping the lattice (fig. 8)"
+    - "of the 256 two-state two-symbol machines, 76 are unique under complement and mirror (Table 2)"
+    - "Salzberg 2007 (abstract): continuous emergence of complex self-similar topologies, novel reaction pathways, seemingly open-ended diversity"
+  notes: >
+    Chemart observation, not a published result: random soups of two-state machines usually collapse to one
+    species within a few thousand collisions, typically a small machine that reproduces itself under
+    self-composition (s o s = s). The module exports canonical, parse, compose, elementary and number for
+    working with the machines directly.

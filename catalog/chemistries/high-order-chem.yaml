@@ -2,31 +2,63 @@ chemistries:
 
 - id: high-order-chem
   name: High-order chemistry (rules as molecules)
-  aliases: ["HighOrderChem"]
-  origin: "Banzhaf & Yamamoto, PyCellChemistry"
-  book: "appendix"
+  aliases: ["HighOrderChem", "NumberChemHO"]
+  origin: "Yamamoto, 2014 (PyCellChemistry); Banzhaf & Yamamoto, 2015"
+  book: "appendix: Writing Your Own Artificial Chemistry in Python, 'A High-Order Chemistry' (figure 3, divrule); module list (HighOrderChem.py)"
+  refs: ["https://github.com/laryamamoto/PyCellChemistry"]
   family: core
   kind: framework
   constructive: true
   S:
-    repr: "two multisets: data molecules (arbitrary Python objects) and rule molecules (strings holding Python calls)"
+    repr: "two multisets: data molecules (JSON integers or lists; species n<k> or compact JSON text such as [0,3,1,2]) and rule molecules (species rule:<name>, structure the rule text, e.g. divrule(m1, m2))"
     definition: implicit
+    notes: "the rule multiset is constant: rules are never consumed and never rewritten"
   R:
     definition: implicit
-    arity: "variable - determined by the arity of the drawn rule"
-    scheme: "draw a rule 'f(m1,...,mk)'; draw k data molecules; exec; inject the returned products; reinject the rule (catalytic)"
+    arity: "variable - the number of binding sites of the drawn rule, plus the rule molecule itself"
+    scheme: "rule + m1 + ... + mk -> rule + products(m1, ..., mk), k = binding sites of the rule; e.g. rule:divrule + n12 + n3 -> rule:divrule + n4 + n3"
+    notes: "rules are catalysts of every reaction they execute because they are reinjected; rules are built-in named functions or expressions in a small interpreted language, never executed Python strings"
   A:
     reactor: well-stirred-multiset
-    dilution: none
+    dilution: "none - products replace educts; the data population changes only if a rule returns more or fewer molecules than it binds"
+    notes: "per iteration: draw a random rule (stop if none), count its binding sites nsites, if at least nsites data molecules are present draw nsites of them without replacement, execute the rule, inject its products, reinject the rule (book figure 3)"
   params:
-    - {name: rules, type: callable, role: structural, meaning: "the rule multiset - this IS the chemistry"}
-    - {name: seed, type: matrix, role: population, meaning: "initial data multiset"}
-  provides: [topology, sequence-structure-function]
-  generator_ready: yes
-  reference_impl: "PyCellChemistry HighOrderChem.py"
-  phenomena: ["any constructive chemistry can be re-expressed on it", "rules compete for substrate"]
+    - {name: method, type: enum, default: soup, choices: [soup, closure], role: structural, meaning: "soup: the book's HighOrderChem.iterate loop, observed effective reactions with counts; closure: every reaction reachable from the distinct data molecules under deterministic rules (Chemart addition)"}
+    - {name: rules, type: dict, default: {divrule: 4}, range: "NumberChemHO.py: {divrule: 4}; MolecularTSP.py: {exchangeMachine: 100, cutMachine: 100, invertMachine: 100, recombinationMachine: 1}", role: structural, meaning: "the rule multiset {rule: multiplicity}; this IS the chemistry. A rule is a built-in name (divrule, exchangeMachine, cutMachine, invertMachine, recombinationMachine), optionally written as its rule molecule 'divrule(m1, m2)', or an expression rule '[name:] x, y -> expr, ... [if condition]' (integers, + - * / % comparisons and or not, min max abs; see the module docstring). Rules are selected with probability proportional to multiplicity"}
+    - {name: data, type: list, default: [], role: structural, meaning: "explicit initial data multiset as a list of JSON integers or lists; overrides the random initialisation selected by init"}
+    - {name: init, type: enum, default: numbers, choices: [numbers, tours], role: structural, meaning: "random data multiset when data is empty: numbers draws M integers uniformly from [minn, maxn] (NumberChemHO.py); tours draws M random tours on the ring of `cities` cities (MolecularTSP.py)"}
+    - {name: M, type: int, default: 100, min: 1, max: 100000, range: "NumberChemHO.py popsize 100; MolecularTSP.py popsize 9", role: population, meaning: "number of data molecules drawn when data is empty"}
+    - {name: minn, type: int, default: 2, min: 1, role: structural, meaning: "init numbers: lower bound of the uniform draw (inclusive)"}
+    - {name: maxn, type: int, default: 1000, min: 1, role: structural, meaning: "init numbers: upper bound of the uniform draw (inclusive)"}
+    - {name: cities, type: int, default: 10, min: 3, max: 1000, range: "MolecularTSP.py default 10", role: structural, meaning: "number of cities on the ring instance that the tour machines (and init tours) use; tours are permutations of 0..cities-1"}
+    - {name: iterations, type: int, default: 10000, min: 0, max: 10000000, range: "NumberChemHO.run: 10000; MolecularTSP.py: up to 1000 generations of ceil(M * 100 / |rules|) iterations", role: population, meaning: "soup only: number of iterations of the algorithm (one rule drawn per iteration, elastic and idle ones included)"}
+    - {name: max_species, type: int, default: 1000, min: 1, role: structural, meaning: "closure only: budget of data species; status truncated when exceeded"}
+  provides: [topology, stoichiometry, catalysts, initial-state, sequence-structure-function]
+  fidelity: book+decisions
+  sources:
+    - "Banzhaf, W. & Yamamoto, L. (2015). Artificial Chemistries. MIT Press. Appendix, 'A High-Order Chemistry' (figure 3 and the divrule listing)."
+    - "PyCellChemistry src/HighOrderChem.py, src/NumberChemHO.py, src/MolecularTSP.py and src/artchem/Multiset.py (Yamamoto, 2014). https://github.com/laryamamoto/PyCellChemistry"
+  decisions:
+    - "Security: the reference executes rule strings with exec. Chemart never executes a string: a rule is looked up by name in a registry of built-in functions ported from the reference examples (divrule from NumberChemHO.py and the book; exchangeMachine, cutMachine, invertMachine, recombinationMachine from MolecularTSP.py), or parsed and interpreted as an expression rule in a small documented language. Unknown names are rejected with ValueError. Subclass methods (the book's self.fold(m)) are replaced by the registry; a leading self. is accepted and ignored."
+    - "Binding sites: for named rules nsites is computed from the rule molecule exactly as figure 3 does (len(bsite.split(','))), and a user-written rule molecule must have as many sites as the function takes (the reference would crash on a mismatch). For expression rules nsites is the number of binding-site variables."
+    - "Multisets are lists; a random draw removes a uniformly chosen molecule, the same distribution as Multiset.expelrnd (each molecule with probability 1/total). The rule is drawn and reinjected every iteration, so the rule multiset never changes and rules are catalysts in the network (the rule species appears on both sides)."
+    - "When fewer data molecules than binding sites are present, the rule is reinjected and nothing else happens (figure 3 lines 17 and 26); such iterations count towards `iterations` and are reported as extras.analysis.idle_draws."
+    - "divrule is written with Python 2 integer division in the book (m1 / m2 on ints); it is floor division (//), exact here because the quotient is only taken when it divides. Built-in rules collide elastically (return their educts) on molecules outside their domain (non-integers or 0 for divrule, non-tours for the machines), where the reference would raise."
+    - "Default rules {divrule: 4}, M = 100 from [2, 1000] and 10000 iterations are NumberChemHO.py's; the book only says 'at least one molecule of divrule(m1, m2)'. With a single rule type the multiplicity does not change the dynamics."
+    - "The observed network keeps the effective reactions (HighOrderChem.is_effective: product multiset differs from educt multiset) with firing counts; initial_state and extras.final_state include the rule molecules; extras.analysis records rule_draws per rule, and prime_fraction per generation of M iterations when the only rule is divrule on integers (NumberChemHO.nprimes)."
+    - "Tour machines use MolecularTSP.py's ring topology (TSPgraph ring=True: gridsize 2N, radius N, fully meshed roads) and its fitness with penalties; a tour molecule is the list of cities rather than the string 'fitness [tour]', since the fitness is a function of the tour. The reference's %g rounding of the stored fitness is kept (the drawn molecules' fitness is compared after '%g' formatting, the new tour's exactly). The random topology is not offered: the dedicated molecular-tsp chemistry covers the full model. List molecules must be permutations of 0..cities-1 when a machine is in the rule set."
+    - "method closure is a Chemart addition (chemart.expand.expand, ordered reactants, each rule producing its own reaction); it is only defined for deterministic rules, so the stochastic tour machines are rejected."
+    - "The book's caveat is kept: this is not yet truly high-order, since rules never take rules as educts and cannot rewrite rules (no typed binding sites)."
+    - "v1 parameters rules (callable) and seed (matrix) are replaced by the JSON rule multiset `rules` and the data multiset `data`/`init`; the v1 name `seed` is the generate_network seed."
+  reference_impl: "PyCellChemistry HighOrderChem.py (NumberChemHO.py, MolecularTSP.py build on it)"
+  phenomena:
+    - "the divrule rule set reproduces the prime-number chemistry: primes are never consumed, composites are divided, and the prime fraction grows towards 1 (book appendix: 'the results should be the same as the original NumberChem implementation')"
+    - "rule molecules are catalysts: every reaction has its rule on both sides and the rule multiset stays constant"
+    - "rules compete for substrate: each iteration one rule is chosen with probability proportional to its multiplicity"
+    - "changing the rule multiset changes the chemistry without changing the algorithm (e.g. the molecular TSP machines on tour molecules)"
   notes: >
-    Not a chemistry but the substrate on which Chemart's constructive
-    backend should be modelled. Note the book's own caveat: it is not yet
-    truly high-order because rules cannot rewrite rules (no type tags on
-    binding sites).
+    Not a chemistry but a substrate for constructive chemistries, and the
+    closest PyCellChemistry analogue of Chemart's own react/expand/soup
+    split. The book notes that making it truly high-order would need typed
+    binding sites so that rules can take other rules as educts, and rule sets
+    that keep rewritten rules functional.

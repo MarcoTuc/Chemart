@@ -5,8 +5,8 @@
 
 Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rates or a rate law), **H** thermodynamics (energies and/or detailed balance). Status column: the fidelity of the implemented generator, or `todo (<book readiness>)`.
 
-- implemented: **64** of 98 (book: 4, book+decisions: 28, reconstructed: 32)
-- constructive (open, growing species set): **50**
+- implemented: **72** of 98 (book: 4, book+decisions: 29, reconstructed: 39)
+- constructive (open, growing species set): **51**
 - carry their own kinetics: **44**; carry energetics: **12**
 
 
@@ -17,7 +17,7 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 | `acgp` | Algorithmic Chemistry GP (ACGP) | generator | no | T | book+decisions | 16.6 |
 | `analog-function-crn` | Analog computation of algebraic functions with concentrations | generator | no | TK | book+decisions | 17.4.3 |
 | `brusselator` | Brusselator | generator | no | TK | book | 17.4.2, 19.3 |
-| `ccm` | Chemical Casting Model (CCM) | generator | no | T | todo (partial) | 17.2.2 |
+| `ccm` | Chemical Casting Model (CCM) | generator | no | T | reconstructed | 17.2.2 |
 | `disperser` | Chemical disperser (load balancing) | generator | no | TK | book+decisions | 17.3.1 |
 | `fraglets` | Fraglets | generator | yes | T | reconstructed | 16.2.1, 17.3.1 |
 | `metabolic-robot-controller` | Metabolic / artificial biochemical network robot controllers | generator | no | TK | reconstructed | 16.1.3 |
@@ -33,16 +33,16 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 | id | name | kind | constructive | tier | status | book |
 |---|---|---|---|---|---|---|
 | `automata-reaction` | Automata reaction (32-bit binary string chemistry) | generator | yes | TK | reconstructed | 10.6.1 |
-| `avida` | Avida | framework | yes | T | todo (partial) | 10.7.1 |
+| `avida` | Avida | generator | yes | T | reconstructed | 10.7.1 |
 | `bondable-ca` | Bondable Cellular Automata (BCA) | generator | yes | TH | todo (partial) | 10.7.3 |
 | `ca-embedded-particles` | Embedded particles in cellular automata | analysis | no | T | todo (no) | 10.7.2 |
-| `corewar` | Core War / Redcode | framework | yes | T | todo (partial) | 10.6.2 |
-| `coreworld` | Coreworld (Venus I / Venus II) | generator | yes | T | todo (partial) | 10.6.3 |
+| `corewar` | Core War / Redcode | generator | yes | T | reconstructed | 10.6.2 |
+| `coreworld` | Coreworld (VENUS) | generator | yes | T | reconstructed | 10.6.3 |
 | `ikegami-hashimoto` | Machine-tape chemistry | generator | yes | TK | reconstructed | 10.5.4 |
 | `laing-molecular-machines` | Laing's artificial molecular machines | generator | yes | T | book+decisions | 10.5.1 |
 | `mccaskill-polymer-tm` | Polymers as Turing machines / pattern processing chemistry | generator | yes | T | reconstructed | 10.5.3 |
 | `sr-loops` | Self-replicating loops in cellular automata | generator | yes | T | todo (partial) | 10.4, 10.7.2 |
-| `tierra` | Tierra | framework | yes | T | todo (partial) | 10.6.4 |
+| `tierra` | Tierra | generator | yes | T | reconstructed | 10.6.4 |
 | `typogenetics` | Typogenetics | generator | yes | T | reconstructed | 10.5.2 |
 
 ## bio-inspired
@@ -61,7 +61,7 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 |---|---|---|---|---|---|---|
 | `chameleon` | Colored chameleon chemistry | generator | no | TK | book | 2.5.1 |
 | `dimerization` | Reversible dimerization | generator | no | TK | book | 2.2.4, appendix (Dimer.py) |
-| `high-order-chem` | High-order chemistry (rules as molecules) | framework | yes | T | todo (yes) | appendix |
+| `high-order-chem` | High-order chemistry (rules as molecules) | framework | yes | T | book+decisions | appendix: Writing Your Own Artificial Chemistry in Python, 'A High-Order Chemistry' (figure 3, divrule) |
 | `matrix-chemistry` | Matrix chemistry | generator | yes | TK | book+decisions | chapter 3 |
 | `prime-number-chemistry` | Prime number (number-division) chemistry | generator | yes | T | book+decisions | 1 (eqs. 1.4-1.5), 2.5.2, appendix (NumberChem.py, NumberChemHO divrule) |
 
@@ -100,7 +100,7 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 | `mechanical-self-assembly` | Mechanical self-assembly (Hosokawa) | generator | no | TK | book+decisions | 20.1 |
 | `n-economy` | N-economy (natural number economy) | generator | yes | T | book+decisions | 20.3 |
 | `nuclear-reaction-networks` | Nuclear reaction networks | generator | no | T | book+decisions | 20.2 |
-| `soas` | Self-Organizing Assembly Systems (SOAS) | generator | no | T | todo (partial) | 20.1 |
+| `soas` | Self-Organizing Assembly Systems (SOAS) | generator | yes | T | reconstructed | 20.1 |
 | `social-communication-ac` | Artificial chemistry of social communication | generator | no | T | todo (no) | 20.4 |
 
 ## origin-of-life
@@ -129,7 +129,7 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 | `l-systems` | L-systems | formalism | yes | T | reconstructed | 9.8 |
 | `mgs` | MGS | formalism | yes | T | reconstructed | 9.6 |
 | `p-systems` | P systems (membrane computing) | formalism | no | T | reconstructed | 9.5 |
-| `reflexive-ac` | Reflexive artificial chemistry | generator | yes | T | todo (no) | 9.8 |
+| `reflexive-ac` | Reflexive artificial chemistry | generator | yes | T | reconstructed | 9.8 |
 
 ## spatial
 

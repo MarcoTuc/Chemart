@@ -2,21 +2,105 @@ chemistries:
 
 - id: soas
   name: Self-Organizing Assembly Systems (SOAS)
-  origin: "Frei & Di Marzo Serugendo, 2011-2012"
+  aliases: ["self-organising assembly systems", "chemical reaction model for agile assembly"]
+  origin: "Frei, Di Marzo Serugendo & Serbanuta, 2010-2012"
   book: "20.1"
-  refs: ["[296]", "[297]"]
+  refs: ["[296]", "[297]", "doi:10.1007/s12652-010-0016-0", "doi:10.1007/s12652-012-0159-2", "doi:10.1109/TSMCC.2010.2098027", "doi:10.1007/s11047-011-9295-4"]
   family: non-chemical
   kind: generator
-  constructive: false
-  S: {repr: "industrial robots and workpieces as CHAM molecules", definition: explicit}
+  constructive: true
+  S:
+    repr: >
+      CHAM molecules of a shop floor: manufacturing resource agents (MRAs - robots, axes, grippers,
+      feeders, positioning devices, the generic human operator), each with a type, a multiset of
+      skills (type plus items subtype, direction, range, gripper-type, count, accuracy), the skills
+      it requires from partners, and physical interfaces typed circular/square/triangular/oval/
+      straight/diamond/star with sign + (held) or - (holding); the order (generic assembly plan,
+      GAP), a list of tasks, each an object of parts, a start point and the operations (sets of
+      skills) it requires; coalitions (dynamic coalition agents) of MRAs formed for one task,
+      carrying their provided skills, the operations still required and their free interfaces;
+      and assembly lines, partial assignments of complete coalitions to tasks. Species ids: r1 for
+      an MRA, gap2 for the order (also the empty line), gap2->t(2)[f1,g1,r1] for a coalition,
+      gap2{t(1)=unassigned-human;t(2)=f1+g1+r1;...} for a line
+    definition: implicit
+    notes: >
+      Molecules are the nested K cells (named CHAM solutions) of the Maude specification, flattened
+      to text here; structure holds the full record. Before any reaction the parts complete the
+      order and the grippers (2012 extension of rule 4): a task whose first object part needs
+      gripper subtype G also requires grip(gripper-type=G), with the distance between the part's
+      first two grip positions as range for 2-finger grippers (60.0 for the body case p1, 40.0 for
+      the tape roll p2); a task on one part of type P starting at the feeder also requires
+      feed(subtype=feeds(P)); a gripper of subtype G offers grip(gripper-type=G) and absorbs its
+      open-close range.
   R:
-    definition: explicit
+    definition: implicit
     arity: variable
-    scheme: "CHAM rules (see `cham`) specifying how robots aggregate into an assembly line for a given manufacturing order"
-  A: {reactor: [maximally-parallel, compartments], dilution: none}
+    scheme: >
+      initiate (rule type 4, task-coalition matching) M, O -> M, O, [T|M] when MRA M offers a skill
+      task T of order O requires; join (types 1-3, interface compatibility, composition patterns,
+      composite skills) M, C -> M, C, C+M when M is not in C, offers a skill C still requires, a
+      composition pattern links the skills of M and C, and both have a free interface of one type
+      and opposite signs (both become occupied); assign-generic O, [T|unassigned-human], ... -> L
+      (every task the generic human operator completes, at once); assign L, C -> L+C when C is
+      complete, its task is open in L, C shares no MRA with L, and every task still open keeps a
+      complete coalition sharing no MRA with L+C.
+    notes: >
+      MRAs and coalitions are catalysts of initiate and join: a coalition is a proposal, and modules
+      are only used up when a line adopts one. An offered skill matches a required one when both
+      have the same type and every item of the required skill is an item of the offered one, except
+      range, where the offered range must be at least the required one. Composite skills decompose
+      (type 3): pick&place => move, move(direction=vertical). The layout (type 5) and the derivation
+      of the layout-specific assembly instructions (type 6) are deterministic functions of a
+      finished line, not reactions; the layout is reported in extras.analysis.
+  A:
+    reactor: maximally-parallel
+    dilution: none
+    notes: >
+      The rules fire concurrently and in no prescribed order until no rule applies and the system
+      has converged to a stable state (2010 sec. 5); Maude explores every interleaving with its
+      search command. Chemart gives the closure: every coalition reachable from the initial
+      solution and every assembly line reachable from the order.
   params:
-    - {name: robot_types, type: matrix, role: structural}
-    - {name: manufacturing_order, type: matrix, role: selection}
-  provides: [topology, compartments]
-  generator_ready: partial
-  phenomena: ["provably correct assembly-line configurations, verified in the Maude specification language"]
+    - {name: system, type: enum, default: tape-roller-gap2, choices: [tape-roller-gap2, tape-roller-gap1, custom], role: structural, meaning: "published case study: tape-roller-gap2 = the four-part adhesive tape roller dispenser of JAmI 2012 (six tasks, soas-maude assembly/gap2.maude); tape-roller-gap1 = the two-part dispenser of JAmI 2010 (four tasks, assembly/gap1.maude, whose pick&place tasks start at named feeders); custom = the mras, gap and parts parameters"}
+    - {name: mras, type: str, default: "", range: "one MRA per line, 'name type[/subtype] | skills | required skills | interfaces', e.g. 'g1 gripper/2finger | open-close(range=70.0) | | circular+'", role: structural, meaning: "system=custom only: the manufacturing resource agents of the shop-floor repository, as text (see the module docstring); nothing is evaluated as Python"}
+    - {name: gap, type: str, default: "", range: "first line 'name number', then one task per line, 't(N) | type | object | start point | operations', e.g. 't(2) | pick&place | p1 | feeder | pick&place'", role: selection, meaning: "system=custom only: the generic assembly plan, i.e. the product order that triggers the self-organising process"}
+    - {name: parts, type: str, default: "", range: "one part per line, 'name type | gripper subtype | grip positions', e.g. 'p1 body-case | 2finger | (25,0,10) (25,60,10)'", role: structural, meaning: "system=custom only: the parts to assemble; they complete the order's tasks and the grippers with the grip and feed skills they need"}
+    - {name: patterns, type: str, default: "", range: "one composition pattern per line, 'skills & skills'; empty means the six patterns of soas-maude semantics/patterns.maude", role: structural, meaning: "composition patterns (rule type 2): typical module combinations, the only rule set the papers leave open to the user"}
+    - {name: unavailable, type: list, default: [], range: "names from mras; e.g. [r1] for a robot that has failed or left the shop floor", role: structural, meaning: "MRAs missing from the solution, for the resilience scenarios of the papers (a module becomes unavailable and the system self-organises again)"}
+    - {name: floor, type: list, default: [1000, 10000], range: "two positive integers in mm; soas-maude uses [1000, 10000] with conveyors 300 long and 50 wide", role: spatial, meaning: "shop-floor extent [length, depth] for the serpentine layout of rule type 5; the line turns north when the length is used up"}
+    - {name: max_species, type: int, default: 5000, min: 1, max: 1000000, range: "the published case studies close at 582 (gap2) and 87 (gap1) species", role: structural, meaning: "species budget of the closure, shared by the coalitions and the assembly lines; status truncated when exceeded"}
+  provides: [topology, stoichiometry, catalysts, initial-state, sequence-structure-function]
+  fidelity: reconstructed
+  sources:
+    - "Banzhaf, W. & Yamamoto, L. (2015). Artificial Chemistries, section 20.1 (SOAS as a practical application of ACs for self-assembly: CHAM rules by which industrial robots self-assemble into a customised assembly line for a manufacturing order, simulated in Maude, giving feasible configurations that can be proved correct)."
+    - "Frei, R., Di Marzo Serugendo, G. & Serbanuta, T. F. (2010). Ambient intelligence in self-organising assembly systems using the chemical reaction model. Journal of Ambient Intelligence and Humanized Computing 1(3):163-184. doi:10.1007/s12652-010-0016-0. Rule types 1-4 (sec. 5.1-5.4), the Maude/K model (sec. 6.1-6.4) and the simulation trace of the four-task case study (sec. 6.5, figs. 15-26). http://www.cui.unige.ch/~dimarzo/papers/JAmI2010.pdf"
+    - "Frei, R., Serbanuta, T. F. & Di Marzo Serugendo, G. (2012/2014). Self-organising assembly systems formally specified in Maude. Journal of Ambient Intelligence and Humanized Computing 5:491-510. doi:10.1007/s12652-012-0159-2. The completed specification: six-task case study (sec. 3), the modules (sec. 5.1), layout and transport linking (sec. 5.3, figs. 9-13), LSAI derivation (sec. 5.4) and the execution result (sec. 5.5, appendices A and B). http://www.cui.unige.ch/~dimarzo/papers/JAmI2012.pdf"
+    - "Frei, R. & Di Marzo Serugendo, G. (2011). Self-organizing assembly systems. IEEE Transactions on Systems, Man and Cybernetics - Part C 41(6):885-897. doi:10.1109/TSMCC.2010.2098027. Overview, the CHAM model for self-organisation (sec. VI-A/B) and the agility scenarios. http://www.cui.unige.ch/~dimarzo/papers/SMCC2011.pdf"
+    - "Frei, R., Serbanuta, T. F. & Di Marzo Serugendo, G. soas-maude 1.0, the authors' Maude specification (code.google.com/p/soas-maude, https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/soas-maude/soas-maude-1.0.zip, sha1 90d77bf572fa36433c2283cbb13abc0361d81a87). Source of the modules, parts, GAPs, patterns and of every rule this module implements; re-run here with Maude 3.5.1 to check the numbers below."
+  decisions:
+    - "The book describes SOAS in one paragraph. The chemistry is reconstructed from the two JAmI papers and, where they print rules only as K-notation figures, from the authors' own Maude specification soas-maude 1.0, which is the published version of the rules (the 2012 paper links it). Rule types 1-4 and the layout rules (type 5) are implemented; the derivation of the layout-specific assembly instructions (type 6, concrete robot movements) is not a reaction and is out of scope."
+    - "Running soas-maude 1.0 under Maude 3.5.1 gives, for the six-task order gap2: 165 coalition molecules (1, 44, 44, 44, 31, 1 for t(1)..t(6)), of which 30 are complete (1, 8, 8, 8, 4, 1), and 48 assembly lines; for the four-task order gap1: 46 coalitions and 12 lines. This module reproduces all of these counts."
+    - "The 2012 paper contradicts itself on the number of solutions: sec. 5.5 says 'Maude generates 47 possible solutions', while the discussion of the same run right after says '48 solutions' and describes a 25th solution. Executing the published specification gives 48, which is also 24 permutations of the four workers (r1, r2, r3 and the axis coalition a1+a4+a7) over the four pick&place tasks times 2 ways of splitting the body-case feeders f1 and f3; the entry follows the data."
+    - "A coalition molecule is identified by its task and its members, as in soas-maude, where the join rule refuses to build a coalition whose members already form one for that task; the first derivation found is kept. For both published case studies every derivation of the same members yields the same molecule (extras.analysis.coalition_conflicts is 0), so the network does not depend on that order. Every derivation path is recorded as a reaction, since which one fires first is not determined."
+    - "Coalitions of the generic human operator (unassigned-human, soas-maude's generic-human standing for any number of operators) are assigned to their tasks at once and never make a module exclusive, mirroring the Maude equation that assigns them before any other choice; all other assignments are one reaction each. The 2010 paper names two operators human1 and human2; the 2012 modules replace both with the generic one."
+    - "The 2010 case study is offered as tape-roller-gap1 with the 2012 modules: the 2010 Maude sources are not published, and the module names of the 2012 release differ (its r3 is the ABB robot, while fig. 19 of the 2010 paper shows r3 as the Scara). Its published trace (t1 by an operator, t2 by r3 with gripper g1, t3 by r1 with gripper g2, t4 by an operator) is reachable, and the open interfaces of the four coalitions of figs. 23-26 are reproduced."
+    - "Skill matching, the subtraction of provided from required skills and the exact set difference used for a joining module's own requirements follow soas-maude (MATCH-SKILLS, SUBSTRACT-SKILLS, semantics/combine.maude). The rarely reachable case where Maude's first equation consumes an identical offered skill is not modelled: a required skill is removed whenever some offered skill matches it. The counts above confirm this makes no difference for the published systems."
+    - "The layout (rule type 5) is a deterministic function of a finished line and is reported per line in extras.analysis, not as reactions; positions reproduce appendix B of the 2012 paper. Its shop-floor extent is the `floor` parameter (soas-maude uses 1000 x 10000 mm, with the conveyor length 300, conveyor width 50 and module width 50 kept as published constants). When the floor is too small for a line the specification has no solution and the layout is null."
+    - "The v1 parameters robot_types and manufacturing_order (both typed matrix) become the modules (mras), the order (gap) and the parts as text in a documented notation, plus the composition patterns, the unavailable modules and the floor. Parts carry only what the rules read (type, gripper subtype, grip positions); weights, materials and dimensions are dropped."
+    - "constructive was false in v1; coalitions and assembly lines are built at run time by the rules and cannot be enumerated up front, so it is true. provides gains stoichiometry, catalysts, initial-state and sequence-structure-function and loses compartments: the nested cells are part of a molecule's structure, not membranes with their own reactions."
+  phenomena:
+    - "an assembly system designs itself: from an order and a repository of modules, coalitions form that cover every task, and are arranged in a shop-floor layout (2012 sec. 5.5)"
+    - "48 correct assembly lines for the four-part tape roller dispenser, 12 for the two-part one (published Maude specification; the 2012 paper's sec. 5.5 says 47, its discussion 48)"
+    - "coalitions only form between physically compatible modules: a gripper is held by an axis or a robot on a circular interface, a middle axis needs a base axis, and a gripper whose opening is too small for the part is never used (the 55 mm gripper g2 cannot take the 60 mm body case)"
+    - "every line is correct by construction: each task gets a complete coalition, no module works at two stations, and each feeder feeds the part its task consumes"
+    - "the process terminates incomplete when the modules cannot provide the required skills, leaving tasks unassigned and no line (2010 sec. 7, Wermelinger's first property); removing the screw-driver gripper g4 leaves t(5) unassignable, removing one robot leaves too few workers for the four pick&place tasks"
+    - "resilience: after a module becomes unavailable the remaining modules still self-organise whenever enough skills are left (the two-part order still yields 6 lines without robot r1)"
+  notes: >
+    The manufacturing application of the chemical abstract machine (see `cham`): the chemical
+    solution is a shop floor, molecules are robots and the product order, and the reaction rules
+    are the self-organising mechanism. The trace produced by Maude acts as the proof that the
+    resulting system can build the ordered product; book [297] (Frei & Whitacre, Natural Computing
+    11:417-430, 2012) discusses degeneracy and networked buffering as the route to evolvability of
+    such lines, which this entry does not model. The module exports parse_mras, parse_gap,
+    parse_parts, parse_patterns, parse_skill, skill_match, decompose, complete_order, initiate,
+    join, coalition_closure, line_closure and layout for direct use.

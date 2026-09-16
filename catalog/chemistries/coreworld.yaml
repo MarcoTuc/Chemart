@@ -1,31 +1,94 @@
 chemistries:
 
 - id: coreworld
-  name: Coreworld (Venus I / Venus II)
-  origin: "Rasmussen et al., 1990/1992"
+  name: Coreworld (VENUS)
+  aliases: ["Venus I / Venus II", "Core evolution", "VENUS: Virtual Evolution in a Non-deterministic Universe Simulator"]
+  origin: "Rasmussen, Knudsen, Feldberg & Hindsholm, 1990"
   book: "10.6.3"
-  refs: ["[696]", "[697]"]
+  refs: ["[696]", "[697]", "doi:10.1016/0167-2789(90)90070-6", "LA-UR-89-2618"]
   family: automata
   kind: generator
   constructive: true
   S:
-    repr: "instructions in a cyclic core memory with periodic boundaries; 'organisms' are collections of instructions working together (hard to individuate)"
+    repr: >
+      A cyclic one-dimensional core of Redcode words: one of the ten
+      instructions of the paper's Table 1 (DAT JMP JMZ JMN DJN ADD SUB MOV
+      CMP SPL) with two operands, each an addressing mode (# immediate,
+      $ direct, @ indirect, < auto-decrement indirect) and a value modulo
+      the core size. 'Organisms' are collections of words working together
+      and are not individuated. Species (parameter species): the
+      instruction type (default; the chemical composition the paper
+      tracks, figs. 4 and 6) or the whole word (id e.g. MOV_$0_$1,
+      structure 'MOV $0, $1').
     definition: implicit
   R:
     definition: implicit
     arity: variable
-    scheme: "execution of code belonging to another molecule counts as a reaction"
+    scheme: "executing word + word it copies or adds from + words it changes -> the same cells after the write; e.g. MOV + DAT -> 2 MOV (MOV $0,$1 propagating, fig. 3a), MOV + SPL + ADD -> MOV + 2 SPL (a copy loop duplicating an SPL)"
+    notes: >
+      The book: 'the execution of code belonging to another molecule can be
+      seen as a reaction'. A reaction here is one observed write event of a
+      pointer's execution. The executing word (and the source of a copy)
+      are catalysts; the overwritten word is consumed. Events that leave
+      the species multiset unchanged are elastic and only counted. Every
+      event conserves the number of cells (extras.conservation).
   A:
     reactor: sequential-vm
-    dilution: "bounded execution-pointer queue"
-    notes: "Venus I updates all pointers before writing back (parallel); Venus II executes the top pointer sequentially"
+    dilution: "fixed number of cells (the core); at most queue_len execution pointers; computational resources consumed by executions and refilled by a constant influx"
+    notes: >
+      One core update runs every pointer of the queue once, in queue order.
+      A pointer executes only if the 2 resource_radius + 1 addresses around
+      it hold at least 1 exec; the execution removes 1 exec from them in
+      proportion to their levels (eqs. 2-3). After the queue, every address
+      gains resource_influx, capped at resource_max (eq. 1). venus-i (the
+      paper): all pointers read the same core and their writes are applied
+      afterwards, the later pointer in the queue winning conflicts; venus-ii
+      (book): the pointers run one after the other on the live core. Noise:
+      a MOV writes a random word with probability mutation_rate; a new
+      pointer appears at a random address with probability
+      pointer_injection_rate per update.
   params:
-    - {name: resource_influx, type: float, role: population, meaning: "computational resource refilled per address per step; the key phase parameter ('desert' vs 'jungle')"}
-    - {name: max_operation_radius, type: int, role: spatial, meaning: "limit on relative addressing; promotes locality"}
-    - {name: pointer_injection_rate, type: float, role: stochastic, meaning: "rate of starting new randomly-initialised execution pointers"}
-    - {name: mov_mutation_rate, type: float, role: stochastic, meaning: "probability that copied data is mutated on MOV"}
-    - {name: queue_len, type: int, role: population}
-    - {name: mode, type: enum, default: venus-ii, range: "venus-i (parallel) | venus-ii (sequential)", role: structural}
-  provides: [topology, space, flow]
-  generator_ready: partial
-  phenomena: ["desert condition (low influx): simple cyclic structures dominate", "jungle condition (high influx): richer diversity and cooperating structures", "spontaneous emergence of self-replicators (Pargellis)"]
+    - {name: mode, type: enum, default: venus-i, choices: [venus-i, venus-ii], role: structural, meaning: "venus-i: parallel update, every instruction sees the same core and conflicting writes go to the pointer later in the queue (the paper's simulator); venus-ii: sequential update on the live core (book)"}
+    - {name: core_size, type: int, default: 1024, min: 16, max: 100000, range: "paper 3584", role: population, meaning: "number of addresses of the cyclic core"}
+    - {name: queue_len, type: int, default: 64, min: 1, max: 100000, range: "paper L = 220", role: population, meaning: "places in the execution-pointer queue L: at most L pointers, so at most L executions per core update; an SPL or an injection finding the queue full creates no pointer"}
+    - {name: updates, type: int, default: 2000, min: 0, max: 10000000, range: "paper runs: 10^4 to 4.35 * 10^5 core updates (about 220 executions per update)", role: population, meaning: "number of core updates (generations) simulated"}
+    - {name: operation_radius, type: int, default: 100, min: 1, max: 100000, range: "paper R_opr = 20 (fig. 4), 100, 500, 2000 and the core size; interesting structures need R_opr of order 100 or more", role: spatial, meaning: "R_opr: how far (in addresses) an instruction may read, write or send a pointer; every relative address is folded into [-R_opr, R_opr]"}
+    - {name: resource_radius, type: int, default: 3, min: 0, max: 100000, range: "paper Table 2: jungle R_res = 3, desert R_res = 5", role: spatial, meaning: "R_res: an execution draws its one exec from the 2 R_res + 1 addresses around the pointer"}
+    - {name: resource_influx, type: float, default: 0.5, min: 0.0, max: 1.0, range: "paper Table 2: jungle 0.5, desert 0.1", role: thermodynamic, meaning: "Delta r: resource (in execs) added to every address each core update; large values make a 'jungle', small ones a 'desert'"}
+    - {name: resource_max, type: float, default: 0.5, min: 0.0, max: 1.0, range: "paper Table 2: 0.5 in both jungle and desert (always below one exec)", role: thermodynamic, meaning: "r_max: maximum resource level of an address; addresses start full"}
+    - {name: mutation_rate, type: float, default: 0.05, min: 0.0, max: 1.0, range: "paper Table 2: P_mut = 0.05", role: stochastic, meaning: "P_mut: probability that a MOV writes a random word (instruction uniform over the ten, random modes and values) instead of the copied data"}
+    - {name: pointer_injection_rate, type: float, default: 0.05, min: 0.0, max: 1.0, range: "paper Table 2: P_point = 0.05", role: stochastic, meaning: "P_point: probability per core update that a new pointer appears at a uniformly random address"}
+    - {name: seed_program, type: enum, default: mice, choices: [mice, jmp, imp, copy-loop, none], role: structural, meaning: "active structure placed at a random address of the randomized core: mice (the 8-word self-replicator MICE of the paper's appendix, pointer on its first MOV), jmp (an active JMP $0, which touches nothing), imp (MOV $0, $1, fig. 3a), copy-loop (fig. 3b), none (no initial pointer; activity only from injections)"}
+    - {name: species, type: enum, default: instruction, choices: [instruction, word], role: structural, meaning: "what a species is: the instruction type (10 species) or the whole word with its operands"}
+  provides: [topology, stoichiometry, catalysts, initial-state, space, mass-conservation, sequence-structure-function]
+  fidelity: reconstructed
+  sources:
+    - "Rasmussen, S., Feldberg, R., Hindsholm, M. & Knudsen, C. (1989). Core evolution: emergence of cooperative structures in a computational chemistry. Los Alamos report LA-UR-89-2618, CNLS 9th annual conference 'Emergent Computation' (published as Physica D 42:111-134, 1990, book ref [697]). Simulator VENUS (section 2, eqs. 1-3, Tables 1-2, figs. 2-3, appendix MICE) and the observations of sections 3-5. Open copy: https://www.osti.gov/servlets/purl/5858089 (OSTI record https://www.osti.gov/biblio/5858089); equations and tables were read from the page images because the text layer is garbled."
+    - "Banzhaf & Yamamoto (2015), Artificial Chemistries, section 10.6.3: resources, operation radius, the two noise sources, the definition of reactions as execution of another molecule's code, Venus I (parallel) and Venus II (sequential)."
+    - "ICWS'88 Core War standard (A. K. Dewdney / T. Hawk proposal), https://corewar.co.uk/standards/icws88.txt: operand evaluation order, predecrement, immediate operands and the non-immediate forms of ADD, SUB, CMP, which Table 1 does not spell out."
+  decisions:
+    - "Sources: book ref [696] (Rasmussen, Knudsen & Feldberg, 'Dynamics of programmable matter', Artificial Life II, 1992), which introduced Venus II, could not be obtained (no open copy; the archive.org scan is lending-only). The Physica D paper [697] was used through its open LANL preprint LA-UR-89-2618, which describes one simulator, VENUS, updated in parallel: that is Venus I, the default mode. venus-ii follows the book's one-sentence description."
+    - "Origin, name and refs corrected: the v1 entry dated the work 1990/1992 and named it Venus I / Venus II only; the simulator of the Physica D paper is VENUS, the chemistry the Coreworld. Physica D volume 42 is from 1990; the preprint is dated 1989."
+    - "Instruction set: the ten words of Table 1 with the four addressing modes. Table 1 leaves details open, filled from the ICWS'88 standard as closest to the 'Int. Core Wars Soc. 1986' specification the paper says it followed: operands evaluated A then B, the A word is read before the B predecrement; @ and < use the B field of the pointer cell, relative to that cell; # denotes the executing word as an address; MOV #a writes a into the B field of the target, otherwise it copies the whole word; ADD/SUB #a changes the B field, otherwise both fields; JMZ/JMN/DJN test the B field of the B operand (DJN decrements it first)."
+    - "Two Table 1 entries differ from later Core War and are followed as printed: CMP skips the next instruction if A and B are unequal, and SPL takes its target from the B operand (MICE writes 'SPL @3'). One-operand words put the operand in B for DAT and SPL (A = #0) and in A otherwise (B = $0)."
+    - "Checks of the instruction semantics: fig. 3(a) and 3(b) are reproduced step by step, and MICE copies itself 713 cells away and spawns a pointer on the copy in exactly the 18 core updates the paper states (tests). Beyond the tests, venus-ii was cross-checked against the compiled pMARS 0.9.4 simulator driven through its debugger: 477 random 10-word programs in a 64-word core, comparing the whole core and the process queue after every update, 2212 instructions in all, with no difference. The comparison writes explicit ICWS'88-equivalent modifiers (.AB/.I/.F/.B), maps Venus's CMP to pMARS's SNE and lets SPL target its A operand, the two places where Table 1 differs from later Core War; it says nothing about those two choices, which follow Table 1."
+    - "Operation radius: the paper says R_opr defines how far an instruction may access and alter data. Every relative address (data and jump/split targets alike, including the second step of an indirection) is folded into [-R_opr, R_opr] as ((offset + R) mod (2R + 1)) - R, the folding of ICWS'94 read/write limits. With 2 R_opr + 1 >= core_size nothing is folded."
+    - "Resources follow eqs. 1-3 as printed: a pointer executes iff the sum of r over its 2 R_res + 1 neighbours is >= 1 exec; each neighbour's level is then multiplied by (S - 1)/S; the refill min(r_max, r + Delta r) is applied after the whole queue. All addresses start at r_max (not stated). A pointer lacking resources stays where it is and keeps its place in the queue (the paper only says the instruction is not executed)."
+    - "Queue: the paper gives only its length L. Pointers keep queue order; the successor of an executed pointer takes its place, an SPL's second pointer follows it, and it is created only if the queue (the pointers still to run plus those already placed) has fewer than L entries; an injected pointer goes to the back if there is room. This is the Core War process-queue rule; the paper does not say which pointers are lost when the queue is full."
+    - "Venus I conflicts: all instructions of an update see the core as it was at the start of the update (their own predecrements included); writes are applied afterwards and, for each address, only the write of the pointer latest in the queue takes effect, as the paper states. One core update in venus-ii likewise runs every pointer present at its start once, so updates, resources and injections are comparable between the modes."
+    - "Mutation: the paper says the word the MOV copies mutates with probability P_mut, to any of the ten instructions with random operands; the book says the copied data may be mutated. The written word is replaced by a random word (instruction, modes and values uniform), for immediate MOVs as well. The randomized initial core uses the same distribution ('every instruction initially is equally distributed')."
+    - "Pointer injection: P_point is read as the probability of one new pointer per core update (the paper's 'low pointer appearance frequency ... each time the core is updated'); per address it would fill the queue at once."
+    - "Seeds: the paper starts either from a randomized core with an active JMP $0 or with the self-replicating program MICE (appendix), whose starting pointer is not stated: it is put on the first MOV. imp and copy-loop are the examples of fig. 3."
+    - "Reactions (organisms are not defined in Coreworld): one observed write event of an execution. Reactants: the executing word, the source word of MOV/ADD/SUB with a non-immediate A operand, and every word written (target and predecremented cells), each cell once; products: the same cells after the write. Events whose species multiset does not change (numbers changed, or a word replaced by one of the same type) are elastic: counted in extras.analysis.events but not listed. Execution events without writes (jumps, SPL, CMP) and pointer births and deaths are counted in extras.analysis, not as reactions, because pointers are not molecules."
+    - "Flow: resources are not species, so the v1 'flow' tag is dropped; resource levels are summarised in extras.analysis.series.mean_resource. extras.space records the ring and the two radii."
+    - "Dropped v1 names: max_operation_radius is operation_radius, queue_len kept; resource_influx is Delta r, and r_max, R_res, core size, updates, the seed and the species granularity are added."
+    - "Defaults are small (core 1024, L = 64, 2000 updates) so a run takes about half a second; the paper's core (3584, L = 220) and run lengths (10^5 updates) are in range. The Python machine executes about 200000 instructions per second, so paper-length runs take hours, as the original's twelve hours on an IBM PS/2."
+  phenomena:
+    - "desert (low resource influx, Table 2: R_res 5, Delta r 0.1): simple loops and pointer fixed points dominate; no viable structures develop (LA-UR-89-2618 section 3, book 10.6.3)"
+    - "jungle (high influx, R_res 3, Delta r 0.5): richer structures, loops, pointer-dense 'SPL-fields' kept alive by SPL instructions, never found in the desert"
+    - "pointer fixed points: JMP #X, JMZ #X,0, JMN $0,Y and DJN #X,Y (Y != 0) send the pointer back to itself; relaxed or 'silent' cores have most pointers trapped there (e.g. 212 of 220 pointers after 435000 updates)"
+    - "instruction copying loops amplify single instructions, giving phase transitions in the instruction distribution (cores flooded with 2859 CMP, 1276 SPL, 1471 MOV or 1323 ADD out of 3584)"
+    - "with R_opr of order 100 or more and a MICE seed the jungle evolves SPL-MOV cooperative 'organisms' (20-100 words, later two huge ones with more than 800 SPL and 800 MOV) that are robust to noise; collapses go with the extinction of MOV"
+    - "four successive macroscopic epochs (fig. 7): randomized core with self-replicating seed; core populated by copying loops; dense areas of identical instructions; cooperative programs"
+    - "engineered programs (MICE, Core War warriors) are too brittle to survive the noise for long"
+  notes: "Precursor of Tierra and Avida: memory without protection makes organisms hard to individuate, which Tierra solved with memory allocation (book 10.6.4)."
