@@ -48,7 +48,11 @@ def generate(p, rng) -> Network:
   (pass `alternatives=True` when one set of reactants can react in several
   ways, returning a list of outcomes), and
   `chemart.soup.soup` for well-stirred multiset runs that record the reactions
-  that fired.
+  that fired. `soup` takes the same `alternatives=True` flag, but draws one
+  outcome per collision instead of recording them all. Set it deliberately:
+  tuples are legal molecules, so a list of alternatives passed without the
+  flag is indistinguishable from one right-hand side and gets injected into
+  the population as-is.
 - Raise `ValueError` with an actionable message for invalid combinations
   of parameters that the catalog cannot express (e.g. `K < N`).
 

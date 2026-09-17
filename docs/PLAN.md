@@ -1,5 +1,13 @@
 # Chemart library: implementation plan (all 98 chemistries)
 
+> **Status: complete.** All 98 chemistries are implemented (4 `book`,
+> 33 `book+decisions`, 61 `reconstructed`), the catalog validates with 0
+> problems, and the full suite passes with no xfails. The plan below is kept
+> as the record of how it was built; the text is as approved, so its
+> forward-looking phrasing ("there is no generator code yet", the wave
+> schedule) describes the starting point, not the current state. Open
+> questions that outlived the build are in `to_decide.md`.
+
 ## Context
 
 Phase 1 produced a catalog of 98 artificial chemistries (`catalog/chemistries/*.yaml`, loaded by

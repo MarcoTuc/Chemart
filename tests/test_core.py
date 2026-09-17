@@ -131,6 +131,24 @@ def test_soup_is_reproducible_and_dilutes():
     assert all(count > 0 for _, _, count in r1)
 
 
+def test_soup_draws_among_alternative_outcomes():
+    """soup picks one outcome per collision; expand records them all."""
+
+    def two_ways(a, b):
+        if len(a) == len(b) == 1:
+            return [(a + b,), (b + a,)]
+        return None
+
+    def run(seed):
+        return soup(two_ways, ["x", "y"] * 40, 200, np.random.default_rng(seed), alternatives=True)
+
+    fired, pop = run(5)
+    products = {rhs[0] for _, rhs, _ in fired}
+    assert products <= {"xy", "yx", "xx", "yy"} and len(products) > 1, "both orders must occur"
+    assert all(isinstance(m, str) for m in pop), "alternatives must not leak into the population"
+    assert run(5)[0] == fired
+
+
 # --- parameters --------------------------------------------------------------
 def entry_with(*params):
     return catalog.Chemistry(

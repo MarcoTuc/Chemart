@@ -16,9 +16,12 @@ from chemart.kinetics import RATE_LAWS
 from chemart.network import Network
 
 ENTRIES = {c.id: c for c in catalog.load()}
-IMPLEMENTED = sorted(i for i, c in ENTRIES.items() if c.implemented)
-# CHEMART_ONLY=id1,id2 restricts the contract to those chemistries (used by
-# agents implementing one chemistry while others are in progress).
+ALL_IMPLEMENTED = sorted(i for i, c in ENTRIES.items() if c.implemented)
+IMPLEMENTED = ALL_IMPLEMENTED
+# CHEMART_ONLY=id1,id2 restricts the *parametrized* contract tests to those
+# chemistries (used by agents implementing one chemistry while others are in
+# progress). The coverage gate below always reads the unfiltered list, so a
+# single-chemistry run never makes it look as though entries went missing.
 if os.environ.get("CHEMART_ONLY"):
     IMPLEMENTED = [i for i in os.environ["CHEMART_ONLY"].split(",") if i in ENTRIES]
 
@@ -63,6 +66,6 @@ def test_rejects_bad_parameters(cid):
             break
 
 
-@pytest.mark.xfail(reason="implementation waves W1-W7 in progress", strict=False)
 def test_every_catalog_entry_is_implemented():
-    assert set(IMPLEMENTED) == set(ENTRIES)
+    missing = sorted(set(ENTRIES) - set(ALL_IMPLEMENTED))
+    assert not missing, f"catalogued but not implemented: {missing}"

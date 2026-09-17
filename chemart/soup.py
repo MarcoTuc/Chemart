@@ -24,6 +24,7 @@ def soup(
     rng: np.random.Generator,
     arity: int = 2,
     dilution: str = "none",
+    alternatives: bool = False,
 ) -> tuple[list[tuple[tuple, tuple, int]], list[Molecule]]:
     """Run `steps` collisions.
 
@@ -35,6 +36,19 @@ def soup(
       "constant"  after each reaction, random molecules are removed until the
                   population is back to its initial size (e.g. the matrix
                   chemistry's removal of a random string s4).
+
+    alternatives: if True, react returns an iterable of alternative
+        right-hand sides (or None), and one of them is drawn uniformly with
+        `rng` -- the stochastic counterpart of `expand(alternatives=True)`,
+        which instead records every outcome as its own reaction. An empty
+        iterable is treated as elastic.
+
+    Note that with alternatives=False a returned list is taken as one
+    right-hand side, whatever it contains. Molecules only have to be hashable,
+    so tuples are legal molecules and a list of alternatives cannot be told
+    apart from a right-hand side of tuple-valued molecules -- passing a
+    multi-outcome rule without setting the flag silently injects the
+    alternatives themselves into the population. Set the flag deliberately.
 
     Returns (reactions, final population), where reactions are
     (reactants, products, count), deduplicated as multisets, in order of first
@@ -54,7 +68,13 @@ def soup(
         out = react(*lhs)
         if out is None:
             continue
-        rhs = tuple(out)
+        if alternatives:
+            options = [tuple(o) for o in out]
+            if not options:
+                continue
+            rhs = options[int(rng.integers(len(options)))]
+        else:
+            rhs = tuple(out)
         left, right = Counter(lhs), Counter(rhs)
         if left == right:
             continue
