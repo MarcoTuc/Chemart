@@ -5,9 +5,9 @@
 
 Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rates or a rate law), **H** thermodynamics (energies and/or detailed balance). Status column: the fidelity of the implemented generator, or `todo (<book readiness>)`.
 
-- implemented: **88** of 98 (book: 4, book+decisions: 31, reconstructed: 53)
-- constructive (open, growing species set): **51**
-- carry their own kinetics: **44**; carry energetics: **12**
+- implemented: **93** of 98 (book: 4, book+decisions: 33, reconstructed: 56)
+- constructive (open, growing species set): **50**
+- carry their own kinetics: **43**; carry energetics: **12**
 
 
 ## application
@@ -90,7 +90,7 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 | `arn` | Artificial Regulatory Network (ARN) | generator | no | TK | reconstructed | 11.3.4 |
 | `bigan-conservative-crn` | Conservative random chemical reaction networks | generator | no | TKH | reconstructed | 11.3.2 |
 | `nac` | Network Artificial Chemistry (NAC) | generator | yes | T | reconstructed | 11.3.3 |
-| `toychem` | ToyChem (graph-based toy model of chemistry) | generator | yes | TKH | todo (partial) | 11.3.1 |
+| `toychem` | ToyChem (graph-based toy model of chemistry) | generator | yes | TKH | reconstructed | 11.3.1 |
 
 ## non-chemical
 
@@ -146,16 +146,16 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 | `aevol` | Aevol | generator | yes | T | reconstructed | 18.1.2 |
 | `bnc-cell` | BNC (bond-number chemistry) cell model | generator | no | TK | reconstructed | 18.3.1 |
 | `cpm-grn-evodevo` | Cellular Potts + GRN evo-devo models | framework | no | TH | reconstructed | 18.6.1 |
-| `energy-gated-collision` | Arrhenius-gated collision algorithm | analysis | yes | KH | todo (yes) | 18.3.3 |
+| `energy-gated-collision` | Arrhenius-gated collision algorithm | analysis | yes | TKH | book+decisions | 18.3.3 |
 | `french-flag` | French flag model (positional information) | generator | no | T | book+decisions | 18.6 |
-| `hbcb-psd` | HBCB / PSD degradation-and-reuse chemistry | generator | yes | TH | todo (no) | 18.3.2 |
+| `hbcb-psd` | HBCB / PSD degradation-and-reuse chemistry | generator | no | TH | book+decisions | 18.3.2 |
 | `hill-kinetics` | Hill kinetics (cooperative binding) | generator | no | TK | book+decisions | 18.2.2 |
 | `isologous-diversification` | Isologous diversification | generator | no | TK | reconstructed | 18.5, 18.6 |
 | `michaelis-menten` | Michaelis-Menten enzyme kinetics | generator | no | TK | book+decisions | 18.2.1 |
-| `rna-folding-ac` | RNA-folding ribozyme artificial chemistry | generator | yes | TKH | todo (no) | 18.1.1 |
+| `rna-folding-ac` | RNA-folding ribozyme artificial chemistry | generator | yes | TH | reconstructed | 18.1.1 |
 | `smn` | String Metabolic Network (SMN) | generator | yes | T | book+decisions | 18.3.1 |
 | `srsim` | SRSim (rule-based spatial simulator) | framework | yes | TK | reconstructed | 18.3.3 |
-| `synthon` | Synthon artificial chemistry | generator | yes | TK | todo (no) | 18.3.2 |
+| `synthon` | Synthon artificial chemistry | generator | yes | TK | reconstructed | 18.3.2 |
 | `tominaga-stacked-strings` | Tominaga's stackable-string chemistry | generator | yes | T | reconstructed | 18.3.2 |
 
 ## wet

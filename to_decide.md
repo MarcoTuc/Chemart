@@ -66,6 +66,8 @@ the sources turn up.
 | `typogenetics` | The Varetto code table rests on one source (Snare's thesis). | Varetto 1993, Morris 1989 |
 | `laing-molecular-machines` | Laing's main result, self-reproduction by self-inspection, is **not** modelled: no readable source defines the synthesize/activate/convert instructions. Built from the book plus secondary descriptions. | Laing 1977 on U. Michigan Deep Blue, or his 1977 Binghamton dissertation (both open but blocked automated download; fetch by hand) |
 | `urdar` | Invasion results reproduce; published diversity/efficiency *numbers* do not (trends do). The `on-gain` transform rule is inferred from those results. | The authors' Java program (math.chalmers.se/~torbjrn/Urdar) |
+| `rna-folding-ac` | The genotype→phenotype→function map is from the obtained Flamm et al. 2010 full text, but **which reaction each ITS class denotes** (hairpin→cleavage, interior/bulge→ligation) is the implementer's assignment: the published mapping is in Ullrich's Leipzig thesis and the paywalled CMSB/ECAL chapters, none obtainable. The published *evolutionary* results (small-world hubs, phased evolution) need ToyChem metabolite graphs and MFA fitness, so they are catalog claims, not reproduced. | Ullrich & Flamm CMSB 2008 / ECAL 2009 full text; Ullrich's PhD thesis |
+| `hbcb-psd` | The primary paper (Oohashi et al. 2009, *Artificial Life* 15(1)) is bronze OA but unreachable — MIT Press serves a Cloudflare challenge, and archive.org was globally offline. Built from the book's four-sentence paragraph plus the abstract, with an open IPSJ paper on the same PSD model for the simulator's structure. The hierarchy size, bond energies, reactor dynamics and every numeric result are Chemart parameters, not published values. | The MIT Press PDF of Oohashi et al. 2009 — it would likely promote this entry to `reconstructed` |
 | `evolve-series` | **The weakest entry in the mart.** None of the six EVOLVE publications was obtainable (all closed, no repository copy, archive.org down all session), so the function table, matter/energy economy, matching semantics and population rules are all reconstruction from one book paragraph plus abstracts. Whether Conrad's actual machinery resembles it at all is unknown. | Conrad & Pattee 1970; Conrad & Strizich 1985; Rizki & Conrad 1985; Brewster & Conrad 1999 — any full text at all |
 | `ono-ikegami-protocell` | The book's headline phenomena are **not** reproduced: membrane filaments never close into protocells, no closed membrane retains autocatalyst (`enclosed_A = 0` in every run), and no growth/division occurs. Only the accessible 1D predecessor's published constants and the book's reaction set are tested. The anisotropy field `F[k,o]` — likely the thing that makes closure work — is the implementer's third attempt and is a reconstruction. | Ono & Ikegami [639], [641] (paywalled); [538] for the 3D extension |
 | `reflexive-ac` | The product construction (reflexive composition of two finite-state machines) is read off Salzberg & Sayama's 2025 restatement, not off the 2007 paper, which is paywalled; that paper's own elastic rules, reactor and results are unverified. Two figures of the 2025 paper (12, 13) are not reproduced. | Salzberg 2007, BioSystems 87:1-12, and his two 2006 papers |
@@ -166,3 +168,15 @@ Two things to settle before adopting, both cross-cutting:
 Deliberately not adopted mid-wave: the rate-law vocabulary is part of the
 record format, and changing it while 90+ entries are already written is a
 migration, not an addition.
+
+**Related gap, same decision point.** `tests/chemistries/odes.py` raises
+`NotImplementedError` for `arrhenius`, so arrhenius networks cannot use the
+shared ODE scaffolding at all (noted by the `energy-gated-collision`
+implementer, who validated that entry in closed form instead). Making it
+integrable means deciding where temperature and the gas constant come from:
+`chemart/kinetics.py` is deliberately unit-agnostic and `arrhenius` requires
+only `A` and `Ea`. `energy-gated-collision` carries `T`, `R` and `units` as
+extra scalar keys on each rate dict — a convention the library could adopt
+generally, but it should be decided together with the catalysed-MM question
+above rather than piecemeal, since both are about how far the rate-law
+vocabulary and the ODE helper are meant to track each other.
