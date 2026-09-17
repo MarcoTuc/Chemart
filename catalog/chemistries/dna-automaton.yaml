@@ -2,22 +2,77 @@ chemistries:
 
 - id: dna-automaton
   name: DNA automaton (Benenson-Shapiro)
-  origin: "Shapiro 1999; Benenson et al. 2001"
+  aliases: ["molecular finite automaton", "DNA finite-state machine", "autonomous molecular computer", "doctor in a cell"]
+  origin: "Shapiro 1998-1999 (blueprint); Benenson, Paz-Elizur, Adar, Keinan, Livneh & Shapiro 2001 (first automaton); Benenson, Adar, Paz-Elizur, Livneh & Shapiro 2003 (the ATP-free automaton implemented here)"
   book: "19.3.1"
-  refs: ["[767]", "[768]", "[100]"]
+  refs: ["[767]", "[768]", "[100]", "doi:10.1073/pnas.0535624100", "doi:10.1038/35106533", "doi:10.1098/rsfs.2011.0118"]
   family: wet
   kind: wet
   constructive: false
-  S: {repr: "an input DNA molecule encoding a symbol string; transition molecules; the FokI restriction enzyme", definition: explicit}
+  S:
+    repr: "DNA duplexes with 4-nt 5' sticky ends, plus the FokI enzyme: the input molecule at every processing stage, the eight transition (software) molecules T1-T8, the FokI-software and FokI-software-input complexes, the scattered symbol fragments and the two output molecules; Species.structure holds the published sequences as 'sense/antisense', each written 5'->3'"
+    definition: explicit
+    notes: "Species ids: FokI, T1-T8, FokI-T<i>, <state>_<remaining symbols>t for an input at a processing stage (S0_abbt, S1_bbt, ..., S0_t for the output), FokI-T<i>-<molecule> for a hybrid and frag_<sense>_<antisense> for a scattered symbol."
   R:
     definition: explicit
-    arity: 2
-    scheme: "FokI recognises 'GGATG' and cleaves 9/13 nucleotides downstream; a transition molecule hybridises to the exposed sticky end, encoding a state transition, and the machine digests the input from the front"
-  A: {reactor: well-stirred-multiset, dilution: none}
+    arity: [1, 2]
+    scheme: >
+      One transition of the automaton is three reactions (PNAS 2003, fig. 2E):
+      FokI + Ti <-> FokI-Ti (hardware/software assembly, Kd = 2 nM);
+      FokI-Ti + X <-> FokI-Ti-X (sticky-end hybridisation of the software's
+      <state, symbol> detector to the input, Kd = 50 uM);
+      FokI-Ti-X -> FokI-Ti + fragment + X' (irreversible cleavage). FokI binds
+      GGATG and cuts 9 nt downstream on the sense strand and 13 nt downstream on
+      the antisense strand, so the software's 0-, 1- or 2-bp spacer decides which
+      4-nt window of the next symbol is exposed, i.e. the next state (0 bp:
+      S1 -> S0, 1 bp: keep the state, 2 bp: S0 -> S1). Hardware and software are
+      recycled; the input is consumed and fuels the computation.
+    notes: "No ligase and no ATP: this is the 2003 automaton, which uses FokI's ability to cleave across a non-covalent sticky-end hybrid. In the 2001 automaton each transition also ligated the software to the input and consumed one software molecule and two ATP."
+  A:
+    reactor: [ode, ssa]
+    dilution: "none: a closed 10 ul reaction at 8 C in NEB4 buffer"
+    notes: "initial_state holds the published concentrations of the chosen `conditions` in micromolar."
   params:
-    - {name: automaton, type: callable, role: structural, meaning: "the FSM to encode; the demo is 'does the input contain an even number of b'"}
-    - {name: n_states, type: int, default: 2, role: structural}
-    - {name: input_string, type: matrix, role: population}
-  provides: [topology, sequence-structure-function]
-  generator_ready: partial
-  notes: "Autonomous, unlike Adleman's. The 'digest from the front' operating mode is the same one Fraglets adopted in silico."
+    - {name: program, type: enum, default: A1, choices: [A1, A2, A3, book], role: structural, meaning: "which automaton to build: A1 (even number of a symbols), A2 (even number of symbols) and A3 (ends with b) are the three programs run in PNAS 2003 fig. 3B; book is the even-number-of-b automaton of book fig. 19.13, which was not run in the lab", range: "ignored when `transitions` is given"}
+    - {name: transitions, type: list, default: [], role: structural, meaning: "explicit program as a list of published transition-molecule names (T1: S0-a->S0, T2: S0-a->S1, T3: S0-b->S0, T4: S0-b->S1, T5: S1-a->S0, T6: S1-a->S1, T7: S1-b->S0, T8: S1-b->S1); overrides `program`. Two molecules detecting the same <state, symbol> are rejected", range: "any of the 2^8 subsets that is deterministic; the book notes that all eight transitions of a two-state two-symbol FSM are realisable"}
+    - {name: accepting_state, type: enum, default: S0, choices: [S0, S1], role: structural, meaning: "accepting state, used only with an explicit `transitions` program; the named programs carry their published accepting state (S0 for A1, A2 and book, S1 for A3)"}
+    - {name: inputs, type: list, default: ["I8"], role: population, meaning: "input molecules, given as published input names (I1 abb, I2 abba, I3 babbabb, I4 babbabba, I5 baaaabb, I6 baaaabba, I7 abbbbabbabb, I8 abbbbaaaabba) or as literal strings over {a, b}; each one is added to the same reaction at the concentration of `conditions`", range: "fig. 3B runs each of I1-I8 in a separate tube"}
+    - {name: conditions, type: enum, default: standard, choices: [standard, fast, parallel, reuse], role: kinetic, meaning: "which published reaction sets the concentrations and the per-transition rate: standard (fig. 3B: 1 uM input, 1 uM of each software molecule, 4 uM FokI; no rate published), fast (10 nM input, 20 s per transition), parallel (5 uM input, 2.5 uM of each software molecule, 10 uM FokI, 45 s per transition, 6.646e10 transitions/s/ul) and reuse (fig. 3C: software at 0.075 molar ratio for 18 h; no rate published)"}
+  provides: [topology, stoichiometry, rate-constants, mass-conservation, initial-state, sequence-structure-function]
+  fidelity: reconstructed
+  sources:
+    - "Benenson, Y., Adar, R., Paz-Elizur, T., Livneh, Z. & Shapiro, E. (2003). DNA molecule provides a computing machine with both data and fuel. PNAS 100(5):2191-2196. https://doi.org/10.1073/pnas.0535624100, free full text https://pmc.ncbi.nlm.nih.gov/articles/PMC151317/ - the book's reference [100] and the specification used here: figs. 1 (automata A1-A3 and inputs I1-I8), 2 (symbol encoding, FokI, the eight software molecules, the mechanism), 3 (results, software reuse) and Materials and Methods (all oligonucleotide sequences, concentrations, rates, fidelities and energetics)."
+    - "Benenson, Y., Paz-Elizur, T., Adar, R., Keinan, E., Livneh, Z. & Shapiro, E. (2001). Programmable and autonomous computing machine made of biomolecules. Nature 414:430-434. https://doi.org/10.1038/35106533 - the original automaton (ligase + ATP, software consumed per step). Paywalled and withdrawn from PMC, so it could not be consulted; it is not implemented here."
+    - "Shapiro, E. (2012). A mechanical Turing machine: blueprint for a biomolecular computer. Interface Focus 2(4):497-503. https://doi.org/10.1098/rsfs.2011.0118 (open access; the book's [767]) - the 1998-1999 blueprint of the molecular Turing machine the automaton was cut down from."
+    - "Shapiro, E. & Benenson, Y. (2006). Bringing DNA computers to life. Scientific American 294(5):44-51 (the book's [768]) - popular account; not used for any number here."
+    - "Banzhaf, W. & Yamamoto, L. (2015). Artificial Chemistries, section 19.3.1 and figs. 19.13-19.16 (MIT Press)."
+  decisions:
+    - "Attribution: the book's refs for this entry are [767] = Shapiro (2012, Interface Focus, the mechanical Turing machine blueprint), [768] = Shapiro & Benenson (2006, Scientific American) and [100] = Benenson et al. (2003, PNAS). The book itself says 'a detailed description of the DNA automaton can be found in [100]', and figs. 19.14-19.16 cite [100]. The implementation therefore follows the 2003 PNAS automaton, not the 2001 Nature one, and the 2001 paper (which the bibliography does not list under this entry) is recorded in sources as the original."
+    - "The 2001 automaton ligated each software molecule to the input, consuming one software molecule and two ATP per transition (1000 s per transition). Its sequences are only in the paywalled Nature paper, so only the 2003 ATP-free design - the one the book's figures show, with the software recycled and the input as the only fuel - is implemented."
+    - "Every transition rule is derived from the published oligonucleotides rather than typed in: the 4-nt 5' antisense overhang gives the detected <state, symbol> (its reverse complement is that symbol's S1 window if it is the leftmost four bases, its S0 window if it is the rightmost four), and the number of sense bases between GGATG and the end of the software duplex (0, 1 or 2) gives the next state. The eight rules so derived reproduce fig. 2C exactly (test)."
+    - "Book fig. 19.13 shows a two-state automaton that accepts an even number of b symbols, while the automaton of PNAS fig. 1A (A1) accepts an even number of a symbols. Both are implemented: A1-A3 are the three programs actually run in the lab, `program: book` is the book's example, which was not."
+    - "Input molecules are reconstructed from the encoding (5-bp symbols a = TGGCT, b = GCAGG, terminator = GTCGG, 3-bp spacer GCC, 4-nt 5' sense overhang encoding <S0, first symbol>, 1-nt 3' A extrusion). The reconstruction reproduces the published abb and abba oligonucleotides base for base, and I3-I8 reproduce the published ligation products of the blocks babb2, baaa2 and abbb3 (test)."
+    - "Species are deduplicated by molecule, not by input: an intermediate is fully determined by <state, remaining symbols>, so two inputs that reach the same configuration share the species. All inputs listed in `inputs` sit in one reaction volume; in fig. 3B each lane was a separate tube."
+    - "The scattered symbol is kept as one species, a 7-9 nt duplex with 3-5 bp paired, exactly as cleaved. The paper says it probably dissociates into single strands in solution; that dissociation, and the reversible rebinding of fragments to sticky ends that it mentions for very long inputs, are not modelled."
+    - "Rates: only the measured per-transition times are used, as a mass-action constant on the cleavage step (k = 1/20 s for `conditions: fast`, k = 1/45 s for `parallel`), with the conditions recorded on the rate dict. The published Kd values (2 nM hardware/software, 50 uM software/input) are equilibrium constants, not rate laws, so the assembly and hybridisation steps carry no rate and the Kd values are recorded in extras['published']. The default `conditions: standard` (fig. 3B) has no published step time and therefore no rate constant; `provides` claims rate-constants for the fast and parallel conditions."
+    - "The computation stops when the exposed sticky end encodes the terminator, which no software molecule detects; the remaining molecule is the output, with a 15-nt antisense strand for S0 and 16 nt for S1, the two bands of the published gels. A program that has no rule for some exposed <state, symbol> suspends, and the run is marked suspended in extras['analysis']."
+    - "Nondeterministic programs (two software molecules detecting the same <state, symbol>, i.e. the stochastic computing of Adar et al. 2004) are rejected with a ValueError: the network here is the deterministic cascade."
+    - "The hardware/software complex is recycled over a cycle, not within a reaction: the hybridisation step consumes it and the cleavage step releases it, so no reaction has a species on both sides and the `catalysts` capability is not claimed. The tests check the cycle instead."
+    - "The generator is deterministic: `rng` is unused and the seed does not change the network."
+    - "v1 params dropped: `automaton` (callable) becomes `program`/`transitions`, `input_string` (matrix) becomes `inputs`, and `n_states` disappears - the FokI construction is fixed at two states (the book notes that larger FSMs would exceed what fits inside FokI)."
+  phenomena:
+    - "autonomous operation: once mixed, hardware, software and input run the whole computation with no human intervention and no external energy supply (contrast Adleman's protocol)"
+    - "the input is both data and fuel: hydrolysis of two phosphodiester bonds per transition drives the cascade, dissipating about 34 kT per transition (<= 5.3e-9 W/ul)"
+    - "software and hardware are recycled: with software at 0.075 molar ratio, single molecules performed 29, 21 and 54 transitions over 18 h (fig. 3C)"
+    - "massive parallelism: 3e12 automata per ul performing 6.6e10 transitions per second per ul, 20-45 s per transition per molecule, about 8000x the throughput of the 2001 ligase automaton"
+    - "high fidelity: 99.9% per transition for long inputs, ~99.5% average over 12-symbol inputs, lower apparent values (95%) for short inputs"
+    - "programmability: all eight transitions of a two-state two-symbol FSM are available as separate molecules, and the three published programs give the expected final state on all eight published inputs (fig. 3B)"
+  notes: >
+    Autonomous, unlike Adleman's HPP computation. The transition molecules are
+    cofactors of FokI rather than an encoded program in the Turing sense, and the
+    "digest the input from the front" operating mode is the one Fraglets later
+    adopted in silico. Chemart returns the in-silico network of the published
+    experiment: species are the actual published DNA molecules, reactions are the
+    hybridisation and cleavage steps of PNAS 2003 fig. 2E, and extras carry the
+    measured rates, fidelities and energetics that the network itself cannot
+    express.

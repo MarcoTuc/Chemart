@@ -3,21 +3,103 @@ chemistries:
 - id: self-propelled-droplets
   name: Self-propelled oil droplets
   origin: "Hanczyc et al., 2007-2011"
-  book: "19.2.3"
+  book: "19.2.5"
   refs: ["[363]", "[364]", "[365]", "[858]", "[483]", "[885]"]
   family: wet
   kind: wet
   constructive: false
-  S: {repr: "oil droplet with a fatty acid precursor in an alkaline aqueous surfactant phase", definition: explicit}
+  S:
+    repr: "an oil droplet carrying a precursor, in an aqueous surfactant phase; the species are the five or six chemicals of the published experiment (precursor, water, surfactant acid and anion, proton, inert oil solvent)"
+    definition: explicit
   R:
     definition: explicit
-    arity: 1
-    scheme: "precursor hydrolyses to surfactant at the interface, breaking symmetry and driving a convective flow that propels the droplet"
-  A: {reactor: continuous-space, dilution: "fuel surfactant supply"}
+    arity: [1, 2, 3]
+    scheme: "oleic_anhydride + H2O -> 2 oleic_acid ; oleic_acid -> oleate + H (hydrolysis at the oil-water interface makes surfactant and protons; the local drop in pH raises the interfacial tension, which is the Marangoni force that propels the droplet)"
+    notes: "the motion is not a reaction: the propulsion mechanism, the tension relation and the measured behaviour are recorded in extras.interaction_law, extras.analysis and extras.space. The `decanol-salt` system has no reactive chemistry at all and returns an empty reaction list."
+  A:
+    reactor: continuous-space
+    dilution: "none: a shallow dish of aqueous surfactant, closed after the droplet is added. In the `fuel-surfactant` system the fuel is exogenous and the catalyst is not consumed, so the motion is not limited by the droplet's own volume."
+    notes: "Chemart returns the interfacial reaction network of the published experiment plus the published assay geometry; it does not integrate a droplet trajectory, because no accessible source publishes the force law (see decisions)."
   params:
-    - {name: pH_gradient, type: callable, role: spatial}
-    - {name: fuel_supply, type: float, role: population}
-  provides: [space]
-  generator_ready: no
-  phenomena: ["chemotaxis up a pH gradient", "maze solving", "division and fusion", "rare-earth ion extraction"]
-  notes: "Protocells with no information subsystem. Out of scope for generation; catalogued for completeness."
+    - name: system
+      type: enum
+      default: oleic-anhydride
+      choices: [oleic-anhydride, fuel-surfactant, maze-chemotaxis, decanol-salt]
+      role: structural
+      meaning: "which published droplet chemistry to return: `oleic-anhydride` is the canonical Hanczyc system (onboard fuel, refs [365] [364]), `fuel-surfactant` is Toyota et al.'s onboard-catalyst droplet fed by exogenous fuel ([858]), `maze-chemotaxis` is Lagzi et al.'s acid/base maze solver ([483]), and `decanol-salt` is Cejkova et al.'s decanol droplet in a NaCl gradient ([885]), which has no reactive chemistry and therefore no reactions"
+    - name: droplet_volume_uL
+      type: float
+      default: 20.0
+      min: 0.001
+      max: 1000.0
+      role: spatial
+      meaning: "volume of the droplet in microlitres (1 uL = 1 mm^3); it fixes the radius, the interfacial area and the surface-to-volume ratio, which is what sets the reaction rate because the reaction is interfacial, and it selects the published behavioural modes for that size"
+      range: "Horibe et al. (2011) use 1, 3, 10, 20, 30 and 50 uL; Hanczyc & Ikegami (2010) show 1, 5, 10 and 30 uL and report droplets from a few hundred microns to a few centimetres across"
+    - name: precursor_M
+      type: float
+      default: 0.5
+      min: 0.0
+      max: 20.0
+      role: population
+      meaning: "concentration of the precursor in the oil phase, in mol/L; 0.5 M oleic anhydride in nitrobenzene is the published loading. Ignored by `decanol-salt`, which has no precursor."
+      range: "Hanczyc & Ikegami (2010) appendix A.2 use 0.5 M; Horibe et al. (2011) mix oleic anhydride with nitrobenzene 1:1 v/v"
+    - name: surfactant_mM
+      type: float
+      default: 10.0
+      min: 0.0
+      max: 1000.0
+      role: population
+      meaning: "concentration of the surfactant already present in the aqueous phase, in mM (oleate micelles for the oleic-anhydride system, sodium decanoate for decanol-salt, the dispersed fuel precursor for fuel-surfactant)"
+      range: "10 mM oleate at pH 11 in every run of Hanczyc & Ikegami (2010) and Horibe et al. (2011)"
+    - name: pH
+      type: float
+      default: 11.0
+      min: 0.0
+      max: 14.0
+      role: thermodynamic
+      meaning: "pH of the bulk aqueous phase, which fixes the proton concentration in the initial state; the published droplets run at pH 11, well above the pH 9 tension maximum, so it is the local acidification by the droplet's own protons that breaks the symmetry"
+      range: "pH 11, NaOH-adjusted; the local pH around a moving droplet was measured to fall as low as 7"
+  provides: [topology, stoichiometry, catalysts, mass-conservation, space, initial-state]
+  fidelity: reconstructed
+  sources:
+    - "M. M. Hanczyc and T. Ikegami (2010). Chemical basis for minimal cognition. Artificial Life 16(3):233-243, doi:10.1162/artl_a_00002. Recovered from the Wayback Machine: https://web.archive.org/web/2019id_/https://www.mitpressjournals.org/doi/pdf/10.1162/artl_a_00002 - the full chemical system, the Marangoni mechanism step by step, the pendant-drop tensiometry of figure 2 (27 mN/m for bare nitrobenzene at pH 11, tension maximum at pH 9, local pH falling to 7), the droplet size range and the appendix's materials and methods (0.5 M oleic anhydride in nitrobenzene; 10 mM oleate at pH 11)."
+    - "N. Horibe, M. M. Hanczyc and T. Ikegami (2011). Mode switching and collective behavior in chemical oil droplets. Entropy 13(3):709-719, doi:10.3390/e13030709 (open access) - the four behavioural modes and which droplet sizes show them, the 1/3/10/20/30/50 uL size series, the coefficient-of-restitution measurements, the two-droplet attraction at 3 and 20 uL but not at 50 uL, and the experimental section's 1:1 v/v oil and dish geometries."
+    - "M. M. Hanczyc (2014). Droplets: unconventional protocell model with life-like dynamics and room to grow. Life 4(4):1038-1049, doi:10.3390/life4041038 (open access, PMC4284481) - the three configurations of self-moving droplets (no reactive chemistry / onboard fuel / onboard catalyst), the identification of the maze-solving droplets as dichloromethane with 2-hexyldecanoic acid, and the statement that onboard-fuel droplets move for minutes to hours."
+    - "M. M. Hanczyc, T. Toyota, T. Ikegami, N. Packard and T. Sugawara (2007). Fatty acid chemistry at the oil-water interface: self-propelled oil droplets. J. Am. Chem. Soc. 129(30):9386-9391, doi:10.1021/ja0706955 - the primary paper. Paywalled and not obtainable (see decisions); used through its abstract (PubMed 17616129) and through the two full-text papers above, which describe the same system."
+    - "T. Toyota, N. Maru, M. M. Hanczyc, T. Ikegami and T. Sugawara (2009). Self-propelled oil droplets consuming 'fuel' surfactant. J. Am. Chem. Soc. 131(14):5012-5013, doi:10.1021/ja806689p - abstract only (PubMed 19351200): a 4-octylaniline droplet with 5 mol % of an amphiphilic catalyst in an aqueous dispersion of an amphiphilic precursor of 4-octylaniline."
+    - "I. Lagzi, S. Soh, P. J. Wesson, K. P. Browne and B. A. Grzybowski (2010). Maze solving by chemotactic droplets. J. Am. Chem. Soc. 132(4):1198-1199, doi:10.1021/ja9076793 - abstract only (PubMed 20063877): droplets emitting surface-active chemicals move toward low-pH regions and find the shortest path through a maze."
+    - "J. Cejkova, M. Novak, F. Stepanek and M. M. Hanczyc (2014). Dynamics of chemotactic droplets in salt concentration gradients. Langmuir 30(40):11937-11944, doi:10.1021/la502624f - abstract only (PubMed 25215439): decanol droplets in aqueous sodium decanoate migrating in NaCl gradients, with induction time and migration velocity as the measured parameters."
+    - "W. Banzhaf and L. Yamamoto (2015). Artificial Chemistries, MIT Press, section 19.2.5 and figure 19.11 - the droplet-based protocell section itself, and the statement that the droplet follows a pH gradient toward the highest pH."
+  decisions:
+    - "The v1 entry pointed at book section 19.2.3, which is Szostak's heterotrophic protocells and contains no droplet material at all. The self-propelled droplets are section 19.2.5, 'Droplet-Based Protocells' (page 416-417), and `book` has been corrected. The bibliography confirms the entry's refs: [365] and [364] are the Hanczyc oil-droplet papers, [858] is Toyota et al.'s fuel-surfactant droplet, [483] Lagzi et al.'s maze, [885] Cejkova et al.'s salt gradients and [363] Hanczyc's 2014 review; none of them is Szostak, whose refs are [754], [839] and [541]."
+    - "The primary paper [365] (JACS 2007) is paywalled and no open copy exists: Unpaywall, OpenAlex, Semantic Scholar and Europe PMC all report no OA location, pubs.acs.org returns 403, and the Internet Archive was intermittently offline during this work. The implementation is therefore reconstructed from its abstract plus two full-text papers by the same authors on the same system, Hanczyc & Ikegami (2010) and Horibe et al. (2011), both recovered in full."
+    - "NO DROPLET SPEED IS ASSERTED. The one quantity the brief asked for that no accessible source supplies is the droplet velocity: [365], [858] and [885] are all paywalled, and the two full-text sources report velocity only as a relative quantity (it falls as the droplet ages, and it is anti-correlated with the turning angle). Rather than invent a number, the module records those qualitative findings in extras.analysis.measured_behaviour and the tests assert them as properties. The 6 mm/s figure sometimes quoted for self-propelled droplets belongs to Ban et al. (Langmuir 29:2554, ref [54]), a different chemistry (di-2-ethylhexyl phosphoric acid), and is deliberately not attached to this system."
+    - "NO FORCE LAW IS INVENTED and no trajectory is integrated. The propulsion mechanism is published only qualitatively - an interfacial-tension gradient gives a Marangoni force tangential to the surface, which organises a pair of convective vortices - and the numerical study that would supply the equations (Matsuno, Hanczyc & Ikegami 2007, Springer LNCS 4828:179-188, ref [556]) has no open copy. The mechanism is therefore recorded as an ordered causal chain in extras.interaction_law, and extras.space holds the published assay geometry and the droplet's own geometry rather than positions."
+    - "Every reaction carries rate = None. No accessible source publishes a rate constant for the interfacial hydrolysis of oleic anhydride, or for any of the other three systems, so `rate-constants` is not claimed."
+    - "The hydrolysis is written as the two steps the sources describe rather than as one overall equation: oleic_anhydride + H2O -> 2 oleic_acid, then oleic_acid -> oleate + H. Hanczyc & Ikegami (2010) section 3.1 state that the precursor 'is hydrolyzed at the oil-water interface to produce more oleate and protons', which is the sum of the two, and splitting them keeps the proton release - the step that actually drives the motion by lowering the local pH - explicit and separately visible."
+    - "The interfacial tension curves of Hanczyc & Ikegami's figure 2 were published as pictures, so no tension function is fitted or invented. Only the values stated in the caption and prose are recorded: 27 mN/m for a bare nitrobenzene droplet at pH 11 with no oleate, a tension maximum at pH 9, a bulk pH of 11, and a local pH falling as low as 7."
+    - "Chemotaxis direction is asserted only where a source I read states the sign, and the two published systems disagree: the Hanczyc droplet moves toward the HIGHEST pH (book 19.2.5, and Hanczyc & Ikegami section 3.1), while Lagzi et al.'s maze-solving droplets move toward LOW pH. For `decanol-salt` the accessible abstract reports only that the droplets migrate in NaCl gradients, so the direction is recorded as null and is not tested."
+    - "`fuel-surfactant` and `maze-chemotaxis` are reconstructed from abstracts only. Toyota et al. name the droplet (4-octylaniline), the catalyst loading (5 mol %) and the fuel ('an amphiphilic precursor of 4-octylaniline') but not the precursor's identity or the other hydrolysis product, so the species are named as the abstract names them and the unnamed product is called `byproduct`. Lagzi et al.'s droplet composition (dichloromethane with 2-hexyldecanoic acid) comes from Hanczyc's 2014 review rather than from their own paper."
+    - "Two discrepancies in the sources are recorded rather than silently fixed. Horibe et al.'s experimental section says glass dishes of 35, 60 and 110 mm were purchased but then uses a '100 mm glass dish' for the mode experiments; the 100 mm figure, being the one actually used, is what extras.space records. Hanczyc & Ikegami's appendix writes the aqueous volumes as '100 mL' and '800 mL' on a 1.5 cm slide and a 35 mm dish, which are physically impossible and are plainly microlitres; they are recorded as 100 uL and 800 uL."
+    - "The v1 parameters are replaced. `pH_gradient` was type `callable`, which schema v2 forbids and which would in any case have required the force law that is not published; the pH now enters as the scalar bulk `pH`, and the gradient response is recorded in extras.interaction_law.chemotaxis. `fuel_supply` becomes the two published concentrations `precursor_M` and `surfactant_mM`. `droplet_volume_uL` and `system` are new, and both change the network."
+    - "The v1 entry claimed `provides: [space]` only and declared the chemistry out of scope for generation. It is in scope: the interfacial chemistry is a genuinely specified reaction set, so the entry now provides topology, stoichiometry, catalysts (the amphiphilic catalyst of the fuel-surfactant system sits on both sides of its reaction), mass-conservation (the oleoyl moiety is conserved: one anhydride carries two), space and initial-state."
+  phenomena:
+    - "sustained self-propulsion: a droplet carrying its own precursor starts moving within seconds and keeps moving for minutes to hours, until the fuel is exhausted or waste slows the reaction"
+    - "chemotaxis up a pH gradient, self-generated or externally imposed, which the authors read as an elementary sensory-motor coupling"
+    - "the droplet leaves a low-pH trail of expelled surfactant behind it and moves away from its own waste"
+    - "four behavioural modes - directional, circular, fluctuating and vibrating - with spontaneous switching between them; which modes appear is set by droplet size, and only the largest droplets vibrate"
+    - "velocity falls and turning angle rises as the droplet ages, the two being negatively correlated: droplets turn while stopped"
+    - "collective behaviour: two droplets of 3 or 20 uL stay closer together than two droplets in separate dishes, an attraction that fades over time and is absent for 50 uL droplets"
+    - "above a few hundred microns the mechanism shifts from convection-driven to shape-driven, and the droplet distorts into a horseshoe that supports straight motion"
+    - "maze solving: chemotactic droplets find the shortest path through a maze to an acid source"
+    - "division and fusion of droplets, and extraction of rare-earth metal ions (other droplet chemistries, not implemented here)"
+    - "some droplets transform into supramolecular aggregates resembling multilamellar vesicles as surfactant accumulates"
+  notes: >
+    Protocells with no information subsystem: there is no genome and no
+    replication, and what is "processed" is the set of chemicals and their
+    locations. The entry is the clean case of a wet chemistry whose interesting
+    behaviour is motion rather than stoichiometry, so it returns the small
+    interfacial reaction set that is genuinely published and keeps the physics
+    as data: extras.interaction_law for the Marangoni mechanism,
+    extras.analysis for the measured behaviour, extras.space for the geometry.
+    The `decanol-salt` system is the limiting case with no reactions at all.

@@ -5,9 +5,9 @@
 
 Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rates or a rate law), **H** thermodynamics (energies and/or detailed balance). Status column: the fidelity of the implemented generator, or `todo (<book readiness>)`.
 
-- implemented: **93** of 98 (book: 4, book+decisions: 33, reconstructed: 56)
-- constructive (open, growing species set): **50**
-- carry their own kinetics: **43**; carry energetics: **12**
+- implemented: **98** of 98 (book: 4, book+decisions: 33, reconstructed: 61)
+- constructive (open, growing species set): **51**
+- carry their own kinetics: **44**; carry energetics: **11**
 
 
 ## application
@@ -22,7 +22,7 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 | `fraglets` | Fraglets | generator | yes | T | reconstructed | 16.2.1, 17.3.1 |
 | `metabolic-robot-controller` | Metabolic / artificial biochemical network robot controllers | generator | no | TK | reconstructed | 16.1.3 |
 | `molecular-tsp` | Molecular Traveling Salesman | generator | yes | T | reconstructed | 17.2.1 |
-| `music-ac` | Algorithmic chemistry for music composition | generator | yes | T | todo (no) | 16.4 |
+| `music-ac` | Algorithmic chemistry for music composition | generator | yes | T | reconstructed | 16.4 |
 | `naming-game-ac` | Naming game as an artificial chemistry | generator | no | TK | book+decisions | 16.3.3 |
 | `okamoto-switch` | Okamoto's biochemical switch | generator | no | TK | book+decisions | 17.4.1 |
 | `organization-computing` | Computing with chemical organizations | generator | no | T | book+decisions | 17.3.3 |
@@ -49,7 +49,7 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 
 | id | name | kind | constructive | tier | status | book |
 |---|---|---|---|---|---|---|
-| `conrad-enzymatic` | Conrad's lock-and-key enzymatic / self-assembly processor | wet | no | TH | todo (no) | 11.2.1 |
+| `conrad-enzymatic` | Conrad's lock-and-key enzymatic / self-assembly processor | wet | no | T | reconstructed | 11.2.1 |
 | `farmer-immune` | Bitstring immune system model (idiotypic network) | generator | yes | TK | book+decisions | 11.2.2 |
 | `mcs-bl` | Molecular Classifier System (MCS.bl) | generator | yes | TK | reconstructed | 11.1.1 |
 | `sac` | SAC (string-based artificial chemistry with cells) | generator | yes | T | reconstructed | 11.1.3 |
@@ -162,8 +162,8 @@ Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rat
 
 | id | name | kind | constructive | tier | status | book |
 |---|---|---|---|---|---|---|
-| `dna-automaton` | DNA automaton (Benenson-Shapiro) | wet | no | T | todo (partial) | 19.3.1 |
-| `dna-hpp` | Adleman's DNA Hamiltonian Path computation | wet | no | T | todo (partial) | 19.3.1 |
+| `dna-automaton` | DNA automaton (Benenson-Shapiro) | wet | no | TK | reconstructed | 19.3.1 |
+| `dna-hpp` | Adleman's DNA Hamiltonian Path computation | wet | yes | T | reconstructed | 19.3.1 |
 | `oregonator` | Oregonator (Belousov-Zhabotinsky) | generator | no | TK | book+decisions | 19.3.3 |
 | `repressilator` | Repressilator | generator | no | TK | book | 19.3.2 |
-| `self-propelled-droplets` | Self-propelled oil droplets | wet | no | - | todo (no) | 19.2.3 |
+| `self-propelled-droplets` | Self-propelled oil droplets | wet | no | T | reconstructed | 19.2.5 |

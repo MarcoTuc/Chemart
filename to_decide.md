@@ -50,6 +50,26 @@ reaction fires is encoded in a molecule acting as an enzyme.
   `bigan-conservative-crn`, `jain-krishna` draw a topology from a
   distribution; `brusselator`, `repressilator` are written down.
 
+### `conrad-enzymatic`: family `bio-inspired` or `wet`?
+
+Raised by its implementer, and the book supports both readings. Line 11108
+says the origins of lock-and-key complementarity include "the enzymatic
+computer by Conrad [193] … (with Conrad's computer in the wet AC category)"
+— but the section itself lives in chapter 11, *Bio-inspired Artificial
+Chemistries*, and the book adds that it "contributed to the foundations of
+the area of wet molecular computing (see chapter 19)", i.e. it is a
+forerunner of the wet chapter rather than a member of it.
+
+Against that: its `kind` is already `wet`, the generated network *is* a wet
+experiment (Zauner & Conrad's 2001 malate-dehydrogenase device), and its
+three `kind: wet` siblings — `dna-automaton`, `dna-hpp`,
+`self-propelled-droplets` — are all `family: wet`. So the catalog currently
+has one wet-kind entry filed under a different family from the rest.
+
+Left as `bio-inspired` for now: classification was parked by agreement, and
+this is a classification call, not a correctness bug. Settle it with the
+rest of the taxonomy.
+
 ## 3. Low-confidence reconstructions to revisit
 
 These generators work, are tested against every published fact that could be
@@ -96,6 +116,25 @@ Settled by implementation: `tierra`, `avida`, `corewar` and `coreworld` are
 not wrappers but minimal faithful re-implementations, and their `kind` moved
 from `framework` to `generator`. `aevol` and `high-order-chem` are still
 `framework`.
+
+### Entries that implement only part of their catalogued scope
+
+Distinct from the low-confidence list above: these reconstructions are
+*sound* for what they cover, but one documented half of the chemistry is
+absent because its source is unobtainable. Each says so in its own
+`decisions`; collected here so the gap is visible in one place.
+
+| id | implemented | absent |
+|---|---|---|
+| `music-ac` | the homophonic system of [592], validated against three published totals (43 kinds, 1826 objects, 65 rules) | the polyphonic system of [854] — paywalled Springer chapter, authors' site dead. `mode` deliberately offers only `homophonic` rather than inventing counterpoint rules |
+| `nac` | the passive layer (graph rewiring, polarity demixing) | the active layer: node programs, polymerase/helicase/splitase/replicase, centrosome division, chain folding |
+| `rna-folding-ac` | the genotype→phenotype→function map and its neutral-network statistics | the evolutionary results (small-world hubs, phased evolution), which need ToyChem metabolite graphs and MFA fitness |
+| `isologous-diversification` | stage 1 and the mechanisms underlying stages 2-4 | stages 2-4 themselves, which need the paper's 128+ cells |
+| `laing-molecular-machines` | the machine/tape chemistry | self-reproduction by self-inspection, Laing's main result |
+| `conrad-enzymatic` | the Zauner & Conrad 2001 wet device and Table 1's six logic operations | Conrad's own 1985/1992 conceptual model beyond the book's account |
+
+None of these is a defect to fix by guessing. They are the places where
+obtaining one PDF would materially extend the mart.
 
 ## 6. Licensing
 
