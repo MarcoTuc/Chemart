@@ -2,6 +2,14 @@ chemistries:
 
 - id: combinator-chemistry
   name: Combinator chemistry
+  intuition: >
+    AlChemy without variable binding. Molecules are combinator expressions
+    over B, C, I, K, R, S, W; a collision applies one to the other and reduces
+    to normal form, releasing whatever falls off along the way. Dropping
+    lambda-calculus variables makes reduction much faster and easier to
+    implement, at a price: the order in which you reduce changes how many
+    copies come out, so the reaction is only well defined once you fix a
+    reduction strategy.
   aliases: ["combinators' artificial chemistry", "less abstract artificial chemistry"]
   origin: "Speroni di Fenizio, 2000"
   book: "9.8; 7.3.1 (multiset products, organisations); 12.1 (variable population)"

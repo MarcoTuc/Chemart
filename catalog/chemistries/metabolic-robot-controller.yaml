@@ -2,6 +2,14 @@ chemistries:
 
 - id: metabolic-robot-controller
   name: Metabolic / artificial biochemical network robot controllers
+  intuition: >
+    A reaction network used as a brain. Sensors feed substances into the
+    network, the network's own reactions process them, and a motor consumes
+    the concentration of a designated actuator species - so the robot's
+    behaviour *is* the network's dynamics. Hand-designed networks do
+    light-seeking and obstacle avoidance; evolved ones transfer from
+    simulation to real hardware with little more than a scaling factor. The
+    appeal is that computation and its substrate are not separable here.
   origin: "Ziegler & Banzhaf, 2001; Lones, Fuente, Turner et al."
   book: "16.1.3"
   refs: ["[958]", "[959]", "[519]", "[520]", "[68]", "[660]"]

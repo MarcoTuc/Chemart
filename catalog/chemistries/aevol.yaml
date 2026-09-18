@@ -2,6 +2,16 @@ chemistries:
 
 - id: aevol
   name: Aevol
+  intuition: >
+    A digital organism carrying a real genome rather than a program. A
+    circular binary chromosome is scanned for promoters and terminators; each
+    gene it finds is translated through a codon table into a protein, and a
+    protein 'folds' into a triangular fuzzy set - a bump of some width,
+    position and height on an abstract trait axis. Summing an organism's bumps
+    gives its phenotype, and how closely that matches an environmental target
+    is its fitness. Organisms replicate on a grid with mutations and
+    rearrangements, so genome structure itself - gene count, non-coding DNA -
+    becomes something evolution shapes.
   aliases: ["aevol digital genetics platform", "in silico experimental evolution"]
   origin: "Knibbe, Beslon et al., 2007"
   book: "18.1.2"

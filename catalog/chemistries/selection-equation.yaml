@@ -2,6 +2,14 @@ chemistries:
 
 - id: selection-equation
   name: Selection equation under a dilution flow
+  intuition: >
+    Selection in its barest form: each species replicates at its own fitness
+    while a non-selective outflow removes everyone at the mean fitness,
+    holding the total constant. The result is competitive exclusion - the
+    fittest species takes over and the rest vanish. Changing the exponent on
+    the replication term changes that conclusion, which matters for real
+    template replication of short oligonucleotides, where growth is parabolic
+    rather than exponential and coexistence becomes possible.
   book: "7.2.5"
   refs: ["[621]"]
   family: evolutionary-dynamics

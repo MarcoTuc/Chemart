@@ -2,6 +2,14 @@ chemistries:
 
 - id: bnc-cell
   name: BNC (bond-number chemistry) cell model
+  intuition: >
+    Molecules built from a single rule: an atom labelled n carries exactly n
+    bonds. Atoms 1, 2 and 3 therefore chain into linear molecules with single,
+    double and triple bonds, and only 608 of them exist up to twelve atoms. A
+    reaction cuts one bond in each of two molecules and swaps the tails, which
+    stays legal exactly when both cut bonds had the same order. From that one
+    constraint you get a recombination network of millions of reactions, and a
+    cell model whose metabolism is a subnetwork of it.
   origin: "Hintze & Adami, 2008"
   book: "18.3.1"
   refs: ["[384]", "[441]", "doi:10.1371/journal.pcbi.0040023"]

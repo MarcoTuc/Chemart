@@ -2,6 +2,14 @@ chemistries:
 
 - id: mechanical-self-assembly
   name: Mechanical self-assembly (Hosokawa)
+  intuition: >
+    Proof that chemical kinetics does not need chemicals. Plastic triangles
+    with magnets in two faces are shaken in a dish; they stick into dimers,
+    trimers and larger assemblies, and the yields over time fit an ordinary
+    mass-action reaction network. The instructive detail is where the rate
+    constant comes from: it factorises into how often two pieces collide and
+    the probability they are correctly oriented when they do - an encounter
+    term times a geometric term.
   origin: "Hosokawa, Shimoyama & Miura, 1994"
   book: "20.1"
   refs: ["[404]", "[352]", "[918]", "[919]", "[69]"]

@@ -2,6 +2,14 @@ chemistries:
 
 - id: brane-calculi
   name: Brane calculi
+  intuition: >
+    Membranes as the active element rather than the container. A system is a
+    nest of membranes, and each membrane carries a program of actions:
+    phagocytosis engulfs a neighbour, exocytosis expels contents and fuses,
+    pinocytosis buds an empty vesicle inward, mating fuses two membranes. A
+    reaction is one such rearrangement of the nesting. The payoff is that
+    viral entry and reproduction - engulf, fuse with the endosome, release,
+    re-envelope - become short derivations rather than special cases.
   aliases: ["Phago/Exo/Pino calculus", "Mate/Bud/Drip calculus", "Basic Brane Calculus"]
   origin: "Cardelli, 2004"
   book: "9.7"

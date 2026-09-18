@@ -1,0 +1,132 @@
+# Cellular Potts + GRN evo-devo models
+
+`cpm-grn-evodevo` · *Hogeweg, 2000; Cellular Potts Model: Glazier & Graner, 1993*
+
+*Also known as:* *Hogeweg evo-devo model*, *differential adhesion + gene regulation morphogenesis*
+
+Morphogenesis from two ingredients and nothing else. Cells are patches of lattice sites whose shapes evolve by a Metropolis rule on an energy that charges for surface contact between types and for deviating from a target volume - so differential adhesion alone makes a mixed aggregate sort itself out, with the more cohesive type engulfed. Give each cell a small Boolean gene network that reads its neighbours' signals and sets its type, and evolve the network: shapes, budding and engulfment appear without anyone specifying a target shape.
+
+| | |
+|---|---|
+| **family** | systems-biology |
+| **kind** | framework |
+| **constructive** | no — fixed species set |
+| **fidelity** | `reconstructed` — built from the original papers listed below |
+| **book** | 18.6.1 |
+| **refs** | [392], [466], [335], [172], [41], [464], doi:10.1006/jtbi.2000.1087, doi:10.1162/106454600568339, doi:10.1103/PhysRevE.47.2128, doi:10.1006/jtbi.1996.0237 |
+| **provides** | `topology`, `stoichiometry`, `catalysts`, `initial-state`, `space`, `compartments`, `energies` |
+
+## Molecules, reactions, reactor
+
+**S — molecules** (implicit): Cell types: one species per gene-expression pattern of the Boolean GRN, id T<k> in order of first appearance, structure = the expression bitstring. A cell occupies many lattice sites of the Cellular Potts Model; the ten adhesion nodes of its pattern are the lock-and-key surface receptors that fix its adhesion energies. In mode cell-sorting the two species are the fixed cell types A and B.
+
+**R — reactions** (implicit, arity 1): Ta -> Tb (a cell differentiates when its GRN update changes its expression pattern, driven by its own state and by the OR of the signalling nodes of the cells it touches) ; Ta -> 2 Ta (a cell divides, both daughters inheriting the mother's pattern: a pre-scheduled cleavage, or stretching that took the target volume to twice the reference) ; Ta -> (nothing) (a cell squeezed to zero volume dies).
+
+**A — reactor**: lattice-2d
+ · *dilution:* none; the cell population is set by the pre-scheduled cleavages, by growth-triggered divisions and by deaths from squeezing
+
+## What you get
+
+```python
+net = chemart.generate_network("cpm-grn-evodevo", seed=1)
+```
+
+```
+cpm-grn-evodevo: 10 species, 17 reactions, status=observed
+provides: catalysts, compartments, energies, initial-state, space, stoichiometry, topology
+seed: 1
+extras: analysis, compartments, energies, events, final_state, grn, maternal_nodes, space
+```
+
+First reactions:
+
+```
+T0 -> T1  (x1)
+T1 -> T2  (x1)
+T2 -> T3  (x1)
+T3 -> T4  (x70)
+T4 -> T3  (x69)
+T4 -> 2 T4  (x4)
+T4 -> T5  (x1)
+T5 -> T6  (x1)
+… and 9 more
+```
+
+## Parameters
+
+| name | type | default | role | what it does |
+|---|---|---|---|---|
+| `mode` | `enum` | `evo-devo` | structural | evo-devo: Hogeweg's model, a population of Boolean GRNs evolved for cell differentiation, and the observed events of the best network's development. cell-sorting: the Glazier & Graner differential-adhesion experiment, a mixed aggregate of two fixed cell types sorting out <br>one of `evo-devo`, `cell-sorting` |
+| `grid` | `int` | `38` | spatial | side of the square lattice; the outermost ring of sites stays medium, so the critter never touches the wall <br>`3` … `400` · *range:* Hogeweg Table 1: a 100 x 100 lattice |
+| `temperature` | `float` | `3.0` | thermodynamic | T in the Boltzmann acceptance exp(-(dH + 0.1) / T); higher T means more membrane fluctuation <br>≥ `0.01` · *range:* Hogeweg Table 1: T = 3 or 4; the Fig. 1 captions also use 7 |
+| `inelasticity` | `float` | `0.5` | thermodynamic | lambda, the weight of the volume constraint lambda (v - V)^2; the lower it is, the easier a cell deforms <br>≥ `0.0` · *range:* Hogeweg Table 1: lambda = 0.5, deliberately low so that a squeezed cell can be reduced to zero volume and die |
+| `target_volume` | `int` | `50` | spatial | reference target volume V of a cell, in lattice sites; the zygote starts as a square block of about this size. V must be large enough that lambda (v - V)^2 balances J: at Hogeweg's lambda = 0.5 and J up to 31, a lone cell of V = 20 evaporates while one of V = 50 holds 40 to 48 sites <br>`4` … `10000` · *range:* Hogeweg: cells of up to 80 lattice sites; 128 cells on a 100 x 100 lattice imply V between 40 and 78 |
+| `growth_threshold` | `int` | `3` | structural | tau: when stretching takes a cell's volume above V + tau its target volume grows by 1, and at twice the reference target it divides <br>`0` … `10000` · *range:* Hogeweg, Artificial Life 6(1): tau = 3; the JTB Fig. 1 captions use 2, 5 and infinity (no growth) |
+| `divisions` | `int` | `3` | structural | pre-scheduled cleavages; every cell divides at once at the end of each stage, giving 2^divisions cells before growth <br>`0` … `10` · *range:* Hogeweg Table 1: ndiv = 7, i.e. a 128-cell critter |
+| `steps_per_stage` | `int` | `10` | structural | time steps run between two pre-scheduled cleavages <br>`1` … `100000` · *range:* Hogeweg Table 1: devtime = 500 time steps per cleavage stage |
+| `final_steps` | `int` | `30` | structural | time steps run after the last cleavage, when most of the morphogenesis happens <br>`0` … `100000` · *range:* Hogeweg Table 1: devtime = 5000 after the last cleavage; the Artificial Life paper develops for 10000 steps |
+| `grn_nodes` | `int` | `24` | structural | nodes of the Boolean gene-regulation network; each reads two inputs drawn from -grn_nodes..-1 and 1..grn_nodes and applies one of the 16 two-input Boolean functions <br>`6` … `64` · *range:* Hogeweg: 24 nodes, 2 inputs each |
+| `adhesion_nodes` | `int` | `10` | thermodynamic | nodes that set the surface receptors (must be even, and at most grn_nodes - 5): the first half are locks, the second half keys, matched complementarily with binary place value, so J runs from 0 to 2^(adhesion_nodes/2) - 1 <br>`2` … `64` · *range:* Hogeweg: 10 nodes, five locks and five keys |
+| `signal_nodes` | `int` | `2` | structural | adhesion nodes that also carry intercellular signalling: input -k of a cell reads the OR over the cells it touches of their node k, for k <= signal_nodes, and is a constant 0 otherwise <br>`0` … `64` · *range:* Hogeweg: 2 (nodes 1 and 2, which are also adhesion nodes) |
+| `population` | `int` | `4` | population | gene-regulation networks evolved in parallel <br>`1` … `1000` · *range:* Hogeweg Table 1: popsize = 20, one per processor |
+| `generations` | `int` | `2` | population | generations of the genetic algorithm; the best network found is then developed once more, with growth enabled, and that development is the network returned <br>`0` … `100000` · *range:* the published runs generate thousands of critters (evolutionary times up to ET 8697) |
+| `tournament` | `int` | `7` | selection | tournament size: a parent is the fittest of this many networks drawn at random from the population <br>`1` … `1000` · *range:* Hogeweg Table 1: the best of 7 random choices; the Artificial Life paper says the best of 0.3 x popsize = 6 |
+| `mutation_rate` | `float` | `0.5` | stochastic | probability that an offspring carries a point mutation, which redraws either one input or the Boolean function of one node <br>`0.0` … `1.0` · *range:* Hogeweg Table 1: mu = 0.5 |
+| `max_cycle` | `int` | `2` | selection | a cell contributes its type to the fitness only if its expression pattern has settled onto a cycle of at most this period <br>`1` … `100` · *range:* Hogeweg: fixed points or cycles of period <= 2 (Artificial Life) or 2-3 (JTB) |
+| `fitness_window` | `int` | `5` | selection | fitness is the minimum differentiation seen over the last this many time steps, so transient cell types do not count <br>`1` … `100000` · *range:* Hogeweg: the minimum diversity over 500 of the 10000 developmental steps |
+| `sorting_energies` | `dict` | `{'aa': 6, 'ab': 11, 'bb': 2, 'am': 8, 'bm': 20}` | thermodynamic | mode cell-sorting only: the surface energies J between the two cell types (aa, ab, bb) and with the medium (am, bm). The default satisfies the published engulfment condition J_ab < J_mb and J_am < J_bm, so A engulfs the more cohesive B <br>*range:* the J values Hogeweg quotes in her Fig. 1 captions run from 4 to 29 |
+| `sorting_cells` | `int` | `12` | spatial | mode cell-sorting only: cells of each type in the initial mixed aggregate, laid out as a square block of squares <br>`1` … `1000` · *range:* Glazier & Graner sort aggregates of hundreds of cells |
+| `sorting_volume` | `int` | `20` | spatial | mode cell-sorting only: target volume of a sorting cell. It is separate from target_volume because the sorting energies are much smaller than the 0..31 a GRN can express, and because a cell inside an aggregate is shielded from the medium by its neighbours, so it survives at a volume at which a lone cell would evaporate <br>`4` … `10000` · *range:* Glazier & Graner use cells of a few tens of sites |
+| `sorting_steps` | `int` | `150` | structural | mode cell-sorting only: time steps of sorting; the heterotypic contact fraction is recorded at each one <br>`0` … `100000` · *range:* the published sorting runs go to 10^4-10^5 Monte Carlo steps |
+
+## Published phenomena
+
+What the literature reports this model produces. Whether the generator reproduces each one is recorded in the decisions below.
+
+- differential adhesion alone sorts a mixed aggregate of two cell types: the heterotypic contact fraction falls and the more cohesive type ends up engulfed by the other (Glazier & Graner; Hogeweg 2000 sec. 3.1: type a engulfs type b when J_ab < J_mb and J_am < J_bm)
+- the volume constraint lambda (v - V)^2 holds a cell near its target volume; at Hogeweg's deliberately low lambda = 0.5 a squeezed cell can be reduced to zero volume and die
+- complex morphogenetic patterns evolve under a fitness function as weak as the number (and mutual distance) of cell types: morphogenesis is a side-effect, and is in fact slightly negatively selected
+- four recurring morphogenetic mechanisms: engulfing (gastrulation-like), budding and elongation, intercalation and elongation, and meristematic growth and differentiation (Hogeweg 2000, Artificial Life 6(1) sec. 3.2)
+- growth and death are not encoded in the genome: stretching raises a cell's target volume until it divides, squeezing kills it, so cell movement, growth, division and differentiation are coordinated automatically by surface-energy minimisation
+- about one-third of evolutionary runs lead to extensive cell differentiation and morphogenesis; the rest stay blobs
+- punctuated equilibria in fitness over a molecular-clock-like linear divergence of the genome, and long neutral paths once the cell-differentiation pattern is established
+- the interesting morphologies are 'shapes in the shadow': mutants of the fittest individuals, reinvented repeatedly and combined mosaic-like, although the genotype diverges linearly
+- maternally induced asymmetry (one gene flipped for one time step in one daughter of the first two cleavages) is what breaks the symmetry; further differentiation is neighbourhood-based and reversible
+
+## Sources
+
+- Hogeweg, P. (2000). Evolving mechanisms of morphogenesis: on the interplay between differential adhesion and cell differentiation. Journal of Theoretical Biology 203(3):317-333, doi:10.1006/jtbi.2000.1087. Open copy: https://dspace.library.uu.nl/handle/1874/1429 . The model: eqn (1) (Hamiltonian and copy probability), eqns (2a)-(2b) (lock-and-key adhesion), section 2.2 (24-node Boolean network, 2 inputs drawn from -24..-1 and 1..24, 16 two-input functions, 10 adhesion nodes, 2 signalling nodes, maternal factors), section 2.3 (fitness = summed Hamming distance between the attractors of all cell types, fixed points or short cycles only, point mutations), and Table 1 (popsize 20, T = 3 or 4, lambda = 0.5, ndiv = 7, devtime 500 per stage and 5000 after the last, 100x100 lattice, 10000 copy attempts per step, division perpendicular and halfway on the longest axis, maternal flips of nodes 20 and 21, tournament of 7, mutation rate 0.5).
+- Hogeweg, P. (2000). Shapes in the shadow: evolutionary dynamics of morphogenesis. Artificial Life 6(1):85-101, doi:10.1162/106454600568339 (book ref [392]). Open copy: https://dspace.library.uu.nl/handle/1874/1175 . Section 2: lambda = 0.5, growth threshold tau = 3, seven pre-scheduled cleavages, the first two asymmetric by flipping one gene for one time step, fitness = the minimum diversity in 500 steps after 10000 steps, fixed points or cycles of length <= 2, selection = best of 0.3 x popsize, population 20. Section 3.2: the four morphogenetic mechanisms (engulfing, budding and elongation, intercalation and elongation, meristematic growth).
+- Savill, N. J. & Hogeweg, P. (1997). Modelling morphogenesis: from single cells to crawling slugs. Journal of Theoretical Biology 184(3):229-235, doi:10.1006/jtbi.1996.0237. Open copy: https://dspace.library.uu.nl/handle/1874/1405 . Eqn (1): H = sum J_cell,cell / 2 + sum J_cell,medium + lambda (v - V)^2; eqn (2): p = 1 if dH <= -0.1, else exp(-(dH + 0.1)). Used to repair the Hamiltonian and the copy probability, whose exponents the JTB text extraction loses.
+- Glazier, J. A. & Graner, F. (1993). Simulation of the differential adhesion driven rearrangement of biological cells. Physical Review E 47(3):2128-2154, doi:10.1103/PhysRevE.47.2128 (book ref [335]). NOT accessible (no open version; APS paywall). The Cellular Potts Model is taken from the two Hogeweg papers above, which restate it in full, and the engulfment condition from Hogeweg (2000) section 3.1: 'celltype A engulfs celltype B if J_ab < J_mb and J_am < J_bm'.
+- Knabe, J. F., Schilstra, M. J. & Nehaniv, C. L. (2008). Evolution and morphogenesis of differentiated multicellular organisms: autonomously generated diffusion gradients for positional information. Artificial Life XI, 321-328 (book ref [466]). https://uhra.herts.ac.uk/id/eprint/19107/1/902862.pdf . The French-flag evo-devo model of figure 18.15: a base-4 genome, continuous GRN, CompuCell3D CPM with P = exp(-(dE - delta)/kT), delta = 0, k = 1, T = 2, a 60 x 40 non-toroidal grid, mitosis at 24 pixels, two diffusing morphogens. Not implemented here (see decisions).
+
+## Decisions
+
+Every gap, ambiguity or erratum in the sources, and how Chemart resolved it. Read this before quoting a number from this entry.
+
+- Scope: this entry implements Hogeweg's model [392] and the Cellular Potts Model [335] it is built on. The other evo-devo models the book names in 18.6.1 are not implemented: Knabe et al. [466] (a different, continuous GRN on CompuCell3D with diffusing morphogens and a French-flag target), Chavoya & Duthen [172] (an ARN extension, covered by the arn entry), Astor & Adami [41] and Kitano [464]. The book's own criticism of 'distance to a target pattern' as a fitness function is the reason Hogeweg's model is the one implemented: its fitness is cell differentiation alone, and morphogenesis is a side-effect.
+- The Hamiltonian and the copy probability come from Savill & Hogeweg (1997) eqns (1)-(2), because the text layer of the JTB PDF drops superscripts: it prints 'lambda(v-V)' for lambda (v - V)^2 and 'e-(dH+0.01)' for exp(-(dH + 0.1)). Chemart sums J once over each unordered pair of neighbouring sites with different sigma, which is identical to the papers' 'sum J_cell,cell / 2 + sum J_cell,medium'.
+- The temperature. Savill & Hogeweg print p = exp(-(dH + 0.1)) with no T, but T is a parameter of Hogeweg (2000) Table 1 (T = 3 or 4) and is quoted in every Fig. 1 caption (3, 4, 7), so Chemart uses p = exp(-(dH + 0.1) / T), which is the standard Metropolis form and reduces to the printed one at T = 1. The offset 0.1 is kept as a constant, not a parameter: Savill & Hogeweg explain it as what keeps a cell still when nothing pushes it.
+- The binary place value in eqns (2a)-(2b). The extracted equations read J_ij = (sum_k (M^ij_k)^k + sum_k (M^ji_k)^k) / 2 and J_im = sum_l (N^i_l)^l, which for binary M and N would give J in 0..5 (five lock/key pairs). The J values Hogeweg quotes in her Fig. 1 captions run from 4 to 29 and never exceed 31, i.e. exactly the range of a five-bit binary number; and the same PDF demonstrably drops superscript 2 glyphs elsewhere (lambda (v - V)^2). Chemart therefore reads the trailing exponent as the weight 2^k of a binary place value: J_ij = (sum_k 2^k M^ij_k + sum_k 2^k M^ji_k) / 2 and J_im = sum_l 2^l N^i_l, both in 0..31 for ten adhesion nodes.
+- Node roles. The paper numbers the 24 nodes from 1: ten adhesion nodes, of which two also carry intercellular signalling (inputs -1 and -2 read nodes 1 and 2 of the neighbours), and two maternal nodes, 20 and 21 (Table 1). Chemart uses nodes 0..adhesion_nodes-1 for adhesion (first half locks, second half keys), nodes 0..signal_nodes-1 for signalling, and grn_nodes-5 and grn_nodes-4 for the maternal factors, which is 19 and 20 zero-based, i.e. 20 and 21 as printed.
+- The medium nodes. Eqn (2b) says the nodes fixing J with the medium 'overlap half with the locks and half with the keys' but does not name them. Chemart takes the middle adhesion_nodes/2 nodes, which straddle the lock/key boundary (nodes 3..7 of 0..9 for the default).
+- The environment vector. An input drawn uniformly from -grn_nodes..-1 and 1..grn_nodes is negative half the time, which is exactly the paper's 'a 0.5 probability of an input from another gene (otherwise it gets an all-zero input)'; the two statements are the same rule, and negative inputs beyond -signal_nodes are a constant 0. That is the source of the genotypic redundancy and of the variable functional connectivity the paper stresses.
+- Cell type = expression pattern. Table 1 says 'determine cell type (= attractor of network)', but a cell's attractor depends on a neighbourhood that keeps changing, so Chemart takes the cell's current expression pattern as its type and calls a cell settled when its pattern has repeated within the last max_cycle steps (a fixed point or a short cycle). Only settled cells contribute to the fitness, which implements the paper's constraint that only fixed points and short cycles add to it.
+- Fitness = the summed Hamming distance between the expression patterns of the distinct settled cell types, minimised over the last fitness_window time steps. The paper measures 'the Hamming distance between the average cell state in its attractor' summed over cell types, and takes the minimum over 500 of 10000 steps; averaging over an attractor of period <= 2 is replaced by the settled pattern itself.
+- Growth is disabled during evolution and enabled for the final development, exactly as in the paper ('During evolution cell growth/division was disabled ... the development of selected critters was studied ... with cell growth/division enabled'). The network returned is the observed events of that final development, so it always contains the pre-scheduled cleavages and usually growth-driven divisions and deaths as well.
+- Selection: tournament of 7 as Table 1 prints it ('choose the highest fitness of 7 random choices out of population'); the Artificial Life paper's text says the best of 0.3 x popsize = 6. The table is taken as the data and the discrepancy recorded. Mutation is read as 'with probability mutation_rate apply one point mutation', which redraws one input or one Boolean function; a tournament winner with fitness 0 is replaced by a fresh random network, following 'as long as none of the networks shows differentiation, new networks are generated randomly'.
+- Neighbourhood: the Moore (8-site) neighbourhood for both the bond energies and the copy attempts. The papers say only 'a random site with a random neighbour' on a 2D lattice. The lattice is not toroidal and the outermost ring of sites is never a copy target, so it stays medium and the critter cannot touch the wall (Knabe et al. also use a non-toroidal grid).
+- Not implemented: the connectivity constraint of later CPM implementations (a copy that would split a cell in two is allowed here, as the papers do not forbid it), chemotaxis and the PDE coupling of Savill & Hogeweg, and the parallel scheduling noise that the paper says makes no two of its runs identical. Chemart's runs are reproducible from the seed.
+- The Glazier & Graner paper itself could not be fetched (APS paywall, no open version anywhere). mode=cell-sorting therefore reproduces the experiment, not its numbers: the default sorting_energies satisfy Hogeweg's published engulfment condition (J_ab < J_mb and J_am < J_bm) and the standard sorting condition J_ab > (J_aa + J_bb) / 2, and all five values lie inside the range of J values Hogeweg reports (4 to 29). They are not presented as Glazier & Graner's own parameters.
+- Small defaults: a 32 x 32 lattice, 3 cleavages (8 cells), 10 steps per stage and 30 after the last, 4 networks for 2 generations. The paper's values (100 x 100, 7 cleavages, 500 and 5000 steps, population 20, thousands of generations) are in the range fields and cost hours.
+- Dropped v1 parameters: adhesion_energies (a matrix) is not free - it is computed from the GRN by eqns (2a)-(2b), and only the mode=cell-sorting experiment takes energies as input, through sorting_energies; fitness (a callable) becomes the model's own criterion, cell differentiation, since the alternatives named in the v1 entry belong to models that are not implemented here. grn_nodes, temperature and mutation_rate are kept.
+- Rates: none. The model has no kinetics. The Boltzmann acceptance is not a propensity of a reaction, so it is recorded in extras.energies together with the Hamiltonian, the J matrix, lambda, T and the lock-and-key rule.
+
+## Notes
+
+The book's criticism - that 'distance to a target pattern' is not a biologically plausible fitness function - is aimed at models like [466] and [172], not at this one: Hogeweg selects for cell differentiation alone, a prerequisite for morphogenesis but not sufficient for it, and shows that the interesting shapes are actually selected against. Chemart exposes the Cellular Potts Model itself (CPM.hamiltonian, CPM.delta_h, CPM.sweep, CPM.divide) so it can be reused and tested on hand-built configurations independently of the evolutionary loop.
+
+---
+
+*Specification: `catalog/chemistries/cpm-grn-evodevo.yaml` · generator: `chemart/chemistries/cpm_grn_evodevo.py` · tests: `tests/chemistries/test_cpm_grn_evodevo.py`*

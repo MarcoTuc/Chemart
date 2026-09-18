@@ -2,6 +2,15 @@ chemistries:
 
 - id: matrix-chemistry
   name: Matrix chemistry
+  intuition: >
+    One string folds into an operator that acts on another. A binary string of
+    length N is read as a sqrt(N) x sqrt(N) matrix, applied in chunks to a
+    second string with a threshold, producing a third; both reactants survive,
+    so every string is potentially an operator on every other.
+    Self-replicators and small closed ecologies appear unprompted. Because the
+    species set is finite yet built by the rule rather than listed, its
+    closure provably terminates - which makes it the reference test for
+    constructive machinery.
   aliases: ["algorithmic chemistry (Banzhaf)", "MatrixChem"]
   origin: "Banzhaf, 1993"
   book: "chapter 3; revisited in 12.5.2, 13.2"

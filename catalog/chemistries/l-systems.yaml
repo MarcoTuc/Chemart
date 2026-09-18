@@ -2,6 +2,15 @@ chemistries:
 
 - id: l-systems
   name: L-systems
+  intuition: >
+    Growth rather than chemistry. A word over an alphabet is rewritten by
+    applying productions to *every* letter simultaneously - which is what
+    distinguishes it from a grammar that rewrites one symbol at a time, and
+    what makes it a model of cells dividing in parallel. Interpret the
+    resulting letters as turtle commands and branching plants appear; the
+    algae rule a -> ab, b -> a generates Fibonacci word lengths. There is no
+    conservation and no kinetics, which is honest: it models development, not
+    reactions.
   aliases: ["Lindenmayer systems", "D0L-systems", "0L-systems", "IL-systems", "bracketed L-systems", "stochastic L-systems"]
   origin: "Lindenmayer, 1968; Prusinkiewicz & Lindenmayer, 1990"
   book: "9.8"

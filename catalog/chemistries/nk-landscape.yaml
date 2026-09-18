@@ -2,6 +2,14 @@ chemistries:
 
 - id: nk-landscape
   name: Kauffman NK model
+  intuition: >
+    A dial for how rugged a fitness landscape is. A genotype's fitness is the
+    average of per-gene contributions, and each gene's contribution depends on
+    itself plus K others chosen at random. K = 0 gives a single smooth peak;
+    raising K towards N makes the landscape progressively more uncorrelated
+    and multi-peaked. It is less a chemistry than a fitness function other
+    models plug into, exposed through the same interface so it can be used
+    uniformly.
   origin: "Kauffman, 1993"
   book: "18.4.1; appendix (NKlandscape.py)"
   refs: ["[447]"]

@@ -2,6 +2,14 @@ chemistries:
 
 - id: n-economy
   name: N-economy (natural number economy)
+  intuition: >
+    An economy written as a chemistry of numbers. Natural numbers are
+    commodities: primes are raw materials, composites are manufactured goods,
+    and production reactions consume and produce them with integer
+    stoichiometry, with 2 standing in for labour and 3 for money. Since a
+    composite is exactly its prime factorisation, a good's *composition* is
+    built into its name, and conservation follows from arithmetic rather than
+    being imposed.
   origin: "Straatman, Banzhaf et al.; after Hanel's natural number economy"
   book: "20.3"
   refs: ["[816]", "[377]"]

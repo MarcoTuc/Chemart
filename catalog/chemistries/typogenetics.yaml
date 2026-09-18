@@ -2,6 +2,14 @@ chemistries:
 
 - id: typogenetics
   name: Typogenetics
+  intuition: >
+    Strands that code the enzymes which act on strands. A strand over A, C, G,
+    T is read two letters at a time into a sequence of operations - cut, copy,
+    move, insert - and the resulting enzyme's shape determines which base it
+    binds to, so the strand determines what happens to strands.
+    Self-replicators exist and are built as inverted repeats. Variable
+    molecule length, a variable number of products and non-deterministic
+    binding make it a genuine stress test for anything that computes closures.
   aliases: ["typographical genetics"]
   origin: "Hofstadter, 1979; Morris, 1989; Varetto, 1993"
   book: "10.5.2; lock-and-key 11.2"

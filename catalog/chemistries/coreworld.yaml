@@ -2,6 +2,14 @@ chemistries:
 
 - id: coreworld
   name: Coreworld (VENUS)
+  intuition: >
+    Core War turned into a chemistry by adding a resource. Execution now costs
+    computational resources that flow into the core at a set rate, so
+    instructions only run where resource has accumulated, and cooperative
+    structures that concentrate it out-compete lone copiers. With a low influx
+    you get simple loops and dead pointers; with a high influx, dense
+    self-sustaining regions. It also exposes the problem Tierra later solved:
+    without memory protection there is no clean boundary around an 'organism'.
   aliases: ["Venus I / Venus II", "Core evolution", "VENUS: Virtual Evolution in a Non-deterministic Universe Simulator"]
   origin: "Rasmussen, Knudsen, Feldberg & Hindsholm, 1990"
   book: "10.6.3"

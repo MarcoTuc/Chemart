@@ -1,0 +1,109 @@
+# Core War / Redcode
+
+`corewar` · *Dewdney, 1984*
+
+*Also known as:* *Core War*, *Redcode*, *MARS (Memory Array Redcode Simulator)*, *assembler automaton*
+
+Programs fighting for control of a shared circular memory, and the ancestor of every digital-organism chemistry that followed. Each warrior's instructions execute in turn, writing into the core and trying to make rivals execute an invalid instruction. Read chemically, the core cells are the molecules and an executed instruction is a reaction that consumes and rewrites the cells it touches. The famous warriors show what the medium affords: the Imp copies itself one cell ahead forever, the Dwarf bombs every fourth cell.
+
+| | |
+|---|---|
+| **family** | automata |
+| **kind** | generator |
+| **constructive** | yes — the species set grows at run time |
+| **fidelity** | `reconstructed` — built from the original papers listed below |
+| **book** | 10.6.2 |
+| **refs** | [229], [440], [432], https://corewar.co.uk/standards/icws94.txt |
+| **provides** | `topology`, `stoichiometry`, `catalysts`, `initial-state`, `mass-conservation`, `space`, `sequence-structure-function` |
+
+## Molecules, reactions, reactor
+
+**S — molecules** (implicit): Two kinds of molecules. (1) The Redcode instructions occupying the cells of the cyclic core: species id = the instruction in load-file form without spaces, e.g. MOV.I$0,$1 or DAT.F#0,#-4 (numbers printed in (-M/2, M/2]); structure = the instruction with spaces. (2) The tasks (processes) of each warrior: species id = the warrior's ;name plus the first 8 hex digits of the SHA-1 of its assembled load file; structure = that load file; its count is the number of tasks in the warrior's queue.
+
+**R — reactions** (implicit, arity one task plus the 1-4 core cells an executed instruction reads or writes): task_W + instructions in the touched cells -> 0, 1 or 2 task_W + the same cells after the step
+
+**A — reactor**: sequential-vm
+ · *dilution:* a task dies on DAT or division by zero; each warrior's queue holds at most max_processes tasks; the core size is fixed
+
+## What you get
+
+```python
+net = chemart.generate_network("corewar", seed=1)
+```
+
+```
+corewar: 192 species, 771 reactions, status=observed
+provides: catalysts, initial-state, mass-conservation, space, stoichiometry, topology
+seed: 1
+extras: analysis, conservation, final_state, rules, space, warriors
+```
+
+First reactions:
+
+```
+Imp_115f417a + DAT.F$0,$0 + MOV.I$0,$1 -> Imp_115f417a + 2 MOV.I$0,$1  (x2312)
+Dwarf_20242a64 + DAT.F#0,#0 + ADD.AB#4,$3 -> Dwarf_20242a64 + DAT.F#0,#4 + ADD.AB#4,$3  (x4)
+Dwarf_20242a64 + DAT.F#0,#4 + DAT.F$0,$0 + MOV.I$2,@2 -> Dwarf_20242a64 + 2 DAT.F#0,#4 + MOV.I$2,@2  (x4)
+Dwarf_20242a64 + JMP.B$-2,$0 -> Dwarf_20242a64 + JMP.B$-2,$0  (x571)
+Dwarf_20242a64 + DAT.F#0,#4 + ADD.AB#4,$3 -> Dwarf_20242a64 + DAT.F#0,#8 + ADD.AB#4,$3  (x4)
+Dwarf_20242a64 + DAT.F#0,#8 + DAT.F$0,$0 + MOV.I$2,@2 -> Dwarf_20242a64 + 2 DAT.F#0,#8 + MOV.I$2,@2  (x4)
+Dwarf_20242a64 + DAT.F#0,#8 + ADD.AB#4,$3 -> Dwarf_20242a64 + DAT.F#0,#12 + ADD.AB#4,$3  (x4)
+Dwarf_20242a64 + DAT.F#0,#12 + DAT.F$0,$0 + MOV.I$2,@2 -> Dwarf_20242a64 + 2 DAT.F#0,#12 + MOV.I$2,@2  (x4)
+… and 763 more
+```
+
+## Parameters
+
+| name | type | default | role | what it does |
+|---|---|---|---|---|
+| `warriors` | `list` | `['imp', 'dwarf']` | population | the warriors of the battle, in load order: built-in names or Redcode source strings <br>*range:* built-in names imp, dwarf, imp-avalanche, or ICWS'94 Redcode source (labels, EQU, ORG, END, expressions; no FOR/ROF or PIN) |
+| `core_size` | `int` | `800` | spatial | number of cells M of the cyclic core; all arithmetic is modulo M <br>`2` … `1000000` · *range:* ICWS'94 KOTH and pMARS default 8000; ICWS'86 8192; Dewdney 1984 8000; Core War Guidelines 4096 |
+| `max_cycles` | `int` | `8000` | structural | cycles (one instruction per living warrior) before a round is a tie <br>≥ `1` · *range:* KOTH and pMARS default 80000; ICWS'86 100000 |
+| `max_processes` | `int` | `800` | population | task limit: the maximum number of tasks in each warrior's queue <br>≥ `1` · *range:* KOTH and pMARS default 8000; ICWS'86 64 |
+| `max_length` | `int` | `100` | structural | maximum number of instructions of a warrior <br>≥ `1` · *range:* KOTH and pMARS default 100; ICWS'86 300 |
+| `min_distance` | `int` | `100` | spatial | minimum distance between the load addresses of two warriors; must be >= max_length <br>≥ `1` · *range:* KOTH 100 (pMARS default: max_length); ICWS'86 300; Dewdney 1984 1000 |
+| `rounds` | `int` | `4` | population | rounds of the battle, with new random positions and the starter rotating; P-space persists across rounds <br>≥ `1` · *range:* pMARS default 1; KotH hills 100-250 |
+| `positions` | `list` | `` | spatial | empty: random load addresses each round; else the fixed load addresses of warriors 2..n (warrior 1 is at 0) <br>*range:* e.g. [300] loads warrior 2 at address 300 (pMARS -F 300) |
+| `pspace_size` | `int` | `` | structural | P-space cells per warrior for LDP/STP (cell 0 holds the last round's result); 0 = the pMARS default <br>≥ `0` · *range:* pMARS default: core_size / i for the largest i <= 16 dividing core_size (500 for 8000) |
+
+## Published phenomena
+
+What the literature reports this model produces. Whether the generator reproduces each one is recorded in the decisions below.
+
+- Imp (MOV 0, 1) copies itself one cell ahead every cycle and moves through the whole core, leaving a trail of MOV 0, 1 (Dewdney 1984; book 10.6.2)
+- Dwarf drops a DAT bomb on every fourth cell, loops over the core and, in a core size divisible by 4, never hits itself (Karonen's guide; Dewdney 1984 with step 5)
+- Imp v. Dwarf: if Imp reaches Dwarf, Dwarf's JMP -2 lands on Imp's MOV 0, 1, Dwarf is subverted into a second Imp and the battle is a draw; otherwise Dwarf may bomb Imp (Dewdney 1984). With KOTH rules in an 800 core, pMARS gives 104 Dwarf wins and 497 ties over the 601 load positions, and Imp never wins
+- the book's SPL 2 / JMP -1 / MOV 0, 1 creates an avalanche of imps, adding a task every other cycle until the task limit
+- Validate 1.1R loops forever on an ICWS'88-compliant MARS with in-register evaluation and kills itself otherwise (pMARS warriors/validate.red)
+- a warrior dies when its last task executes a DAT or divides by zero; a round is a tie when several warriors survive max_cycles cycles (Core War Guidelines; ICWS'94 sec. 5.2)
+
+## Sources
+
+- Dewdney, A. K. (1984). Computer Recreations: In the game called Core War hostile programs engage in a battle of bits. Scientific American 250(5):15-19 (book [229]): MARS, Redcode, Dwarf, Imp, Imp v. Dwarf ('Dwarf will be subverted and become a second Imp ... the battle is a draw'), rules (random loading, alternate execution, time limit tie). https://corewar.co.uk/dewdney/1984-05.htm
+- Jones, D. G. & Dewdney, A. K. (1984). Core War Guidelines (book [432]): the 1984 instruction set, Dwarf in a 4096 core, rules of Core War. https://corewar.co.uk/standards/cwg.txt
+- Durham, M. & Doligez, D. (1995). Annotated Draft of the Proposed 1994 Core War Standard, version 3.3: MARS description, the eight addressing modes, modifiers, instruction set (sec. 5), example interpreter EMI94.c, assembly and load file grammar (secs. 2-3), run-time variables and the KOTH set (sec. 4), default modifiers (app. A.2.1.2). https://corewar.co.uk/standards/icws94.txt
+- Ma, A., Sieben, N., Strack, S., Wangsawidjaja, M. & Karonen, I. pMARS 0.9.2 (2000), portable Memory Array Redcode Simulator, C source (GPL-2), built with -DEXT94 -DSERVER: sim.c (simulator1: operand evaluation, opcodes, task queues, cycle counter, round loop, P-space), pos.c (posit, npos), asm.c (default modes and modifiers), clparse.c and pmars.c (defaults: separation, P-space size, lastResult), warriors/validate.red. https://sourceforge.net/projects/corewar/files/pMARS/0.9.2/
+- Karonen, I. (2004). The beginners' guide to Redcode, v1.23 (book [440]): Imp and Dwarf in ICWS'94 form (ADD.AB #4, 3 / MOV.I 2, @2 / JMP -2 / DAT #0, #0), Imp overwriting a warrior gives a tie. https://vyznev.net/corewar/guide.html
+
+## Decisions
+
+Every gap, ambiguity or erratum in the sources, and how Chemart resolved it. Read this before quoting a number from this entry.
+
+- Standard: the ICWS'94 draft (v3.3), which contains the whole instruction set of the book's table 10.2, as implemented by pMARS 0.9.2 with EXT94 (the MARS used by the KotH hills). The Python machine is a port of pMARS sim.c and agrees with the compiled pMARS (instrumented to dump steps, survivors, tasks and the whole core at the end of every round) exactly on Imp vs Dwarf at all 601 load positions in an 800 core, on Validate 1.1R (which self-ties only on a compliant, in-register MARS), on Rave, on the book's imp avalanche, and on several hundred battles of random warriors using every opcode, modifier and addressing mode, including P-space over several rounds.
+- Where pMARS and the draft's example interpreter EMI94.c differ, pMARS wins because it is the de-facto reference: (1) operands are evaluated in-register, so an immediate B-operand sees the instruction as fetched, before any A-operand side effect on the same cell; (2) DIV.A and MOD.A by zero kill the task (EMI94 omits the goto noqueue); (3) a single operand of JMP, SPL or NOP assembles to B = $0 (the draft text says #0); other opcodes need two operands; (4) SEQ and CMP are distinct opcodes that behave identically, so SEQ.I/CMP.I/SNE.I see a CMP cell and a SEQ cell as different instructions. Read and write limits (a draft run-time variable) are not implemented, as in pMARS (limits = core size).
+- Cycle counting follows pMARS: a round runs warriors x max_cycles single steps, and when a warrior dies its share of the remaining steps is removed (cycle = cycle - 1 - (cycle - 1)/warriorsLeft). The starter of round r is warrior r mod n; warrior 1 is loaded at 0; two warriors: warrior 2 at min_distance + U(core_size + 1 - 2 min_distance) (pMARS simulator1), more: pMARS posit with backtracking, then npos, with numpy's generator in place of pMARS's Park-Miller rng. P-space: pMARS unshared P-space (no PIN), cell 0 is the last result (core_size - 1 before the first round, then the number of survivors, or 0 for a dead warrior).
+- Scoring (extras.analysis.score) is pMARS's default formula (W*W-1)/S per round survived, W warriors and S survivors: 3 for a win and 1 for a tie between two warriors.
+- Chemical reading (a Core War battle is not a chemistry by itself; the book says as much for assembler automata): molecules are the instructions in core and the tasks of each warrior; one executed instruction is one reaction event over the task and the touched cells (the executing cell, pointer cells, the A-cell when its value is used, the B-cell when read or written); cells are sets of distinct addresses, so every reaction conserves the number of instruction molecules (extras.conservation 'core cells'). Events are aggregated over all rounds as multisets with firing counts; positions are not part of the species. initial_state is the multiset of one round's start (the same in every round), extras.final_state the multisets at the end of every round summed, so rounds x initial_state + sum(count x (products - reactants)) = final_state.
+- Other observables: extras.analysis.rounds (positions, starter, steps executed, survivors, tasks left, the step at which each warrior died), wins/ties/losses/score, per-warrior event counts (instructions executed, successful SPLs, task deaths, executions of cells last written by another warrior (infection), cell writes, writes over another warrior's cells, MOV.I copies that changed a cell) and the task counts of round 1 sampled about 200 times. extras.warriors gives each warrior's load file.
+- Dewdney's 1984 Dwarf (DAT -1 / ADD #5, -1 / MOV #0, @-2 / JMP -2, bombing every fifth cell with 'zero'), also the book's example and the draft's sec. 2.7 example, relies on the 1984 rule that the integer 0 is a non-executable DAT. Under ICWS'94 MOV #0, @-2 is MOV.AB and only zeroes a B-number, so it does not kill; the built-in dwarf is the ICWS'88/'94 form of Karonen's guide (ADD.AB #4, 3 / MOV.I 2, @2 / JMP -2 / DAT #0, #0), which drops DAT bombs every fourth cell and survives in cores divisible by 4. The built-in imp is MOV.I $0, $1; imp-avalanche is the book's SPL 2 / JMP -1 / MOV 0, 1. The book's 'a trace of MOV 1 0 instructions' is a typo for MOV 0 1.
+- kind changed from framework to generator: Core War has fully specified rules (ICWS'94, pMARS) and the entry now generates networks. The v1 parameter instruction_set is dropped (the instruction set is fixed by the standard); core_size and max_processes get the KOTH meanings. Defaults are the KOTH set with core size, cycles and task limit divided by 10 (800, 8000, 800), so the default battle, Imp vs Dwarf over 4 rounds at random positions, runs in well under a second; paper-scale values are in range. FOR/ROF blocks (a pMARS extension, not in the draft's grammar) are not supported, so pMARS's bundled Aeka and Flash Paper cannot be assembled.
+- Rates: none. A reaction fires when a task reaches the instruction; nothing in Core War is a rate.
+- Assembler: ICWS'94 assembly (case-insensitive opcodes and modifiers, labels with optional colon, EQU as repeated text substitution, ORG and END start, C-like integer expressions with truncating division, predefined CORESIZE, MAXCYCLES, MAXPROCESSES, MAXLENGTH, MINDISTANCE, ROUNDS, WARRIORS, PSPACESIZE, CURLINE) and load files; missing modes are $, missing modifiers follow pMARS asm.c (ICWS'94 app. A.2.1.2). FOR/ROF, PIN, ;assert and the ICWS'88 syntax checks (pMARS -8) are not supported.
+
+## Notes
+
+Ancestor of Coreworld, Tierra and Avida (book 10.6.3-10.6.5). The book notes there are no explicitly defined reactions between molecules in assembler automata; the event reading above is Chemart's. Paper-scale battles (core 8000, 80000 cycles, 100+ rounds) take tens of seconds per round in pure Python.
+
+---
+
+*Specification: `catalog/chemistries/corewar.yaml` · generator: `chemart/chemistries/corewar.py` · tests: `tests/chemistries/test_corewar.py`*

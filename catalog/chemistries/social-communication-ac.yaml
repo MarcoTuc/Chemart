@@ -2,6 +2,14 @@ chemistries:
 
 - id: social-communication-ac
   name: Artificial chemistry of social communication
+  intuition: >
+    A social theory taken literally. Following Luhmann, the molecule is not a
+    person but a *communication*: the population is the set of messages
+    currently displayed, and a reaction is one agent observing another's
+    message and choosing its own next one from its memory of what followed
+    what. Agents are the context of a reaction, not its species. What emerges
+    is social order - a shared, stable subset of the available messages - out
+    of mutual expectation alone.
   aliases: ["double contingency model", "LuSi", "luhmann3"]
   origin: "Dittrich, Kron & Banzhaf, 2003"
   book: "20.4"

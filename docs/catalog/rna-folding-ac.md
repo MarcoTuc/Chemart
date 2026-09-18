@@ -1,0 +1,105 @@
+# RNA-folding ribozyme artificial chemistry
+
+`rna-folding-ac` · *Ullrich & Flamm, 2008*
+
+*Also known as:* *Ullrich-Flamm ribozyme metabolism*, *sequence-to-function map for ribozyme-catalyzed metabolisms*
+
+The most physically real chemistry in the catalog. Molecules are RNA sequences, and each one is folded by actual free-energy minimisation into a secondary structure; the structure's largest loop is then read as the reaction that molecule catalyses. So genotype determines phenotype determines function, with the middle step done by thermodynamics rather than by a lookup table. It also exhibits the property that makes RNA landscapes special: vast neutral networks, where many mutations leave the fold and hence the function unchanged.
+
+| | |
+|---|---|
+| **family** | systems-biology |
+| **kind** | generator |
+| **constructive** | yes — the species set grows at run time |
+| **fidelity** | `reconstructed` — built from the original papers listed below |
+| **book** | 18.1.1 |
+| **refs** | [873], [874], [875], [876], [280], [349], [389], [390], [300], [103] |
+| **provides** | `topology`, `stoichiometry`, `catalysts`, `energies`, `mass-conservation`, `initial-state`, `sequence-structure-function` |
+
+## Molecules, reactions, reactor
+
+**S — molecules** (implicit): RNA sequences over AUGC, each folded by free-energy minimisation (Vienna RNA) into a secondary structure in dot-bracket notation; Species.structure holds 'sequence dot-bracket'
+
+**R — reactions** (implicit, arity [2, 3]): Two-step genotype->phenotype->function map: sequence -> MFE structure -> catalytic function read off the longest loop, interpreted as the imaginary transition structure (ITS) of the catalysed reaction. A mono-cyclic ITS of size 2n alternates n broken and n formed bonds, so only even loop cycles are catalytic; one stem (hairpin) gives cleavage E + X -> E + Y + Z, two stems (interior/bulge) give ligation E + Y + Z -> E + X. The ribozyme binds the Watson-Crick reverse complement of its loop sequence.
+
+**A — reactor**: well-stirred-multiset, graph-rewrite
+ · *dilution:* closure mode is cut off by max_species; the well-stirred run optionally dilutes back to the initial population size
+
+## What you get
+
+```python
+net = chemart.generate_network("rna-folding-ac", seed=1)
+```
+
+```
+rna-folding-ac: 21 species, 8 reactions, status=complete
+provides: catalysts, energies, initial-state, mass-conservation, stoichiometry, topology
+seed: 1
+extras: analysis, conservation, energies, functions
+```
+
+First reactions:
+
+```
+UACGCUUUCUAGCAGUUAUUCAUUCAACUC + CGUUAAUUACUCCUCCGGAAUUUGUCCUAC -> UACGCUUUCUAGCAGUUAUUCAUUCAACUC + CGUUAAU + UACUCCUCCGGAAUUUGUCCUAC
+UACGCUUUCUAGCAGUUAUUCAUUCAACUC + GGGGUUAAGUAGUUUAGUCACAAUGUUUCC -> UACGCUUUCUAGCAGUUAUUCAUUCAACUC + GGGGUUAAGUAGUUUAGUCACAAU + GUUUCC
+CCUGUAUUAAACCAUCUUAGUAACACCGGC + CGCACGCUCGUUCAGGUCCACGUUAGUCCU -> CCUGUAUUAAACCAUCUUAGUAACACCGGC + CGCACGCUCGUUCAGGU + CCACGUUAGUCCU
+CCUGUAUUAAACCAUCUUAGUAACACCGGC + GGGGUUAAGUAGUUUAGUCACAAUGUUUCC -> CCUGUAUUAAACCAUCUUAGUAACACCGGC + GGGGU + UAAGUAGUUUAGUCACAAUGUUUCC
+CCUGUAUUAAACCAUCUUAGUAACACCGGC + GCUAUGCGCUUCCAGGUUUUUAACCUUCGG -> CCUGUAUUAAACCAUCUUAGUAACACCGGC + GCUAUGCGCUUCCAGGU + UUUUAACCUUCGG
+UACGCUUUCUAGCAGUUAUUCAUUCAACUC + UACUCCUCCGGAAUUUGUCCUAC -> UACGCUUUCUAGCAGUUAUUCAUUCAACUC + UACUCCUCCGGAAU + UUGUCCUAC
+UACGCUUUCUAGCAGUUAUUCAUUCAACUC + UAAGUAGUUUAGUCACAAUGUUUCC -> UACGCUUUCUAGCAGUUAUUCAUUCAACUC + UAAGUAGUUUAGUCACAAU + GUUUCC
+CCUGUAUUAAACCAUCUUAGUAACACCGGC + GGGGUUAAGUAGUUUAGUCACAAU -> CCUGUAUUAAACCAUCUUAGUAACACCGGC + GGGGU + UAAGUAGUUUAGUCACAAU
+```
+
+## Parameters
+
+| name | type | default | role | what it does |
+|---|---|---|---|---|
+| `seq_length` | `int` | `30` | structural | length of each RNA sequence in the initial pool <br>`8` … `120` · *range:* Flamm et al. (2010) use tRNA-size genes of 100 nt carried on a 5000 nt genome |
+| `pool` | `int` | `8` | population | number of random RNA sequences the run starts from <br>`1` … `200` · *range:* well-stirred mode needs at least 3; paper-scale runs hold tens of ribozymes per cell |
+| `mode` | `enum` | `closure` | structural | closure: every reaction reachable from the pool; well-stirred: the reactions that fired in a multiset run, with counts <br>one of `closure`, `well-stirred` |
+| `max_species` | `int` | `60` | structural | species budget for the closure; the network is reported as truncated when it is reached <br>`2` … `5000` |
+| `steps` | `int` | `500` | population | number of collisions in the well-stirred run <br>`1` … `200000` |
+| `dilution` | `enum` | `none` | population | whether the well-stirred population is diluted back to its initial size after every reaction <br>one of `none`, `constant` |
+| `its_min` | `int` | `4` | structural | smallest ITS size (longest-loop cycle length) that is catalytic <br>`2` … `200` |
+| `its_max` | `int` | `12` | structural | largest ITS size that is catalytic; larger loops are treated as composite transition structures <br>`2` … `200` |
+| `min_recognition` | `int` | `3` | structural | length of the recognition word read off the loop sequence (level 4 of the ITS hierarchy, the atom types) <br>`1` … `50` |
+| `min_fragment` | `int` | `2` | structural | shortest fragment a cleavage may produce <br>`1` … `50` |
+
+## Published phenomena
+
+What the literature reports this model produces. Whether the generator reproduces each one is recorded in the decisions below.
+
+- large neutral networks in genotype space: a large fraction of point mutants fold to the same structure, so the map is simultaneously robust and evolvable
+- a variety of alternative functions is reachable within a short distance in sequence space
+- small-world connectivity with highly connected hub metabolites in large evolved networks
+- phased evolution: forward extension of pathways that break food molecules down first, enzyme recruitment and specialisation later
+
+## Sources
+
+- Flamm, C., Ullrich, A., Ekker, H., Mann, M., Hogerl, D., Rohrschneider, M., Sauer, S., Scheuermann, G., Klemm, K., Hofacker, I.L. & Stadler, P.F. (2010). Evolution of metabolic networks: a computational frame-work. Journal of Systems Chemistry 1:4. Open access, https://doi.org/10.1186/1759-2208-1-4 - sections 'Ribozyme Catalysis' and 'Artificial Molecular Biology' are the specification used here.
+- Banzhaf, W. & Yamamoto, L. (2015). Artificial Chemistries, section 18.1.1 and table 18.1 (MIT Press).
+- Ullrich, A. & Flamm, C. (2008). Functional evolution of ribozyme-catalyzed metabolisms in a graph-based toy-universe. CMSB, LNCS 5307:28-43. https://doi.org/10.1007/978-3-540-88562-7_7 (abstract and introduction only; the full chapter is paywalled).
+- Ullrich, A. & Flamm, C. (2009). A sequence-to-function map for ribozyme-catalyzed metabolisms. ECAL, LNCS 5778:19-26. https://doi.org/10.1007/978-3-642-21314-4_3 (abstract and introduction only; the full chapter is paywalled).
+- Fujita, S. (1986). Description of organic reactions based on imaginary transition structures. J. Chem. Inf. Comput. Sci. 26(4):205-230 - the ITS cycle alternates broken and formed bonds, hence the even-size criterion.
+- Hofacker, I.L., Fontana, W., Stadler, P.F., Bonhoeffer, S., Tacker, M. & Schuster, P. (1994). Fast folding and comparison of RNA secondary structures. Monatshefte fur Chemie 125:167-188 - the folding routines (ViennaRNA 2.7.2 is used here).
+
+## Decisions
+
+Every gap, ambiguity or erratum in the sources, and how Chemart resolved it. Read this before quoting a number from this entry.
+
+- The book describes this AC in prose only. The model is reconstructed from Flamm et al. (2010), which states the map verbatim: sequence -> MFE structure (Vienna RNA) -> the longest loop read as the ITS, with the ITS size given by the loop length, the stems fixing the arrangement of the electron re-ordering, and the sequence inside the loop fixing the atom types.
+- Loop length is implemented as the length of the loop cycle in the structure graph: unpaired bases plus the two bases of every delimiting pair. This is the cycle whose size Fujita counts as the number of atoms in the electron re-ordering; the exterior loop is not a cycle and is excluded.
+- Catalytic criterion: a mono-cyclic ITS of size 2n breaks n and forms n bonds alternately (Fujita 1986), so only even cycle sizes are catalytic, within [its_min, its_max]. Multiloops (three or more stems) are composite transition structures and are inert here.
+- Which concrete reaction each ITS class denotes is specified in Ullrich's Leipzig PhD thesis and in the paywalled CMSB/ECAL chapters, none of which could be obtained. Chemart therefore fixes the two canonical ribozyme reactions by stem count: hairpin loops (one stem) cleave, interior and bulge loops (two stems) ligate. This is Chemart's choice, not a published rule.
+- The original model rewrites ToyChem metabolite graphs and derives rate constants from activation energies (QSPR). ToyChem's extended-Huckel chemistry is out of scope here, so the ribozymes act on RNA sequences themselves: the recognition site is the Watson-Crick reverse complement of the first min_recognition bases of the loop sequence, cleavage cuts immediately 3' of that site, and ligation joins two molecules whose junction spells it. No rate constants are published that this implementation could reproduce, so every reaction carries rate None.
+- Defaults are small (30 nt, 4 seed sequences, 60 species) so that the closure folds in well under a second; the paper's scale (100 nt genes, 5000 nt genomes, 100-1000 generations) is recorded in the params' range fields.
+- Book table 18.1 gives two 60 nt sequences with their RNAfold structures. ViennaRNA 2.7.2 reproduces the second exactly (-7.10 kcal/mol); for the first it returns a different structure at -10.90 kcal/mol, while the book's structure evaluates to -9.80 and appears in the 1.5 kcal/mol suboptimal ensemble. The book's first structure is therefore suboptimal under current Turner parameters (identical under Turner 1999 and 2004); the tests record both facts.
+
+## Notes
+
+The most 'realistic' generator in the book: real thermodynamic folding driving the genotype-phenotype map. Chemart implements the folding and the sequence-to-function map faithfully and substitutes RNA cleavage/ligation for the ToyChem graph rewriting, so the network is a ribozyme chemistry on sequences rather than on metabolite graphs.
+
+---
+
+*Specification: `catalog/chemistries/rna-folding-ac.yaml` · generator: `chemart/chemistries/rna_folding_ac.py` · tests: `tests/chemistries/test_rna_folding_ac.py`*

@@ -2,6 +2,15 @@ chemistries:
 
 - id: chemoton
   name: Chemoton
+  intuition: >
+    The classic hand-designed minimal cell, and still the clearest statement
+    of what a cell needs. Three subsystems are coupled stoichiometrically: a
+    metabolic cycle that turns nutrient into building blocks, a template that
+    replicates using one of those blocks, and a membrane that grows from
+    another. Because the couplings are exact, growth and division stay
+    synchronised - the cell divides when its membrane has doubled. That tight
+    coupling is also what makes it fragile, which is precisely why it is a
+    good stress test.
   origin: "Ganti, ~1952/1971"
   book: "6.1.4; wet computing 17.4.1"
   refs: ["[305]", "[306]", "[204]", "[271]", "[604]", "[880]", "[949]", "[273]", "[159]"]

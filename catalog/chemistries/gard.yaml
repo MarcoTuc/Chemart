@@ -2,6 +2,14 @@ chemistries:
 
 - id: gard
   name: GARD (Graded Autocatalysis Replication Domain)
+  intuition: >
+    Heredity without a sequence. An assembly of lipid types grows by absorbing
+    lipids from outside, and lipids already inside catalyse the entry of
+    particular types, so the assembly's *composition* biases which lipids it
+    takes up next. Split it in two and each half tends to reconstruct the same
+    composition - a composome. The information is in the multiset, not in an
+    ordered polymer. It also shows cleanly that catalysis alone cannot shift
+    an equilibrium: without the external supply, nothing happens.
   aliases: ["Lipid World model", "polymer GARD", "EE-GARD", "spatial GARD"]
   origin: "Segre, Lancet et al., 1998-2001"
   book: "6.2.4"

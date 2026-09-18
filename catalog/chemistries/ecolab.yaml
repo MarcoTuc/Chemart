@@ -2,6 +2,14 @@ chemistries:
 
 - id: ecolab
   name: Ecolab
+  intuition: >
+    Population dynamics with an open species set. A generalised Lotka-Volterra
+    system runs the ecology, but new species arrive by mutation of existing
+    ones, inheriting perturbed growth rates and interaction coefficients, and
+    species whose populations vanish are removed. The dimension of the state
+    space therefore changes as the system runs. What comes out looks like
+    self-organised criticality: species lifetimes follow a power law, and
+    diversity fluctuates without settling.
   origin: "Standish, 1994-2004"
   book: "8.2.3"
   refs: ["[795]", "[796]", "arXiv:nlin/0404011", "arXiv:nlin/0004026", "https://github.com/highperformancecoder/ecolab"]

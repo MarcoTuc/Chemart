@@ -1,0 +1,111 @@
+# Varela-Maturana-Uribe autopoiesis model
+
+`autopoiesis-vmu` · *Varela, Maturana & Uribe, 1974*
+
+*Also known as:* *SCL*, *Substrate-Catalyst-Link model*, *computational autopoiesis*
+
+The model that named computational autopoiesis. A lattice holds substrate, a catalyst and links. The catalyst turns two neighbouring substrates into a link; links bond to adjacent links into chains; and links spontaneously decay back to substrate. Nothing tells the system to build a membrane, yet a closed chain forms around the catalyst - and because the catalyst keeps producing links, the boundary repairs itself as its parts decay. Substrate crosses it while the enclosed catalyst cannot escape. The interesting behaviour lives entirely in space, not in the reaction list.
+
+| | |
+|---|---|
+| **family** | origin-of-life |
+| **kind** | generator |
+| **constructive** | no — fixed species set |
+| **fidelity** | `reconstructed` — built from the original papers listed below |
+| **book** | 6.1.5 |
+| **refs** | [881], [557], [559], doi:10.1016/0303-2647(74)90031-8 |
+| **provides** | `topology`, `stoichiometry`, `catalysts`, `space`, `initial-state` |
+
+## Molecules, reactions, reactor
+
+**S — molecules** (explicit): One particle per site of a 2D toroidal lattice: hole, substrate (O), catalyst (*) or link ([O]). A link carries up to two bonds to neighbouring links and may hold one absorbed substrate, so the species are S (substrate), C (catalyst) and L0/L1/L2 (a link with 0, 1 or 2 bonds), each link species also as L0S/L1S/L2S when it holds an absorbed substrate. A doubly bonded link (L2) is a chain link, a closed chain is a membrane, and a membrane enclosing a catalyst is a cell. Holes are empty space, not a species.
+
+**R — reactions** (explicit, arity [1, 2, 3]): Production * + 2 O -> * + [O] (two substrates of the catalyst's neighbourhood become a link and a hole) ; bonding of neighbouring links, at most two bonds per link and one bond per adjacent pair, forbidden for a free link that has a chain link in its neighbourhood (chain-based bond inhibition) ; disintegration [O] -> O + O, which also drops the link's bonds ; absorption [O] + O -> [O]O and emission [O]O -> [O] + O of one substrate by a link, which is how a membrane passes substrate.
+
+**A — reactor**: lattice-2d
+ · *dilution:* none; the lattice is closed and every site always holds exactly one particle
+
+## What you get
+
+```python
+net = chemart.generate_network("autopoiesis-vmu", seed=1)
+```
+
+```
+autopoiesis-vmu: 8 species, 33 reactions, status=observed
+provides: catalysts, initial-state, space, stoichiometry, topology
+seed: 1
+extras: analysis, rules, space
+```
+
+First reactions:
+
+```
+C + 2 S -> C + L0  (x39)
+L0 + S -> L0S  (x45)
+L0 + L0S -> L1 + L1S  (x5)
+L1S -> L1 + S  (x46)
+L1 + S -> L1S  (x52)
+L1 + L0 -> L2 + L1  (x5)
+L0S + L1 -> L1S + L2  (x5)
+L2 + S -> L2S  (x49)
+… and 25 more
+```
+
+## Parameters
+
+| name | type | default | role | what it does |
+|---|---|---|---|---|
+| `mode` | `enum` | `lattice` | structural | lattice: run the lattice and return the reactions that fired, with counts (status observed), the grid in extras.space and the membrane measurements in extras.analysis; reactions: the reactions the chemistry defines, as a complete network <br>one of `lattice`, `reactions` |
+| `initial` | `enum` | `substrate` | structural | substrate: the book's figure 6.3 at t = 0, a catalyst surrounded by substrate; cell: start from a ready-made cell, the twelve-link closed membrane around the catalyst of Von Kamp (2002) figure 2 <br>one of `substrate`, `cell` |
+| `width` | `int` | `30` | spatial | lattice width (toroidal) <br>`5` … `400` · *range:* Von Kamp (2002) figure 2 uses a 30 x 30 world |
+| `height` | `int` | `30` | spatial | lattice height (toroidal) <br>`5` … `400` · *range:* Von Kamp (2002) figure 2 uses a 30 x 30 world |
+| `steps` | `int` | `120` | population | time steps; in each one every particle moves and acts once <br>`0` … `1000000` · *range:* spontaneous formation of a cell from a bare catalyst takes thousands of steps; Von Kamp's runs go to 50,000 |
+| `n_catalysts` | `int` | `1` | population | catalysts; the first is placed at the centre of the lattice, any others at random <br>`0` … `1000` · *range:* the book's figure 6.3 starts from a single catalyst |
+| `substrate_density` | `float` | `1.0` | population | fraction of the non-catalyst sites that start as substrate; the rest start as holes. Holes are also produced by the catalysis reaction <br>`0.0` … `1.0` |
+| `production_probability` | `float` | `1.0` | kinetic | probability per time step that a catalyst turns two neighbouring substrates into a link and a hole (Von Kamp 2002, table 1: 1.0) <br>`0.0` … `1.0` |
+| `disintegration_probability` | `float` | `0.01` | kinetic | probability per time step that a link spontaneously disintegrates (Von Kamp 2002, table 1: 0.01) <br>`0.0` … `1.0` |
+| `bond_probability` | `float` | `1.0` | kinetic | probability that an admissible bond between two neighbouring links is formed; not published, see decisions <br>`0.0` … `1.0` |
+| `absorption_probability` | `float` | `0.5` | kinetic | probability per time step that a link tries to absorb a neighbouring substrate (Von Kamp 2002, table 1: 0.5) <br>`0.0` … `1.0` |
+| `emission_probability` | `float` | `0.5` | kinetic | probability per time step that a link tries to emit its absorbed substrate into a neighbouring hole (Von Kamp 2002, table 1: 0.5) <br>`0.0` … `1.0` |
+| `bond_inhibition` | `bool` | `True` | structural | chain-based bond inhibition: a free link may not bond while chain links are in its neighbourhood. This is the rule omitted from the 1974 publication and restored by McMullin & Varela (1997); false reproduces the failure of the published algorithm |
+| `chain_inhibit_count` | `int` | `1` | structural | how many chain links in the neighbourhood of a free link suppress bond formation <br>`1` … `8` · *range:* Von Kamp (2002) table 1: chainInhibitBondCount = 1, turned off at the neighbourhood size |
+| `mobility` | `dict` | `{'substrate': 0.5, 'catalyst': 0.1, 'link': 0.1…` | spatial | mobility factor per particle type (Von Kamp 2002, table 1); two neighbours swap with probability sqrt(m_i m_j), and a link with one or two bonds is immobile whatever its factor |
+
+## Published phenomena
+
+What the literature reports this model produces. Whether the generator reproduces each one is recorded in the decisions below.
+
+- spontaneous formation of a closed, substrate-permeable boundary around a catalyst (book figure 6.3: links formed at t = 2 bond into a closed boundary by t = 6)
+- the boundary is permeable to substrate, which crosses by being absorbed and re-emitted by a membrane link, and impermeable to links and catalysts, because bonded links are immobile
+- regeneration of the boundary after the decay of one of its constituents: a free link inside the cell moves into the gap and bonds, re-closing the membrane (Varela et al. 1974)
+- without chain-based bond inhibition, the rule omitted from the 1974 publication, the free links inside a cell bond to each other and to the membrane instead of staying mobile, and ruptures are not repaired (McMullin & Varela 1997)
+
+## Sources
+
+- Varela, F. J., Maturana, H. R. & Uribe, R. (1974). Autopoiesis: the organization of living systems, its characterization and a model. BioSystems 5(4):187-196 (book ref [881]). doi:10.1016/0303-2647(74)90031-8. The model and its phenomena are taken from the book's account of it (6.1.5 and figure 6.3); the paper itself could not be retrieved, see decisions.
+- McMullin, B. & Varela, F. J. (1997). Rediscovering Computational Autopoiesis. Santa Fe Institute Working Paper 97-02-012; Proc. 4th European Conference on Artificial Life (ECAL 97). Abstract used: the re-implementation found that 'chain-based bond inhibition' was essential to the autopoietic phenomenology and undocumented in the original work. https://econpapers.repec.org/paper/wopsafiwp/97-02-012.htm
+- McMullin, B. (2000). Some remarks on autocatalysis and autopoiesis. Annals of the New York Academy of Sciences 901:163-174, section 6.4 (SCL: the re-implementation 'specifically corrected a defect in the original published description of the model, establishing that a previously undocumented interaction (chain inhibition) was in fact essential to the autopoietic phenomenology'). doi:10.1111/j.1749-6632.2000.tb06276.x. https://doras.dcu.ie/28135/7/bmcm9901.pdf
+- Von Kamp, A. W. (2002). Self-reproducing entities in an artificial chemistry: implications of autopoietic and other organisations. PhD thesis, Dublin City University (McMullin's group; the work extends McMullin's SCL 0.05.11). Section 2.2 (the qualitative SCL chemistry: particle types, absorption and emission, bonds and chains, immobility of bonded links, chain-based bond inhibition, the catalysis reaction, spontaneous disintegration), section 2.3.3 (self-maintenance by repair and the role of chain-based bond inhibition), section 4.8 (what the extended system changes relative to original SCL), figure 2 (a 30 x 30 world with a twelve-link membrane) and table 1 (the standard parameter values used here). https://doras.dcu.ie/18260/1/A_W_Von_Kamp.pdf
+- McMullin, B. (1997). Computational Autopoiesis: The Original Algorithm. Santa Fe Institute Working Paper 97-01-001. The reference documentation of the algorithm; not retrievable (see decisions), so its content is used only as reported by Von Kamp (2002).
+
+## Decisions
+
+Every gap, ambiguity or erratum in the sources, and how Chemart resolved it. Read this before quoting a number from this entry.
+
+- The book (6.1.5 and figure 6.3) gives the three reactions and the phenomena but no algorithm, so the lattice model is McMullin's SCL reconstruction. Variant implemented: the *original* SCL (self-maintenance by repair with spontaneously disintegrating links), not the later SCL-DIV of Von Kamp (2002) (lifetime units, membrane growth by displacement, catalyst autocatalysis, fission) and not SCL-GRO (McMullin & Gross 2001).
+- Neither McMullin (1997) nor McMullin & Varela (1997) could be retrieved: elm.eeng.dcu.ie and www.eeng.dcu.ie are offline or have an invalid certificate, the Santa Fe Institute working-paper files 404, and the CiteSeerX and Internet Archive mirrors are unreachable from here. The rule set and every published number therefore come from Von Kamp (2002), a DCU thesis built on McMullin's SCL 0.05.11 that documents the original system, together with the abstract of McMullin & Varela (1997) and section 6.4 of McMullin (2000) for chain-based bond inhibition. The 1974 paper itself is open only at repositorio.uchile.cl, behind a proof-of-work wall.
+- Published parameter values (Von Kamp 2002, table 1): mobility factors substrate 0.5, hole 0.5, catalyst 0.1, link 0.1; productionProbability 1.0; disintegrationProbability 0.01; absorptionProbability 0.5; emissionProbability 0.5; chainInhibitBondCount 1; inhibitOnlyFreeLinks true (only free links are inhibited, which is what lets a free link close a gap between two singly bonded chain ends). The bonding probability of original SCL is not published (SCL-DIV bonds with probability one after scanning the neighbourhood), so bond_probability defaults to 1.0 for the single randomly chosen neighbour of the original scheme and is flagged here rather than presented as published.
+- Neighbourhoods: the sources do not state them for the square lattice of original SCL. Interactions use the 8-cell Moore neighbourhood and motion the 4 von Neumann neighbours, so an 8-connected closed chain of links separates the lattice for 4-connected motion and a membrane is genuinely closed. Von Kamp (2002, section 4.2) moved to a hexagonal lattice precisely because the rectangular one makes such choices ambiguous.
+- Disintegration stoichiometry: the book writes the decay as [O] -> O, but production consumes two substrates and leaves a link plus a hole, and the caption of Von Kamp (2002) figure 2 (a 30 x 30 world with a twelve-link membrane and one catalyst, '591 substrates in total ... if all links and catalysts disintegrated, there would be 619 substrates', i.e. 2 x 12 + 4) implies a link disintegrates into two substrates. A disintegrating link therefore becomes a substrate and puts a second substrate (and its absorbed one, if any) into an adjacent hole when there is one; both L -> 2 S and L -> S appear among the observed reactions.
+- Only chain-based bond inhibition is implemented. The catalyst-based bond inhibition that Von Kamp (2002, section 4.8) parameterises as catInhibitBondCount, bond decay (present in McMullin's SCL, absent in Varela et al. 1974) and all SCL-DIV mechanisms are not implemented; no probability is published for the first two.
+- Network: status observed. Species carry the bond state (L0, L1, L2) and the absorbed substrate (L0S, L1S, L2S), because both change what a link can do; holes are empty space and not a species, so production reads C + 2 S -> C + L0 as in the book. Reactions carry no rate: the probabilities are per-particle update probabilities of the lattice algorithm, not rate constants, and no rate law is published. Motion is not a reaction. Mode 'reactions' returns the same species with the reactions the chemistry defines, status complete.
+- Dropped v1 parameters: grid (a matrix type) becomes width, height, substrate_density and initial; p_bond and p_decay become bond_probability and disintegration_probability, joined by the other published probabilities and the mobility factors. Defaults are small: a 30 x 30 world (Von Kamp's figure 2) for 120 steps, which shows the elementary reactions; spontaneous closure around a bare catalyst needs thousands of steps, and initial=cell starts from a formed cell instead.
+
+## Notes
+
+The model that named computational autopoiesis, and the standard example of a chemistry whose interesting behaviour lives in space rather than in stoichiometry: the reaction set is three lines, and everything depends on who is next to whom. It satisfies the six conditions for an autopoietic unit listed in the book; McMullin (2000, section 6.4) argues it still fails a stricter test, because two adjacent cells tend to merge rather than keep their individuality.
+
+---
+
+*Specification: `catalog/chemistries/autopoiesis-vmu.yaml` · generator: `chemart/chemistries/autopoiesis_vmu.py` · tests: `tests/chemistries/test_autopoiesis_vmu.py`*

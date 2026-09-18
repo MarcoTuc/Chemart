@@ -2,6 +2,14 @@ chemistries:
 
 - id: quasispecies
   name: Quasispecies equation
+  intuition: >
+    Mutation and selection as one reaction network. Each genotype replicates
+    at its own fitness, but replication is error-prone, so producing a
+    neighbour is part of reproducing. What survives is therefore not the
+    fittest sequence but a *cloud* centred on it. Push the mutation rate past
+    a threshold and the cloud stops being held together - the population
+    delocalises over sequence space and the information is lost. That error
+    threshold is the model's central result.
   origin: "Eigen, 1971; Eigen & Schuster"
   book: "7.2.7; appendix (Quasispecies.py)"
   refs: ["[249]", "[627]", "[621]"]

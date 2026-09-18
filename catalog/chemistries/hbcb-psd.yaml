@@ -2,6 +2,15 @@ chemistries:
 
 - id: hbcb-psd
   name: HBCB / PSD degradation-and-reuse chemistry
+  intuition: >
+    A question about decomposition, posed as a chemistry. Biomolecules are
+    arranged in a hierarchy - biopolymers at the top, monomers below them,
+    then progressively smaller classes - and hydrolysis walks down while
+    synthesis walks up, each step with an energy cost. The model asks how deep
+    an organism should break down its own dead material before rebuilding.
+    Stopping at the monomer leaves exactly one synthesis step to get back,
+    which is why programmed decomposition to that level pays off in a closed,
+    finite world.
   aliases: ["hierarchical biomolecular covalent bond model", "programmed self-decomposition model"]
   origin: "Oohashi, Ueno, Maekawa, Kawai, Nishina & Honda, 2009; PSD model proposed by Oohashi et al. 1987"
   book: "18.3.2"

@@ -2,6 +2,15 @@ chemistries:
 
 - id: jain-krishna
   name: Jain-Krishna autocatalytic set model
+  intuition: >
+    The life cycle of an autocatalytic set, stripped to a graph. Nodes are
+    species and a directed edge means one catalyses another's production;
+    concentrations follow from the graph and the least-populated node is
+    periodically replaced at random. Nothing happens for a while - then the
+    first small autocatalytic cycle appears and the population organises
+    around it and grows fast. Later a new cycle can undercut the incumbent,
+    causing a crash and a reorganisation of the core. Innovation, dominance
+    and collapse from one rule.
   origin: "Jain & Krishna, 1998-2002"
   book: "15.2.2, 15.2.3"
   refs: ["[425]", "[426]", "[427]", "[428]"]

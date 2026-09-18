@@ -1,0 +1,118 @@
+# Synthon artificial chemistry
+
+`synthon` · *Lenaerts & Bersini, 2009*
+
+*Also known as:* *synthon model*, *Lenaerts-Bersini chemistry*
+
+Chemistry with the electrons drawn in. A molecule is a graph of atoms that also tracks lone pairs and unpaired electrons explicitly, and a reaction is an *isomerisation of a whole ensemble*: both sides carry exactly the same atoms and electrons, and only the bonds are rearranged. Conservation is therefore structural rather than checked afterwards. A reaction class is itself a graph saying which bonds break and form, which is enough to grow an interstellar hydrogen-oxygen network from two atoms.
+
+| | |
+|---|---|
+| **family** | systems-biology |
+| **kind** | generator |
+| **constructive** | yes — the species set grows at run time |
+| **fidelity** | `reconstructed` — built from the original papers listed below |
+| **book** | 18.3.2 |
+| **refs** | [505], doi:10.1162/artl.2009.15.1.15106 |
+| **provides** | `topology`, `stoichiometry`, `catalysts`, `rate-constants`, `mass-conservation`, `initial-state`, `sequence-structure-function` |
+
+## Molecules, reactions, reactor
+
+**S — molecules** (implicit): A synthon S(A) = <W, A, R, E>: atoms A (virtual atoms W are not used), explicitly modelled electrons R and edges E. An atom carries its element, its lone pairs (loops) and its unpaired electrons, so radicals and charges are explicit; bonds are covalent (integer order) or ionic - the extension the authors added for H2+ and H3+, which they write as two disjoint parts of one molecule (H+ . H and H+ . H2). The free electron e- is a species. The formal charge follows the Dugundji-Ugi bookkeeping q = v - 2*lone_pairs - radicals - sum of bond orders. Species id and structure are the canonical code of the graph (the role of CANGEN in the paper): element + ':'*lone_pairs + '*'*radicals per atom, covalent bonds by juxtaposition ('=' double, '#' triple), '.' for an ionic link, branches in parentheses, ring closures '%n' - so the H atom is "H*", the proton "H", H2 "HH", H2+ "H.H*", H3+ "H.HH", water "HO::H" and OH+ "HO::".
+
+**R — reactions** (implicit, arity [1, 2]): A reaction is an ISOMERISATION S(A) => S'(A) of one ensemble of molecules into another: both sides carry the same atoms and the same electrons, only the edges change. A reaction class is a reaction graph G_T = <W, A, R, E, psi> with psi(e) = +1 for a formed edge and -1 for a deleted one; a reaction object is one instance of a class on concrete molecules. Implemented classes: the eleven interstellar classes G1-G11 of the 2005 paper's table 1 (cosmic ray ionisation, ion-molecule exchange, charge rearrangement, dissociative recombination, neutral reactions, photodissociation, grain surface H + H -> H2), or the three of its figure 3 (radiative association, charge transfer, dissociative recombination).
+
+**A — reactor**: ssa, graph-rewrite
+ · *dilution:* none
+
+## What you get
+
+```python
+net = chemart.generate_network("synthon", seed=1)
+```
+
+```
+synthon: 31 species, 161 reactions, status=complete
+provides: catalysts, initial-state, mass-conservation, rate-constants, stoichiometry, topology
+seed: 1
+extras: charges, conservation, constraints, electrons, formulas, method, note, reaction_classes, reaction_classes_used, species_encoding, templates
+```
+
+First reactions:
+
+```
+H* -> e- + H  [mass-action k=1e-17 classes=G1 units=s^-1]
+2 H* -> HH  [mass-action k=1e-17 classes=G11 units=cm^3 s^-1]
+HH -> 2 H*  [mass-action k=1e-14 classes=G10 units=s^-1]
+e- + H -> H*  [mass-action k=1e-11 classes=G7 units=cm^3 s^-1]
+O::** + HH -> HO::* + H*  [mass-action k=1e-11 classes=G8 units=cm^3 s^-1]
+H + HH -> H.H* + H*  [mass-action k=1e-09 classes=G4 units=cm^3 s^-1]
+HO::* -> e- + HO::  [mass-action k=1e-17 classes=G2 units=s^-1]
+HO::* -> e- + HO:**  [mass-action k=1e-17 classes=G2 units=s^-1]
+… and 153 more
+```
+
+## Parameters
+
+| name | type | default | role | what it does |
+|---|---|---|---|---|
+| `method` | `enum` | `closure` | structural | closure: the deterministic network generator (DNG), every reaction object reachable from the initial species; kinetic: the MC-sampling generator (MCNG), Gillespie's SSA over the molecules present, returning the reactions that fired with their counts <br>one of `closure`, `kinetic` |
+| `templates` | `enum` | `interstellar` | structural | reaction classes: interstellar = the eleven classes G1-G11 of table 1 of the 2005 paper with the rate constants it takes from Duley & Williams (1984) p. 143; fig3 = the three reaction graphs drawn in its figure 3 (radiative association, charge transfer, dissociative recombination), for which no rates are published <br>one of `interstellar`, `fig3` |
+| `initial` | `list` | `['H', 'O']` | population | initial species as element symbols; each becomes the neutral free atom of that element (H -> H*, O -> O::**). Known elements: H, He, C, N, O, F, Ne, S, Cl, Ar <br>*range:* the published experiment starts from hydrogen and oxygen |
+| `allowed` | `list` | `['H^+', 'H', 'H2', 'H2^+', 'H3^+', 'O', 'HO^+',…` | structural | the observational constraint of the paper: the chemical formulas a molecule may have. A reaction whose products fall outside is not generated. An empty list removes the constraint and the closure grows very fast <br>*range:* the default is the observational constraint of figure 4; [] removes it, and then max_atoms must be small (3 gives 110 species, 4 truncates) |
+| `max_atoms` | `int` | `4` | structural | constraint N: atoms per molecular species <br>`1` … `12` · *range:* the published experiment uses N = 6, which gives the same network here |
+| `max_pairs_species` | `int` | `10` | structural | constraint es: lone pairs or radicals per species <br>`1` … `100` · *range:* the published experiment uses es = 10 |
+| `max_pairs_atom` | `int` | `7` | structural | constraint ep: lone pairs or radicals per atom <br>`1` … `20` · *range:* the published experiment uses ep = 7 |
+| `max_charge` | `int` | `1` | structural | largest absolute charge a species may carry; every molecule of the published network is neutral or singly charged, and without this bound the closure fills with species like O^6+ (a Chemart addition, see decisions) <br>`0` … `10` |
+| `max_species` | `int` | `200` | structural | species budget of the closure; reactions that would exceed it are dropped and the status becomes truncated <br>`1` … `5000` |
+| `densities` | `list` | `[1000.0, 0.44]` | population | initial density of each initial species, in cm^-3, one per entry of `initial`; it is the network's initial_state and, for method=kinetic, the proportion in which the molecules are drawn <br>*range:* Duley & Williams (1984): particle density n = 1000 cm^-3 with n(O) = 0.44 cm^-3, so n(H) = 1000 cm^-3 |
+| `molecules` | `int` | `400` | population | method=kinetic: number of molecules simulated; the initial species get at least one each, otherwise a share proportional to their density <br>`2` … `100000` · *range:* the paper calls it Mp and does not publish its value |
+| `steps` | `int` | `2000` | population | method=kinetic: number of SSA reaction events <br>`1` … `1000000` · *range:* the paper calls it Mc and does not publish its value |
+
+## Published phenomena
+
+What the literature reports this model produces. Whether the generator reproduces each one is recorded in the decisions below.
+
+- the eleven interstellar classes grow the H/O network of the 2005 paper's figure 4 from H and O alone: H, H+, H2, H2+, H3+, O, OH+, OH, H2O, O2, OH2+ and OH3+, plus the free electron
+- reactions are isomerisations of ensembles: every reaction conserves the atoms of each element, the electrons and the total charge
+- ionic bonding gives the paper's representation of H2+ as H+ . H and of H3+ as H+ . H2, reached by ion-molecule exchange (H2+ + H2 -> H3+ + H, table 2 object 32)
+- kinetics prunes the network: under MCNG only a handful of reactions fire and H and H2 are the dominant species (figures 5 and 6)
+- without the observational constraint the formal generator explodes combinatorially, the drawback the paper reports for formal techniques
+- [505] reports that the molecule set partitions into two mirror categories of reaction networks, a candidate explanation for homochirality - NOT reproduced here (that paper is inaccessible)
+
+## Sources
+
+- Banzhaf, W. & Yamamoto, L. (2015). Artificial Chemistries, section 18.3.2: molecules as graphs of atoms, charged molecules and covalent and ionic bonds modelled explicitly, reactions as isomerisations between ensembles of molecules, stochastic kinetics and coevolutionary dynamics, and the reported partition of the molecule set into two categories of reaction networks (homochirality).
+- Lenaerts, T. & Bersini, H. (2009). A synthon approach to artificial chemistry. Artificial Life 15(1):89-103, doi:10.1162/artl.2009.15.1.15106 (book [505]). NOT OBTAINED: closed access at MIT Press, no open version found (Unpaywall, OpenAIRE, CORE, Semantic Scholar, fatcat/scholar.archive.org, ULB DI-fusion and VUB VUBIR all negative or login-walled). Only its abstract was available, via PubMed 18855566: 'A coevolutionary model ... that incorporates the logical structure of constitutional chemistry and its kinetics on the one hand and the topological evolution of the chemical reaction network on the other hand ... two illustrative examples are provided.'
+- Lenaerts, T. & Bersini, H. (2005). On the generation and analysis of complex reaction networks in interstellar chemistry. IRIDIA, Universite Libre de Bruxelles (ULB DI-fusion handle 2013/243612). THE SOURCE THIS GENERATOR IS BUILT FROM: the same authors' description of the same Synthon framework - the synthon S(A) = <W, A, R, E> and its extension with explicit electrons and ionic bonds (section II), the reaction graph G_T with psi: E -> {-1, +1} and the radiative association / charge transfer / dissociative recombination graphs of figure 3, CANGEN canonicalisation, the DNG and MCNG generators and the constraints N, es, ep (section III), table 1 (the eleven interstellar reaction classes with their rate constants), table 2 (generated reaction objects), the figure 4 caption (the molecule translation H=H+, *H=H, HH=H2, H.*H=H2+, H.HH=H3+, *O*=O, HO=OH+, *OH=OH, HOH=H2O, *OO*=O2, *O(H)H=OH2+, HO(H)H=OH3+, *=e-) and the figure 5/6 MCNG experiment (n(H) = 1000 cm^-3, n(O) = 0.44 cm^-3; H and H2 dominate). https://iridia.ulb.ac.be/bersini/research/lenaerts_and_bersini.pdf
+- Koca, J. (1988). A mathematical model of the synthon. Collection of Czechoslovak Chemical Communications 53:1007-1017, doi:10.1135/cccc19881007, and A graph model of the synthon, 53:3108-3118, doi:10.1135/cccc19883108. The model the framework extends: 'the term synthon is used to denote one or several molecules or their part(s) with free valences', the Family of Isomeric Synthons FIS(A), matrix operators for the elementary steps of electron reorganisation and the reaction distance. ABSTRACTS ONLY (pay-walled at cccc.uochb.cas.cz).
+- Ugi, I. et al. (1993). Computer assisted solution of chemical problems - the historical development and the present state of the art of a new discipline of chemistry. Angew. Chem. Int. Ed. Engl. 32:201-227, doi:10.1002/anie.199302011. The Dugundji-Ugi model that the Synthon model extends (isomerism lifted from molecules to ensembles of molecules, reactions as isomerisations, be-matrices, RGB and RGR reaction generators), used here as quoted and summarised in the 2005 paper. METADATA AND SECONDARY QUOTATION ONLY (closed access).
+- Duley, W. W. & Williams, D. A. (1984). Interstellar Chemistry, Academic Press, p. 143: the reaction classes and rate constants of table 1, used here exactly as that table prints them. CONSULTED ONLY THROUGH table 1 of the 2005 paper.
+- Weininger, D., Weininger, A. & Weininger, J. (1989). SMILES 2: algorithm for generation of unique SMILES notation. J. Chem. Inf. Comput. Sci. 29(2):97-101, doi:10.1021/ci00062a008. The canonicalisation the framework uses; Chemart canonicalises by invariant refinement plus a tie-breaking search, which is equivalent in effect for these small graphs.
+
+## Decisions
+
+Every gap, ambiguity or erratum in the sources, and how Chemart resolved it. Read this before quoting a number from this entry.
+
+- The Artificial Life 15(1) paper itself could not be obtained (see sources), so its two illustrative examples and its headline result - the partition of the molecule set into two mirror categories of reaction networks, the homochirality argument the book reports - are NOT reproduced and nothing in this entry claims them. Everything implemented comes from the authors' own 2005 description of the same framework, from Koca's and Ugi's abstracts, and from the book paragraph.
+- Virtual atoms (the set W, standing for functional groups not active in a reaction) are not implemented: none of the published reaction classes uses them.
+- Lone pairs are loops on an atom (a count), free electrons are explicit as the paper requires for radicals, and the free electron is the species e-. Charge is never stored, always derived: q = v - 2*lone_pairs - radicals - sum of covalent bond orders (Dugundji-Ugi), so 'HO::' is OH+ and 'HO::*' is OH.
+- Ionic bonds: the paper represents H2+ and H3+ as two disjoint parts of one molecule (H+ . H, H+ . H2) but gives no rule for when such a link may form. Chemart makes the link explicit and admits it only when a molecule has exactly one of them and it joins one positively charged part to one neutral part; the reaction rule is that a bond formed between two atoms is covalent when both carry an unpaired electron and ionic otherwise.
+- Cleavage is homolytic (or breaks an ionic link). Heterolytic cleavage would manufacture ion pairs out of neutral bonds, which none of the eleven published classes calls for, and it flooded the closure with species like H- and O^2- in testing.
+- Charge rearrangement (G5, ct) moves an unpaired electron only; splitting a lone pair to hand over one electron is an ionisation, which is what G1-G3 are for.
+- Physical guards that the papers do not state, added because the raw closure otherwise fills with chemically meaningless species (O^6+, O2^10+ were generated before they were added): an atom may not carry more unpaired electrons than the neutral free atom (H 1, O 2, N 3, C 4), an atom obeys the duet/octet (2*lone_pairs + radicals + 2*bond orders <= shell), and a species obeys max_charge (default 1; every molecule of the published network is neutral or singly charged).
+- The 'observational constraint' that the 2005 paper applied to figure 4 ('this constraint specifies which molecules are allowed in the system') is the `allowed` parameter, defaulting to the thirteen molecules of that figure's caption. Under it the closure is complete at 31 species and 161 reactions: the thirteen published molecules plus electronic isomers of them (same atoms and electrons, a different lone-pair/radical split), which are distinct synthons in the Dugundji-Ugi sense. With allowed=[] the generator reproduces the combinatorial explosion the paper complains about.
+- Table 2 lists 'H+ + H -> H + H+' (object 8) as a reaction object of the charge-rearrangement class. As a stoichiometric reaction it is the identity, so it is not part of the network; the test checks it instead at the synthon level, where class G5 does fire on that pair. Table 2's object 56, printed as 'H3+ + H -> H2 + H+ H+' in the extracted text, is ambiguous (the digits and signs did not survive extraction) and is not used as a test.
+- Rates are table 1's constants verbatim, as mass-action k, with the table's units recorded in the rate dict and in extras.reaction_classes (unimolecular classes are s^-1, bimolecular cm^3 s^-1). The grain of G11 is not modelled as a species: its density is folded into the published constant, as in Duley & Williams. When several classes give the same stoichiometric reaction their constants are summed and extras.reaction_classes_used names them.
+- G1 and G2 are the same transformation and differ only in whether the reactant is a single atom or a molecule, as table 1 prints them; G10 is table 1's H2-specific photodissociation and G9 covers every other molecule.
+- Kinetics: Gillespie's SSA (the paper's choice) in molecule counts with volume 1 cm^3, so counts and the paper's cm^-3 densities coincide; the initial molecules are apportioned from `densities` with at least one of each, since n(O) = 0.44 would otherwise round to zero. Mc (steps) and Mp (molecules) are not published, so they are parameters.
+- templates=fig3 carries no rates (figure 3 publishes none), so those reactions have rate None and method=kinetic refuses that set rather than inventing constants.
+- v1 parameters dropped: atom_types (matrix) is the element table, charge_model (callable) is the Dugundji-Ugi charge bookkeeping, and rate_model (callable) is the published per-class rate constants. The v1 entry's arity 2 became [1, 2]: cosmic-ray ionisation and photodissociation are unimolecular.
+
+## Notes
+
+The module exports Mol, atom, molecule, ground_radicals, FIGURE_4, INTERSTELLAR, FIG3 and the reaction-class machinery (_outcomes), so reaction objects can be inspected class by class. Species carry their canonical graph code as both id and structure; extras.formulas, extras.charges and extras.electrons translate them, and extras.conservation holds one vector per element plus electrons and charge.
+
+---
+
+*Specification: `catalog/chemistries/synthon.yaml` · generator: `chemart/chemistries/synthon.py` · tests: `tests/chemistries/test_synthon.py`*

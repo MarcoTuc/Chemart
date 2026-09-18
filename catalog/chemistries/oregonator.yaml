@@ -2,6 +2,14 @@ chemistries:
 
 - id: oregonator
   name: Oregonator (Belousov-Zhabotinsky)
+  intuition: >
+    The reduced model of the Belousov-Zhabotinsky reaction - a real chemical
+    oscillator, not an invented one. Five reactions couple an autocatalytic
+    species, an inhibitor and an oxidised metal ion, with two reactants
+    buffered; the autocatalysis fires, exhausts itself, regenerates the
+    inhibitor and waits. Add diffusion and it becomes an excitable medium
+    supporting target patterns and spiral waves, which is the basis of
+    reaction-diffusion computing.
   origin: "Field & Noyes, 1974"
   book: "19.3.3"
   refs: ["[276]", "[9]", "[13]", "[813]", "[857]"]

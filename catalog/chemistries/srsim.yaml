@@ -2,6 +2,15 @@ chemistries:
 
 - id: srsim
   name: SRSim (rule-based spatial simulator)
+  intuition: >
+    Rule-based chemistry that refuses to forget geometry. Molecules are
+    spheres carrying binding sites at fixed positions, diffusing in three
+    dimensions, and rules are written over patterns as in any rule-based
+    language - but a bimolecular rule fires only when the two sites are
+    actually close enough and correctly oriented. Geometry therefore decides
+    which complexes can exist at all: change a monomer's binding angle and you
+    get rods instead of rings. The species set is never enumerated, only
+    explored.
   aliases: ["spatial rule-based modelling", "BNGL + LAMMPS"]
   origin: "Gruenert & Dittrich, 2010-2013"
   book: "18.3.3"

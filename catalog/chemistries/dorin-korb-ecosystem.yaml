@@ -2,6 +2,15 @@ chemistries:
 
 - id: dorin-korb-ecosystem
   name: Dorin & Korb virtual ecosystem chemistry
+  intuition: >
+    An ecosystem whose bookkeeping goes all the way down to atoms. Square
+    atoms drift on a grid and bond covalently; each bond type stores or
+    releases a definite energy, and four catalysts make or break specific
+    bonds - one chlorophyll-like catalyst fixes sunlight into an A-B 'sugar'
+    bond, others decompose organic and inorganic matter. Because the atom
+    inventory is closed and energy is tracked exactly, a trophic structure of
+    producers and decomposers appears from conservation alone rather than
+    being modelled.
   origin: "Dorin & Korb, 2007"
   book: "8.2.3"
   refs: ["[240]", "doi:10.1007/978-3-540-74913-4_11", "https://bridges.monash.edu/articles/report/Building_Virtual_Ecosystems_from_Artificial_Chemistry/20365353"]

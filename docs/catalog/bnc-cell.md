@@ -1,0 +1,103 @@
+# BNC (bond-number chemistry) cell model
+
+`bnc-cell` · *Hintze & Adami, 2008*
+
+Molecules built from a single rule: an atom labelled n carries exactly n bonds. Atoms 1, 2 and 3 therefore chain into linear molecules with single, double and triple bonds, and only 608 of them exist up to twelve atoms. A reaction cuts one bond in each of two molecules and swaps the tails, which stays legal exactly when both cut bonds had the same order. From that one constraint you get a recombination network of millions of reactions, and a cell model whose metabolism is a subnetwork of it.
+
+| | |
+|---|---|
+| **family** | systems-biology |
+| **kind** | generator |
+| **constructive** | no — fixed species set |
+| **fidelity** | `reconstructed` — built from the original papers listed below |
+| **book** | 18.3.1 |
+| **refs** | [384], [441], doi:10.1371/journal.pcbi.0040023 |
+| **provides** | `topology`, `stoichiometry`, `catalysts`, `rate-constants`, `mass-conservation`, `space`, `compartments`, `initial-state`, `sequence-structure-function` |
+
+## Molecules, reactions, reactor
+
+**S — molecules** (implicit): directed linear molecules over atoms 1, 2, 3 in which every atom carries exactly as many bonds as its numeral; bonds '-', '=', '#' (single, double, triple) follow from the atoms. 608 molecules up to 12 atoms, numbered M0 = 1-1, M1 = 2=2, M2 = 3#3, M3 = 1-2-1, ... M607 = 2=3-3=3-3=3-3=3-3=3-3=2; the smallest 53 (all molecules of up to 7 atoms) are precursors. In cell mode also external copies X_out and protein species (import_k, export_k, enzyme_k)
+
+**R — reactions** (implicit, arity [2, 3]): Recombination A + B -> A' + B': cut one bond in each reactant and swap the tails (1-2|2-1 + 2=3|3=2 -> 1-2-3=2 + 2=3-2-1). The products obey the bond rule exactly when both cut bonds have the same order; products longer than max_length are excluded. Cell mode: A + B + E -> A' + B' + E for each enzyme E, X_out + I -> X + I for each import protein, X + O -> X_out + O for each export protein.
+
+**A — reactor**: lattice-2d, ode
+ · *dilution:* 2D chemostat of 1,000 cells, 1 of 16 removed per update; precursors diffuse from constantly replenished sources and exported molecules are removed every update; a cell divides when it holds enough metabolites
+
+## What you get
+
+```python
+net = chemart.generate_network("bnc-cell", seed=1)
+```
+
+```
+bnc-cell: 87 species, 11814 reactions, status=complete
+provides: mass-conservation, stoichiometry, topology
+seed: 1
+extras: conservation, fitness, precursors, reaction_space
+```
+
+First reactions:
+
+```
+1-1 + 1-2-2-1 -> 2 1-2-1
+1-1 + 1-2-3=2 -> 1-2-1 + 1-3=2
+1-1 + 2=3-2-1 -> 1-2-1 + 2=3-1
+1-1 + 2=3-3=2 -> 1-3=2 + 2=3-1
+1-1 + 1-2-2-2-1 -> 1-2-1 + 1-2-2-1
+1-1 + 1-2-2-3=2 -> 1-2-1 + 1-2-3=2
+1-1 + 1-2-2-3=2 -> 1-2-2-1 + 1-3=2
+1-1 + 1-2-3=3-1 -> 1-2-1 + 1-3=3-1
+… and 11806 more
+```
+
+## Parameters
+
+| name | type | default | role | what it does |
+|---|---|---|---|---|
+| `mode` | `enum` | `chemistry` | structural | chemistry: every valid recombination reaction among molecules up to max_length (topology only); cell: the metabolic network of one cell's proteins, with eq. 3 kinetics for the enzymes <br>one of `chemistry`, `cell` |
+| `max_length` | `int` | `8` | structural | longest molecule in atoms <br>`2` … `12` · *range:* the paper uses 12 (608 molecules); in chemistry mode 8 gives 87 molecules and 11,814 reactions, 10 gives 132,910, 12 gives 1,287,442 (slow) |
+| `n_precursors` | `int` | `53` | population | the first n molecules in the paper's order are precursors supplied by the environment (53 in the paper, exactly the molecules of up to 7 atoms); the rest are metabolites with fitness weight i^2/608^2 (eq. 5) <br>`0` … `608` |
+| `enzymes` | `int` | `3` | structural | cell mode: number of catalytic proteins, each specific to one reaction drawn uniformly from the ordered cleavage pairs (ignored when proteins is given) <br>`0` … `5000` · *range:* the ancestral genome has 3 catalytic genes; the network of Figure 5 has 534 genes |
+| `importers` | `int` | `1` | structural | cell mode: number of import proteins, each specific to a uniformly drawn precursor (ignored when proteins is given) <br>`0` … `5000` · *range:* the ancestral genome has 1 |
+| `exporters` | `int` | `1` | structural | cell mode: number of export proteins, each specific to a uniformly drawn molecule (ignored when proteins is given) <br>`0` … `5000` · *range:* the ancestral genome has 1 |
+| `proteins` | `list` | `` | structural | cell mode: explicit proteins 'import X', 'export X' or 'enzyme A-head\|A-tail + B-head\|B-tail' (the cut bond written as '\|'); when non-empty they replace the random draw. Expression levels and affinity domains are still drawn at random <br>*range:* Figure 1: ['import 1-2-1', 'import 1-2-2-1', 'enzyme 1-2\|1 + 1\|2-2-1', 'export 1-1'] |
+
+## Published phenomena
+
+What the literature reports this model produces. Whether the generator reproduces each one is recorded in the decisions below.
+
+- 608 valid molecules up to 12 atoms, 53 of them precursors (up to 7 atoms)
+- about 5 million legal recombination reactions (5,020,279 in the paper)
+- import/transform/export metabolic pathways emerge (Figure 1)
+- evolved networks are approximately scale-free (functional degree exponent 2.53, substrate participation exponent 2.23) and small-world
+- dynamic environments give slower-evolving, less modular but more environmentally robust networks, contradicting [441], probably because the changes there are systematic rather than random
+- synthetic lethal pairs lie within modules; knockdown suppressor pairs straddle modules
+
+## Sources
+
+- Hintze, A. & Adami, C. (2008). Evolution of complex modular biological networks. PLoS Computational Biology 4(2): e23. doi:10.1371/journal.pcbi.0040023. Results (Structure of the Model), Methods (genome code, affinity score, eqs. 1-6), Figures 1 and 11. https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.0040023
+- Hintze & Adami (2008), Text S1 / Table S1 'Organization of a 72 bp gene' (start 0-3, expression 4-7, type 8-11, specificity 12-23, four affinity domains 24-71). https://doi.org/10.1371/journal.pcbi.0040023.st001
+
+## Decisions
+
+Every gap, ambiguity or erratum in the sources, and how Chemart resolved it. Read this before quoting a number from this entry.
+
+- Molecules are directed strings: the paper lists 1-3=2 and 2=3-1 as M4 and M5, and only this reading gives 608 molecules up to 12 atoms. The order M0, M1, ... is by length, then lexicographic on the atom string, which reproduces M0-M5 and M607 of the Methods. The triple bond of M2 (a garbled glyph in the PDF) is written '#'.
+- The 53 'smallest' precursors are the first 53 molecules in that order, which are exactly all molecules of up to 7 atoms.
+- Reactions: a cut bond is replaced by the swapped tail, so products are valid iff the two cut bonds have the same order (this also reproduces book eq. 18.21 and the reactions of Figures 1 and 11). Counting ordered (A cut, B cut) pairs with products of at most 12 atoms that differ from the reactants gives 5,020,280, one more than the paper's 5,020,279 (no other natural convention comes close: all ordered pairs 6,028,545, unordered 2,510,140, distinct reactions 1,287,442); the paper's number is probably the largest 0-based index. Chemistry mode returns distinct reactions (cut pairs giving the same A + B -> A' + B' are merged); extras.reaction_space gives both counts.
+- The book's import example '12321000000 transports 1-2-3=2-1' is wrong twice: 1-2-3=2-1 breaks the bond rule, and the paper's code is 123321000000, i.e. molecule 1-2-3=3-2-1. The third reaction of Figure 11 (1-2-2-3=3-3=2 + 1-2-3=3-2-3=3-2-2-3=2 > 1-2-2-3=3-2-3=2 + 1-2-3=3-2-3=2-3=2) loses an atom and has an invalid product, so it is a typo; its first two reactions and imports are valid.
+- The mapping of the 4^12 reaction specificities onto the legal reactions, the conversion of the 4-base expression code to a number in [0, 1] and the start-codon/type decoding of a raw genome are not published, so cell mode does not decode nucleotide genomes. It builds a cell from proteins directly: an enzyme's reaction is drawn uniformly from the ordered cleavage pairs (the paper's map guarantees a legal reaction but its distribution is unknown), an importer's target uniformly among precursors, an exporter's among all molecules, expression levels from U(0, 1), and each 12-site affinity domain uniformly from {0,1,2,3}^12. These draws are Chemart choices.
+- Affinity follows the Methods: a molecule's 12 sites are its atoms as 2-bit values padded with 00, f is the value of the bitwise EQUAL of site and domain, D = 1 - sqrt(sum f^2 / 108) (1 for the complementary domain of the paper's example, 0 for an identical one). An enzyme's A(j) averages D over its four domains matched to A, B, A', B' in that order (eq. 4), with A' = A's head + B's tail and B' = B's head + A's tail (the paper does not say which product is A'; Figure 1 lists them the other way round); a transporter averages its four domains against its one target.
+- Kinetics (eq. 3): v_j = [M_l][M_m] A(j) [P_j] / (kout_l kout_m) is exact mass action with the enzyme on both sides and k = A(j) / (kout_l kout_m). [P_j] is taken to be the protein's expression level, and proteins are held constant (extras.buffered, initial_state). kout_l, 'the number of edges leaving molecule l', is counted as the number of proteins that take internal l as input (enzymes consuming it and its exporters).
+- Transport has no published rate law, so import and export reactions carry rate None; their affinity and expression are in extras.proteins. Export produces X_out, listed in extras.removed_every_update (the paper removes exported molecules every update), so atom counts stay conserved by every reaction. The precursor leak at 1e-6 of the outside concentration, the diffusion profile of eq. 1 and the three environments are recorded in extras.compartments and extras.space; source concentrations are not published, so no initial state is given for external precursors.
+- The ancestral cell has five genes by the Results text (two fitness-producing reactions, one non-fitness reaction, one import, one export), which sets the defaults 3/1/1; Figure 11 instead shows three reactions and two imports (two in overlapping reading frames) and no exporter.
+- The evolutionary and spatial simulation (Wright-Fisher selection on fitness eq. 6, mutation rate 1 per genome capped at 6, duplications/deletions of 4-512 bp with probability 1/16, division, diffusion on the grid, moving food sources) acts on populations of networks rather than defining one network, so it is not run; the v1 parameters environment, genome_alphabet, affinity_encoding, grid and food_set are dropped or replaced by n_precursors. The fitness weights phi(M_i) of eq. 5 are given in extras.fitness.
+- constructive is false: the molecule space is finite and enumerated up front. flow is not claimed because the chemostat's diffusion and removal are not expressed as inflow/outflow of the network.
+
+## Notes
+
+The chemistry is the recombination network of mode chemistry; mode cell gives the metabolic network of one cell (proteins, transport and eq. 3 kinetics), the unit that the paper evolves and analyses. The functional, metabolic and protein-protein graphs of Figure 1 can all be read off a cell network.
+
+---
+
+*Specification: `catalog/chemistries/bnc-cell.yaml` · generator: `chemart/chemistries/bnc_cell.py` · tests: `tests/chemistries/test_bnc_cell.py`*

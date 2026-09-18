@@ -2,6 +2,14 @@ chemistries:
 
 - id: gamma
   name: Gamma / gamma-calculus
+  intuition: >
+    The language that made multiset rewriting a programming paradigm. A
+    program is a set of rules of the form 'pick n elements satisfying this
+    condition and replace them with these', and the elements are just values
+    in a bag. Computing the maximum of a multiset is one rule: take any two,
+    discard the smaller. There are no rates and no time, only the stable state
+    - and that state is the answer regardless of the order the comparisons
+    happened in.
   aliases: ["general abstract multiset manipulation", "chemical reaction model", "programming by multiset transformation"]
   origin: "Banatre & Le Metayer, 1986 (INRIA RR-566), 1990, 1993; gamma-calculus: Banatre, Fradet & Radenac, 2004"
   book: "9.2"

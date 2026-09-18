@@ -2,6 +2,14 @@ chemistries:
 
 - id: okamoto-switch
   name: Okamoto's biochemical switch
+  intuition: >
+    A biochemical flip-flop. Two enzyme cofactors interconvert, each
+    conversion driven by one of two input-derived substrates, so whichever
+    input dominates pushes the pair into the corresponding state and holds it
+    there. The result is bistability with a sharp transition: the outputs swap
+    within seconds of the inputs crossing, and how fast depends on how quickly
+    inputs are converted. An early demonstration that chemistry can hold a
+    bit.
   origin: "Okamoto, Sakai & Hayashi, 1987-1993"
   book: "17.4.1"
   refs: ["[632]", "[633]", "[634]", "[635]", "[631]", "[386]", "[387]", "[539]"]

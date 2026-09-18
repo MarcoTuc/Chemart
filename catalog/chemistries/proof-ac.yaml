@@ -2,6 +2,14 @@ chemistries:
 
 - id: proof-ac
   name: Artificial chemistry as a proof search system
+  intuition: >
+    A theorem prover as a chemistry. Molecules are logical clauses, and a
+    collision is one resolution step: if a literal in one clause and a negated
+    literal in the other unify, the resolvent is produced. Because resolution
+    is sound every product is a logical consequence of its parents, and
+    because it is refutation-complete, feeding an unsatisfiable set into the
+    reactor eventually produces the empty clause. Proof search becomes a
+    stochastic, parallel, collision-driven process with no search strategy.
   aliases: ["RESAC", "resolution-based artificial chemistry"]
   origin: "Busch & Banzhaf, 2003; Busch, 2004 (idea: Fontana & Buss, 1996)"
   book: "16.5"

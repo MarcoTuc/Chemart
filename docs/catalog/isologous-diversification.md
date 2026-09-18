@@ -1,0 +1,123 @@
+# Isologous diversification
+
+`isologous-diversification` · *Kaneko & Yomo, 1994-1999; Furusawa & Kaneko, 1998-2006*
+
+*Also known as:* *Kaneko-Yomo cell differentiation model*, *intra-inter dynamics*
+
+Differentiation with no genetic switch and no positional signal. Every cell runs the same internal catalytic network with oscillatory dynamics and exchanges chemicals with a shared medium. Below a threshold number of cells they oscillate in unison and divide together; past it the oscillations lose synchrony, cells cluster by phase, and their average chemical compositions drift apart into distinct, stable types that daughters then inherit. Identical cells become different because the coupled dynamics stops being stable, not because anything switched.
+
+| | |
+|---|---|
+| **family** | systems-biology |
+| **kind** | generator |
+| **constructive** | no — fixed species set |
+| **fidelity** | `reconstructed` — built from the original papers listed below |
+| **book** | 18.5, 18.6 |
+| **refs** | [301], [302], [303], [304], [840], [345], [658] |
+| **provides** | `topology`, `stoichiometry`, `catalysts`, `rate-constants`, `compartments`, `initial-state` |
+
+## Molecules, reactions, reactor
+
+**S — molecules** (explicit): k + 1 chemicals inside every cell: a source (nutrient) X0 and X1..Xk, plus the division factor DF that the consumed chemicals are turned into; the same chemicals also exist in the shared medium
+
+**R — reactions** (explicit, arity 2): Catalytic paths inside a cell (Con(m, l, j) = 1): Xm + Xj -> Xl + Xj at e1 x(j) x(m) / (1 + x(m)/x_M), usually autocatalytic (j = l, so Xm + Xl -> 2 Xl); the source feeds every chemical, X0 + Xl -> 2 Xl at e0 x(0) x(l); chemicals with a path to the division factor decay, Xl -> DF at gamma x(l). Cells exchange every chemical with the medium by active transport p (sum_l x(l)) X(m) and diffusion D (X(m) - x(m)).
+
+**A — reactor**: ode, compartments
+ · *dilution:* nutrient flows into the medium at f and washes out at D_out; a cell divides when the accumulated division factor passes R, halving every concentration, and dies (releasing its chemicals into the medium) when sum_l x(l) < S
+
+## What you get
+
+```python
+net = chemart.generate_network("isologous-diversification", seed=1)
+```
+
+```
+isologous-diversification: 10 species, 36 reactions, status=complete
+provides: catalysts, compartments, initial-state, rate-constants, stoichiometry, topology
+seed: 1
+extras: analysis, compartments, interaction_law, reaction_network
+```
+
+First reactions:
+
+```
+X0 + X1 -> 2 X1  [mass-action k=1.0]
+X0 + X2 -> 2 X2  [mass-action k=1.0]
+X0 + X3 -> 2 X3  [mass-action k=1.0]
+X0 + X4 -> 2 X4  [mass-action k=1.0]
+X0 + X5 -> 2 X5  [mass-action k=1.0]
+X0 + X6 -> 2 X6  [mass-action k=1.0]
+X0 + X7 -> 2 X7  [mass-action k=1.0]
+X0 + X8 -> 2 X8  [mass-action k=1.0]
+… and 28 more
+```
+
+## Parameters
+
+| name | type | default | role | what it does |
+|---|---|---|---|---|
+| `n_chemicals` | `int` | `8` | structural | k, the number of intracellular chemicals besides the source X0 <br>`2` … `64` · *range:* the paper uses k = 8, 16, 32 and 64 |
+| `connections` | `int` | `3` | structural | outgoing catalytic paths per chemical; too few give a fixed point, too many a winner-takes-all state, and only a medium number oscillates <br>`1` … `8` · *range:* 2 to 6 in the paper; Fig. 5a uses 3, Fig. 5b uses 2 |
+| `autocatalytic` | `bool` | `True` | structural | make every path autocatalytic, i.e. catalysed by its own product (j = l), as in the paper's networks (appendix 2); otherwise the catalyst is drawn at random |
+| `paths` | `list` | `` | structural | the reaction network given explicitly as triples [m, l, j] (the reaction from chemical m to l catalysed by j, 1-based); empty means draw it at random with `connections` paths per chemical |
+| `n_division_paths` | `int` | `4` | structural | how many chemicals have a path to the division factor (P(l) = 1), drawn at random; the paper marks a subset of the chemicals and notes that differentiation is enhanced when it is not all of them <br>≥ `0` |
+| `network_attempts` | `int` | `4` | structural | how many random networks to draw, keeping the first whose single cell oscillates in its medium - the selection the paper itself makes, since only a minority of random networks oscillate; 1 takes the first draw without screening it <br>`1` … `64` |
+| `enzyme` | `enum` | `michaelis-menten` | kinetic | the catalysed term: e1 x(j) x(m) / (1 + x(m)/x_M) as in Kaneko & Yomo 1997 eq. 1, or the quadratic enzyme effect e1 x(m) x(j)^2 of Kaneko & Yomo 1998 eq. 2, which is exactly mass action (Xm + 2 Xj -> Xl + 2 Xj) <br>one of `michaelis-menten`, `quadratic` |
+| `e0` | `float` | `1.0` | kinetic | coefficient of the paths from the source chemical, e0 x(0) x(l) <br>≥ `0` |
+| `e1` | `float` | `1.0` | kinetic | coefficient of every catalysed path, identical for all paths as in the paper <br>≥ `0` |
+| `gamma` | `float` | `0.2` | kinetic | rate at which a chemical with P(l) = 1 is consumed into the division factor <br>≥ `0` |
+| `x_M` | `float` | `10.0` | kinetic | Michaelis-Menten constant of the catalysed paths; the reaction saturates in the substrate x(m) <br>≥ `0.0001` |
+| `transport` | `float` | `10.0` | kinetic | p, the active-transport coefficient: a cell takes up p (sum_l x(l)) X(m) of each chemical, so a more active cell takes up more <br>≥ `0` |
+| `diffusion` | `float` | `0.02` | kinetic | D, the diffusion coefficient through the membrane, D (X(m) - x(m)) <br>≥ `0` · *range:* the tumour-cell simulation of Fig. 15 uses D = 0.2 |
+| `medium_volume` | `float` | `100.0` | population | V, the volume of the medium in units of one cell; it dilutes what the cells take from and release into the medium, and with f and X0 it fixes how much nutrient the whole society lives on <br>≥ `0.0001` · *range:* 1000 in the 1997 paper, 100 in the 1998 one; V = 1000 puts a handful of cells far above the saturation constant x_M, and the paper's own concentration scale is only reached at its 32-64 cells |
+| `flow` | `float` | `0.005` | kinetic | f, the rate at which the source chemical flows into the medium, f (X0 - X(0)) <br>≥ `0` |
+| `washout` | `float` | `0.005` | kinetic | D_out, the first-order washout of every non-source chemical from the medium <br>≥ `0` |
+| `nutrient` | `float` | `40.0` | population | X0, the external concentration of the source chemical that the medium is fed from <br>≥ `0` · *range:* 40 in the simulations of Figs. 6-14, 10 in those of Figs. 18-21, 5 in Fig. 22 |
+| `division_threshold` | `float` | `100.0` | population | R, the division factor a cell must accumulate before it divides (eq. 8); lowering it makes cells divide sooner and suppresses differentiation <br>≥ `0.0001` · *range:* 2000 in the main simulation (Figs. 6-14), 500 in Fig. 15 and 100 in Figs. 18-21 |
+| `death_threshold` | `float` | `0.01` | population | S, the starvation threshold: a cell whose chemicals sum to less than S dies and releases them into the medium (eq. 9) <br>≥ `0` · *range:* 0.05 in the main simulation, 0.01 in the simulations with cell death |
+| `split_noise` | `float` | `0.001` | stochastic | epsilon, the imbalance at division: the daughters get (1/2 + eps) and (1/2 - eps) of every concentration, eps uniform over [-split_noise, split_noise] <br>`0` … `0.5` |
+| `max_cells` | `int` | `8` | population | the simulation stops when this many cells exist; 1 integrates a single cell in its medium without dividing (the paper's Fig. 4) <br>`1` … `256` · *range:* the paper's runs reach 32, 64 and 300 cells |
+| `t_max` | `float` | `300.0` | kinetic | the simulation also stops at this time; 0 builds the network without running the cell society <br>≥ `0` · *range:* the differentiation of the paper's main run is fixed around t = 400-900, and its longest runs reach t = 20000 |
+| `type_tolerance` | `float` | `0.1` | selection | two cells count as the same type when the Euclidean distance between their normalised average compositions (x(1)..x(k) divided by their sum) is below this <br>≥ `1e-06` |
+
+## Published phenomena
+
+What the literature reports this model produces. Whether the generator reproduces each one is recorded in the decisions below.
+
+- stage 1: up to a threshold number of cells, all cells oscillate synchronously and divide together, so the cell number runs 1, 2, 4, 8, ...
+- stage 2: beyond that number the oscillations lose synchrony and cells cluster by phase, while their temporal averages stay equal
+- stage 3: the temporal averages themselves separate into digitally distinct groups - the cell types - which differ in activity sum_l x(l) and in oscillation period
+- stage 4: the type is inherited by the daughter cells (recursivity: the mother-daughter return map of averaged compositions lies on the diagonal), i.e. the cells become determined
+- the chemicals present in tiny amounts are the ones whose differences trigger and mark the differentiation
+- cells that concentrate on few chemicals are more active and divide faster; with a large diffusion coupling a tumour-like type appears that loses recursivity
+- removing cells of one type restores the original type distribution, and a transplanted determined cell keeps its type
+
+## Sources
+
+- K. Kaneko & T. Yomo (1997). Isologous diversification: a theory of cell differentiation. Bulletin of Mathematical Biology 59(1):139-196, doi:10.1007/BF02459474. Preprint: arXiv:adap-org/9606002, https://arxiv.org/abs/adap-org/9606002 - the model (eqs. 1-9), the five stages of section 5, the parameters of the captions of Figs. 4, 6, 15 and 18, and appendix 1 (winner-takes-all)
+- K. Kaneko & T. Yomo (1998). Emergence of rules in cell society: differentiation, hierarchy, and stability. Bulletin of Mathematical Biology 60:659-687, doi:10.1006/bulm.1997.0034. Preprint: arXiv:adap-org/9802002, https://arxiv.org/abs/adap-org/9802002 - the quadratic-enzyme variant (eqs. 1-3), the distance between cell types (eqs. 5-6), the cell-type automaton 0 -> {0, 1, 2}, 1 -> {3, 4, 5} and the statistics of oscillatory networks
+- C. Furusawa & K. Kaneko (1998). Emergence of multicellular organisms with dynamic differentiation and spatial pattern. Artificial Life 4(1):79-93 (the book's ref [301]; the spatial 2D-grid version, not implemented - no open copy was found)
+
+## Decisions
+
+Every gap, ambiguity or erratum in the sources, and how Chemart resolved it. Read this before quoting a number from this entry.
+
+- The book (18.5) describes the model only qualitatively, so it is reconstructed from Kaneko & Yomo (1997). Every term of the returned network is one term of their eq. (1): X0 + Xl -> 2 Xl at e0 x(0) x(l) for the source paths S(l) = 1, Xm + Xj -> Xl + Xj for each catalytic path Con(m, l, j), and Xl -> DF at gamma for the paths to the division factor P(l) = 1. All of this is checked against the equations in the tests.
+- The catalysed term e1 x(j) x(m) / (1 + x(m)/x_M) is a Michaelis-Menten form in the substrate multiplied by the catalyst concentration, which is not one of Chemart's rate laws. The rate is therefore mass action in k = e1 (the law in the dilute limit x(m) << x_M) with the saturation recorded as the extra keys saturation, saturated_species and x_M. enzyme = quadratic selects the 1998 variant e1 x(m) x(j)^2, which IS exactly mass action (Xm + 2 Xj -> Xl + 2 Xj); the authors state that the form of the enzyme term is not essential to the scenario.
+- The division factor is not a named chemical in the paper ('we do not allocate it with a specific chemical'), only an integral. Chemart makes it the species DF, so that the paper's division condition (eq. 8) is exactly the concentration of DF accumulated since the cell's birth; DF feeds nothing back and is reset at every division.
+- The exchange with the medium (active transport, eq. 2; diffusion, eq. 3) and the medium's own equations (6)-(7) are not reactions of one cell's network: they couple a cell to the medium with the volume factor 1/V, which no stoichiometry can express. They are recorded in extras.interaction_law and are applied by the model that runs the cell society. inflow/outflow are not used, so the entry does not claim `flow`.
+- The paper's network (its Fig. 5) cannot be read off the figure, so the network is drawn from the seed: `connections` outgoing paths per chemical, autocatalytic (j = l) as the paper's appendix 2 prescribes, and `n_division_paths` chemicals with a path to the division factor. S(l) = 1 for every chemical, as the caption of Fig. 5 states. `paths` pins an explicit network instead.
+- Only a minority of random networks oscillate - about 5% of the 1998 paper's, 40% when the paths are autocatalytic - and the paper keeps only those: 'Only for medium number of reaction paths, non-trivial oscillations of chemicals appear as in Fig. 1. We use such network for our simulation' (1998, section 2.4; 1997, section 3 and appendix 2). network_attempts applies that selection: each candidate is run as a single cell in its medium with neither division nor death (the setting of the 1997 Fig. 4), and is kept if after a transient of 60 time units the most strongly varying chemical still swings by more than 5% of its mean over the next 20. The transient, the window and the 5% are Chemart's, since the paper only inspects the time series by eye. Chemart adds one condition of its own: the chemicals that stay active must feed the division factor (at least 0.1% of the cell's contents), because a cell that never reaches the division condition cannot show the scenario. extras.analysis reports whether the chosen network passed and how many draws it took.
+- The paper gives no initial condition and no time step. Chemart starts one cell with concentrations uniform in [0, 1) and a medium holding only the source at X0, and integrates the ODE adaptively (LSODA) with the divisions and deaths as terminal events, so no time step has to be invented.
+- Defaults are the parameters of the caption of Fig. 18 for R = 100 and S = 0.01 and of the caption of Fig. 6 for everything else, so that the default run takes seconds; the paper's R = 2000 (Figs. 6-14) is in `range` and needs a much longer run. max_cells, t_max, network_attempts and type_tolerance are Chemart's: the first three bound the run and the last makes the paper's visual grouping of averaged compositions (its Fig. 8) reproducible. The ODE is integrated with rtol = 1e-5, atol = 1e-7, which was checked against rtol = 1e-6 to give the same divisions.
+- How far the default run gets: it reproduces stage 1 (a screened network's single cell oscillates, then divides synchronously, so the cell number runs 1, 2, 4, 8 with the cells still identical) and the mechanisms the later stages rest on (the division and death conditions, the almost equal split, the amplification of the imbalance). Stages 2-4 need the paper's 32 to 300 cells, where one generated network costs minutes rather than seconds, so they are listed in `phenomena` but are not asserted by the tests; raising max_cells, t_max and division_threshold to the paper's values runs them.
+- Cell types are measured as the 1998 paper measures them (its eqs. 5-6): the Euclidean distance between the concentrations averaged since each cell's last division, grouped by single linkage. Those averages are normalised to their sum first, because while the population grows every cell's concentrations fall together (one nutrient flow feeds N cells) and only the composition is comparable across divisions; the 1998 model builds exactly that normalisation in (its eqs. 1-2), and each type's absolute activity sum_l x(l) is reported alongside its composition. A cell counts only once it has lived at least half as long as its mother did, since right after a division it holds half of her concentrations. extras.analysis reports the stage reached (1 synchronous, 2 phase clustering, 3 fixed differentiation, 4 inheritance), the types, and the recursivity of the mother-daughter return map (the paper's Fig. 12b).
+- The v1 parameters reaction_network and diffusion (typed `matrix`) become `paths` plus `connections`, and the per-chemical diffusion becomes one constant D, as in the paper. `adhesion` is dropped with the 2D grid: the cluster shapes, ring and stripe patterns of the book's Figs. 18.11 and 18.13 belong to the spatial model of Furusawa & Kaneko [301, 303], which is not implemented, so `space` is no longer claimed.
+
+## Notes
+
+The point of the model is that differentiation needs neither a positional gradient nor a genetic switch: identical cells with oscillatory internal dynamics, coupled only through a shared medium and dividing, separate into discrete types that their daughters inherit. Contrast french-flag, where the fate is read off an imposed morphogen gradient.
+
+---
+
+*Specification: `catalog/chemistries/isologous-diversification.yaml` · generator: `chemart/chemistries/isologous_diversification.py` · tests: `tests/chemistries/test_isologous_diversification.py`*

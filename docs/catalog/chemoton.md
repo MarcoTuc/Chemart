@@ -1,0 +1,91 @@
+# Chemoton
+
+`chemoton` · *Ganti, ~1952/1971*
+
+The classic hand-designed minimal cell, and still the clearest statement of what a cell needs. Three subsystems are coupled stoichiometrically: a metabolic cycle that turns nutrient into building blocks, a template that replicates using one of those blocks, and a membrane that grows from another. Because the couplings are exact, growth and division stay synchronised - the cell divides when its membrane has doubled. That tight coupling is also what makes it fragile, which is precisely why it is a good stress test.
+
+| | |
+|---|---|
+| **family** | origin-of-life |
+| **kind** | generator |
+| **constructive** | no — fixed species set |
+| **fidelity** | `reconstructed` — built from the original papers listed below |
+| **book** | 6.1.4; wet computing 17.4.1 |
+| **refs** | [305], [306], [204], [271], [604], [880], [949], [273], [159] |
+| **provides** | `topology`, `stoichiometry`, `catalysts`, `rate-constants`, `compartments`, `initial-state` |
+
+## Molecules, reactions, reactor
+
+**S — molecules** (explicit): A1..A5 (metabolic cycle), X (nutrient), Y (waste), V (template monomer), pV0..pV(N-1) (double-stranded templates by replication stage), T0 (membrane precursor), T* (activated precursor), T (membrane molecule), R (polycondensation by-product), S (membrane surface)
+
+**R — reactions** (explicit, arity [1, 2]): Metabolism A1 + X <-> A2 ; A2 <-> A3 + Y ; A3 <-> A4 + V ; A4 <-> A5 + T0 ; A5 <-> 2 A1. Templates pV0 + V <-> pV1 + R (only above [V]*) ; pV_r + V -> pV_(r+1) + R ; pV_(N-1) + V -> 2 pV0 + R. Membrane T0 -> T* ; T* + R <-> T ; T + S -> 2 S. Division when the surface doubles.
+
+**A — reactor**: ode, compartments
+ · *dilution:* cell division halves everything; volume Q = S^1.5
+
+## What you get
+
+```python
+net = chemart.generate_network("chemoton", seed=1)
+```
+
+```
+chemoton: 38 species, 40 reactions, status=complete
+provides: catalysts, compartments, initial-state, rate-constants, stoichiometry, topology
+seed: 1
+extras: buffered, compartments
+```
+
+First reactions:
+
+```
+A1 + X -> A2  [mass-action k=2.0]
+A2 -> A1 + X  [mass-action k=0.1]
+A2 -> A3 + Y  [mass-action k=100.0]
+A3 + Y -> A2  [mass-action k=0.1]
+A3 -> A4 + V  [mass-action k=100.0]
+A4 + V -> A3  [mass-action k=0.1]
+A4 -> A5 + T0  [mass-action k=100.0]
+A5 + T0 -> A4  [mass-action k=0.1]
+… and 32 more
+```
+
+## Parameters
+
+| name | type | default | role | what it does |
+|---|---|---|---|---|
+| `N` | `int` | `25` | structural | template length: monomers bound per replication round, i.e. the number of stages pV0..pV(N-1) <br>`2` … `1000` |
+| `X` | `float` | `100.0` | population | nutrient concentration outside the cell, held constant <br>≥ `0` · *range:* the paper also uses 10 and 1 |
+| `V_threshold` | `float` | `35.0` | kinetic | polycondensation threshold [V]*; template initiation pV0 + V -> pV1 + R only runs above it <br>≥ `0` |
+| `rates` | `dict` | `` | kinetic | overrides of the paper's rate constants by name (k1..k10 forward, k1r..k6r, k9r reverse); unlisted constants keep the paper's values |
+
+## Published phenomena
+
+What the literature reports this model produces. Whether the generator reproduces each one is recorded in the decisions below.
+
+- synchronised growth and division
+- replication time 0.455 at [X] = 100, 0.65 at [X] = 10, 2.4 at [X] = 1 (Fernando & Di Paolo)
+- some robustness to noise and to food shortage
+- differentiation into 'species'
+
+## Sources
+
+- Fernando, C. & Di Paolo, E. (2004). The Chemoton: a model for the origin of long RNA templates. Proc. Artificial Life IX. Model I, eqs. 1-14 and appendix. https://ezequieldipaolo.net/wp-content/uploads/2019/09/chemoton.pdf
+- Csendes, T. (1984). A simulation study on the chemoton. Kybernetes 13:79-85 (source of the metabolic equations and rate constants reused above)
+
+## Decisions
+
+Every gap, ambiguity or erratum in the sources, and how Chemart resolved it. Read this before quoting a number from this entry.
+
+- The book describes the Chemoton only qualitatively. Reactions, rate constants (k1 = 2, k2 = k3 = k4 = 100, k5 = k6 = k7 = k8 = k9 = k10 = 10, k1r..k5r = 0.1, k6r = 1, k9r = 0.1) and initial conditions are model I of Fernando & Di Paolo (2004); each ODE term of their eqs. 1-14 is one mass-action reaction (checked in tests).
+- Template replication is represented by stage: pV_r is a double strand with r extra monomers bound, and binding the last monomer releases two pV0. Initiation only runs while [V] > [V]*; this gate is recorded in that reaction's rate as threshold_species/threshold, since it is not a rate law.
+- Nutrient X and waste Y are environmental concentrations held constant (extras.buffered; the paper sets [X] = 100, [Y] = 0.1). Volume Q = S^1.5 and division at doubled surface act on all concentrations rather than as reactions, so they are recorded in extras.compartments.
+- The book's description has T and T' swapped relative to the paper; this entry follows the paper (T0 precursor, T* activated, T membrane molecule). cycle_size (the paper's wheel is fixed at 5), rate_constants, X_influx and division_criterion are replaced by the parameters above.
+
+## Notes
+
+The classic hand-designed minimal cell. Its stoichiometric coupling is exactly what makes it fragile, which makes it a good test of any sensitivity-analysis tooling Chemart exports to.
+
+---
+
+*Specification: `catalog/chemistries/chemoton.yaml` · generator: `chemart/chemistries/chemoton.py` · tests: `tests/chemistries/test_chemoton.py`*

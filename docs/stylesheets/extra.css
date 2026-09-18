@@ -1,0 +1,71 @@
+/* Table handling.
+ *
+ * Material gives an unclassed Markdown table `display: inline-block` with
+ * `overflow: auto`, i.e. the table itself is a horizontal scroll box that sizes
+ * to its content. Its JavaScript additionally wraps tables in
+ * `.md-typeset__table` at runtime (the class is absent from the built HTML, so
+ * don't go looking for it there).
+ *
+ * Two things are needed to stop the scrollbar: make the table fill the content
+ * column instead of hugging its content, and let cells wrap — a table's
+ * minimum width is the sum of its columns' min-content widths, so one long
+ * unbreakable token is enough to force overflow on its own.
+ *
+ * The table-element rules below are the load-bearing ones; they work whether or
+ * not the JS wrapper is present. The wrapper rules that follow cover the
+ * runtime-wrapped case.
+ */
+
+.md-typeset table:not([class]) {
+  display: table;
+  width: 100%;
+}
+
+.md-typeset__table {
+  display: block;
+  width: 100%;
+}
+
+.md-typeset__table > table {
+  display: table;
+  width: 100%;
+}
+
+.md-typeset table:not([class]) th,
+.md-typeset table:not([class]) td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+
+/* Inline code is the usual culprit: a long species id or capability tag will
+ * otherwise hold a column open at its full width. */
+.md-typeset table:not([class]) code {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  padding: 0 0.2em;
+}
+
+/* Slightly tighter table type, so more fits before anything has to wrap.
+ * Material's own default here is 0.64rem; this is a deliberate nudge up for
+ * readability, traded against a little less content per line. */
+.md-typeset table:not([class]) {
+  font-size: 0.7rem;
+  line-height: 1.5;
+}
+
+.md-typeset table:not([class]) th {
+  white-space: nowrap;   /* headers are short; keep them on one line */
+}
+
+/* Give the first column (usually the name/link) room to breathe without
+ * forcing overflow. */
+.md-typeset table:not([class]) td:first-child {
+  font-weight: 500;
+}
+
+/* Wide content that genuinely cannot wrap — code blocks, diagrams — keeps its
+ * own scroll container. */
+.md-typeset pre > code {
+  overflow-x: auto;
+}

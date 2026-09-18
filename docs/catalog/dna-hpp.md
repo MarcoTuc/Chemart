@@ -1,0 +1,105 @@
+# Adleman's DNA Hamiltonian Path computation
+
+`dna-hpp` · *Adleman, 1994*
+
+*Also known as:* *Adleman's experiment*, *DNA computing of the directed HPP*, *TT-100*
+
+The experiment that started DNA computing. Each vertex of a graph gets a random 20-base code word and each edge an oligo spanning the two halves of the vertices it joins, so when everything is mixed the strands ligate into every path through the graph at once - massive parallelism from a spoonful of chemistry. The computation is then five filtering steps: amplify paths with the right endpoints, keep the right length, check each vertex is present, and read off what survives.
+
+| | |
+|---|---|
+| **family** | wet |
+| **kind** | wet |
+| **constructive** | yes — the species set grows at run time |
+| **fidelity** | `reconstructed` — built from the original papers listed below |
+| **book** | 19.3.1 |
+| **refs** | [24], [514], [370], [30], [31], doi:10.1126/science.7973651 |
+| **provides** | `topology`, `stoichiometry`, `mass-conservation`, `initial-state`, `sequence-structure-function` |
+
+## Molecules, reactions, reactor
+
+**S — molecules** (implicit): single-stranded DNA oligonucleotides, Species.structure carrying the sequence written 5' -> 3': the code word O_i of each vertex (a random 20-mer), its Watson-Crick complement Obar_i (the splint), the edge oligonucleotide O_{i->j} = 3' half of O_i + 5' half of O_j (all of O_i when i = v_in, all of O_j when j = v_out), and the partial and complete path duplexes P<v0>-<v1>-..., whose structure is the ligated sense strand
+
+**R — reactions** (implicit, arity 3): hybridisation and ligation of step 1: P(v0..vk) + Obar_vk + E_vk-v -> P(v0..vk,v). The splint Obar_vk bridges the junction, its 5' half pairing with the 3' 10-mer of the growing strand and its 3' half with the 5' 10-mer of the incoming edge oligonucleotide, so T4 ligase extends the path by one vertex. Ligation conserves nucleotides.
+
+**A — reactor**: well-stirred-multiset
+ · *dilution:* none inside the tube; the closure is cut off at max_path_vertices vertex slots per path, because a graph with a cycle has infinitely many walks
+
+## What you get
+
+```python
+net = chemart.generate_network("dna-hpp", seed=1)
+```
+
+```
+dna-hpp: 797 species, 769 reactions, status=truncated
+provides: initial-state, mass-conservation, stoichiometry, topology
+seed: 1
+extras: analysis, conservation, encoding, graph
+```
+
+First reactions:
+
+```
+E0-1 + Obar1 + E1-2 -> P0-1-2
+E0-1 + Obar1 + E1-3 -> P0-1-3
+E0-3 + Obar3 + E3-2 -> P0-3-2
+E0-3 + Obar3 + E3-4 -> P0-3-4
+E1-2 + Obar2 + E2-1 -> P1-2-1
+E1-2 + Obar2 + E2-3 -> P1-2-3
+E1-3 + Obar3 + E3-2 -> P1-3-2
+E1-3 + Obar3 + E3-4 -> P1-3-4
+… and 761 more
+```
+
+## Parameters
+
+| name | type | default | role | what it does |
+|---|---|---|---|---|
+| `graph` | `list` | `[[0, 1], [0, 3], [0, 6], [1, 2], [1, 3], [2, 1]…` | structural | the directed HPP instance as a list of [u, v] edges <br>*range:* default: the 14 edges of Adleman's fig. 1 |
+| `vertices` | `int` | `7` | structural | number of vertices; they are numbered 0..vertices-1 and every endpoint of graph must be one of them <br>`2` … `14` · *range:* Adleman: 7; Hartmanis' 200-city instance would need more than the weight of the Earth in DNA |
+| `v_in` | `int` | `` | structural | the start vertex; its code word O_v_in is one PCR primer and edges leaving it carry the whole code word <br>`0` … `13` |
+| `v_out` | `int` | `6` | structural | the end vertex; its complement Obar_v_out is the other PCR primer and edges entering it carry the whole code word <br>`0` … `13` |
+| `oligo_length` | `int` | `20` | structural | length of each vertex code word, split into two halves, so it must be even; it also fixes the gel band at oligo_length x vertices bp <br>`4` … `60` · *range:* Adleman: 20-mers, chosen so that a splint binds each edge over 10 base pairs and is stable at room temperature |
+| `sequences` | `dict` | `{'2': 'TATCGGATCGGTATATCCGA', '3': 'GCTATTCGAGC…` | structural | vertex code words given explicitly, keyed by vertex id as a string; the default holds the three 20-mers printed in fig. 2 of the paper, and every other vertex gets a random code word drawn from rng, as the paper did |
+| `max_path_vertices` | `int` | `7` | structural | longest path, in vertex slots, that the ligation closure keeps; the walk set of a cyclic graph is infinite, so the network is reported as truncated whenever a kept path could still be extended <br>`2` … `12` · *range:* the gel of step 3 discards everything but the paths of exactly `vertices` slots, so the default equals `vertices` |
+| `pmol` | `float` | `50.0` | population | amount of each edge oligonucleotide and of each splint in the ligation reaction; the initial state is given in pmol <br>≥ `0.0` · *range:* Adleman: 50 pmol of each, about 3e13 copies |
+
+## Published phenomena
+
+What the literature reports this model produces. Whether the generator reproduces each one is recorded in the decisions below.
+
+- on Adleman's fig. 1 graph the five steps leave exactly one molecule, the published Hamiltonian path 0->1->2->3->4->5->6
+- length selection keeps the 140 bp band: 7 vertices x 20-mer code words
+- graduated PCR prints a path: a vertex in slot k gives a band at 20 (k+1) bp, so the Hamiltonian path gives 40, 60, 80, 100, 120, 140 bp in successive lanes
+- paths that miss a vertex (0->1->3->4->5->6, 120 bp) or enter one twice (0->3->2->3->4->5->6, 140 bp) survive the earlier steps and are removed by the gel and by affinity purification respectively; both were seen in the paper's fig. 3B
+- removing the edge 2->3 leaves the graph without a Hamiltonian path, and so does moving the designated vertices to v_in = 3, v_out = 5
+- the number of oligonucleotides grows linearly with the edges, but the number of copies needed grows exponentially with the vertices (Hartmanis: 200 cities would need more than the weight of the Earth in DNA)
+
+## Sources
+
+- Adleman, L.M. (1994). Molecular computation of solutions to combinatorial problems. Science 266(5187):1021-1024. https://doi.org/10.1126/science.7973651 - fig. 1 (the graph and its unique Hamiltonian path), fig. 2 (the code words O2, O3, O4, the edge oligonucleotides O2->3, O3->4 and the splint Obar3), the five-step algorithm and steps 1-5 as carried out, the graduated-PCR band arithmetic on p. 1022, and notes 4-9 (protocols). Scan used: https://courses.cs.duke.edu/cps296.4/spring04/papers/Adleman94.pdf
+- Adleman, L.M. (1994). Author's preprint of the same paper, https://web.archive.org/web/20050206144827/http://www.usc.edu/dept/molecular-science/papers/fp-sci94.pdf - same text, used for the wording of the algorithm and the notes.
+- Banzhaf, W. & Yamamoto, L. (2015). Artificial Chemistries, section 19.3.1 and fig. 19.12 (MIT Press) - the prose description this entry comes from.
+- Hartmanis, J. (1995). On the weight of computations. Bulletin of the EATCS 55:136-138 - the exponential scaling quoted in extras.analysis.experiment.
+
+## Decisions
+
+Every gap, ambiguity or erratum in the sources, and how Chemart resolved it. Read this before quoting a number from this entry.
+
+- The book (19.3.1) describes the experiment in prose and states the encoding as e_ij = complement(v_i,in) complement(v_j,out), i.e. edges as complemented strands. That is not Adleman's encoding and its halves are swapped even in the book's own notation (v_i,in is defined as the half for incoming links, yet it is the source of the edge). The paper's own scheme is implemented: the edge oligonucleotide is the uncomplemented 3' half of the source code word followed by the 5' half of the target code word, and the vertex complements are the splints (fig. 2). The book's variant is an equally workable but different code.
+- Only three code words are published (O2, O3, O4 in fig. 2). They are the default of the `sequences` parameter; the code words of the other vertices are drawn uniformly from ACGT with rng, which is what the paper did ('each vertex was associated with a random 20-mer'). The published fig. 2 strands O2->3, O3->4 and Obar3 are therefore reproduced exactly by the generator, and the rest of the encoding is seed-dependent.
+- Edges leaving v_in carry the whole code word of v_in and edges entering v_out the whole code word of v_out, as the paper specifies; this is what makes a Hamiltonian path of n vertices exactly oligo_length x n = 140 bp long and lets O_v_in and Obar_v_out prime it.
+- Step 1 is the only step that makes molecules, so it is the reaction set: path + splint + edge -> longer path, a termolecular hybridisation-and-ligation event. Steps 2-5 select molecules and are recorded in extras.analysis (counts kept after each step, the gel band in bp, the bead order, the surviving paths and their graduated-PCR bands).
+- A graph with a cycle has infinitely many walks, so the ligation closure is cut off at max_path_vertices vertex slots and the network's status is `truncated`. With the default (7 = the number of vertices) nothing that step 3 keeps is lost, since the gel band selects exactly the paths with 7 vertex slots.
+- No rate constants are published (the paper gives protocols: 50 pmol of each oligonucleotide, 5 units T4 ligase, 4 hours at room temperature), so every reaction carries rate None and the protocol is recorded as text in extras.analysis.experiment.
+- initial_state is in pmol, the unit the paper uses: 50 pmol of each edge oligonucleotide and of each splint Obar_i with i different from v_in and v_out. The vertex code words O_i and the complements Obar_v_in, Obar_v_out are listed as species because they are the code, but they are not in the ligation tube: O_v_in and Obar_v_out enter in step 2 as PCR primers and the other splints again in step 4 on beads.
+- v1 fields replaced: the `graph` matrix becomes an edge list, `copy_number` becomes `pmol` (the paper's unit; the exponential scaling it warned about is kept as prose in extras.analysis.experiment), and `constructive` becomes true, since the path species are assembled at run time and are unbounded for a cyclic graph.
+
+## Notes
+
+The founding wet DNA computation. Chemart returns the in-silico network of the published experiment: the oligonucleotides as species with their sequences, the ligation events of step 1 as reactions, and the four selection steps as analysis. The wet limitations are documented, not simulated.
+
+---
+
+*Specification: `catalog/chemistries/dna-hpp.yaml` · generator: `chemart/chemistries/dna_hpp.py` · tests: `tests/chemistries/test_dna_hpp.py`*

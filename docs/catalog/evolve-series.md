@@ -1,0 +1,132 @@
+# EVOLVE virtual ecosystems
+
+`evolve-series` · *Conrad & Pattee, 1969-1970; Conrad & Strizich, 1985; Rizki & Conrad, 1985; Brewster & Conrad, 1998*
+
+The oldest artificial ecosystem in the catalog. Organisms are genomes whose genes are matched against a table to give them functions - fixing mineral matter using light, or scavenging organic remains - and both matter and energy are tracked in a closed economy, so nothing an organism does is free. Starting from autotrophs alone, mutation discovers the scavenger niche, which then appears, collapses and returns. It is early, sparse, and the direct ancestor of every later digital ecology.
+
+| | |
+|---|---|
+| **family** | evolutionary-dynamics |
+| **kind** | generator |
+| **constructive** | yes — the species set grows at run time |
+| **fidelity** | `book+decisions` — the book left gaps; each filled choice is listed below |
+| **book** | 8.2.3 |
+| **refs** | [191], [195], [134], [135], [714], doi:10.1016/0022-5193(70)90077-9, doi:10.1016/0303-2647(85)90079-6, doi:10.1016/0303-2647(85)90065-6, doi:10.1016/0167-2789(86)90235-6, doi:10.1007/BFb0040799, doi:10.1109/CEC.1999.781957 |
+| **provides** | `topology`, `stoichiometry`, `catalysts`, `energies`, `mass-conservation`, `space`, `initial-state`, `sequence-structure-function` |
+
+## Molecules, reactions, reactor
+
+**S — molecules** (implicit): Species are genotypes: strings of n_genes genes over an alphabet of `alphabet` letters (id = g + a blake2s hash of the genome, structure = the genome). A gene is one mutational-sensitivity symbol followed by a protein string; a protein's function and its efficiency are fetched from the table (light, fix, respire, replicate) by a matching mechanism that weights the protein's critical section more heavily than the rest. Two further species carry the matter inventory: `mineral` (free inorganic matter) and `organic` (secretions and remains; bodies are made of it).
+
+**R — reactions** (implicit, arity [1, 2, 3]): G + mineral -> G + organic (photosynthesis: an autotroph spends light energy to fix mineral matter) ; G + organic -> G + mineral (scavenging: a decomposer respires organic remains and recovers the energy stored in them) ; G + b organic -> G + O (reproduction, b = body) ; G + H + b organic -> G + H + O (conjugative reproduction, H the gene donor) ; G -> b organic (death, recycling the body).
+
+**A — reactor**: lattice-2d
+ · *dilution:* one organism per cell caps the population; organisms starve when they cannot pay maintenance and die of old age after max_age steps; matter is a closed inventory that recycles through the mineral and organic pools
+
+## What you get
+
+```python
+net = chemart.generate_network("evolve-series", seed=1)
+```
+
+```
+evolve-series: 180 species, 450 reactions, status=observed
+provides: catalysts, energies, initial-state, mass-conservation, space, stoichiometry, topology
+seed: 1
+extras: analysis, chemistry, conservation, energies, events, final_state, phenotypes, space
+```
+
+First reactions:
+
+```
+ge30eb23c + mineral -> ge30eb23c + organic  (x33)
+gf03abc4e + mineral -> gf03abc4e + organic  (x17)
+g0c6139fa + mineral -> g0c6139fa + organic  (x5)
+g716c2eff + mineral -> g716c2eff + organic  (x20)
+gbcd53d11 + mineral -> gbcd53d11 + organic  (x3)
+g8b0e588a + mineral -> g8b0e588a + organic  (x14)
+g2d905df8 + mineral -> g2d905df8 + organic  (x9)
+gd689176b + mineral -> gd689176b + organic  (x5)
+… and 442 more
+```
+
+## Parameters
+
+| name | type | default | role | what it does |
+|---|---|---|---|---|
+| `width` | `int` | `10` | spatial | grid width in cells (torus) <br>`2` … `400` · *range:* paper-scale worlds are far larger |
+| `height` | `int` | `10` | spatial | grid height in cells (torus) <br>`2` … `400` |
+| `steps` | `int` | `120` | population | simulation steps; one step is one pass over the living organisms followed by diffusion <br>`0` … `100000` · *range:* the published runs follow populations over thousands of generations |
+| `n_founders` | `int` | `8` | population | organisms seeded at step 0; with the default founder they are all autotrophs, as the book's EVOLVE runs start <br>`1` … `10000` |
+| `diffusion` | `float` | `0.25` | spatial | fraction of each cell's mineral and organic pool shared equally among its four neighbours every step (integer division, so small stocks stay put) <br>`0.0` … `1.0` |
+| `initial_mineral` | `int` | `3` | population | mineral matter units seeded in every cell; with initial_organic and the founders' bodies this fixes the world's total matter, and so how hard matter is to come by <br>`0` … `100000` |
+| `initial_organic` | `int` | `` | population | organic matter units seeded in every cell; 0 means scavengers have nothing to eat until autotrophs have secreted and died <br>`0` … `100000` |
+| `body` | `int` | `2` | population | organic matter units an organism holds while alive, spends to build each offspring, and returns to the pool when it dies <br>`1` … `100` |
+| `max_age` | `int` | `40` | population | an organism dies after this many steps; 0 removes death of old age, leaving only starvation <br>`0` … `100000` |
+| `alphabet` | `int` | `4` | structural | number of symbols a..z genomes are written in <br>`2` … `26` |
+| `n_genes` | `int` | `6` | structural | genes per genome; must be at least the four entries of the function table <br>`4` … `64` |
+| `protein_length` | `int` | `8` | structural | symbols in a protein string (a gene is this plus one sensitivity symbol) <br>`2` … `64` |
+| `critical_length` | `int` | `3` | structural | length of the critical section, the centred window of the protein string that determines its shape <br>`1` … `64` |
+| `critical_weight` | `float` | `3.0` | structural | how much more a matching symbol inside the critical section counts than one outside it; the book's mechanism 'weights the critical section more heavily than the rest of the string' <br>`1.0` … `100.0` |
+| `match_threshold` | `float` | `0.55` | selection | weighted match score (normalised to [0, 1]) a protein must reach before the table gives it a function at all <br>`0.0` … `1.0` |
+| `light_input` | `int` | `4` | thermodynamic | light energy incident on each cell per step; 0 switches the sun off <br>`0` … `10000` |
+| `light_period` | `float` | `` | thermodynamic | period in steps of the sinusoidal environment; 0 is the constant environment <br>`0.0` … `100000.0` · *range:* EVOLVE III contrasts populations cultured in constant and in variable environments |
+| `light_swing` | `float` | `0.5` | thermodynamic | relative amplitude of the sinusoidal environment; ignored when light_period is 0 <br>`0.0` … `1.0` |
+| `fix_cost` | `int` | `3` | thermodynamic | light energy spent to fix one mineral unit into organic matter; exactly this much is banked in the organic pool and can be recovered by respiration <br>`1` … `10000` |
+| `maintenance` | `int` | `1` | thermodynamic | energy every organism must pay each step; one that cannot starves <br>`0` … `10000` |
+| `repro_cost` | `int` | `4` | thermodynamic | energy dissipated by one reproduction, on top of the offspring's endowment <br>`0` … `10000` |
+| `offspring_energy` | `int` | `4` | thermodynamic | energy an offspring is endowed with by its parent, and the energy a founder starts with <br>`0` … `10000` |
+| `mutation_rate` | `float` | `0.08` | stochastic | probability per gene per reproduction that the gene's protein is mutated, and independently that its sensitivity locus is; how many protein symbols then change is the gene's own sensitivity <br>`0.0` … `1.0` |
+| `recombination_rate` | `float` | `0.1` | stochastic | probability that a reproduction is conjugative: the parent first crosses over with a neighbouring organism at a gene boundary (Conrad & Pattee's conjugation) <br>`0.0` … `1.0` |
+| `initial_sensitivity` | `int` | `3` | stochastic | mutational sensitivity every founder gene starts with, i.e. the number of protein symbols one mutation changes; must not exceed alphabet <br>`1` … `26` |
+| `founder_noise` | `int` | `2` | stochastic | protein symbols randomised in each founder genome, so the founders' enzymes are imperfect and evolution has somewhere to go <br>`0` … `10000` |
+| `founder_genomes` | `list` | `` | population | explicit founder genomes, cycled over the founders; [] builds the default autotroph (a perfect light gene, a perfect fix gene, functionless filler genes, then founder_noise substitutions) |
+
+## Published phenomena
+
+What the literature reports this model produces. Whether the generator reproduces each one is recorded in the decisions below.
+
+- starting from autotrophs alone, a scavenger guild appears by mutation, goes extinct and reappears - the ecological niche of decomposing the metabolic remains of autotrophs (book 8.2.3)
+- matter is conserved exactly: every reaction balances and the world's total inventory never changes
+- energy enters only as light and is accounted for to the last unit: harvested + respired = spent + dissipated + what organisms still hold
+- no light, no ecosystem: with the sun switched off nothing is fixed and the founders starve
+- the weighted lock-and-key match is under selection: a founder whose light and fix critical sections are scrambled leaves no descendants at all, and a population founded half on it ends with a mean light+fix efficiency well above the 1.0 it started from
+- mutation-selection balance, not improvement: started from near-optimal founders the mean enzyme match decays over a default run (mutation_rate 0.08 per gene) and is held near its initial value at 0.02
+- resistance to phenotypic change evolves in a constant environment: the population's mean mutational sensitivity falls below the founders' (EVOLVE II, Conrad & Strizich 1985)
+- trophic structure: the only source of organic matter is autotrophic fixing and dead bodies, and the only route back to mineral matter is scavenging
+
+## Sources
+
+- Banzhaf, W. & Yamamoto, L. (2015). Artificial Chemistries, section 8.2.3, 'Some Early Models': the whole specification used here (2D world, energy and matter conservation, light harvesting, secretion, proteins as strings whose function is fetched from a table by a match that weights the critical section, autotrophs then scavengers that emerge, go extinct and reappear).
+- Conrad, M. & Strizich, M. (1985). Evolve II: a computer model of an evolving ecosystem. BioSystems 17(3):245-258. https://doi.org/10.1016/0303-2647(85)90079-6 - abstract only (PubMed 3995163): competition for a limited food supply, and the finding that 'the magnitude of phenotypic change resulting from mutation is itself a property of the gene', that two lineages with distinct survival strategies coexisted, and that resistance to phenotypic change evolved in slowly varying environments.
+- Rizki, M. M. & Conrad, M. (1985). Evolve III: a discrete events model of an evolutionary ecosystem. BioSystems 18(1):121-133. https://doi.org/10.1016/0303-2647(85)90065-6 - abstract only (PubMed 3840703): three independently modelled levels of organisation (population, organism, genetic structure), and the adaptability experiment contrasting constant and variable environments.
+- Brewster, J. J. & Conrad, M. (1999). Computer experiments on the development of niche specialization in an artificial ecosystem. CEC 1999, 439-444. https://doi.org/10.1109/CEC.1999.781957 - abstract only: EVOLVE IV 'is an evolutionary ecosystem model designed to explore niche proliferation and the emergence of inter-specific interactions. Organisms can interact by exchanging metabolites and by modifying their environment... Experiments indicate that niche formation occurs in the model.'
+
+## Decisions
+
+Every gap, ambiguity or erratum in the sources, and how Chemart resolved it. Read this before quoting a number from this entry.
+
+- None of the six EVOLVE-series publications could be obtained: [195] (J. Theor. Biol. 28:393-409, 1970), [191] (Conrad's 1969 Stanford PhD thesis), EVOLVE II and III (BioSystems 1985), [714] (Physica D 22:83-99, 1986) and [134]/[135] (EVOLVE IV, 1998/1999) are all closed access, with no open version in Unpaywall, OpenAlex, Semantic Scholar or any repository, and the Internet Archive was offline. The model is therefore built from the book's paragraph plus the published abstracts listed in sources; fidelity is book+decisions and every rule below is a reconstruction, not a published one. No number here is claimed to be Conrad's.
+- Book errata in the bibliography, checked against Crossref/OpenAlex/PubMed: [195] is by M. Conrad and H. H. Pattee (Howard H. Pattee), not 'M. M. Pattee', and the pages are 393-409, not '293-409'. The book's index repeats 'Pattee, M. M.'. The v1 catalog entry's origin credited 'Conrad & Pattee 1970; Rizki & Conrad; Conrad & Strizich' and omitted Brewster & Conrad, who are in fact the authors of refs [134] and [135] (EVOLVE IV); origin now names all four author pairs.
+- Scope: the entry models the EVOLVE series proper (the 2D world of the book's second paragraph), not the 1969/1970 one-dimensional predecessor. Conjugation, which the book attributes to the 1970 model, is kept as recombination_rate because the v1 entry listed it and it is the series' variation operator.
+- The function table is the reconstruction's core invention: four functions (light, fix, respire, replicate) with reference strings ref_i[k] = (i + k(i+1)) mod alphabet, so the table is deterministic at any protein_length and alphabet. The book names neither the functions nor the table's size; it says only that function is fetched from a table by matching.
+- The matching mechanism follows the book exactly in form: score = (critical_weight x matching symbols inside the critical section + matching symbols outside) / (critical_weight x critical_length + protein_length - critical_length), so the score is in [0, 1] and the critical section is weighted more heavily. Chemart adds that the winning score is also the enzyme's efficiency (the lock-and-key quality of the fit) and that a protein whose best score is below match_threshold has no function; the book specifies neither. The critical section is the centred window of the protein string.
+- The matter economy is a reconstruction consistent with the book's 'energy and matter conservation', 'secrete chemicals' and 'decomposing the metabolic remains of autotrophs': matter is a closed inventory of units in two pools, an autotroph spends light energy to turn one mineral unit into one organic unit (secreted into its cell), a scavenger respires one organic unit back to mineral, bodies are made of `body` organic units, and death returns them. Nothing is created or destroyed, which extras.conservation states as a conservation law over every species.
+- The energy ledger is exact and has no counterpart in the sources. Light is the only input; harvesting takes floor(efficiency x incident) and the rest is lost. Fixing banks exactly fix_cost in the organic pool and death banks the dead organism's remaining energy; respiring one unit withdraws the pool's mean share (integer division) and returns the respire enzyme's fraction of it, dissipating the remainder. Two identities therefore hold exactly and are asserted in the tests.
+- An organism fixes only while the matter it can reach holds less than one offspring's body, so autotrophs build up a store and then stop instead of converting the whole world; without this rule greedy fixing starves reproduction. It also means autotrophs stop fixing where remains are already abundant, which is what makes the scavenger niche a niche.
+- Reproduction needs a free neighbouring cell, repro_cost + offspring_energy of energy and `body` organic units within reach, and then succeeds with probability equal to the replicate enzyme's efficiency, which is how the 'genetic processes' the book mentions consume the organism's resources. A failed attempt costs nothing and is counted in extras.analysis.event_counts.failed_replication.
+- EVOLVE II's published mechanism - 'the magnitude of phenotypic change resulting from mutation is itself a property of the gene' - is implemented as a sensitivity locus: the first symbol of each gene sets how many protein symbols a mutation of that gene changes (1..alphabet). The locus mutates at the same per-gene rate. Its numeric encoding is Chemart's.
+- Founders are pure autotrophs, as the book's runs are ('starting with a population of only autotrophs'): a perfect light gene, a perfect fix gene, and filler genes drawn until they match nothing in the table, followed by founder_noise random protein substitutions. Scavengers can therefore only arise by mutation.
+- The environment can be made variable (light_period > 0) so that EVOLVE III's constant-versus-variable contrast can be set up, and founder_genomes allows an evolved genome to be transplanted into a new run. The EVOLVE III competition experiment itself (populations cultured in one regime and then confronted in another, dominance reversing between early and late development) is not reproduced: the abstract gives no parameters, and nothing in the sources fixes what 'stage of development' means.
+- Dropped v1 parameters: `grid` (a matrix) becomes width and height; `critical_section_weight` becomes critical_weight. `light_input` and `recombination_rate` are kept. The v1 kind was `framework`; it is now `generator`.
+- Measured, not tuned for: the enzyme match does not improve over a default run. Selection on it is nonetheless real and strong - seeded half with a genome whose light and fix critical sections are scrambled, that genome leaves no descendants in any of six seeds and the population's mean light+fix efficiency rises from 1.0 to 1.62-1.87 - but from the near-optimal default founders the match decays (mean fix efficiency about 0.95 to 0.73 over 120 steps at mutation_rate 0.08, and about 0.95 to 0.90 at 0.02). Drift beats selection at the default mutation rate. Since the sources publish no rates, parameters were not adjusted until the match improved; the behaviour is reported as it is, and the phenomena say so.
+- initial_mineral defaults to 3 (about 216 matter units for 100 cells) so that matter is scarce enough for the recycling loop to matter: at 6 the world is matter-saturated and a run in six seeds produced no scavengers at all in one of them, while at 3 and at 2 scavengers appear in every seed. The sources give no inventory, so this is a choice made for the book's phenomenon to be visible in a small default run, and it is recorded here as such.
+- Network: status observed, one reaction per distinct event with its firing count, rates None (nothing in the sources fixes a rate law). Species are genotypes plus the two matter pools. extras.phenotypes gives every genotype's enzyme efficiencies, mean sensitivity and guild; extras.analysis holds the per-step history (populations, guilds, pools, diversity, mean efficiencies, mean sensitivity), the scavengers' presence episodes and the founder-to-final comparisons.
+
+## Notes
+
+The oldest artificial ecosystem in the catalog and, with Dorin & Korb's chemistry, one of the two that carry both an energy budget and a closed matter inventory. It is a reconstruction of a family of models whose publications are all closed access: treat the string/function machinery and the trophic economy as Chemart's reading of the book's paragraph, not as Conrad's code.
+
+---
+
+*Specification: `catalog/chemistries/evolve-series.yaml` · generator: `chemart/chemistries/evolve_series.py` · tests: `tests/chemistries/test_evolve_series.py`*

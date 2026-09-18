@@ -2,6 +2,14 @@ chemistries:
 
 - id: ikegami-hashimoto
   name: Machine-tape chemistry
+  intuition: >
+    Von Neumann's separation of constructor and description, made into a
+    chemistry. Two populations coexist: machines, which act, and tapes, which
+    are read. A machine reading a tape produces a new machine and a new tape,
+    so reproduction requires both. A machine whose description is missing
+    washes out of the reactor, which puts pressure on closed loops of machines
+    that between them produce each other's descriptions - including the
+    minimal case of a machine and tape that reproduce as a pair.
   aliases: ["machine-tape interaction", "coevolution of machines and tapes"]
   origin: "Ikegami & Hashimoto, 1995"
   book: "10.5.4"

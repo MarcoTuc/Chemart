@@ -2,6 +2,14 @@ chemistries:
 
 - id: disperser
   name: Chemical disperser (load balancing)
+  intuition: >
+    A distributed algorithm that happens to be a chemistry. Each network node
+    holds a species whose concentration is its workload, and each directed
+    link carries a catalyst that converts a job at one end into a job at the
+    other. Run it and the loads provably converge to the network-wide average,
+    even while new jobs arrive. Mass conservation does the safety argument for
+    free: the algorithm can never invent or lose work, so it cannot produce a
+    negative load.
   origin: "Meyer & Tschudin, 2009"
   book: "17.3.1; appendix (Disperser.py)"
   refs: ["[576]", "[580]", "[941]"]

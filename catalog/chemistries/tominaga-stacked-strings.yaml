@@ -2,6 +2,14 @@ chemistries:
 
 - id: tominaga-stacked-strings
   name: Tominaga's stackable-string chemistry
+  intuition: >
+    A notation designed to make molecular biology expressible. A molecule is a
+    stack of lines of elements, each line displaced horizontally relative to
+    the first - so a double strand, a sticky end, or a polymerase sitting on a
+    template are all just registered rows. Recombination rules match patterns
+    across the stack and rewrite them. Because alignment is explicit,
+    operations like a restriction enzyme cutting at a fixed offset from a
+    recognition site are written directly rather than encoded.
   aliases: ["artificial chemistry based on pattern matching and recombination", "v-molecule chemistry"]
   origin: "Tominaga et al., 2004-2009"
   book: "18.3.2"

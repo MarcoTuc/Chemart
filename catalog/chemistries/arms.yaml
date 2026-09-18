@@ -2,6 +2,15 @@ chemistries:
 
 - id: arms
   name: ARMS (Abstract Rewriting System on Multisets)
+  intuition: >
+    The simplest possible rewriting chemistry: a bag of symbols and a list of
+    rules like 'aaa -> c' or 'a -> abba'. Everything interesting comes from
+    how the rules are applied. Rules that enlarge a molecule are called
+    heating and rules that shrink it cooling, and the order they are tried in
+    decides the outcome: one order drives the same starting bag to a quiet
+    fixed point, the reverse order makes it grow without bound. A minimal
+    demonstration that in an artificial chemistry the reactor algorithm is
+    part of the model, not an implementation detail.
   aliases: ["chemical ARMS", "abstract rewriting system on multi-sets", "symbolic chemical system"]
   origin: "Suzuki & Tanaka, 1997"
   book: "9.4; ecology application 8.2.3; p53 model 18.3.2"

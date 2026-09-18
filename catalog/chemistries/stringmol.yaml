@@ -2,6 +2,14 @@ chemistries:
 
 - id: stringmol
   name: Stringmol
+  intuition: >
+    An automata chemistry built to be run for a long time. Strings over a
+    small alphabet bind by complementary template matching, and the bound pair
+    then executes: one acts as enzyme, copying, cleaving or modifying the
+    other, before dissociating. A seed replicase copies itself, and
+    single-point mutations in a search template produce genuinely new
+    behaviours rather than broken molecules - which is why it has been used to
+    study open-ended evolution and parasite dynamics.
   aliases: ["molecular microprograms", "Stringmol automata chemistry"]
   origin: "Hickinbotham, Clark, Stepney et al. (University of York), 2009-2011"
   book: "11.1.2"

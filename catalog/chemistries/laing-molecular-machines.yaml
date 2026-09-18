@@ -2,6 +2,14 @@ chemistries:
 
 - id: laing-molecular-machines
   name: Laing's artificial molecular machines
+  intuition: >
+    The first molecular machine chemistry, from before anyone simulated such
+    things. Strings come in two forms: passive tapes of bits, and active
+    machines - folded chains of instructions where the fold is what brings
+    distant instructions together. A machine attaches to a tape, runs as a
+    read-head over it, and leaves the tape cut into pieces. Laing's goal was
+    self-reproduction by *self-inspection*: a machine that reads its own
+    structure rather than copying a stored description of it.
   aliases: ["Laing molecular tapeworms", "hybrid cellular-kinematic automata"]
   origin: "Laing, 1972-1977"
   book: "10.5.1"

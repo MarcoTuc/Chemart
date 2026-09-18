@@ -2,6 +2,14 @@ chemistries:
 
 - id: reflexive-ac
   name: Reflexive artificial chemistry
+  intuition: >
+    Machines that compose with machines, including themselves. A molecule is a
+    finite state machine drawn as a graph with a current state; a reaction
+    feeds one machine's output into the other and keeps the reachable graph of
+    paired states as the product. Composition multiplies state spaces, so
+    products grow quickly and are self-similar. The reflexive case is the
+    interesting one: a machine composed with itself is a machine reading its
+    own structure, which is the sense in which it can act on itself.
   aliases: ["graph-based reflexive artificial chemistry", "graph-constructing graphs", "reflexive composition of state machines"]
   origin: "Salzberg, 2007"
   book: "9.8"

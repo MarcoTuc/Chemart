@@ -2,6 +2,14 @@ chemistries:
 
 - id: fraglets
   name: Fraglets
+  intuition: >
+    Network protocols written as a chemistry. A fraglet is a string of symbols
+    that is simultaneously a data packet and a fragment of program: its head
+    symbol is an instruction, its tail is payload. Instructions transform a
+    fraglet, split it, fork it, or match two fraglets together, and fraglets
+    are located in network nodes and can be sent between them. A
+    confirmed-delivery protocol is then a handful of reactions, and protocol
+    correctness becomes a question about a reaction network.
   origin: "Tschudin, 2003"
   book: "16.2.1, 17.3.1; appendix (Fraglets.py, NetFraglets.py)"
   refs: ["[862]", "[575]", "[576]", "[577]", "[578]", "[579]", "[580]", "[581]", "[594]", "[595]", "[864]", "[914]", "[935]", "[936]", "[942]", "[943]", "[753]", "http://www.fraglets.net/"]

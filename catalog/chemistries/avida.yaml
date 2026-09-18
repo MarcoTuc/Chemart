@@ -2,6 +2,15 @@ chemistries:
 
 - id: avida
   name: Avida
+  intuition: >
+    Self-replicating computer programs competing for CPU time and space on a
+    grid. A genome is a string of instructions that copies itself into a
+    neighbouring cell, with copy errors as mutation. On top of replication the
+    environment pays a bonus for computing logic functions on inputs, so an
+    organism that discovers NAND or EQU runs faster and out-reproduces its
+    neighbours. That turns it into an experimental system for evolution:
+    because every lineage is recorded, you can ask how a complex feature was
+    built from simpler ones.
   aliases: ["Avida digital evolution platform", "digital organisms"]
   origin: "Adami & Brown, 1994"
   book: "10.7.1; ecology 8.2.3; evolving distributed algorithms 17.3.2"

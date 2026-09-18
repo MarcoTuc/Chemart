@@ -2,6 +2,15 @@ chemistries:
 
 - id: sr-loops
   name: Self-replicating loops in cellular automata
+  intuition: >
+    Self-replication in a cellular automaton, and the clearest case of 'what
+    is a molecule' being the observer's choice. At the micro level a cell
+    state is a molecule and a transition is a reaction; at the macro level a
+    *loop* - an emergent closed pattern that copies itself - is the molecule,
+    and reproduction, mutation and dissolution are the reactions. Langton's
+    loop replicates without universal construction; add structural dissolution
+    and the colony reaches a steady state, and loops can then evolve toward
+    smaller sizes.
   aliases: ["Langton loop", "Byl loop", "Chou-Reggia loop", "SDSR loop", "evoloop"]
   origin: "von Neumann 1966; Langton 1984; Byl 1989; Reggia 1993; Sayama 1998-2004"
   book: "10.4, 10.7.2; ecology 8.2.3"

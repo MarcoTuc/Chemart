@@ -2,6 +2,14 @@ chemistries:
 
 - id: urdar
   name: Urdar
+  intuition: >
+    An ecology where order is the currency. Organisms are elementary cellular
+    automaton rules and metabolites are bitstrings; an organism 'eats' a
+    string by applying one CA step to it, and the energy gained is the drop in
+    the string's entropy - the more order the rule extracts, the better it
+    does. Reproduce with mutation to another rule and you get selection on
+    information-processing ability directly. Diversity falls as the flow rate
+    rises, and efficiency trades against uptake.
   origin: "Gerlee & Lundh, 2010"
   book: "8.2.3"
   refs: ["[314]", "[315]", "[537]", "doi:10.1111/j.1558-5646.2010.01020.x", "doi:10.1007/s11538-013-9828-3"]

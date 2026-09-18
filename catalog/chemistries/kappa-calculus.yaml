@@ -2,6 +2,15 @@ chemistries:
 
 - id: kappa-calculus
   name: Kappa calculus
+  intuition: >
+    How to describe a chemistry you could never enumerate. Agents are proteins
+    with named sites; a site can hold an internal state and a bond to another
+    site, and a rule rewrites a *partial* pattern - bind these two sites,
+    phosphorylate this one - regardless of what else is attached. One rule
+    therefore stands for an enormous number of concrete reactions between
+    complexes. Twenty-odd rules for a receptor pathway expand to tens of
+    thousands of reactions, which is exactly why you keep the rules and never
+    flatten them.
   aliases: ["κ-calculus", "Kappa", "Kappa language", "rule-based modelling of site graphs"]
   origin: "Danos & Laneve, 2004; the Kappa language: Danos, Feret, Fontana, Harmer, Krivine et al., 2007 onwards"
   book: "9.7"

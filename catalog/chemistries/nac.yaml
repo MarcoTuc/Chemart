@@ -2,6 +2,14 @@ chemistries:
 
 - id: nac
   name: Network Artificial Chemistry (NAC)
+  intuition: >
+    A chemistry in which the graph is both the space and the molecules. Every
+    node is a molecule - hydrophilic or hydrophobic - and every edge a weak
+    bond standing in for water-mediated interaction. A step picks a node, an
+    adjacent node and a node two steps away, and rewires one edge between
+    them. Repeating that local move turns a random graph into a small-world
+    one, and forbidding bonds between unlike nodes makes the two kinds demix
+    into clusters. Hydrophobic effects without atomistic cost.
   aliases: ["network artificial chemistry", "Suzuki's network AC", "graph rewiring artificial chemistry"]
   origin: "Suzuki, 2004-2009"
   book: "11.3.3; folding 18.1.1"

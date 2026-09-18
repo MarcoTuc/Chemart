@@ -2,6 +2,15 @@ chemistries:
 
 - id: bagley-farmer
   name: Bagley & Farmer autocatalytic metabolism
+  intuition: >
+    What Kauffman's autocatalytic sets look like once you give them kinetics.
+    Polymers split and join, and any polymer can catalyse a reaction,
+    multiplying both directions of it. Run in a chemostat - food flows in,
+    everything washes out - and mass concentrates onto a small
+    mutually-catalysing core. The crucial detail is that catalysis alone
+    cannot do this: at equilibrium a catalysed and an uncatalysed network
+    reach the same place, so the focusing only appears away from equilibrium,
+    driven by the flow.
   origin: "Bagley & Farmer, 1992; Bagley, Farmer & Fontana, 1992"
   book: "6.3.1, 7.3.1"
   refs: ["[49]", "[50]"]

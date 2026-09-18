@@ -1,0 +1,108 @@
+# Polymers as Turing machines / pattern processing chemistry
+
+`mccaskill-polymer-tm` · *McCaskill, 1988; hardware realisations NGEN/POLYP with Tangen, Schulte, Maeke, Gemm, Breyer, Ackermann*
+
+*Also known as:* *polymer chemistry on tape*, *McCaskill pattern processing chemistry*
+
+Polymers as tape-processing machines. Two strings react when a recognition site on each can locate the same pattern; the first then acts as a processor reading the second as a tape and writing new strings. Self-replicators exist - a string that copies itself via its complement - and so do parasites: strings carrying the replicator's recognition site but no replication machinery of their own, which get copied for free. It was designed with hardware implementation in mind.
+
+| | |
+|---|---|
+| **family** | automata |
+| **kind** | generator |
+| **constructive** | yes — the species set grows at run time |
+| **fidelity** | `reconstructed` — built from the original papers listed below |
+| **book** | 10.5.3 |
+| **refs** | [566], [136], [247], [843], doi:10.1162/106454698568422, doi:10.1007/3-540-63173-9_52 |
+| **provides** | `topology`, `stoichiometry`, `catalysts`, `flow`, `initial-state`, `sequence-structure-function` |
+
+## Molecules, reactions, reactor
+
+**S — molecules** (implicit): binary heteropolymers; species id p<bitstring>, structure the bitstring (first character = first monomer)
+
+**R — reactions** (implicit, arity 2): s1 + s2 -> s1 + s2 + s3 (+ s4 ...), if a recognizon of s1 and one of s2 can place the same specific pattern; s3.. are the strings the processor s1 writes while reading the tape s2
+
+**A — reactor**: well-stirred-multiset
+ · *dilution:* products overwrite randomly chosen molecules (Moran displacement), population constant
+
+## What you get
+
+```python
+net = chemart.generate_network("mccaskill-polymer-tm", seed=1)
+```
+
+```
+mccaskill-polymer-tm: 7 species, 12 reactions, status=complete
+provides: catalysts, stoichiometry, topology
+seed: 1
+extras: seed
+```
+
+First reactions:
+
+```
+2 p0001111100111010111 -> 2 p0001111100111010111 + p1110000011000101000
+p0001111100111010111 + p0000000100100010111 -> p0001111100111010111 + p0000000100100010111 + p1111111011011101000
+2 p1110000011000101000 -> 2 p1110000011000101000 + p1111111111111111111
+p1111111011011101000 + p0001111100111010111 -> p1111111011011101000 + p0001111100111010111 + p1
+2 p1111111011011101000 -> 2 p1111111011011101000 + p1
+p0001111100111010111 + p1111111011011101000 -> p0001111100111010111 + p1111111011011101000 + p0000000100100010111
+p1111111111111111111 + p0001111100111010111 -> p1111111111111111111 + p0001111100111010111 + p1110000011000101000
+p1111111111111111111 + p0000000100100010111 -> p1111111111111111111 + p0000000100100010111 + p1111111011011101000
+… and 4 more
+```
+
+## Parameters
+
+| name | type | default | role | what it does |
+|---|---|---|---|---|
+| `method` | `enum` | `closure` | structural | closure: every reaction reachable from `strings` over ordered processor/tape pairs, error-free (Chemart addition); soup: the report's stochastic collision algorithm, reactions that fired with counts (status observed) <br>one of `closure`, `soup` |
+| `strings` | `list` | `['0001111100111010111', '0000000100100010111']` | structural | binary strings: the seed set of the closure, or the inoculum of the soup (each at inoculum_fraction of the population) <br>*range:* report section 4: the self-replicator 0001111100111010111 and its parasite 0000000100100010111 |
+| `recognition` | `enum` | `patterns` | selection | patterns: a reaction needs a recognizon collision (book eq. 10.14; the soup uses the report's pattern space); none: every ordered pair reacts (closure) or each drawn molecule is processed by a random partner (soup), a well-mixed limit without specificity (Chemart addition) <br>one of `patterns`, `none` |
+| `R` | `int` | `16` | structural | maximum recognizon length in symbols (coding length 2R bits) <br>`1` … `64` · *range:* report: R typically 16 |
+| `max_steps` | `int` | `1000` | structural | cutoff on elementary processing steps; a process that has not halted by then releases nothing <br>`1` … `100000` |
+| `max_species` | `int` | `200` | structural | closure only: species budget; status truncated when it cuts the closure off <br>`1` … `100000` |
+| `error_rate` | `float` | `` | stochastic | soup only: probability that an elementary write step writes the wrong symbol (the report's single error rate for all elementary steps; acts as mutation) <br>`0.0` … `1.0` |
+| `population` | `int` | `200` | population | soup only: number of molecules, kept constant <br>`2` … `1000000` · *range:* report: 1000 strings |
+| `l` | `int` | `19` | population | soup only: length of the random background strings <br>`1` … `256` · *range:* report section 4: random strings of length 19; about 30 on average in section 3 |
+| `inoculum_fraction` | `float` | `0.1` | population | soup only: fraction of the population given to each string in `strings`; the rest is random strings of length l <br>`0.0` … `1.0` · *range:* report section 4: 10% each of replicator and parasite |
+| `steps` | `int` | `5000` | population | soup only: number of draws of a molecule placing a pattern <br>`0` … `100000000` · *range:* report section 4: 1.2 x 10^6 steps with 177104 recognition collisions |
+
+## Published phenomena
+
+What the literature reports this model produces. Whether the generator reproduces each one is recorded in the decisions below.
+
+- self-replicating strings exist: 0001111100111010111 replicates via its complement (report section 4; tested)
+- parasites: strings with the replicator's recognizon but no replication rule, replicated by it (0000000100100010111; tested)
+- report section 4 (1.2 x 10^6 steps, random population of 19-mers inoculated with 10% replicator and 10% parasite): quasispecies-like mutant clouds form, the parasite master sequence goes extinct at 750000 steps, the replicating rule survives in other sequences (not reproduced here)
+- later lattice and hardware versions (review 3.5.1): hypercyclic cooperating polymer sets, chemoton-like membrane-bounded organizations (not modelled)
+
+## Sources
+
+- McCaskill, J. S. (1988). Polymer chemistry on tape: a computational model for emergent genetics. Internal report, Max-Planck-Institut fuer biophysikalische Chemie, Goettingen (book ref [566]); scanned, 19 pages: section 2 (pattern space, Holland conditions, recognizons, processors, crossed-tape variant), section 3 items 1-5 (doublet codes), section 4 (replicator, parasite, run). https://homepage.ruhr-uni-bochum.de/john.mccaskill/publications/publications/283.pdf
+- Dittrich, P., Ziegler, J. & Banzhaf, W. (2001). Artificial chemistries - a review. Artificial Life 7(3):225-275, section 3.5.1 (the source of the book's text). https://www.cs.mun.ca/~banzhaf/papers/alchemistry_review_MIT.pdf
+- McCaskill, J. S., Maeke, T., Gemm, U., Schulte, L. & Tangen, U. (1997). NGEN: a massively parallel reconfigurable computer for biological simulation. LNCS 1259:260-276 (first pages only: 'networks of interacting molecular Turing machines', pairwise recognition plus unary processing). https://doi.org/10.1007/3-540-63173-9_52
+- Breyer, J., Ackermann, J. & McCaskill, J. S. (1998). Evolving reaction-diffusion ecosystems with self-assembling structures in thin films. Artificial Life 4(1):25-40 (book [136]; abstract only). https://doi.org/10.1162/106454698568422
+
+## Decisions
+
+Every gap, ambiguity or erratum in the sources, and how Chemart resolved it. Read this before quoting a number from this entry.
+
+- The book gives only the scheme; the machine follows the 1988 report. Its doublet tables (section 3, items 4-5) are implemented verbatim. The report does not say where a rule starts relative to its initiator, where the heads start, the initial state or how the written tape is cut into strings. Of the literal choices tried (rule after or at the initiator, overlapping or not, forward or reversed, linear or circular, head at either end, initial state 0 or 1), exactly one family makes the published replicator replicate: a rule is the 12 bits starting at every occurrence of 111 (overlapping, the initiator bits included), both heads start at position 0 of their tapes, the state starts at 0 (1 works too), later rules overwrite earlier ones (the reverse order breaks replication), and released strings are the maximal non-blank runs of the written tape.
+- With that decoding 0001111100111010111 does not copy itself in one step but through its complement: s + s -> s + s + c(s) and s + c(s) -> s + c(s) + s (two alternating rules write, per tape symbol, 1 and then the opposite of the read symbol). The WRITE code has no 'same as read symbol', so one-step copying needs two rules (24 bits), longer than the 19-bit string; the report's 'self-replicating' is taken as this plus/minus-strand replication. The parasite 0000000100100010111 has its only 111 at the end, encodes no rule, and is copied by the replicator the same way (report: replicated without replicating themselves).
+- Consequence of that framing (open doubt): the initiator 111 supplies READ = 11 (both) and the first bit of WRITE, so every rule reads both symbols and writes 1 or the opposite of the read symbol; the READ codes 0, 1, blank and the WRITE codes 0, blank are never used. The report says the initiator 'may be taken to be a particular triplet such as 111', so its C program may have used another marker; nothing else in the report pins it, and the framing is kept because it is the only literal one that makes the published replicator work.
+- Report section 4 says about 2^17 strings must be sampled to find a replicator 'i.e. ca 10^8' (inconsistent: 2^17 is about 1.3 x 10^5). With the reconstructed decoding, 10133 of the 2^19 strings of length 19 replicate through their complement (about 2^-5.7) and one copies itself directly; the published estimate is not reproduced, which suggests further unpublished details of the C implementation.
+- Recognizons: the report fixes the doublet code and the initiator/terminator 111 but not the reading frame. Chemart reads them like rules: from every 111, doublets until a later 111 starting on a doublet boundary, the end of the string, or R symbols. The parasite and the replicator then share the recognizon '#' of their common tail ...0111, as the report requires. Two molecules collide when recognizons of equal length agree wherever neither has #, which is the same as sharing a specific pattern once each # is resolved at random (the report's nondeterministic accept). No reading frame tried (forward/reversed; at, after or before the initiator; three terminator rules) lets the replicator collide with its complement, so under recognition patterns the plus/minus cycle does not close; recognition none shows the full cycle. Open doubt.
+- Consequence for the soup (not reproduced): with recognition patterns the replicator can collide with itself (making its complement) but never with its complement, so nothing ever writes a new replicator and the inoculated replicator declines (seed 0, 20000 steps: from 20 of 200 to 0). The report's run, in which the replicating rule survives and the parasite master sequence goes extinct, is therefore not reproduced. With recognition none the plus/minus reaction does fire (e.g. seed 1), but in both modes (seeds 0-2, population 200, up to 20000 steps) the replicator dies out: random background processors keep writing the one-symbol string '1', and every product displaces a random molecule, so short junk strings take over the population.
+- Reaction scheme: the report makes processing purely catalytic (the processed string is not removed; new strings are written on a blank tape), so reactions are s1 + s2 -> s1 + s2 + s3; the book's s1 + s2 -> s1 + s3 is followed only in the report's optional crossed-tape variant (two tapes, no finite-state machine), which is not implemented. No rates are published, so rates are None.
+- Soup: the report's algorithm with a pattern space, earlier-placed molecule as processor, removal of both references and of overwritten molecules' references. The linear domain of 2^M symbol positions with partial overwriting is replaced by a population of whole molecules in which each product replaces a random molecule (Moran displacement, outflow constant-total). The report's exponential random cutoff is the fixed max_steps. Errors act on written symbols only (a write flips with probability error_rate); the report says all elementary steps are error-prone without specifying how.
+- v1 params dropped: n_wildcards (the number of # is encoded in each string, not a global knob) and grid (no spatial domain; 'space' removed from provides, lattice-2d from A.reactor). The v1 l (polymer length) is kept as the soup's random-string length: strings are otherwise of any length.
+- Book references: [247] (Ehricht, Ellinger & McCaskill 1997, CATCH) is a wet-lab cross-hybridization amplification paper, and [136] (Breyer et al., Artificial Life 4(1), 1998, not 1999) simulates DNA/RNA 3SR chemistries in NGEN; neither describes the pattern processing chemistry. [843] (POLYP) describes hardware. The book's 'length l' and the review's 'l was typically 20' do not appear in the report, whose M = 20 sizes the domain (2^M positions) and whose runs use length 19 (section 4) or about 30 (section 3).
+
+## Notes
+
+The observed network of a soup run is a small sample of an unbounded chemistry. The recognizon reading frame is the weakest part of the reconstruction; the processor decoding is pinned by the published replicator.
+
+---
+
+*Specification: `catalog/chemistries/mccaskill-polymer-tm.yaml` · generator: `chemart/chemistries/mccaskill_polymer_tm.py` · tests: `tests/chemistries/test_mccaskill_polymer_tm.py`*

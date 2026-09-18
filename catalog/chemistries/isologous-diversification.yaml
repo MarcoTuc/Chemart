@@ -2,6 +2,15 @@ chemistries:
 
 - id: isologous-diversification
   name: Isologous diversification
+  intuition: >
+    Differentiation with no genetic switch and no positional signal. Every
+    cell runs the same internal catalytic network with oscillatory dynamics
+    and exchanges chemicals with a shared medium. Below a threshold number of
+    cells they oscillate in unison and divide together; past it the
+    oscillations lose synchrony, cells cluster by phase, and their average
+    chemical compositions drift apart into distinct, stable types that
+    daughters then inherit. Identical cells become different because the
+    coupled dynamics stops being stable, not because anything switched.
   aliases: ["Kaneko-Yomo cell differentiation model", "intra-inter dynamics"]
   origin: "Kaneko & Yomo, 1994-1999; Furusawa & Kaneko, 1998-2006"
   book: "18.5, 18.6"

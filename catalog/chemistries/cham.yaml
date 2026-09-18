@@ -2,6 +2,15 @@ chemistries:
 
 - id: cham
   name: Chemical Abstract Machine (CHAM)
+  intuition: >
+    The machine behind the chemical metaphor in computing. Molecules are terms
+    of a process algebra held in a solution, and rules come in three kinds:
+    heating breaks a compound term into simpler ones, cooling reassembles
+    them, and reaction rules fire irreversibly when two ions meet - a.m with
+    ~a.n becomes m, n. Concurrency is then just chemistry: independent
+    molecules react in parallel, and non-determinism is which partner happens
+    to collide. The heating/cooling pair is also the one place in these
+    formalisms where reversibility is marked explicitly.
   origin: "Berry & Boudol, 1990"
   book: "9.3"
   refs: ["[113]", "[422]", "doi:10.1145/96709.96717", "doi:10.1016/0304-3975(92)90185-I", "doi:10.1109/32.385973"]

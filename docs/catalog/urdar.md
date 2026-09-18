@@ -1,0 +1,110 @@
+# Urdar
+
+`urdar` · *Gerlee & Lundh, 2010*
+
+An ecology where order is the currency. Organisms are elementary cellular automaton rules and metabolites are bitstrings; an organism 'eats' a string by applying one CA step to it, and the energy gained is the drop in the string's entropy - the more order the rule extracts, the better it does. Reproduce with mutation to another rule and you get selection on information-processing ability directly. Diversity falls as the flow rate rises, and efficiency trades against uptake.
+
+| | |
+|---|---|
+| **family** | evolutionary-dynamics |
+| **kind** | generator |
+| **constructive** | yes — the species set grows at run time |
+| **fidelity** | `reconstructed` — built from the original papers listed below |
+| **book** | 8.2.3 |
+| **refs** | [314], [315], [537], doi:10.1111/j.1558-5646.2010.01020.x, doi:10.1007/s11538-013-9828-3 |
+| **provides** | `topology`, `stoichiometry`, `catalysts`, `initial-state`, `energies`, `sequence-structure-function` |
+
+## Molecules, reactions, reactor
+
+**S — molecules** (implicit): Organisms R<k>: the 256 elementary cellular automaton rules (Wolfram numbering; structure = the 8 outputs for neighbourhoods 111..000). Metabolites m<hex>: binary strings of length string_len (id = hex of the bit-packed string; structure = the bits). Every string carries an energy E = 1 - s, with s = S_3 - S_2 the block-entropy approximation of its Shannon entropy.
+
+**R — reactions** (implicit, arity [1, 2, 3]): R<a> + m -> R<a> + m' (m' = one CA step of rule a on m) ; R<a> + m + R<v> -> R<a> + R<child> + m' (energy drop E(m) - E(m') > 0 lets a reproduce with P = (1 - exp(-dE/beta))/(1 - exp(-beta)); the offspring, mutated to another rule with probability mutation_rate, replaces a random organism v) ; m -> ∅ and ∅ -> m'' (flow)
+
+**A — reactor**: well-stirred-multiset
+ · *dilution:* constant population of organisms (offspring replace random organisms); constant pool of strings, each replaced with probability flow_rate per update by a fresh low-entropy string
+
+## What you get
+
+```python
+net = chemart.generate_network("urdar", seed=1)
+```
+
+```
+urdar: 2847 species, 2453 reactions, status=observed
+provides: catalysts, energies, initial-state, stoichiometry, topology
+seed: 1
+extras: analysis, energies, urdar
+```
+
+First reactions:
+
+```
+R92 + mfffffff7ffffffff7ffbfff5f0 + R105 -> 2 R92 + m0000001400000001400a001500  (x1)
+R45 + m00000208800020000000004000 + R0 -> 2 R45 + mfffffaeabfffafffffffff5ff0  (x1)
+R30 + m00000000004000080008000800 + R78 -> 2 R30 + m0000000000e0001c001c001c00  (x1)
+R97 + m00028100008008400040000000 + R127 -> 2 R97 + mfff93c7ffe3fe31fff1ffffff0  (x1)
+R122 + m20000001000080000000200000 + R119 -> 2 R122 + m50000002800140000000500000  (x1)
+R126 + mfffffff7ffffefffffeffffff0 + R87 -> 2 R126 + m0000001c000038000038000000  (x1)
+R41 + m7ffffffffffeffff7ffffafef0 + R13 -> 2 R41 + mc000000000018000c000058180  (x1)
+R76 + mbfffdbdfffdefbfffffffffff0 + R39 -> 2 R76 + ma0005a5000528a000000000000  (x1)
+… and 2445 more
+```
+
+## Parameters
+
+| name | type | default | role | what it does |
+|---|---|---|---|---|
+| `n_organisms` | `int` | `128` | population | number of organisms N_A (constant) <br>`1` … `100000` · *range:* paper N_A = 1024 |
+| `n_strings` | `int` | `640` | population | number of strings N_R in the resource pool (constant) <br>`1` … `1000000` · *range:* paper N_R = 5 N_A = 5120 |
+| `string_len` | `int` | `100` | structural | length L of the binary metabolite strings <br>`3` … `10000` · *range:* paper L = 100 |
+| `flow_rate` | `float` | `0.03` | kinetic | gamma: probability per update that each string is replaced by a fresh energy-rich string; lowering it increases diversity and energy-uptake efficiency and lowers productivity <br>`0.0` … `1.0` · *range:* paper gamma in [0.003, 0.3]; 0.03 for the invasion experiments |
+| `mutation_rate` | `float` | `0.01` | stochastic | mu: probability that an offspring is changed uniformly to another of the 256 rules <br>`0.0` … `1.0` · *range:* paper mu = 0.01; 0 in the invasion experiments |
+| `beta` | `float` | `0.1` | selection | selection pressure in P(dE) = (1 - exp(-dE/beta))/(1 - exp(-beta)); beta -> 0 makes any energy gain a near-certain reproduction <br>≥ `0.0` · *range:* paper beta = 0.1 (intermediate selection); must be > 0 |
+| `p0` | `float` | `0.95` | thermodynamic | order of the inflowing strings: each bit is the majority symbol with probability p0 (majority 1 or 0 equally often) <br>`0.5` … `1.0` · *range:* paper p0 = 0.95 |
+| `updates` | `int` | `20` | population | number of updates simulated; every update each organism metabolises one string <br>`0` … `1000000` · *range:* paper runs: thousands of updates (invasion experiments 2000) |
+| `transform` | `enum` | `on-gain` | structural | on-gain: an organism rewrites a string only when the CA step lowers its energy (strings only gain entropy, as the book describes); always: every picked string is rewritten, the literal reading of implementation step 1 <br>one of `on-gain`, `always` |
+| `rules` | `list` | `` | structural | distinct rule numbers 0..255 present initially; [] means all 256 (the paper's start); [129, 145] with abundances [9, 1] is a pairwise invasion experiment |
+| `abundances` | `list` | `` | population | relative initial abundance of each entry of rules (apportioned to n_organisms); [] means equal (4 of each of the 256 rules at N_A = 1024) |
+
+## Published phenomena
+
+What the literature reports this model produces. Whether the generator reproduces each one is recorded in the decisions below.
+
+- diversity (Shannon index of rules) decreases with the flow rate: about 0.27 at gamma = 0.3 and 1.65 at gamma = 0.003 (Evolution 2010, figs. 3-4)
+- reproduction rate and energy uptake increase with gamma, energy-uptake efficiency decreases (fig. 6): diversity correlates negatively with productivity and positively with efficiency
+- strings pass through more energy-extracting steps at low flow: about 1 at gamma = 0.3 and 6 at gamma = 0.003
+- cross-feeding coexistence through negative frequency dependence: rules 129 and 145 settle at 1:4 from a 9:1 start (fig. 7)
+- rules k and 255 - k produce complementary strings of equal entropy and are neutral against each other
+- intransitive (rock-paper-scissors) dominance among rule triples, e.g. (126, 134, 141)
+
+## Sources
+
+- Gerlee, P. & Lundh, T. (2010). Productivity and diversity in a cross-feeding population of artificial organisms. Evolution 64(9):2716-2730 (book ref [314]). Model, eq. 1, implementation steps 1-4, parameters, appendices A (CA) and B (entropy), results on diversity, productivity and invasion. Open copy: http://publications.lib.chalmers.se/records/fulltext/local_134187.pdf
+- Lundh, T. & Gerlee, P. (2013). Cross-feeding dynamics described by a series expansion of the replicator equation. Bull. Math. Biol. 75(5):709-724 (book ref [537]). Used only for its summary of Urdar. Open copy: http://publications.lib.chalmers.se/records/fulltext/178032/local_178032.pdf
+
+## Decisions
+
+Every gap, ambiguity or erratum in the sources, and how Chemart resolved it. Read this before quoting a number from this entry.
+
+- Origin corrected: the v1 entry credited 'Frank & Fontana / Gerlee et al.'; the book's refs [314], [315] and [537] are all by P. Gerlee and T. Lundh. The paper also says Urdar is well stirred: there is no lattice, so extras.space is not set.
+- Book ref [315] (Gerlee & Lundh, 'Rock-paper-scissors dynamics in a digital ecology', ALife XII 2010) could not be obtained. The Evolution paper [314] contains the same model and the intransitive (rock-paper-scissors) invasion results, and the implementation follows it.
+- Entropy: the paper approximates s by Delta S_m = S_{m+1} - S_m with m = 2, i.e. s = S_3 - S_2. It does not say whether substrings wrap around. They are counted cyclically, which keeps 0 <= s <= 1 and gives s = 0 for 0101... and s -> 1 for random strings, as appendix B states.
+- Eq. 1 is implemented as printed, P = (1 - exp(-dE/beta))/(1 - exp(-beta)). With beta = 0.1 it exceeds 1 for dE > about 0.01, which the draw 'reproduce if P(dE) > x' turns into certain reproduction. This matches the text: small beta means weak selection. Energy drops below 1e-9 are treated as zero (floating-point noise).
+- CA boundary: the paper does not state it; periodic boundaries are used (the Figure A1 triangle fits in its window either way).
+- Update semantics (the paper lists four steps without fixing the order): organisms act in a random order, each on a uniformly drawn string, so several may act on the same string within one update. Every organism alive at the start of the update acts once, with its rule at the start. Offspring replace uniformly drawn organisms (possibly the parent) in birth order at the end of the update, and do not act until the next update.
+- Whether an organism that extracts no energy still rewrites the string is not explicit: step 1 says every organism transforms its string, while the book says organisms convert strings to higher-entropy forms and Figure 2 shows only entropy-increasing steps. Default transform = on-gain: the string is rewritten only when dE > 0. With it, the invasion experiments reproduce the paper: c(129,145) = 0.14-0.27 against the published 0.2, c(145,129) about 0.8, 105 over 109, c(150,109) = 1, and the cycle 141 > 126 > 134 > 141. With transform = always (kept as an option), 145 excludes 129 (no coexistence), and the 126/134/141 cycle survives only as complete exclusions, strings pass through about 27 energy-extracting steps at gamma = 0.003 (the paper says about 6), and the reproduction rate varies by only a factor of about 2 over the flow range (the paper says 4).
+- Quantitative gap in diversity (on-gain, N_A = 1024, paper parameters): the Shannon index still falls at high flow, from 1.7 over updates 0-500 to 0.8 over 2500-3000 at gamma = 0.3 (two rules left, 109 and 182); the paper reports a mean of 0.27 with one dominant species, 92. At gamma = 0.003 it is 2.1-2.6 against 1.65. The trends match: diversity falls with the flow, the reproduction rate rises about 4.7-fold from gamma = 0.003 to 0.3 (the paper says 4), and efficiency falls from 0.66 to 0.056 (the paper reports a 25-fold ratio, 12 here). Metabolic depth is 0.6 at gamma = 0.3 and 10 at 0.003 (the paper says about 1 and 6). The unpublished details of the Java implementation (update order, boundaries, run lengths) are the likely source.
+- Mutation 'uniformly changed to another of the 256 CA-rules' draws uniformly among the 255 rules other than the parent's, even when rules restricts the initial set.
+- Inflow: each fresh string is dominated by 1s or 0s with probability 1/2 each ('at an equal rate'). The initial pool consists of fresh strings. The paper's alternative inflows (one fixed string, 01/011 patterns) are not implemented.
+- E_0: eq. 2 gives 1 - s_0 = 0.714 for p0 = 0.95; the paper quotes E_0 of about 0.8 (and once, in the Figure 5 text, about 0.2, taken as a typo). The cyclic S_3 - S_2 estimate on 100-bit inflow strings averages 0.73 here, and the energy of each simulated string is what is used.
+- Productivity measures (eqs. 3-4): the energy uptake is the sum over replaced strings of E(inflow string) - E(removed string), and the efficiency divides it by the total inflow energy, i.e. the realised inflow energy replaces gamma N_R E_0.
+- Network: status observed. Organisms are catalysts of metabolism; a birth is one 3-reactant event that includes the replaced organism. Flow is recorded as observed m -> ∅ and ∅ -> m events rather than as inflow/outflow rates, because each inflow string is a new random species. extras.energies holds E for every string, and extras.analysis the per-update Shannon index, births (the reproduction rate rho), energy uptake, efficiency, the mean number of energy-extracting steps of removed strings (metabolic depth) and the final population.
+- Dropped v1 parameters: ca_rule_space (a matrix) is replaced by the list rules plus abundances; influx is renamed flow_rate (the paper's gamma).
+
+## Notes
+
+One of the few ACs with an explicit thermodynamic driver: order (low entropy) of the metabolised strings is the energy.
+
+---
+
+*Specification: `catalog/chemistries/urdar.yaml` · generator: `chemart/chemistries/urdar.py` · tests: `tests/chemistries/test_urdar.py`*

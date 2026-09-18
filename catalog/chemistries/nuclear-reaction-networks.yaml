@@ -2,6 +2,15 @@ chemistries:
 
 - id: nuclear-reaction-networks
   name: Nuclear reaction networks
+  intuition: >
+    Real nuclear physics in the same record as the artificial chemistries,
+    which makes it an unusually good validation target. Nuclides and
+    elementary particles are the species, fusion and decay the reactions, and
+    measured cross-section libraries exist to check against. The CNO cycle is
+    also a textbook catalytic organisation: carbon, nitrogen and oxygen are
+    consumed and regenerated while hydrogen is converted to helium, so the
+    catalysts appear on both sides and would vanish from a net stoichiometric
+    matrix.
   book: "20.2"
   refs: ["[187]"]
   family: non-chemical

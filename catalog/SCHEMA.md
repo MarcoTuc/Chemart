@@ -31,6 +31,11 @@ as they are implemented.
 | `kind` (req) | what the thing *is*: `generator`, `formalism`, `framework`, `analysis`, `wet` |
 | `constructive` (req) | `true` if the species set is open/unbounded and grows at run time; `false` if S is fixed and enumerable up front |
 
+## Plain-language explanation
+| field | meaning |
+|---|---|
+| `intuition` | how the chemistry works and what the idea behind it is, in prose a newcomer can follow: what the molecules stand for, what a reaction does to them, and why anyone built it. The (S, R, A) fields below say precisely *what* the model is; this says what it is *for*. Required for implemented entries; surfaced by `describe_chemistry` and at the top of the chemistry's documentation page. |
+
 ## The (S, R, A) triple — Banzhaf & Yamamoto §2.3
 | field | meaning |
 |---|---|

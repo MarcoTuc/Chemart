@@ -2,6 +2,15 @@ chemistries:
 
 - id: ca-embedded-particles
   name: Embedded particles in cellular automata
+  intuition: >
+    A chemistry nobody wrote down - it is read out of a cellular automaton.
+    Run a one-dimensional CA and its space-time pattern separates into regular
+    domains; the moving boundaries between domains behave like localised,
+    persistent objects. Treat those *particles* as the molecules and their
+    collisions become reactions: two particles annihilate, or decay, or fuse
+    into a third. Since the automaton is what actually computes, this gives a
+    mechanical account of how a CA solves a global task - and it depends on
+    the observer choosing a coarse-graining.
   aliases: ["computational mechanics of cellular automata", "domains, particles and particle interactions", "embedded-particle model"]
   origin: "Hanson & Crutchfield 1992; Crutchfield & Mitchell 1995; Hordijk, Crutchfield & Mitchell 1996-1998"
   book: "10.7.2"

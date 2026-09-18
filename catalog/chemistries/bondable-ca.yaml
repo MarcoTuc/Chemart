@@ -2,6 +2,15 @@ chemistries:
 
 - id: bondable-ca
   name: Bondable Cellular Automata (BCA)
+  intuition: >
+    Reactivity that is not declared but *measured*. Each atom is a small
+    one-dimensional cellular automaton, and its type is the Wolfram rule that
+    runs it. To decide whether two atoms bond, you let their dynamics settle
+    and read an emergent property - the mean polarity - then compare. Bonded
+    atoms also influence each other's neighbourhoods, so a bond can strengthen
+    or weaken itself. Ordering all 256 rules by settled polarity even produces
+    something like a periodic table. This is the sub-symbolic idea: chemistry
+    emerging from an internal dynamical system rather than from a table.
   aliases: ["BCA", "sub-symbolic cellular automata chemistry"]
   origin: "Hatcher, Banzhaf & Yu, 2011"
   book: "10.7.3"

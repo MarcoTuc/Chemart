@@ -2,6 +2,14 @@ chemistries:
 
 - id: automata-reaction
   name: Automata reaction (32-bit binary string chemistry)
+  intuition: >
+    The cheapest constructive chemistry that still does something interesting.
+    Molecules are 32-bit words, and a collision treats the first word as a
+    finite automaton that consumes the second and emits a third: s1 + s2 -> s1
+    + s2 + A_s1(s2). Both reactants survive, so every string is both machine
+    and tape. About a third of random strings turn out to be passive
+    replicators, products tend to resemble their parents, and none of it is
+    designed in - it falls out of 32 bits and one rule.
   aliases: ["Dittrich-Banzhaf automata chemistry", "constructive binary string system"]
   origin: "Dittrich & Banzhaf, 1998"
   book: "10.6.1"

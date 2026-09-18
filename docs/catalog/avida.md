@@ -1,0 +1,112 @@
+# Avida
+
+`avida` · *Adami & Brown, 1994*
+
+*Also known as:* *Avida digital evolution platform*, *digital organisms*
+
+Self-replicating computer programs competing for CPU time and space on a grid. A genome is a string of instructions that copies itself into a neighbouring cell, with copy errors as mutation. On top of replication the environment pays a bonus for computing logic functions on inputs, so an organism that discovers NAND or EQU runs faster and out-reproduces its neighbours. That turns it into an experimental system for evolution: because every lineage is recorded, you can ask how a complex feature was built from simpler ones.
+
+| | |
+|---|---|
+| **family** | automata |
+| **kind** | generator |
+| **constructive** | yes — the species set grows at run time |
+| **fidelity** | `reconstructed` — built from the original papers listed below |
+| **book** | 10.7.1; ecology 8.2.3; evolving distributed algorithms 17.3.2 |
+| **refs** | [19], [16], [21], [22], [567], [628], [629], [467], [468], doi:10.1162/106454604773563612, doi:10.1038/nature01568 |
+| **provides** | `topology`, `stoichiometry`, `catalysts`, `initial-state`, `space`, `sequence-structure-function` |
+
+## Molecules, reactions, reactor
+
+**S — molecules** (implicit): Genotypes: circular genomes over the 26 instructions of the heads_default set, written with the instruction set's letter code a..z (a nop-A, b nop-B, c nop-C, d if-n-equ, e if-less, f if-label, g mov-head, h jmp-head, i get-head, j set-flow, k shift-r, l shift-l, m inc, n dec, o push, p pop, q swap-stk, r swap, s add, t sub, u nand, v h-copy, w h-alloc, x h-divide, y IO, z h-search). Species id <length>-<first 8 hex digits of the sha1 of the letters>; structure = the letters. Each organism occupies one cell of a toroidal lattice and runs its genome on a virtual CPU (registers AX, BX, CX; two stacks of 10; instruction, read, write and flow heads; input and output buffers).
+
+**R — reactions** (implicit, arity [1, 2]): P -> P + O (birth into an empty cell) ; P + V -> P + O (the offspring overwrites a neighbour V) ; P -> O (the offspring replaces its parent) ; P -> ∅ (death of old age)
+
+**A — reactor**: lattice-2d
+ · *dilution:* one organism per cell; a birth into an occupied cell kills the occupant, so the population is capped by world_x x world_y; organisms also die after executing age_limit x genome length instructions
+
+## What you get
+
+```python
+net = chemart.generate_network("avida", seed=1)
+```
+
+```
+avida: 178 species, 248 reactions, status=observed
+provides: catalysts, initial-state, space, stoichiometry, topology
+seed: 1
+extras: analysis, environment, final_state, genotype_parent, instruction_set, space, task_events
+```
+
+First reactions:
+
+```
+100-e994d1ba -> 100-e994d1ba + 100-b59a729c  (x1)
+100-e994d1ba -> 2 100-e994d1ba  (x11)
+100-e994d1ba -> 100-e994d1ba + 100-eb8585d3  (x1)
+100-e994d1ba -> 100-e994d1ba + 100-b0795f19  (x1)
+100-eb8585d3 -> 2 100-eb8585d3  (x6)
+100-e994d1ba -> 100-e994d1ba + 100-89e96218  (x1)
+100-89e96218 -> 100-89e96218 + 100-1c09d338  (x1)
+100-e994d1ba -> 100-e994d1ba + 100-7a92d01b  (x1)
+… and 240 more
+```
+
+## Parameters
+
+| name | type | default | role | what it does |
+|---|---|---|---|---|
+| `world_x` | `int` | `12` | spatial | lattice width (toroidal) <br>`3` … `1000` · *range:* Avida default and Lenski et al. 2003: 60 (3600 cells) |
+| `world_y` | `int` | `12` | spatial | lattice height (toroidal) <br>`3` … `1000` · *range:* Avida default and Lenski et al. 2003: 60 |
+| `updates` | `int` | `150` | population | number of updates; one update gives ave_time_slice CPU cycles per living organism <br>`0` … `10000000` · *range:* Lenski et al. 2003: 100000 updates; the ancestor needs about 13 updates per generation |
+| `ancestor` | `str` | `wzcagcccccccccccccccccccccccccccccccccccccccccc…` | population | genome injected into cell 0 at update 0, as instruction letters <br>*range:* default: support/config/default-heads.org (100 instructions, 86 of them nop-C filler); any genome of 8 to 2048 letters a..z |
+| `copy_mut_prob` | `float` | `0.0075` | stochastic | probability per h-copy that a random instruction (any of the 26) is written instead of the one read <br>`0.0` … `1.0` · *range:* Avida default 0.0075; Lenski et al. 2003: 0.0025; 0 gives exact self-copies |
+| `divide_ins_prob` | `float` | `0.05` | stochastic | probability per divide of inserting one random instruction at a random site of the offspring <br>`0.0` … `1.0` · *range:* Avida default and Lenski et al. 2003: 0.05 |
+| `divide_del_prob` | `float` | `0.05` | stochastic | probability per divide of deleting one random instruction of the offspring <br>`0.0` … `1.0` · *range:* Avida default and Lenski et al. 2003: 0.05 |
+| `ave_time_slice` | `int` | `30` | kinetic | CPU cycles per organism per update, on average <br>`1` … `100000` · *range:* Avida default and Lenski et al. 2003: 30 |
+| `rewards` | `dict` | `{'NOT': 1.0, 'NAND': 1.0, 'AND': 2.0, 'ORN': 2.…` | selection | task -> exponent v: performing the task (once per gestation) multiplies the organism's bonus by 2^v; tasks NOT NAND AND ORN OR ANDN NOR XOR EQU on the 32-bit inputs <br>*range:* default: environment.cfg / Lenski et al. 2003 table 1 (merit x2, x2, x4, x4, x8, x8, x16, x16, x32); {} rewards nothing; omit a task to leave it unrewarded |
+| `age_limit` | `int` | `20` | population | an organism dies after executing age_limit x its genome length instructions <br>`0` … `100000` · *range:* Avida default 20 (DEATH_METHOD 2); 0 disables death of old age |
+| `birth_method` | `enum` | `neighborhood` | spatial | neighborhood: offspring placed in the 8 neighbouring cells or the parent's cell; mass-action: any cell of the world (well stirred) <br>one of `neighborhood`, `mass-action` · *range:* Avida BIRTH_METHOD 0 (default) and 4 |
+| `prefer_empty` | `bool` | `True` | spatial | place offspring in an empty candidate cell whenever one exists (Avida PREFER_EMPTY 1) |
+
+## Published phenomena
+
+What the literature reports this model produces. Whether the generator reproduces each one is recorded in the decisions below.
+
+- the default-heads ancestor copies itself exactly when mutations are off: 389 instructions per gestation, 97 lines executed, merit 97 (Avida tests/heads_default_100u)
+- an organism that outputs the bitwise NOT of an input doubles its merit (Lenski et al. 2003 table 1: NOT and NAND x2, AND and ORN x4, OR and ANDN x8, NOR and XOR x16, EQU x32), and so gets twice the CPU time of an otherwise identical organism
+- a population grows from a single ancestor until the lattice is full; afterwards every birth kills an organism, so space is the resource organisms compete for (Ofria et al. 2009, 3.2.5)
+- evolution of complex features from simple ones: EQU evolves in 23 of 50 populations in the reward-all environment and in none when only EQU is rewarded (Lenski et al. 2003)
+- host-parasite ecologies and diversification (book 8.2.3)
+- evolved decentralised synchronization and desynchronization with group selection on demes and germline replication (Knoester & McKinley 2011; book 17.3.2)
+
+## Sources
+
+- Ofria, C., Bryson, D. M. & Wilke, C. O. (2009). Avida: a software platform for research in computational evolutionary biology. In Komosinski & Adamatzky (eds.), Artificial Life Models in Software, 3-35 (book ref [629]; an updated version of Ofria & Wilke, Artificial Life 10:191-229, 2004): virtual hardware, heads, nop modification and complements, template matching, h-alloc and h-divide with their failure conditions, copy/insertion/deletion mutations, genotypes, updates and the probabilistic scheduler, birth methods, merit held constant over a gestation, default nine-task environment. https://www.cse.msu.edu/~ofria/pubs/2009AvidaIntro.pdf
+- Lenski, R. E., Ofria, C., Pennock, R. T. & Adami, C. (2003). The evolutionary origin of complex features. Nature 423:139-144: table 1 (rewards for the nine logic functions), Methods (3600 cells, 30 instructions per update, 0.0025 copy errors per instruction, 0.05 insertions and deletions per genome, offspring placed in one of the eight neighbours or the parent's cell). https://www.cse.msu.edu/~ofria/pubs/2003LenskiEtAl.pdf
+- Avida 2.14.0 source (devosoft/avida, master; submodule apto 02e18980): avida-core/source/cpu/cHardwareCPU.cc (heads_default instructions, SingleProcess, ReadLabel, FindLabel_Forward, FindModifiedRegister/Head, Allocate_Main, Divide_Main), cHardwareBase.cc (Divide_CheckViable, Divide_DoMutations), cHeadCPU.h/.cc, cCPUStack.h, cCodeLabel, main/cTaskLib.cc (SetupTests, logic tasks), cEnvironment.cc (SetupInputs, TestOutput, pow process, requisites), cPhenotype.cc (SetupInject, SetupOffspring, DivideReset, CalcSizeMerit), cPopulation.cc (ActivateOffspring, PositionOffspring, ActivateOrganism), tools/cTopology.h (build_torus), libs/apto Scheduler/Probabilistic.cc; support/config avida.cfg, environment.cfg, instset-heads.cfg, default-heads.org; tests/heads_default_100u expected data. https://github.com/devosoft/avida
+
+## Decisions
+
+Every gap, ambiguity or erratum in the sources, and how Chemart resolved it. Read this before quoting a number from this entry.
+
+- The book (10.7.1) gives only the principles and the instruction table, so the model is reconstructed from the Avida source with the default avida.cfg and environment.cfg. The CPU is a port of cHardwareCPU for the 26 heads_default instructions; the population, scheduler, environment and phenotype code are ported for the default configuration only (one thread, no resources, no demes, no parasites, DIVIDE_METHOD 1 split, BASE_MERIT_METHOD 4, INHERIT_MERIT 1, ALLOC_METHOD 0, ALLOW_PARENT 1, torus geometry).
+- Cross-check against the compiled original (Avida 2.14.0 built from devosoft/avida master with the pinned apto 02e18980 and backward-cpp dc8b8c76; its own tests/heads_default_100u reproduces the shipped count.dat exactly). (1) On the test CPU the default-heads ancestor divides after 389 instructions with 97 executed lines, copied size 100 and merit 97 (also the values in that test's dominant.dat and average.dat: 89 set-up cycles plus 3 per copied instruction). (2) Analyze mode (LOAD_SEQUENCE, RECALCULATE, DETAIL) on 1003 genomes (point mutants of the ancestor, random code blocks, blocks rich in IO/nand/stack/register instructions): for all 626 that divide, gestation time, merit, executed length and the tasks performed (NOT, NAND, ORN among them) agree exactly with the port's test_cpu. (3) Population size on the default 60x60 world with default mutation rates: upstream 64.5 organisms at update 100 (6 seeds) and 386 +- 29 at update 200 (18 seeds); the port 64 and 400 +- 31 (12 seeds). Upstream's analyze column viable (the lineage breeds true within 3 generations) is not reproduced; test_cpu reports whether the organism divided.
+- The random number generator is numpy's, not Avida's, so runs are statistically but not bit-for-bit equivalent to upstream. Where Avida draws several random numbers (inputs, placement, mutations, scheduling) Chemart draws the same quantities from the same distributions.
+- Book erratum: table 10.4 prints if-n-eau (if-n-equ) and nopC (nop-C). Its descriptions are simplified: in the source add/sub/nand always operate on BX and CX and a nop only selects the destination register; mov-head moves the IP (or with nop-B/nop-C the read/write head) to the flow head; if-label tests whether the complement of the following label was the most recent sequence of nops copied.
+- The v1 catalog said Chemart should wrap the C++ Avida; it is re-implemented instead (pure Python, no build dependency). Paper-scale runs (3600 organisms, 10^5 updates, about 10^10 instructions) are beyond pure Python; the defaults run a 12x12 world for 150 updates.
+- Lenski et al. 2003 used Avida 1.6 and a 50-instruction ancestor that is not given in the paper; the default ancestor is the 100-instruction default-heads.org of Avida 2.x. The ancestor parameter accepts any genome.
+- Rewards: environment.cfg gives each task a pow process with value v (bonus x 2^v) and requisite max_count=1, i.e. each task is rewarded at most once per gestation; this reproduces Lenski et al. table 1 (NOT and NAND x2 ... EQU x32). Merit changes only at divide (MERIT_INC_APPLY_IMMEDIATE 0): the parent's new merit = min(genome length, copied size, executed size) x bonus, and the offspring inherits it. The injected ancestor starts with merit = its length.
+- Inputs: every birth draws three new inputs for the cell, with top bytes 0x0F, 0x33, 0x55 and 24 random bits (SetupInputs random); the organism cycles through them with IO. The test CPU uses the fixed inputs 0x0f13149f, 0x3308e53e, 0x556241eb.
+- Dropped v1 parameters: grid (a matrix) becomes world_x and world_y; instruction_set is fixed to heads_default (the only set of the book's table 10.4); mutation_rates becomes copy_mut_prob, divide_ins_prob and divide_del_prob; tasks (a callable) becomes the rewards dict over the nine logic tasks; resources (depletable resources with inflow/outflow) and demes (group selection, germline replication of 17.3.2) are not implemented, so the network has no flow; the ancestor is a genome string.
+- Not implemented: point (cosmic ray) mutations, per-copy insertions and deletions and slip mutations (all 0 by default), the integrated and constant schedulers (the probabilistic scheduler is Avida's default), birth methods other than neighbourhood-random and full-soup-random, sex, parasites (inject), energy model, and the 77-task and resource environments.
+- Network: status observed. Species are genotypes (identical genomes); ids come from a sha1 of the genome instead of Avida's per-run names (100-aaaaa). Birth events carry the parent on both sides (it acts as a catalyst of its own copy). A birth into the parent's cell is P -> O. Deaths of old age are P -> ∅. Task completions are extras.task_events {genotype: {task: count}}, not species. extras.space describes the torus and holds the final grid; extras.final_state counts the living genotypes; extras.genotype_parent gives each genotype's first parent genotype; extras.analysis has totals and per-update organisms, genotypes, births, overwrites, deaths of old age, average merit, gestation and generation, and the number of organisms whose last gestation included each task.
+- Rates: none. Replication speed follows from the program, merit and scheduling, and no rate constant is defined.
+
+## Notes
+
+The observed network of a short run is a sample of genotype space: with the default mutation rates about a quarter of births give a new genotype, most of them neutral nop-C changes. Set copy_mut_prob, divide_ins_prob and divide_del_prob to 0 for a pure replication network of the ancestor.
+
+---
+
+*Specification: `catalog/chemistries/avida.yaml` · generator: `chemart/chemistries/avida.py` · tests: `tests/chemistries/test_avida.py`*

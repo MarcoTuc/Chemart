@@ -77,6 +77,7 @@ def describe_chemistry(chemistry: str) -> dict[str, Any]:
     return {
         "id": c.id,
         "name": c.name,
+        "intuition": _oneline(c.intuition) or None,
         "aliases": c.aliases,
         "origin": c.origin,
         "family": c.family,

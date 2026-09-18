@@ -2,6 +2,13 @@ chemistries:
 
 - id: prime-number-chemistry
   name: Prime number (number-division) chemistry
+  intuition: >
+    The example that shows why a chemistry cannot always be a finite matrix.
+    Molecules are integers; when a smaller number divides a larger one, the
+    larger is replaced by the quotient while the divisor survives as a
+    catalyst. Nothing ever consumes a prime, so primes accumulate as the inert
+    residue of the reaction - the sieve of Eratosthenes as a reactor. The
+    species set is unbounded and only ever discovered by running the rule.
   aliases: ["NumberChem", "division chemistry", "number-division chemistry"]
   origin: "Banzhaf, Dittrich & Rauhe, 1996"
   book: "1 (eqs. 1.4-1.5), 2.5.2, appendix (NumberChem.py, NumberChemHO divrule)"

@@ -2,6 +2,13 @@ chemistries:
 
 - id: lotka-volterra
   name: Lotka-Volterra
+  intuition: >
+    Predator and prey as three reactions: prey eats an inexhaustible resource
+    and doubles, a predator meeting prey doubles, and predators die.
+    Deterministically the populations circle a fixed point forever. In a small
+    volume the same rules behave quite differently - oscillations grow erratic
+    and one species eventually goes extinct by chance - which makes it a
+    compact demonstration that the reactor algorithm is part of the model.
   book: "7.2.8; appendix (Lotka.py); ecology 8.2.3"
   refs: ["[621]", "[792]", "[37]", "[238]", "[593]"]
   family: evolutionary-dynamics

@@ -2,6 +2,14 @@ chemistries:
 
 - id: brusselator
   name: Brusselator
+  intuition: >
+    The minimal oscillator, and the standard first test for anything that
+    handles reaction networks. Two species are held constant as reservoirs,
+    two are dynamic, and the autocatalytic step 2X + Y -> 3X provides the
+    feedback. Push the parameter b past 1 + a^2 and the steady state loses
+    stability: concentrations stop settling and run around a limit cycle
+    instead. The trimolecular step is chemically unrealistic and deliberately
+    so - it buys analytic tractability.
   origin: "Prigogine & Lefever, 1968"
   book: "17.4.2, 19.3; ARMS 9.4"
   refs: ["[675]"]

@@ -2,6 +2,14 @@ chemistries:
 
 - id: chameleon
   name: Colored chameleon chemistry
+  intuition: >
+    A puzzle in chemical clothing, and the smallest useful test case in the
+    catalog. Three colours; when two chameleons of different colours meet,
+    both take the third colour. The total count never changes, so the system
+    just relaxes to equal thirds. Its real value is the conservation law:
+    besides the obvious total, the differences between colour counts are
+    conserved *modulo 3* - an integer invariant that any real-valued nullspace
+    computation will miss entirely.
   aliases: ["chameleon colony puzzle"]
   origin: "Winkler, 2007 puzzle; formulated as an AC by Banzhaf & Yamamoto"
   book: "2.5.1"

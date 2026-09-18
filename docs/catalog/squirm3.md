@@ -1,0 +1,121 @@
+# Squirm3
+
+`squirm3` · *Hutton, 2002-2007*
+
+*Also known as:* *Hutton's artificial chemistry*, *Organic Builder chemistry*
+
+A spatial chemistry where template replication really does emerge. Atoms carry a fixed type and a mutable state, drift on a grid, and local rules make or break bonds while changing states; a bonded group moves as one molecule. Eight rules are enough for an arbitrary sequence flanked by two markers to copy itself. Enzymes come later and are the clever part: the whole reaction to be catalysed is encoded in a catalyst's state, read off a genetic string, so which reactions exist becomes heritable.
+
+| | |
+|---|---|
+| **family** | spatial |
+| **kind** | generator |
+| **constructive** | yes — the species set grows at run time |
+| **fidelity** | `reconstructed` — built from the original papers listed below |
+| **book** | 11.4.1 |
+| **refs** | [411], [412], [529], doi:10.1162/106454602321202417, doi:10.1162/artl.2007.13.1.11 |
+| **provides** | `topology`, `stoichiometry`, `catalysts`, `space`, `mass-conservation`, `initial-state`, `sequence-structure-function` |
+
+## Molecules, reactions, reactor
+
+**S — molecules** (implicit): Atoms have a fixed type in {a..f} and a mutable integer state; a bonded group of atoms is a molecule and moves as a unit. A species is a whole molecule, identified by a canonical string over its atoms ("e8-a1-b1-f1"), invariant under the molecule's symmetries: a chain is read from the end that gives the smaller label sequence, a ring is the smallest rotation/reflection (suffix "/ring"), and any other bond graph gets its canonical vertex order plus an explicit edge list.
+
+**R — reactions** (explicit, arity [1, 2]): Local rules on two (or three) colliding atoms that change their states and make or break bonds: association (x_g + y_h -> x_i y_j), dissociation (x_g y_h -> x_i + y_j) and transformation (states change while bonded). Rules are specific (fixed types) or general (type variables x, y, z: the same letter means the same type, different letters are unconstrained). Enzymatic reactions add a catalyst z(i) whose state i encodes the whole reaction via i = 2(2(|T|(|T|(|S|(|S|(|S| g + h) + j) + k) + x) + y) + b1) + b2 + |S|, read off a gene of base atoms in base 4.
+
+**A — reactor**: lattice-2d, continuous-space
+ · *dilution:* periodic flooding dissolves every atom in one sector back to single atoms in state 0
+
+## What you get
+
+```python
+net = chemart.generate_network("squirm3", seed=1)
+```
+
+```
+squirm3: 74 species, 67 reactions, status=observed
+provides: initial-state, mass-conservation, space, stoichiometry, topology
+seed: 1
+extras: analysis, conservation, dissolved_by_flood, final_state, floods, reaction_rules, rule_counts, rules, space
+```
+
+First reactions:
+
+```
+e8-a1-b1-f1 + e0 -> e3-e4-a1-b1-f1  (x9)
+e3-e4-a1-b1-f1 -> e3-e2-a5-b1-f1  (x9)
+e3-e2-a5-b1-f1 + a0 -> a6-a7-b1-e2-e3-f1/0.1,1.2,1.3,2.5,3.4  (x7)
+a6-a7-b1-e2-e3-f1/0.1,1.2,1.3,2.5,3.4 -> a3-a7-b1-e2-e2-f1/0.1,0.3,1.2,1.4,2.5,3.4  (x6)
+a3-a7-b1-e2-e2-f1/0.1,0.3,1.2,1.4,2.5,3.4 -> a3-a4-b1-e2-e2-f1/0.1,0.3,1.2,1.4,2.5,3.4  (x6)
+a3-a4-b1-e2-e2-f1/0.1,0.3,1.2,1.4,2.5,3.4 -> a2-a3-b5-e2-e2-f1/0.1,0.2,0.3,1.4,2.5,3.4  (x6)
+a2-a3-b5-e2-e2-f1/0.1,0.2,0.3,1.4,2.5,3.4 + b0 -> a2-a3-b6-b7-e2-e2-f1/0.1,0.3,0.4,1.5,2.3,3.6,4.5  (x6)
+a2-a3-b6-b7-e2-e2-f1/0.1,0.3,0.4,1.5,2.3,3.6,4.5 -> a2-a2-b3-b7-e2-e2-f1/0.1,0.2,0.4,1.3,1.5,2.3,3.6,4.5  (x5)
+… and 59 more
+```
+
+## Parameters
+
+| name | type | default | role | what it does |
+|---|---|---|---|---|
+| `method` | `enum` | `spatial` | structural | spatial: run the 2D world and return the reactions that fired, with counts; closure: every molecule-level reaction reachable from the seed molecule and the food atoms, with no spatial constraint <br>one of `spatial`, `closure` |
+| `rules` | `enum` | `replicator` | structural | replicator: the eight rules of Hutton (2002) table 1 = book table 11.5; membrane: the 41 rules of Hutton (2007) for self-reproducing cells; custom: the pair rules in rule_text <br>one of `replicator`, `membrane`, `custom` |
+| `rule_text` | `str` | `` | structural | rules='custom': one pair rule per line in the papers' notation, 'R1: e8 + e0 -> e4e3', where juxtaposition (or '-') means bonded and ' + ' means not bonded; x, y, z are type variables and '#' starts a comment |
+| `seed_molecule` | `str` | `e8-a1-b1-f1` | population | the molecule the world starts with, as a chain of atoms 'type state' joined by '-'. Prefixed with 'cell:' it becomes the gene string of the 2007 cell (fig. 2): a membrane loop of a36 with two a37 anchors, one bonded to each end of the gene <br>*range:* any e8 {x1}* f1 chain replicates; the 2002 experiments used e8-a1-b1-c1-f1 and chains of seven atoms; 'cell:e1-b1-c1-a1-f1' is the 2007 starting cell |
+| `food` | `int` | `75` | population | free atoms in state 0, of random type, scattered over the world <br>`0` … `100000` · *range:* 2002 experiment 1: 75 atoms in a 20x20 world; experiment 3 fills a 100x100 world |
+| `space` | `enum` | `lattice-vn` | spatial | lattice-vn: the 2002 CA (move into the Moore neighbourhood, react in the von Neumann one, bond range 1); lattice-moore: the 2007 lattice (react over the Moore neighbourhood, bond range 2); continuous: the 2007 continuous-space physics <br>one of `lattice-vn`, `lattice-moore`, `continuous` |
+| `width` | `int` | `20` | spatial | world width (lattice points, or length units in continuous space) <br>`4` … `1000` · *range:* 2002: 20x20 for experiment 1, 100x100 for experiments 2 and 3; the 2007 C++ uses 400x300 continuous |
+| `height` | `int` | `20` | spatial | world height <br>`4` … `1000` |
+| `steps` | `int` | `3000` | population | time steps; each is one reaction phase and one movement phase <br>`0` … `10000000` · *range:* 2002 experiment 1 ran 3544 iterations for 11 copies; the 2007 runs reach 10^6-10^7 |
+| `flood_period` | `int` | `` | selection | dissolve one sector of the world back to single atoms in state 0 every this many steps - the selection pressure; 0 turns flooding off <br>`0` … `10000000` · *range:* 2002: T = 2000, 10000 and 20000; 2007: 50000 and 200000 |
+| `flood_sectors` | `enum` | `halves` | selection | flood alternating halves (2002) or rotate through quarters (2005, 2007) <br>one of `halves`, `quarters` |
+| `cosmic_ray` | `float` | `` | stochastic | probability per atom per step that an atom's state is randomised, leaving its type and bonds <br>`0.0` … `1.0` · *range:* 2002 experiment 3: 0.00001, which lets replicators appear spontaneously |
+| `reaction_radius` | `float` | `2.5` | spatial | space='continuous': reaction radius in atom radii <br>`0.1` … `20.0` · *range:* the 2007 C++ uses 2.5 atom radii for reactions and 2 for physical forces |
+| `n_states` | `int` | `10` | structural | number of atom states \|S\|; it is the offset of the enzyme states and enters the enzyme encoding. rules='membrane' needs at least 38 <br>`2` … `1000` · *range:* 2002: 10 states; the 2004 ALife IX system: 18; the 2007 cells: 38 |
+| `n_types` | `int` | `6` | structural | number of atom types \|T\|, the first n of a..f; the last two are the start and end markers and the rest are gene bases <br>`2` … `6` · *range:* the papers always use 6; lowering it reproduces the 2002 count of 5n^2 + 21n + 24 rules for n = n_types - 2 bases |
+| `mutation_cases` | `int` | `1000000` | stochastic | rules='membrane': R41 inserts or removes an atom in a chain of atoms in state 1 with probability 1 in this many matches - the mutation rate the paper leaves to the user <br>`1` … `1000000000` · *range:* the 2004 paper uses p = 1e-7 per atom per time step |
+| `max_species` | `int` | `120` | structural | method='closure': molecule budget; the status becomes 'truncated' when it is reached <br>`1` … `100000` |
+
+## Published phenomena
+
+What the literature reports this model produces. Whether the generator reproduces each one is recorded in the decisions below.
+
+- template self-replication of an arbitrary a1..d1 sequence flanked by e8 and f1: e8 {x1}* f1 + {x0}* -> 2 e8 {x1}* f1 (2002, eq. 4)
+- R1-R8 expand to exactly 188 explicit reactions out of 7200 possible two-atom inputs, the other 7012 being null (2002)
+- crossover: two replicators tangle through R4 and separate into molecules of different lengths (2002, experiment 1)
+- evolution under flooding selects for the shortest replicators (2002, experiment 2)
+- self-replicators appear spontaneously from a soup of atoms in state 0 under rare cosmic rays (2002, experiment 3)
+- genetically encoded enzymes: a gene of a..d bases reads out into a catalyst state that encodes one whole reaction (2007)
+- membrane-enclosed cells that duplicate their gene string, grow the membrane and divide (2007)
+- atom counts are conserved exactly by every reaction
+
+## Sources
+
+- Hutton, T. J. (2002). Evolvable self-replicating molecules in an artificial chemistry. Artificial Life 8(4):341-356, doi:10.1162/106454602321202417 - table 1 (= book table 11.5, R1-R8 verbatim), the 188 explicit reactions and 7200 possible inputs, the physics (lattice, Moore movement, von Neumann reactions), experiments 1-3 (20x20 world with 75 atoms, 3544 iterations; floods T = 2000/20000; cosmic rays p = 0.00001), and the replication scheme e8 {x1}* f1 + {x0}* -> 2 e8 {x1}* f1 (eq. 4). Author's copy: http://www.sq3.org.uk/papers/evselfreps.pdf (via the Wayback Machine)
+- Hutton, T. J. (2007). Evolvable self-reproducing cells in a two-dimensional artificial chemistry. Artificial Life 13(1):11-30, doi:10.1162/artl.2007.13.1.11 - the 41 rules (table 1 R1-R34, R35 membrane growth, R36-R39 gene read-out, R40 enzyme action, R41 mutation), the enzyme encoding formula with S = 38 and T = 6, the base-4 gene decoding j = 4(i - 38) + val(x) + 38 and its worked examples (bca -> 62, ebcafbdcaf -> 62 and 158), and both physics implementations. Author's copy: http://www.sq3.org.uk/papers/cells2007.pdf (via the Wayback Machine)
+- Hutton, T. J. (2004). A functional self-reproducing cell in a two-dimensional artificial chemistry. ALife IX, 444-449 - the same encoding with S = 18 and a base-3 gene, plus the two worked enzymes d5731 (e0 + a0 -> e2a3) and d6740227 (a8 + a0 -> a8a7) used as test vectors. http://www.sq3.org.uk/papers/alife9.pdf (via the Wayback Machine)
+- Hutton, T. J. squirm3, the author's own C++/Emscripten source (GPL-3): SquirmChemistry.cpp (rule matching, type variables, TestProb), SquirmReaction.h (the two- and three-atom rule records and their bond fields), SquirmGrid.cpp (the rule set, DoFlood, the continuous physics, RADIUS 6, reaction range 2.5 radii). https://github.com/timhutton/squirm3
+- Hutton, T. J. (2005). Information-replicating molecules with programmable enzymes. ACA 2005 - table 1 repeats R1-R8 and documents the quarter-rotating flood. http://www.sq3.org.uk/papers/aca05.pdf (via the Wayback Machine)
+
+## Decisions
+
+Every gap, ambiguity or erratum in the sources, and how Chemart resolved it. Read this before quoting a number from this entry.
+
+- The book's formula 11.15 is correct as printed; the extracted text only lost the bars of |T| and |S|. Hutton (2007) prints it as i = 2(2(T(T(S(S(Sg + h) + j) + k) + x) + y) + b1) + b2 + S and says 'S is the number of states (38) and T is the number of types (6)', so the trailing '+ S' is the state offset |S|, not a state variable. Verified against the two worked enzymes of the 2004 paper, which both round-trip exactly: d5731 = e0 + a0 -> e2a3 and d6740227 = a8 + a0 -> a8a7 with S = 18, T = 6.
+- The book's genetic-string example 'ebdcaf translates into i = 13204 + |S|' is 1320 base 4 = 120, plus the offset: the extraction lost the subscript 4. Hutton (2007) gives the same example as part of ebcafbdcaf -> enzymes 62 (= 120 base 4 + 38) and 158 (= 1320 base 4 + 38), and the read-out rule j = 4(i - 38) + val(x) + 38 with val(a) = 0 .. val(d) = 3, implemented as gene_to_enzyme.
+- Erratum in Hutton (2002): the paper says 5n^2 + 21n + 4 of the 200(n + 2)^2 possible reactions are needed, but expanding R1-R8 over n + 2 types gives 2 + (n + 2) + 5(n + 2)^2 = 5n^2 + 21n + 24, which for n = 4 is the 188 the same paragraph states. The constant is 24, not 4; the test checks both the 188 and the general formula.
+- Book table 11.5 matches the paper's table 1 exactly (R1-R8), including the specific association R1 and the specific dissociation R6. Different type variables are unconstrained, so x and y may take the same type - this is what makes R2, R4, R5, R7 and R8 expand to 36 reactions each and the total 188 (the author's C++ only forces equality when the same variable letter is reused).
+- Species are whole molecules, so a rule firing becomes a molecule-level reaction: the distinct molecules holding the reacting atoms on the left, the molecules present afterwards on the right. Reactions are deduplicated as multisets with firing counts. Because atoms are never created or destroyed, the count of each atom type is an exact conservation law; extras.conservation carries one vector per type plus the total atom count.
+- Flooding dissolves a sector in place (bonds broken, states reset to 0) as in the author's C++ DoFlood and the 2005 paper's 'dissolving state', rather than deleting and re-creating atoms as the 2002 prose describes; this is the same chemistry and keeps atom conservation exact. Floods are not reactions: extras.floods and extras.dissolved_by_flood record them.
+- When several rules match an atom, one match is chosen uniformly at random, following Hutton (2007) ('if two reaction rules can be applied to a given configuration, one will be chosen at random'). The author's C++ instead applies the first matching rule in list order; the random choice avoids an artefact of rule ordering. Per-rule 1-in-N probabilities (the C++ TestProb) are supported by Rule.cases.
+- Bond crossing is not prevented. Hutton (2002) does not mention it; Hutton (2007) forbids crossed bonds on the lattice. It matters only for membranes, not for the replicator, and is recorded here rather than implemented.
+- The 2007 rules R1-R34 and R39-R41 are transcribed from the paper's table 1 and figures 11-15. R36, R37 and R38 are given in the paper only as diagrams, so their bond patterns are taken from the analogous rules e1-e4 in the author's C++ SquirmGrid.cpp, while their states and the base-4 formula follow the paper; the released C++ uses a different state numbering (membrane 39/40, enzymes from 41) and a hard-coded base-3 read-out, so the paper's numbering (membrane 36/37, enzymes from 38) is used throughout. R37 and R40 are state-parametric families and are implemented as rule kinds rather than as rule text.
+- The v1 parameters are migrated: T becomes n_types (the types are always a..f), S becomes n_states, the callable rules becomes the enum rules plus rule_text, the matrix seed_molecule becomes a string, space keeps its three choices, and reaction_radius and flood_period are kept. n_states defaults to 10 (the 2002 system); rules='membrane' needs at least 38.
+- The closure method lets any molecules meet, with no spatial constraint, and returns one reaction per distinct outcome (expand with alternatives=True and arity 1 and 2). It is bounded by max_species because two replicators can bond into ever larger tangles - the crossover the 2002 paper reports.
+- No rate law is published: reaction rates follow from collisions in the world, so every reaction's rate is None and the counts carry the observed frequencies.
+
+## Notes
+
+Atoms are indivisible and never created or destroyed, so Squirm3 has a real atom-conservation law - a good positive control for Chemart's conservation-law detection. The default reproduces the 2002 experiment 1 setting (a 20x20 lattice, 75 free atoms, the seed e8-a1-b1-f1) on which the seed molecule replicates within a few thousand steps.
+
+---
+
+*Specification: `catalog/chemistries/squirm3.yaml` · generator: `chemart/chemistries/squirm3.py` · tests: `tests/chemistries/test_squirm3.py`*

@@ -1,0 +1,106 @@
+# Self-replicating loops in cellular automata
+
+`sr-loops` · *von Neumann 1966; Langton 1984; Byl 1989; Reggia 1993; Sayama 1998-2004*
+
+*Also known as:* *Langton loop*, *Byl loop*, *Chou-Reggia loop*, *SDSR loop*, *evoloop*
+
+Self-replication in a cellular automaton, and the clearest case of 'what is a molecule' being the observer's choice. At the micro level a cell state is a molecule and a transition is a reaction; at the macro level a *loop* - an emergent closed pattern that copies itself - is the molecule, and reproduction, mutation and dissolution are the reactions. Langton's loop replicates without universal construction; add structural dissolution and the colony reaches a steady state, and loops can then evolve toward smaller sizes.
+
+| | |
+|---|---|
+| **family** | automata |
+| **kind** | generator |
+| **constructive** | yes — the species set grows at run time |
+| **fidelity** | `reconstructed` — built from the original papers listed below |
+| **book** | 10.4, 10.7.2; ecology 8.2.3 |
+| **refs** | [495], [705], [744], [745], [738], [739], [779], [453] |
+| **provides** | `topology`, `stoichiometry`, `catalysts`, `initial-state`, `space`, `sequence-structure-function` |
+
+## Molecules, reactions, reactor
+
+**S — molecules** (implicit): Two readings (book 10.7.2), chosen with `mode`. (a) macro: an emergent loop pattern is a molecule. A loop is a connected group of at least min_loop_cells non-quiescent cells; two loops are the same species when they ever show the same configuration up to rotation. Species id = cell count at first registration plus a base-26 label (L086aaa); structure = that configuration, rows of state digits separated by "/". (b) micro: a cell state is a molecule and the quiescent state 0 is the absence of one (species s1..s8); state transitions are movement and reaction.
+
+**R — reactions** (implicit, arity [1, 5]): macro: L -> 2 L (replication), L -> L + L' (replication with variation, evoloop), L -> ∅ (structural dissolution or death); micro: C + N + E + S + W -> C' + N + E + S + W (one CA transition, the neighbours as catalysts, quiescent cells omitted)
+
+**A — reactor**: lattice-2d
+ · *dilution:* bounded space: the lattice is finite (periodic or with a quiescent border), so loops compete for room; in the SDSR loop and the evoloop blocked loops dissolve, and the population settles at a steady state instead of freezing.
+
+## What you get
+
+```python
+net = chemart.generate_network("sr-loops", seed=1)
+```
+
+```
+sr-loops: 1 species, 1 reactions, status=observed
+provides: catalysts, initial-state, space, stoichiometry, topology
+seed: 1
+extras: analysis, events, space
+```
+
+First reactions:
+
+```
+L086aaa -> 2 L086aaa  (x3)
+```
+
+## Parameters
+
+| name | type | default | role | what it does |
+|---|---|---|---|---|
+| `rule` | `enum` | `langton` | structural | published transition table: langton = Langton 1984 (8 states, 219 transitions, 86-cell loop); byl = Byl 1989 (6 states, 12-cell loop); reggia-1 and reggia-2 = the Chou-Reggia loops of Reggia et al. 1993 (8 states, 6 and 5 cells); sdsr = Sayama's structurally dissolvable loop (9 states); evoloop = Sayama's evolvable loop (9 states) <br>one of `langton`, `byl`, `reggia-1`, `reggia-2`, `sdsr`, `evoloop` |
+| `mode` | `enum` | `macro` | structural | which reading of 'molecule' to export: macro = emergent loops and their replication/dissolution events; micro = cell states, with every CA transition that fired as a reaction <br>one of `macro`, `micro` |
+| `grid` | `int` | `60` | spatial | side of the square lattice <br>`8` … `4000` · *range:* Sayama's evolution runs use 200x200 to 1000x1000; 60 holds two Langton loops |
+| `steps` | `int` | `320` | population | synchronous updates of the lattice <br>`1` … `2000000` · *range:* one replication takes 151 steps (Langton, SDSR), 25 (Byl), 15 (Chou-Reggia), 363 (evoloop); the SDSR steady state needs a few thousand and evolution in the evoloop 10^4-10^7 |
+| `boundary` | `enum` | `periodic` | spatial | periodic: the lattice is a torus (Sayama's 'periodic space'); quiescent: everything outside the lattice is background <br>one of `periodic`, `quiescent` |
+| `ancestors` | `int` | `1` | population | how many copies of the ancestor to place; one is centred, several are placed at random non-overlapping positions (this is the only use of the seed) <br>`1` … `1000` · *range:* Sayama's competition runs start two ancestors at opposite ends of the space |
+| `ancestor_pattern` | `str` | `` | structural | the seed loop as a Golly RLE string ('x = 4, y = 4, rule = ...' then the run-length-encoded rows, '.' = quiescent, A = state 1); empty means the published ancestor of the chosen rule |
+| `min_loop_cells` | `int` | `12` | structural | macro mode: the smallest connected group of non-quiescent cells that counts as a loop; smaller groups are debris and are ignored <br>`1` … `100000` · *range:* 12 = Byl's loop; use 4 for the Chou-Reggia loops, 20 or more to ignore the debris of dissolving loops |
+| `track_every` | `int` | `1` | population | macro mode: observe the loops every this many steps (higher is faster but misses loops that live shorter than one interval) <br>`1` … `100000` |
+
+## Published phenomena
+
+What the literature reports this model produces. Whether the generator reproduces each one is recorded in the decisions below.
+
+- self-replication without universal construction: Langton's 86-cell loop makes an identical copy of itself every 151 steps, Byl's 12-cell loop every 25, the Chou-Reggia 5-cell loop every 15, the evoloop every 363
+- in bounded space the colony grows until the space is full; Langton's loops then freeze, while SDSR loops dissolve when they can no longer replicate and the population reaches a steady state with continuous turn-over
+- evoloop: variation on collision, and natural selection for smaller loops - a size-8 ancestor is replaced by the smallest self-replicating loops (interior 2x2, size 4)
+- species clustering into islands, and changing 'concentrations' of loop species over time (book figure 10.13)
+- robustness of dissolvable loops to hardware errors
+
+## Sources
+
+- Langton, C. G. (1984). Self-reproduction in cellular automata. Physica D 10(1-2):135-144. doi:10.1016/0167-2789(84)90256-2 (book ref [495]). 8 states, von Neumann neighbourhood, 219 rotationally symmetric transitions, an 86-cell loop that replicates in 151 steps.
+- Byl, J. (1989). Self-reproduction in small cellular automata. Physica D 34(1-2):295-299. doi:10.1016/0167-2789(89)90242-X (book ref not listed; the loop is cited in the book via [779]). 6 states, a 12-cell loop replicating in 25 steps.
+- Reggia, J. A., Armentrout, S. L., Chou, H.-H. & Peng, Y. (1993). Simple systems that exhibit self-directed replication. Science 259(5099):1282-1287. doi:10.1126/science.259.5099.1282 (book ref [705], the book's '8 states, 5 cells'). Two unsheathed loops of 6 and 5 cells replicating in 13 and 15 steps.
+- Sayama, H. (1998). Introduction of structural dissolution into Langton's self-reproducing loop. Artificial Life VI, 114-122, MIT Press. http://cseweb.ucsd.edu/~rik/alife6/papers/IN79.html ; Sayama, H. (1999). A new structurally dissolvable self-reproducing loop evolving in a simple cellular automata space. Artificial Life 5(4):343-365. doi:10.1162/106454699568818 (book ref [744]). The dissolving state 8 and the evoloop.
+- Sayama, H. (1999). Toward the realization of an evolving ecosystem on cellular automata. AROB 4th '99, 254-257 (book ref [745]), and the author's pages https://bingweb.binghamton.edu/~sayama/SDSR/ (SDSR and evoloop software, LoopS/EvoLoopS, Java simulator).
+- Salzberg, C., Antony, A. & Sayama, H. (2004). Complex genetic evolution of self-replicating loops. Artificial Life IX, 262-267, MIT Press (book ref [738]). https://bingweb.binghamton.edu/~sayama/papers/alife9-evoloop.pdf : gene sequences (G = 071 straight growth, T = 041 left turn, C = 0 filler), species = genotype + loop size, size-8 ancestor GGCCGGCGCGTTGCGC, 2n-2 C n-2 self-replicating species of size n (15 of size 4), birth detected by the umbilical cord dissolver (state 6) and death by the loss of the inner sheath (state 2), 1000x1000 periodic space, parabolic population growth.
+- Transition tables: the @TABLE sections of Golly's rule files Langtons-Loops.rule, Byl-Loop.rule, Chou-Reggia-1.rule, Chou-Reggia-2.rule, SDSR-Loop.rule and Evoloop.rule (https://github.com/AlephAlpha/golly/tree/master/Rules), which carry the tables of Sayama's own loops.java (NECSI, 'Self-Replicating Loops & Ant', E. Bachmutsky 1999), together with the ancestors of Golly's Patterns/Loops/*.rle. Wikipedia's 'Langton's loops' table (states, cells, replication period per variant) was used as a cross-check.
+
+## Decisions
+
+Every gap, ambiguity or erratum in the sources, and how Chemart resolved it. Read this before quoting a number from this entry.
+
+- kind stays generator: the implementation runs the cellular automaton and returns the observed event network of the loops (macro) or of the cell states (micro).
+- Transition tables are not in the book and the original papers print them as figures; they are taken verbatim from Golly's rule files, whose provenance is Sayama's loops.java. Each table is verified by reproducing the published replication period of its ancestor (tests): Langton 151, Byl 25, Chou-Reggia 15 (5-cell loop), evoloop 363, SDSR = Langton's 151.
+- Golly rule-table semantics: variables are bound per transition, every transition stands for its four rotations (rotate4), the first matching transition wins, and a neighbourhood no transition covers leaves the cell unchanged. The expansion used here reproduces the compiled @TREE section of all six rule files exactly (59049 entries each for the 9-state rules), so the automaton is the one Golly runs.
+- Byl's table as distributed contains a line '212052' commented out with the note that it was inserted by mistake; it is not applied here, exactly as in Golly.
+- Langton's period: from Golly's ancestor pattern a complete rotated copy of it stands elsewhere on the lattice at step 147 and a second one at 151; after that each loop shows that configuration again every 147 steps (147, 294, 441, ... and 151, 298, 445, ...). The published period 151 is the step at which the newly born loop is an exact copy of the ancestor, which is what extras.analysis.ancestor_copy_steps and the replication records report; the four-step difference is the phase of the ancestor pattern as distributed, and the mother's own recurrence (147) is reported separately as ancestor_recurrence. The same holds for the SDSR loop. For Byl (25, and every 25 steps after), the Chou-Reggia loops (13 for the 6-cell loop, 15 for the 5-cell one) and the evoloop (363) the published period is the step at which the first complete copy appears.
+- Species (macro): Salzberg, Antony & Sayama identify a species by the loop's gene sequence (read counter-clockwise from the bonding location) plus its size, which only makes sense for the Langton family. Chemart instead identifies species observationally and for every rule: a species is registered by the configuration a loop has when it is born (plus the ancestor's initial configuration), and any loop that shows a registered configuration, up to rotation, is that species. This reproduces the intended distinctions - a daughter that is an exact copy is the same species (L -> 2 L), a mutated evoloop offspring is a new one (L -> L + L') - without assuming a sheath structure.
+- Only birth configurations are registered. Registering every configuration a loop passes through was tried first and merges everything into one species in long evoloop runs, because dissolving loops pass through the configurations of smaller ones.
+- A loop born mid-construction is provisionally its own species and is merged with its mother's (union-find, the older species wins) as soon as it shows a configuration registered for that species. extras.analysis.replications records both steps: for Langton the daughter separates at step 128 and is an exact copy of the ancestor at step 151. Reactions are aggregated after those merges, so a species that turns out to be its mother's appears in a single L -> 2 L reaction.
+- Loop detection: a loop is a connected group (8-connectivity) of at least min_loop_cells non-quiescent cells, followed from step to step by cell overlap. Sayama's own detectors use rule-specific markers (the umbilical cord dissolver state 6 for birth, the inner sheath state 2 for death), which would not work for the Byl and Chou-Reggia loops; the connected-group criterion is used for all rules instead, with min_loop_cells to ignore the debris that dissolving loops leave behind.
+- The mother of a new loop is the loop whose blob it separated from, or, when it appears detached, the nearest living loop. Loops that appear without any living loop in the lattice are recorded as ∅ -> L.
+- The chemistry is deterministic: the CA, the ancestor and its position are fixed. The seed is used only to place several ancestors (ancestors > 1) at random non-overlapping positions.
+- Boundary: periodic (Sayama's 'periodic space') by default; 'quiescent' treats everything outside the lattice as background. The unbounded plane of the original papers is not offered - bounded space is what makes the loops compete (book 10.7.2).
+- Dropped v1 parameters: n_states, neighbourhood, grid and seed_loop (types matrix) and dissolution. The number of states and the neighbourhood are properties of the chosen rule, not free knobs; grid becomes the lattice side; seed_loop becomes ancestor_pattern (a Golly RLE string); dissolution is what distinguishes rule=sdsr and rule=evoloop from rule=langton.
+- Not implemented: the Tempesti (1995), Perrier (1996) and Sexyloop (2007) variants, and von Neumann's 29-state automaton [453]; the evoloop gene sequence (G/T/C) reading of Salzberg et al.; the loops' interaction with 'hostile' environments [739].
+
+## Notes
+
+The clearest case in the book where 'what is a molecule' depends on the observer, so both readings are generated: `mode=macro` returns loops and their replication/dissolution events, `mode=micro` returns the cell states and the transitions that fired. The default run (Langton's loop on a 60x60 torus for 320 steps) is three replications of the published loop, the first of them an exact copy at step 151; the SDSR steady state and the evolution of the evoloop need thousands of steps and a larger lattice (see the tests).
+
+---
+
+*Specification: `catalog/chemistries/sr-loops.yaml` · generator: `chemart/chemistries/sr_loops.py` · tests: `tests/chemistries/test_sr_loops.py`*

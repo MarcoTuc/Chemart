@@ -2,6 +2,14 @@ chemistries:
 
 - id: energy-gated-collision
   name: Arrhenius-gated collision algorithm
+  intuition: >
+    Not a chemistry but the reactor algorithm underneath many of them,
+    catalogued so its behaviour can be checked. Draw two molecules at random,
+    look up their reaction, and let it happen only if the collision energy
+    clears the activation barrier. The point is what that gate buys you: the
+    measured fraction of effective collisions comes out as the Arrhenius
+    factor exp(-Ea/RT), so an Arrhenius plot of the simulated rate is straight
+    and its slope recovers the activation energy you put in.
   origin: "Banzhaf & Yamamoto, 2015 (sec. 18.3.3), extending the collision algorithm of sec. 2.3.3"
   book: "18.3.3; algorithm from 2.3.3, energetics from 2.2.6 (eqs. 2.28-2.33)"
   refs: ["[42]", "[757]", "[780]", "[870]"]

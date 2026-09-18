@@ -1,0 +1,118 @@
+# Aevol
+
+`aevol` · *Knibbe, Beslon et al., 2007*
+
+*Also known as:* *aevol digital genetics platform*, *in silico experimental evolution*
+
+A digital organism carrying a real genome rather than a program. A circular binary chromosome is scanned for promoters and terminators; each gene it finds is translated through a codon table into a protein, and a protein 'folds' into a triangular fuzzy set - a bump of some width, position and height on an abstract trait axis. Summing an organism's bumps gives its phenotype, and how closely that matches an environmental target is its fitness. Organisms replicate on a grid with mutations and rearrangements, so genome structure itself - gene count, non-coding DNA - becomes something evolution shapes.
+
+| | |
+|---|---|
+| **family** | systems-biology |
+| **kind** | generator |
+| **constructive** | yes — the species set grows at run time |
+| **fidelity** | `reconstructed` — built from the original papers listed below |
+| **book** | 18.1.2 |
+| **refs** | [654], doi:10.1093/molbev/msm165, https://gitlab.inria.fr/aevol/aevol, http://www.aevol.fr/ |
+| **provides** | `topology`, `stoichiometry`, `catalysts`, `initial-state`, `space`, `sequence-structure-function` |
+
+## Molecules, reactions, reactor
+
+**S — molecules** (implicit): Two kinds of molecule. Genotypes: a circular double-stranded binary chromosome, id G<length>-<first 8 hex digits of the sha1 of the sequence>, structure = the leading strand as 0s and 1s. Proteins: the product of one gene, id P<codons>-<first 8 hex digits of the sha1 of its coding bits>, structure = the coding bits and the triangular fuzzy set (m, w, h) they fold into (mean in [0, 1], half-width in [0, w_max], height in [-1, 1]) plus whether the protein is functional.
+
+**R — reactions** (implicit, arity [1, 2]): Expression G -> G + P1 + ... + Pk (a genotype folds into its proteome) ; replication P + V -> P + O (the organism P of a neighbouring cell replicates and its offspring O takes the place of the cell's previous occupant V) ; P -> O (the cell's own occupant replicates in place).
+
+**A — reactor**: lattice-2d
+ · *dilution:* one organism per grid cell; every cell is refilled each generation, so the population is fixed at grid_width x grid_height
+
+## What you get
+
+```python
+net = chemart.generate_network("aevol", seed=1)
+```
+
+```
+aevol: 134 species, 377 reactions, status=observed
+provides: catalysts, initial-state, space, stoichiometry, topology
+seed: 1
+extras: analysis, events, final_state, genotype_parent, proteins, proteome, space
+```
+
+First reactions:
+
+```
+G5000-db4e1670 -> P16-1d6da27a + G5000-db4e1670  (x19)
+G5004-d263ab12 -> P16-1d6da27a + G5004-d263ab12  (x1)
+G5000-616ef352 -> P16-1d6da27a + G5000-616ef352  (x2)
+G4994-0443a5c6 -> P16-1d6da27a + G4994-0443a5c6  (x1)
+G5000-a9f12360 -> P16-1d6da27a + G5000-a9f12360  (x8)
+G5000-f1a00ba6 -> P16-1d6da27a + G5000-f1a00ba6  (x1)
+G8854-60289811 -> 2 P16-1d6da27a + G8854-60289811  (x3)
+G7798-b8e5f036 -> 2 P16-1d6da27a + G7798-b8e5f036  (x1)
+… and 369 more
+```
+
+## Parameters
+
+| name | type | default | role | what it does |
+|---|---|---|---|---|
+| `genome_length` | `int` | `5000` | structural | length of the initial random chromosome in bases; the initial genome is redrawn until its metabolic error beats a flat phenotype, and shorter genomes rarely carry a gene <br>`1` … `1000000` · *range:* aevol CHROMOSOME_INITIAL_LENGTH default 5000; Knibbe et al. also evolve from 1000 to 20000 |
+| `grid_width` | `int` | `3` | spatial | width of the toroidal grid of organisms <br>`1` … `256` · *range:* aevol default 32 x 32 = 1024 individuals |
+| `grid_height` | `int` | `3` | spatial | height of the toroidal grid of organisms <br>`1` … `256` · *range:* aevol default 32 x 32 = 1024 individuals |
+| `generations` | `int` | `30` | population | number of generations; at each one every cell is refilled by an offspring of a parent of its selection patch <br>`0` … `10000000` · *range:* the published runs go to 10^5-10^7 generations |
+| `selection_patch_size` | `int` | `3` | selection | side of the square neighbourhood a cell draws its parent from (odd); the parent is drawn with probability proportional to fitness <br>`1` … `31` · *range:* aevol SELECTION_SCOPE local 3 3; global selection over the whole population is not implemented |
+| `selection_pressure` | `float` | `1000.0` | selection | k in fitness = exp(-k x metabolic error); 0 makes every organism equally fit <br>≥ `0.0` · *range:* aevol SELECTION_SCHEME fitness_proportionate 1000 |
+| `target` | `list` | `[[1.2, 0.52, 0.12], [-1.4, 0.5, 0.07], [0.3, 0.…` | selection | environmental target as a list of gaussians [height, mean, width] summed over [0, 1] and clipped to [0, 1] <br>*range:* default: the classic target of aevol's examples/basic/param.in (ENV_ADD_GAUSSIAN) |
+| `env_sampling` | `int` | `300` | structural | number of points of [0, 1] on which phenotype and target are sampled and their areas computed <br>`3` … `100000` · *range:* aevol ENV_SAMPLING default 300 |
+| `w_max` | `float` | `0.033333333` | structural | maximum half-width of a protein triangle: the most polyvalent protein covers 2 x w_max of the metabolic space <br>`0.0` … `1.0` · *range:* aevol MAX_TRIANGLE_WIDTH default 0.033333333 |
+| `point_mutation_rate` | `float` | `1e-05` | stochastic | probability per base per replication of a switch (one base flipped) <br>`0.0` … `1.0` · *range:* aevol default 1e-5; the examples use 1e-6; Knibbe et al. 2007 scan 10^-6 to 10^-3 |
+| `small_insertion_rate` | `float` | `1e-05` | stochastic | probability per base per replication of inserting 1..max_indel_size random bases <br>`0.0` … `1.0` · *range:* aevol default 1e-5 |
+| `small_deletion_rate` | `float` | `1e-05` | stochastic | probability per base per replication of deleting 1..max_indel_size bases <br>`0.0` … `1.0` · *range:* aevol default 1e-5 |
+| `max_indel_size` | `int` | `6` | stochastic | largest small insertion or deletion, drawn uniformly in 1..max_indel_size <br>`1` … `1000` · *range:* aevol MAX_INDEL_SIZE default 6 |
+| `duplication_rate` | `float` | `1e-05` | stochastic | probability per base per replication of duplicating a random segment and inserting it at a random place <br>`0.0` … `1.0` · *range:* aevol default 1e-5 |
+| `deletion_rate` | `float` | `1e-05` | stochastic | probability per base per replication of deleting a random segment <br>`0.0` … `1.0` · *range:* aevol default 1e-5 |
+| `translocation_rate` | `float` | `1e-05` | stochastic | probability per base per replication of moving a random segment elsewhere, inverted half of the time <br>`0.0` … `1.0` · *range:* aevol default 1e-5 |
+| `inversion_rate` | `float` | `1e-05` | stochastic | probability per base per replication of reverse-complementing a random segment <br>`0.0` … `1.0` · *range:* aevol default 1e-5 |
+| `min_genome_length` | `int` | `1` | structural | a rearrangement or deletion that would take the genome below this length is not applied <br>`1` … `1000000` · *range:* aevol MIN_GENOME_LENGTH default 1 |
+| `max_genome_length` | `int` | `10000` | structural | a duplication or insertion that would take the genome above this length is not applied <br>≥ `1` · *range:* aevol MAX_GENOME_LENGTH default 10000000; lowered here to bound the run time and the size of the network |
+
+## Published phenomena
+
+What the literature reports this model produces. Whether the generator reproduces each one is recorded in the decisions below.
+
+- a random genome rarely carries a gene: with the 22-base promoter consensus (4 mismatches allowed), the stem-loop terminator and the 9 fixed bases of a ribosome binding site, a random 5000-base chromosome has of the order of 20 promoters but well under one gene, which is why the initial individual has to be redrawn until it beats a flat phenotype
+- proteins are triangular fuzzy sets ranging from polyvalent (wide, low) to specialised (narrow, tall), the width being bounded by w_max
+- fitness improves over generations as mutations add, tune and duplicate genes; the metabolic error of the best individual decreases monotonically under fitness-proportionate selection with a fit neighbourhood
+- homologous (alignment-driven) and nonhomologous rearrangements interact and matter for the evolvability of the genetic network (Parsons, Knibbe & Beslon 2011; only nonhomologous rearrangements are implemented here)
+- an indirect selective pressure on the amount of noncoding DNA emerges from the rearrangement rates (Knibbe et al. 2007)
+
+## Sources
+
+- aevol source code, version 9.4.0, commit bea4a252d592e525677f1306aaa9fe604e14c5d3 (GPL v2+), https://gitlab.inria.fr/aevol/aevol : src/libaevol/macros.h and biochemistry/Promoter.h (PROM_SEQ 0101011001110010010110, PROM_MAX_DIFF 4, basal level 1 - d/5, TERM_STEM_SIZE 4, TERM_LOOP_SIZE 3, SHINE_DAL_SEQ 011011, SHINE_START_SPACER 4, codon values START 000, STOP 001, W0 010, W1 011, M0 100, M1 101, H0 110, H1 111, X/Y/H/W ranges); biochemistry/Promoter.cpp (promoter search on both strands), TranscriptionTerminationSequence.cpp (stem-loop), TranslationInitiationSequence.cpp (SHINE_DAL_SEQ_LEAD 0110111111000), Rna.cpp; population/Individual.cpp (do_trancription, locate_translation_initiation_sequences, compute_protein, translate_protein with the Gray decoding of M, W and H, compute_absolute_phenotype, compute_metabolic_error, compute_fitness, make_random); phenotype/PhenotypicTarget.h and Gaussian.h (target built from gaussians and clipped), phenotype/fuzzy/Discrete_Double_Fuzzy.cpp (add_triangle, geometric area, clipping); biochemistry/Dna.cpp (do_switch, do_small_insertion, do_small_deletion, do_duplication, do_deletion, do_inversion, do_translocation with ABCDE_to_ADCBE / ADBpCpE / ACpDpBE); mutations/mutators/DnaMutator.cpp (binomial counts and the urn that orders the mutations) and ProkaryoteIndividualMutator.cpp; population/selection/Selection.cpp and Selection_Asexual.cpp (local fitness-proportionate selection on the 3x3 patch), population/Grid.cpp (torus, cell index x * height + y); orchestration/EvolutionRunner.cpp (the generational loop) and ExperimentCreator.cpp (one random individual cloned into every cell); io/parameters/ParamValues.h (defaults: w_max 0.033333333, selection pressure 1000, ENV_SAMPLING 300, mutation rates 1e-5, MAX_INDEL_SIZE 6, CHROMOSOME_INITIAL_LENGTH 5000, grid 32x32); examples/basic/param.in (the three-gaussian target); test/gtest/DnaTest.cpp and EukTest_withrnas.cpp (the hand-computed decoding examples reproduced in the tests).
+- Parsons, D. P., Knibbe, C. & Beslon, G. (2011). Homologous and nonhomologous rearrangements: interactions and effects on evolvability. Advances in Artificial Life (ECAL 2011), 622-629 (book ref [654]): the study the book cites; its homology-based (alignment-driven) rearrangements are not implemented here.
+- Knibbe, C., Coulon, A., Mazet, O., Fayard, J.-M. & Beslon, G. (2007). A long-term evolutionary pressure on the amount of noncoding DNA. Molecular Biology and Evolution 24(10):2344-2353, doi:10.1093/molbev/msm165: the original description of the model. Not consulted directly (no network access during implementation); everything implemented comes from the source code above.
+
+## Decisions
+
+Every gap, ambiguity or erratum in the sources, and how Chemart resolved it. Read this before quoting a number from this entry.
+
+- The book (18.1.2) only says that aevol's genes are binary strings translated through a codon table into proteins that fold into fuzzy sets, from polyvalent and inefficient to specialised and efficient; every consensus sequence, threshold, formula and default comes from the aevol source (version 9.4.0, commit bea4a25), BASE_2 'standard' flavour.
+- The papers could not be fetched (the session's web budget was exhausted), so no number is taken from them; the citations above record what they contain. The aevol distribution is the reference implementation the authors maintain, so fidelity is reconstructed-from-source rather than book+decisions.
+- Ported for the default configuration only: haploid circular chromosome, asexual reproduction, absolute dosage effect, local fitness-proportionate selection on a 3x3 patch, the DISCRETE_DOUBLE_TABLE fuzzy flavour (env_sampling points) and a constant target. Not implemented: the 4-base (BASE_4) genome flavour, diploidy and sexual reproduction, alignment-based (homologous) rearrangements and horizontal transfer, environmental variation and noise, plasmids, stochastic gene expression, the 'farthest promoter' variant, relative dosage effect, and the global and fittest selection schemes.
+- Faithful details worth recording: a promoter's transcription level is 1 - d/(PROM_MAX_DIFF + 1) with d the number of mismatches, so 1.0, 0.8, 0.6, 0.4, 0.2; a transcript needs at least 21 bases and a ribosome binding site may start at any of its first (length - 19) positions; the START codon also codes for the amino acid H0; two transcripts covering the same gene give one protein whose level is the sum of theirs; a protein is functional only if it has at least one M, one W and one H codon and w != 0 and h != 0; only the first 192 codons of a gene are translated.
+- The phenotype and the target are sampled on env_sampling points x_i = i/(env_sampling - 1) and areas are trapezium sums of |f|, exactly as aevol's Discrete_Double_Fuzzy. Its add_triangle never writes the last point (index env_sampling - 1) and folds the part of a triangle sticking out beyond x = 1 into the last-but-one point; both quirks are reproduced so that the metabolic errors match the reference implementation.
+- Mutations follow DnaMutator: the number of each kind is Binomial(genome length, rate); the four rearrangements are drawn first (in a random order, each with the genome size left by the previous ones), then the three local mutations, whose counts are drawn with the size after the rearrangements. A mutation that would violate min_genome_length or max_genome_length is dropped, as upstream.
+- max_genome_length defaults to 10000 instead of aevol's 10000000: at the default rates duplications outweigh deletions (a duplicated gene is rarely deleterious, a deleted one usually is), so genomes grow steadily and the bound keeps both the run time and the size of the network (every genotype carries its genome as its structure) in check. Raise it to watch genome size evolve freely.
+- Randomness: one numpy Generator drives everything, in cell order (selection, then the mutations of that cell's offspring), instead of aevol's per-cell Mersenne Twisters; runs are therefore statistically, not bit-for-bit, equivalent to upstream.
+- Network: status observed. A generation refills every cell, so each event consumes the cell's previous occupant and produces one offspring: P + V -> P + O when the parent P sits in another cell (P is a catalyst of its own copy), P -> O when the cell's own occupant is the parent. Applying every event to the initial state reproduces the final population exactly. Expression is recorded as the catalytic reaction G -> G + P1 + ... + Pk (all translated proteins, functional or not; a protein produced by two genes appears twice), counted once per individual born with that genotype. The phenotype, the target and the fitnesses are in extras.analysis, the grid in extras.space.
+- Rates: none. The model has no kinetics; transcription levels (1 - d/5) and protein heights are dosages that enter the phenotype, and they are recorded in extras.proteins and in each protein's structure, not as rate constants.
+- Dropped v1 parameters: codon_table (a matrix) is fixed by the source (START 000, STOP 001, W0 010, W1 011, M0 100, M1 101, H0 110, H1 111); mutation_rates (a matrix) becomes the seven individual rates plus max_indel_size; environment_target (a callable) becomes the list of gaussians. genome_length is kept, and the population, selection and fuzzy-sampling parameters of the platform are added.
+- Defaults are small: a 3x3 grid for 30 generations with 5000-base genomes runs in about a second and gives a few hundred reactions; aevol's own defaults (32x32 for 10^5 generations or more) are in the range fields. Drawing the initial individual costs a few hundred random genomes, which is most of the run time of the default network.
+
+## Notes
+
+The chemistry of aevol is the genome-to-phenotype pipeline, not a kinetic network: transcription, translation, folding into a triangular fuzzy set and the sum of those triangles. It is deterministic and exposed as the functions transcribe, translate, fold, phenotype and target_function, so a genome can be decoded without running a population.
+
+---
+
+*Specification: `catalog/chemistries/aevol.yaml` · generator: `chemart/chemistries/aevol.py` · tests: `tests/chemistries/test_aevol.py`*

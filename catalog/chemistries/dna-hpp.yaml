@@ -2,6 +2,14 @@ chemistries:
 
 - id: dna-hpp
   name: Adleman's DNA Hamiltonian Path computation
+  intuition: >
+    The experiment that started DNA computing. Each vertex of a graph gets a
+    random 20-base code word and each edge an oligo spanning the two halves of
+    the vertices it joins, so when everything is mixed the strands ligate into
+    every path through the graph at once - massive parallelism from a spoonful
+    of chemistry. The computation is then five filtering steps: amplify paths
+    with the right endpoints, keep the right length, check each vertex is
+    present, and read off what survives.
   aliases: ["Adleman's experiment", "DNA computing of the directed HPP", "TT-100"]
   origin: "Adleman, 1994"
   book: "19.3.1"

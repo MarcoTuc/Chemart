@@ -2,6 +2,14 @@ chemistries:
 
 - id: replicator-equation
   name: Replicator equation (evolutionary game dynamics)
+  intuition: >
+    Evolutionary game theory as reactions. Strategies meet in pairs and the
+    payoff matrix decides what happens: a positive entry means the first
+    strategy replicates in the encounter, a negative one that it is removed,
+    with the opponent surviving either way. Evolutionarily stable strategies
+    are the rest points. Note the shape of the reaction - the opponent appears
+    on both sides as a catalyst, so a net stoichiometric matrix would erase
+    the very interaction the model is about.
   book: "7.2.8"
   refs: ["[621]", "[563]", "[564]", "[792]"]
   family: evolutionary-dynamics

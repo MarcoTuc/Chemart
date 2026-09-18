@@ -2,6 +2,12 @@ chemistries:
 
 - id: replication-death
   name: Replication and death
+  intuition: >
+    Two reactions - birth and death - and nothing else. Its value is as a
+    floor: exponential growth when births outpace deaths is the minimal
+    precondition for Darwinian evolution, so this is the smallest system in
+    which selection could mean anything at all, and the baseline any richer
+    population model reduces to.
   origin: "textbook evolutionary dynamics"
   book: "7.2.1"
   refs: ["[621]"]

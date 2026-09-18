@@ -2,6 +2,14 @@ chemistries:
 
 - id: molecular-tsp
   name: Molecular Traveling Salesman
+  intuition: >
+    Optimisation as collision chemistry. Each molecule is a candidate tour
+    carrying its own length as a leading value, and enzyme-like machines pick
+    up a few tours, apply a hardwired operator - exchange two cities, move or
+    invert a segment, recombine two tours - and release the best of what they
+    now hold. There is no global controller and no fitness ranking of the
+    population; quality is a local signal carried by each molecule, and good
+    tours emerge from purely local encounters.
   aliases: ["molecular TSP", "MolecularTSP"]
   origin: "Banzhaf, 1990"
   book: "17.2.1"

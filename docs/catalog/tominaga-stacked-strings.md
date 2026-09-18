@@ -1,0 +1,112 @@
+# Tominaga's stackable-string chemistry
+
+`tominaga-stacked-strings` · *Tominaga et al., 2004-2009*
+
+*Also known as:* *artificial chemistry based on pattern matching and recombination*, *v-molecule chemistry*
+
+A notation designed to make molecular biology expressible. A molecule is a stack of lines of elements, each line displaced horizontally relative to the first - so a double strand, a sticky end, or a polymerase sitting on a template are all just registered rows. Recombination rules match patterns across the stack and rewrite them. Because alignment is explicit, operations like a restriction enzyme cutting at a fixed offset from a recognition site are written directly rather than encoded.
+
+| | |
+|---|---|
+| **family** | systems-biology |
+| **kind** | generator |
+| **constructive** | yes — the species set grows at run time |
+| **fidelity** | `reconstructed` — built from the original papers listed below |
+| **book** | 18.3.2 |
+| **refs** | [855], [856], doi:10.1162/artl.2009.15.1.15108, doi:10.1162/artl.2007.13.3.223 |
+| **provides** | `topology`, `stoichiometry`, `initial-state`, `sequence-structure-function` |
+
+## Molecules, reactions, reactor
+
+**S — molecules** (implicit): a molecule (object, v-molecule) is a stack of lines of elements, each line with an integer displacement relative to the first line; string notation disp#elements/ per line, e.g. 0#GGATGTAC/0#CCTACATGCCGA/ (a DNA duplex with a sticky end). Species id is this canonical notation (first displacement 0), structure the stacked layout one column per element
+
+**R — reactions** (implicit, arity [1, 2, 3]): recombination rule lhs -> rhs on object patterns (2007 section 2.2.4): the objects matched by the left-hand patterns are removed and the right-hand patterns, filled with the matched elements, are added. Example (2007, Rule 2): 0#*1AB/1#CD/ + 0#AB2*/ -> 0#*1ABAB2*/1#CD/ turns 0#ABAB/3#CD/ + 0#AB/ into 0#ABABAB/3#CD/. Sources are reactions ∅ -> s, drains s -> ∅.
+
+**A — reactor**: well-stirred-multiset
+ · *dilution:* none; sources supply objects without limit and drains remove objects matched by a pattern
+
+## What you get
+
+```python
+net = chemart.generate_network("tominaga-stacked-strings", seed=1)
+```
+
+```
+tominaga-stacked-strings: 47 species, 59 reactions, status=complete
+provides: initial-state, stoichiometry, topology
+seed: 1
+extras: analysis, drains, reaction_rules, rules, sources, system
+```
+
+First reactions:
+
+```
+0#FFFFFFFFF/ + 0#GGATGTAC/0#CCTACATGCCGA/ -> 0#FFFFFFFFF/-5#GGATGTAC/-5#CCTACATGCCGA/
+0#FFFFFFFFF/ + 0#GGATGACGAC/0#CCTACTGCTGGTCG/ -> 0#FFFFFFFFF/-5#GGATGACGAC/-5#CCTACTGCTGGTCG/
+0#FFFFFFFFF/ + 0#GGATGTCG/0#CCTACAGCGACC/ -> 0#FFFFFFFFF/-5#GGATGTCG/-5#CCTACAGCGACC/
+0#FFFFFFFFF/ + 0#GGATGG/0#CCTACCGCGT/ -> 0#FFFFFFFFF/-5#GGATGG/-5#CCTACCGCGT/
+0#FFFFFFFFF/ + 0#GGATGXXXXXXXCTGGCTCGCAGCCGCAGCTGTCGCX/0#CCTACXXXXXXXGACCGAGCGTCGGCGTCGACAGCGX/ -> 0#FFFFFFFFF/-5#GGATGXXXXXXXCTGGCTCGCAGCCGCAGCTGTCGCX/-5#CCTACXXXXXXXGACCGAGCGTCGGCGTCGACAGCGX/
+0#FFFFFFFFF/ + 0#GGATGXXXXXXXCTGGCTCGCAGCCTGGCTTGTCGCXX/0#CCTACXXXXXXXGACCGAGCGTCGGACCGAACAGCGXX/ -> 0#FFFFFFFFF/-5#GGATGXXXXXXXCTGGCTCGCAGCCTGGCTTGTCGCXX/-5#CCTACXXXXXXXGACCGAGCGTCGGACCGAACAGCGXX/
+0#FFFFFFFFF/-5#GGATGXXXXXXXCTGGCTCGCAGCCGCAGCTGTCGCX/-5#CCTACXXXXXXXGACCGAGCGTCGGCGTCGACAGCGX/ -> 0#FFFFFFFFF/-5#GGATGXXXXXXXCT/-5#CCTACXXXXXXXGACCGA/ + 0#GGCTCGCAGCCGCAGCTGTCGCX/4#GCGTCGGCGTCGACAGCGX/
+0#FFFFFFFFF/-5#GGATGXXXXXXXCTGGCTCGCAGCCTGGCTTGTCGCXX/-5#CCTACXXXXXXXGACCGAGCGTCGGACCGAACAGCGXX/ -> 0#FFFFFFFFF/-5#GGATGXXXXXXXCT/-5#CCTACXXXXXXXGACCGA/ + 0#GGCTCGCAGCCTGGCTTGTCGCXX/4#GCGTCGGACCGAACAGCGXX/
+… and 51 more
+```
+
+## Parameters
+
+| name | type | default | role | what it does |
+|---|---|---|---|---|
+| `system` | `enum` | `benenson-automaton` | structural | published system: benenson-automaton (2007 sec. 6.2, rules 3-11, two-state DNA automaton with Fok I), transcription (2009 sec. 3.2, rules 12-18, DNA to mRNA), fatty-acid-oxidation (2009 sec. 4, rules 25-28), adleman-hamiltonian-path (2007 sec. 6.1, Adleman's 7-node graph), ab-concatenation (2007 sec. 2 / 2009 eqs. 1-3, the catalyst CD with source AB and drain), custom (rules, pool, sources, drains) <br>one of `benenson-automaton`, `transcription`, `fatty-acid-oxidation`, `adleman-hamiltonian-path`, `ab-concatenation`, `custom` |
+| `method` | `enum` | `closure` | structural | closure: every reaction reachable from the initial pool and the sources; soup: one sampled run of the nondeterministic process, observed reactions with firing counts <br>one of `closure`, `soup` |
+| `words` | `list` | `['abb', 'aba']` | structural | benenson-automaton only: input words; word i gets the trailing tag of i+1 X (abb: X/X, aba: XX/XX as published) <br>*range:* strings over a and b; the paper's pool holds abb and aba |
+| `s1_detector` | `bool` | `` | structural | benenson-automaton only: add the S1 detector 0#X/0#XACAG/ (rule 11's partner, not in the published pool) so that inputs ending in S1 also leave a reporter |
+| `dna` | `str` | `TATATTCGCAATGCTGAGCTAGTTTT` | structural | transcription only: upper strand of the chromosome 0#Orc<dna>/0#Orc<complement>/ (2009 example) <br>*range:* bases T, C, A, G; the promoter TATATT and the terminator TTTT drive rules 12 and 18 |
+| `carbons` | `int` | `10` | structural | fatty-acid-oxidation only: carbons of the initial fatty acyl CoA 0#H..HO/-1#HC..C/0#H..HSCoa/ <br>`2` … `40` · *range:* even; 2009 example: 10 |
+| `rules` | `list` | `` | structural | custom only: recombination rules 'lhs -> rhs', terms joined by + <br>*range:* e.g. ['0#*1AB/ + 0#CD/ -> 0#*1AB/1#CD/'] |
+| `pool` | `dict` | `` | structural | custom only: initial working multiset, molecule -> copies <br>*range:* e.g. {'0#CD/': 1} |
+| `sources` | `list` | `` | structural | custom only: objects supplied without limit |
+| `drains` | `list` | `` | structural | custom only: patterns of objects that are removed |
+| `max_species` | `int` | `2000` | structural | closure only: species budget; closures of ab-concatenation and adleman-hamiltonian-path are infinite and truncated <br>`1` … `100000` · *range:* benenson-automaton default closes at 47 species; adleman-hamiltonian-path first contains the answer molecule between 2000 and 5000 species (5000: about 35 s) |
+| `steps` | `int` | `2000` | population | soup only: number of events (rule applications, source and drain operations), failed draws included <br>`0` … `10000000` |
+| `copies` | `int` | `1` | population | soup only: multiplies every initial count (benenson-automaton starts from the published 100 Fok I, 20 per transition molecule and detector, 10 per input; the other systems from one copy of each molecule) <br>`1` … `100000` |
+
+## Published phenomena
+
+What the literature reports this model produces. Whether the generator reproduces each one is recorded in the decisions below.
+
+- Benenson automaton (2007 sec. 6.2): Fok I cuts 9/13 bases after GGATG, the sticky end selects one transition molecule, and after the terminator the S0 detector forms the reporter; the input abb (even number of b) is accepted and aba is not
+- transcription (2009 sec. 3.2): RNA polymerase binds at TATATT, Cap starts the mRNA, nucleotides are added one by one, and at UUUU the mRNA 0#CapCGCAAUGCUGAGCUAGUUUU/ is released
+- fatty acid oxidation (2009 sec. 4): each cycle of rules 25-28 removes two carbons as acetyl CoA and produces FADH2 (0#HFadH/), NADH and H+; C10 acyl CoA ends as five acetyl CoA
+- Adleman-Lipton (2007 sec. 6.1): hybridisation and ligation of node and edge strands assemble 0#U_22U_31/1#L_31L_32/ and 0#U_22U_31U_32U_41/1#L_31L_32/, and eventually the answer molecule of path 0-1-2-3-4-5-6; the closure is infinite because walks repeat nodes
+- computationally universal with unary and binary rules only (2007 secs. 3-5)
+
+## Sources
+
+- Banzhaf, W. & Yamamoto, L. (2015). Artificial Chemistries, section 18.3.2 (one paragraph: stacked strings, pattern matching and recombination, the modelled pathways and DNA computers).
+- Tominaga, K., Watanabe, T., Kobayashi, K., Nakamura, M., Kishi, K. & Kazuno, M. (2007). Modeling molecular computing systems by an artificial chemistry - its expressive power and application. Artificial Life 13(3):223-247 (book [856]). Formal definition (sec. 2.2), matching examples, Turing machine construction (secs. 3-5), Adleman-Lipton model (sec. 6.1: nodes, edges, rules 1-2 and end rules), Benenson automaton (sec. 6.2: molecules, counts, rules 3-11). https://web.archive.org/web/20210303044200id_/https://www.mitpressjournals.org/doi/pdf/10.1162/artl.2007.13.3.223
+- Tominaga, K., Suzuki, Y., Kobayashi, K., Watanabe, T., Koizumi, K. & Kishi, K. (2009). Modeling biochemical pathways using an artificial chemistry. Artificial Life 15(1):115-129 (book [855]). Notation with multi-letter v-elements (sec. 2, eqs. 1-3, sources and drains), DNA replication (sec. 3.1, rules 4-11 of 22), transcription (sec. 3.2, all 7 rules), translation (sec. 3.3, rules 19-24 of 53), fatty acid oxidation (sec. 4, rules 25-28, fig. 1), reasoning example (sec. 5, fig. 3). https://web.archive.org/web/20210303022132id_/https://www.mitpressjournals.org/doi/pdf/10.1162/artl.2009.15.1.15108
+
+## Decisions
+
+Every gap, ambiguity or erratum in the sources, and how Chemart resolved it. Read this before quoting a number from this entry.
+
+- Book references: the v1 entry dated the chemistry 2007-2008 and the assignment named the EvoWorkshops 2008 music paper; the book's [855] is the 2009 Artificial Life paper on biochemical pathways and [856] the 2007 paper on molecular computing ([854] is the music paper, not cited in 18.3.2). Both journal papers were read from Wayback Machine copies of the MIT Press PDFs; the equations were checked against rendered page images because pdftotext drops minus signs, # and turns / + -> into = þ !.
+- Errata in the papers, fixed: 2007 rule (11) prints 0TGTC2*/4#3*/ for 0#TGTC2*/4#3*/ (every sibling rule 6-10 has 0#); 2009 rules (12)-(18) print the second left-hand line as 0*3... while the right-hand side and the reasoning use 0#*3... . Both are read with 0#.
+- Element names: the 2009 paper uses capitalised alphanumeric v-elements, which makes 0#*1C2/ ambiguous (C then wildcard 2, or C2); Chemart reads an element as a capital letter plus lower-case letters and writes the 2007 subscripts with an underscore (U_01). Wildcards are single digits as in both papers; *n, n and n* with the same digit are distinct wildcards (2007 footnote 2).
+- Rules may have any number of terms; the rule checks enforced are the 2007 ones on wildcards (unique on the lhs, exactly once on the rhs); conservation of literals is not enforced because the 2009 fatty-acid rules drop the vacancy X on purpose.
+- Default system: the Benenson DNA automaton, the only published system that is complete, finite and has a published outcome (the pool accepts abb). Replication (22 rules, 8 printed) and translation (53 rules, 6 printed) are not offered: their missing rules would have to be invented. The Turing machine construction is generic and not a system of its own.
+- Benenson pool: the paper describes two output-detection molecules but lists only the S0 detector 0#X/0#XAGCG/ (20 objects); rule (11) implies an S1 detector with the sticky end ACAG, available as s1_detector (default off, as published). Input molecules for arbitrary words follow the published pattern: GGATG, seven X, the symbols (a CTGGCT, b CGCAGC), the terminator TGTCGC and a trailing tag of i+1 X for word i; the lower strand is the complement. For [abb, aba] this reproduces the published molecules character for character.
+- Fatty acid oxidation: fatty acyl CoA with n carbons is 0#H^(n-1)O/-1#HC^n/0#H^(n-1)SCoa/, the form of the paper's C10 example; n = 2 is exactly acetyl CoA 0#HO/-1#HCC/0#HSCoa/. The carriers Fad, NadPo, CoaSH and HOH are in the initial pool as in section 4 (figure 3 draws them from sources); in the closure this makes no difference. Figure 3 starts from 0#HHHHHO/0#CCCCCC/0#HHHHHSCoa/ (no -1#H); forward application of rules 25-28 reproduces every intermediate of the figure, but its last step then yields 0#HO/0#CC/0#HSCoa/, not a third acetyl CoA. With the -1#H of the section 4 form the path yields three acetyl CoA; the printed molecule is treated as a slip of the reasoning example.
+- Closure semantics: the nondeterministic process is reduced to its reaction closure. A rule may use the same species for several terms (enough copies are assumed), sources are always available and are reactions ∅ -> s, drains are reactions s -> ∅ for every species they match, and drained species keep reacting (a drain is only one of the possible operations). Different matches of the same reactants (displacements) give separate reactions. chemart.expand.expand is not used because one reactant tuple can have several outcomes.
+- Closure sizes (measured): benenson-automaton with [abb, aba] 47 species / 59 reactions (complete, 0.02 s); transcription 30 / 28; fatty-acid-oxidation from C10 24 / 16; adleman-hamiltonian-path is infinite (walks repeat nodes): 2000 species (19803 reactions, 5 s) do not yet contain the answer molecule, 5000 species (64662 reactions, 34 s) do. The paper ran Adleman's model as a soup of 100,000 objects per kind, which is out of scale here; the answer is checked by applying the rules along the path.
+- Soup: the papers' simulators (random collision, collision theory) are not specified. Chemart samples events with weight = number of ordered reactant choices for a rule, 1 per source and the matching copies for a drain; a draw needing more copies than exist is a failed step. It is a Chemart addition for a single run and has no rates.
+- No kinetics: both papers model only the qualitative aspects (2007 sec. 7), so reactions carry no rate. The v1 parameters alphabet (matrix) and stacking_rules (callable) became the system choice plus the custom rules/pool/sources/drains text. 'catalysts' is not provided because recombination consumes every reactant (Fok I and the CD catalyst are released by separate rules).
+- extras: system, rules (with the papers' equation numbers), sources, drains, reaction_rules (the rule label of each reaction, 'source' or 'drain'), analysis (benenson: reporters per word and accepted words; transcription: the expected mRNA and whether it is produced; fatty acid: the acyl CoA chain lengths reached and acetyl CoA; adleman: whether the answer molecule of the paper's figure is produced) and, for soup, final_state.
+
+## Notes
+
+The generator module also exports parse_molecule, parse_pattern, match, Rule (with apply), closure, run and the published molecules and rule sets for direct use. The 2009 reasoning procedure (backward search) is not implemented.
+
+---
+
+*Specification: `catalog/chemistries/tominaga-stacked-strings.yaml` · generator: `chemart/chemistries/tominaga_stacked_strings.py` · tests: `tests/chemistries/test_tominaga_stacked_strings.py`*

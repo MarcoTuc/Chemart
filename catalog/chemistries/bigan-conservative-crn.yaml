@@ -2,6 +2,15 @@ chemistries:
 
 - id: bigan-conservative-crn
   name: Conservative random chemical reaction networks
+  intuition: >
+    A random reaction network built to be thermodynamically honest. Each
+    abstract chemical gets a random free energy of formation; reactions are
+    drawn as association, dissociation and transformation steps, and every
+    backward rate is then computed from the forward one so detailed balance
+    holds. The result is a network you can drive out of equilibrium with a
+    nutrient influx and still trust. It is the easiest place to see what the
+    thermodynamic tier costs: consistency is a constraint between forward and
+    reverse rates, not extra data.
   origin: "Bigan, Steyaert & Douady, 2013"
   book: "11.3.2"
   refs: ["[117]", "[756]", "[956]"]

@@ -2,6 +2,14 @@ chemistries:
 
 - id: self-propelled-droplets
   name: Self-propelled oil droplets
+  intuition: >
+    Chemistry that moves itself. An oil droplet carries a precursor that
+    hydrolyses at the oil-water interface into surfactant and protons. The
+    local pH drop changes the interfacial tension unevenly around the droplet,
+    and that gradient drives a Marangoni flow which pushes the droplet along -
+    and it will climb a pH gradient, which looks like chemotaxis. There is no
+    genome, no replication and nothing being copied: what is 'processed' is
+    the chemistry and its own local environment.
   origin: "Hanczyc et al., 2007-2011"
   book: "19.2.5"
   refs: ["[363]", "[364]", "[365]", "[858]", "[483]", "[885]"]

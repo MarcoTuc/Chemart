@@ -1,0 +1,121 @@
+# Combinator chemistry
+
+`combinator-chemistry` · *Speroni di Fenizio, 2000*
+
+*Also known as:* *combinators' artificial chemistry*, *less abstract artificial chemistry*
+
+AlChemy without variable binding. Molecules are combinator expressions over B, C, I, K, R, S, W; a collision applies one to the other and reduces to normal form, releasing whatever falls off along the way. Dropping lambda-calculus variables makes reduction much faster and easier to implement, at a price: the order in which you reduce changes how many copies come out, so the reaction is only well defined once you fix a reduction strategy.
+
+| | |
+|---|---|
+| **family** | rewriting |
+| **kind** | generator |
+| **constructive** | yes — the species set grows at run time |
+| **fidelity** | `reconstructed` — built from the original papers listed below |
+| **book** | 9.8; 7.3.1 (multiset products, organisations); 12.1 (variable population) |
+| **refs** | [790], [791] |
+| **provides** | `topology`, `stoichiometry`, `catalysts`, `flow`, `initial-state`, `mass-conservation`, `sequence-structure-function` |
+
+## Molecules, reactions, reactor
+
+**S — molecules** (implicit): combinators in normal form: strings of the atoms B, C, I, K, R, S, W with balanced parentheses, written with as few parentheses as possible; species id the canonical string (SI(KK)), structure the fully bracketed application tree ((SI)(KK)); in reactive mode also one species free:X per atom type (the pool of free atoms)
+
+**R — reactions** (implicit, arity 2): reactive: a + b -> c1 + ... + cn with a(b) reduced to normal form c1 and c2..cn released on the way; catalytic: a + b -> a + b + c1 + ... + cn; elastic if a limit is hit
+
+**A — reactor**: well-stirred-multiset
+ · *dilution:* reactive (thesis level 3): population size varies; each molecule decays back into free atoms with prob_destroy per generation, and random molecules are assembled from the pool with a probability that halves every half_add_prob molecules above min_molecules; catalytic (level 1): a random molecule is removed after each reaction (constant population)
+
+## What you get
+
+```python
+net = chemart.generate_network("combinator-chemistry", seed=1)
+```
+
+```
+combinator-chemistry: 107 species, 3268 reactions, status=truncated
+provides: catalysts, mass-conservation, stoichiometry, topology
+seed: 1
+extras: conservation, seed
+```
+
+First reactions:
+
+```
+2 B -> BB
+B + C -> BC
+B + I -> BI
+B + K -> BK
+B + R -> BR
+B + S -> BS
+B + W -> BW
+C + B -> CB
+… and 3260 more
+```
+
+## Parameters
+
+| name | type | default | role | what it does |
+|---|---|---|---|---|
+| `method` | `enum` | `closure` | structural | closure: every reaction reachable from the seed molecules (chemart.expand; finite because of the size limits); soup: the well-stirred flow reactor, observed reactions with firing counts <br>one of `closure`, `soup` |
+| `reaction` | `enum` | `reactive` | structural | reactive: reactants are used up and atoms are conserved through a pool of free atoms; catalytic: reactants are kept, atoms are unlimited, the population is diluted back to its size <br>one of `reactive`, `catalytic` · *range:* thesis level 1 (and AlChemy): catalytic; 2000 paper, ECAL 2001, thesis level 3 and ch. 7: reactive |
+| `atoms` | `str` | `BCIKRSW` | structural | the atom types available (distinct letters of BCIKRSW); random molecules and seed molecules use only these <br>*range:* 2000 paper and thesis levels 1-2: BCIKSW; ECAL 2001, thesis level 3 and ch. 7: BCIKRSW |
+| `k_action` | `enum` | `destroy` | structural | what K does with its second argument: destroy it (back to free atoms) or release it as a separate molecule <br>one of `destroy`, `release` · *range:* 2000 paper [790]: release; ECAL 2001 and thesis [791]: destroy |
+| `filter_reproduction` | `bool` | `` | selection | a reaction whose products contain one of its reactants is elastic <br>*range:* thesis 6.3.2 (Fontana's filter): true |
+| `molecules` | `list` | `` | structural | combinator strings in normal form: the seed set (closure; empty = the single atoms of the basis) or the initial multiset (soup; empty = M random molecules) <br>*range:* e.g. the L1 organisation seed [BKK, BK(BKK)] (thesis fig. 6.5), the 2000 organisation seed [C(C(K(CKK))(WC))(C(K(CKK))(WC))] |
+| `max_reductions` | `int` | `100` | structural | maxreductiontime: atom reductions allowed per reaction (shared by the released molecules) before it is elastic <br>≥ `1` · *range:* thesis table 6.4 and fig. 6.4: 100 |
+| `max_react_size` | `int` | `50` | structural | maxreactsize: largest number of atoms a combinator may hold during a reduction <br>≥ `1` · *range:* thesis table 6.4: 50; fig. 6.4 (level 1): 15; ECAL 2001 and ch. 7: 100 |
+| `max_size` | `int` | `20` | structural | maxsize: largest number of atoms of a product <br>≥ `1` · *range:* thesis table 6.4: 20; fig. 6.4: 15; ECAL 2001 and ch. 7: 100 |
+| `max_depth` | `int` | `5` | structural | maxdepth: most nested parentheses in a product <br>≥ `0` · *range:* thesis table 6.4: 5; fig. 6.4: 7; ECAL 2001 and ch. 7: 20 |
+| `max_species` | `int` | `100` | structural | closure only: species budget; above it the closure is cut off (status truncated) <br>≥ `1` |
+| `M` | `int` | `100` | population | soup only: number of random molecules assembled at the start (ignored when molecules is given) <br>`2` … `100000` · *range:* ECAL 2001: 300; thesis ch. 7: 150 |
+| `generations` | `int` | `20` | population | soup only: physical generations (collisions = population size per generation, elastic included) <br>`0` … `1000000` · *range:* thesis fig. 6.7: 10^4; ECAL 2001: 10^4 and 3x10^4; 2000 paper: 300 |
+| `atoms_per_type` | `int` | `200` | population | reactive soup only: atoms of each type in the reactor (bound in molecules plus free) <br>≥ `0` · *range:* thesis table 6.4 and ECAL 2001: 2000; fig. 6.7: 600; ch. 7: 1000 |
+| `prob_destroy` | `float` | `0.00015` | kinetic | reactive soup only: probdest, probability per generation that a molecule decays into free atoms <br>`0.0` … `1.0` · *range:* thesis table 6.4: 0.00015; ch. 7: 0.01; ECAL 2001: 0 |
+| `min_molecules` | `int` | `30` | kinetic | reactive soup only: minmolecules, population at or below which a random molecule is inserted with probability 1 per generation <br>≥ `0` · *range:* thesis table 6.4: 30; ECAL 2001: 50; ch. 7: 25 |
+| `half_add_prob` | `float` | `100.0` | kinetic | reactive soup only: halfaddprob, the insertion probability halves for every half_add_prob molecules above min_molecules <br>≥ `1.0` · *range:* thesis table 6.4: 100 |
+
+## Published phenomena
+
+What the literature reports this model produces. Whether the generator reproduces each one is recorded in the decisions below.
+
+- reduction examples of the thesis 6.2.1: BBBBBB -> BB(BB), B(BBBB) -> B(B(BB)), BBB(BBBB) -> B(B(B(BB))); CKB acts as I
+- WR + SKI -> SKI + SKI (ECAL 2001 eq. 2); SKI + KW with a pool of 20 atoms per type passes through the published pool states (2000 paper)
+- level 1, catalytic: diversity collapses to a single self-replicating molecule A + A -> A (L0, thesis fig. 6.3-6.4)
+- level 1 with Fontana's filter: infinite ladder organisations BKK, K(BKK), K(K(BKK)), ... and BK(BKK), K(BK(BKK)), ... (thesis fig. 6.5), reproducing AlChemy's L1 (6.3.3)
+- reactive with release (2000): organisation of type A generated by alpha = C(C(K(CKK))(WC))(C(K(CKK))(WC)) with alpha * a -> alpha, K, a and K^n(b) * a -> K^(n-1)(b), a; type B organisations with gamma * a -> gamma, a, a and delta * a -> aaa(aaa)(aaa), Wa, Wa, Wa
+- reactive with R and a flow (level 3): population size settles around a value, the soup moves between organisations (thesis fig. 6.7-6.8); metabolic and balanced organisations (ECAL 2001)
+- general rules of ch. 7: B(WR)(WR) + y -> 4y, R(x) + y -> x, y
+- easy to build universal copiers, which crash diversity (thesis 6.6)
+
+## Sources
+
+- Speroni di Fenizio, P. (2000). A less abstract artificial chemistry. Artificial Life VII, 49-53, MIT Press. Combinators, pool of free atoms with the SKI + KW example, reactive operation with K releasing, organisations alpha (type A) and beta/gamma/delta (type B). https://web.archive.org/web/2010id_/http://publications.pietrosperoni.it/S2000.pdf
+- Speroni di Fenizio, P. (2007). Chemical Organization Theory. PhD thesis, Friedrich-Schiller-Universitaet Jena. Ch. 6 (table 6.1 atoms, table 6.2 levels, table 6.3 reduction order, table 6.4 parameters, sec. 6.2.3 system, fig. 6.5 L1 organisations) and ch. 7 (reaction tables of the spatial run). https://home.pietrosperoni.it/2007/phd-thesis/
+- Speroni di Fenizio, P. & Banzhaf, W. (2001). Stability of metabolic and balanced organisations. ECAL 2001, LNAI 2159, 196-205. Table 1 (seven atoms with R), WR * SKI example (eq. 2), random molecule assembly, influx. http://www.cs.mun.ca/~banzhaf/papers/ecal01_stab.pdf
+
+## Decisions
+
+Every gap, ambiguity or erratum in the sources, and how Chemart resolved it. Read this before quoting a number from this entry.
+
+- The book only names the chemistry (9.8) and says a reaction may yield a multiset and the population may vary (12.x); everything else is from the sources above. The thesis is taken as the reference (atoms, reduction order, limits, flow), since it is [791] and the latest description.
+- Redex: the thesis pseudo-code says an atom is reducible when followed by 'more combinators than its arity', but its own examples (BBBB -> B(BB)) and table 6.1 need 'at least arity'; the examples win.
+- Reduction order (table 6.3): all marked K redexes, else all marked B, C, R, I redexes, else the most external S or W redex; redexes in one pass are reduced innermost first (they only move or delete subterms, so the result equals any order), and among S/W redexes at the same depth the leftmost is taken. The table 6.3 order reproduces the 2000 pool trace, the ECAL WR * SKI example and 20 of the 25 entries of the thesis ch. 7 reaction tables; innermost S/W reduction matches fewer (it gives b + g -> 3g instead of 4g).
+- Unmatched published counts (their code is not available; the release counts depend on the reduction path): ch. 7 b + y1 -> w (we also release y1), y2 + b -> 4b (5b), w3 + b -> 4b (6b), y2 + g -> 13g and w2 + g -> 10g, both marked elastic de facto in the thesis (16g, 19g); 2000 paper delta * alpha -> 9 alpha, 3 W(alpha) (we also get 8 K, which alpha releases in every reaction), delta * gamma -> 17 gamma, 3 W(gamma) (25, 5). delta * a with an inert a matches.
+- One reduction step is one atom reduction; the max_reductions budget is shared by the main product and the released molecules of one reaction; released molecules are normalised after the main one. max_react_size is checked after every pass, which equals every instant because only S/W passes (one reduction each) can grow a combinator.
+- Size is the number of atoms; depth the number of nested parentheses after simplification (BKK: 0, K(BKK): 1).
+- Pool (reactive mode): the reactants' atoms are in the reducing term, each reduction frees its head atom, K frees the atoms of what it destroys, S and W take the atoms of the copies from the pool; the reaction is elastic if the pool would go negative at any pass. Network reactions carry the net pool exchange as free:X species, so each atom type is a conservation law (extras.conservation).
+- Catalytic mode (thesis level 1) has unlimited atoms and no free:X species; the thesis level 2 (catalytic with limited atoms, which froze) is not exposed.
+- Seed and initial molecules must be in normal form within the limits (ValueError otherwise), as the system stores only normal forms.
+- Flow (reactive soup): per collision a random molecule decays into free atoms with probability prob_destroy (= prob_destroy per molecule per generation) and a random molecule is inserted with probability p_add(n)/n (= p_add per generation), p_add(n) = 1 for n <= min_molecules and 0.5^((n - min_molecules)/half_add_prob) above (thesis 6.2.3). Decay and insertion are recorded as reactions X -> free atoms and free atoms -> X with counts; the ECAL 2001 and 2000 influx laws (other constants) are not exposed.
+- Random molecules (ECAL 2001): each atom of the basis, '(' and ')' drawn with equal probability, an unmatched ')' ends the string, open parentheses are closed at the end, an atom missing from the pool or a string longer than max_react_size aborts the attempt, the result is normalised (all released molecules are inserted); up to MaxTry = 10000 attempts.
+- Collisions draw two distinct molecules in random order (the first is applied to the second); a reaction whose products equal its reactants is not recorded.
+- No rates: the sources define collision probabilities, not rate constants, so rates are None. The v1 param reduction_budget is max_reductions; basis is atoms.
+- Closure (chemart.expand over ordered pairs) is a Chemart addition; the thesis computes partial lattices the same way (6.2.4). The default closure of the seven atoms is cut off by max_species.
+
+## Notes
+
+Combinators need no variable binding, so reduction is simpler and faster than AlChemy's lambda calculus, but the order of reduction matters once size, time and atoms are bounded and R releases molecules. Paper-scale soups (10^4 generations of hundreds of molecules) are slow in pure Python.
+
+---
+
+*Specification: `catalog/chemistries/combinator-chemistry.yaml` · generator: `chemart/chemistries/combinator_chemistry.py` · tests: `tests/chemistries/test_combinator_chemistry.py`*

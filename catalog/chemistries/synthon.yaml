@@ -2,6 +2,14 @@ chemistries:
 
 - id: synthon
   name: Synthon artificial chemistry
+  intuition: >
+    Chemistry with the electrons drawn in. A molecule is a graph of atoms that
+    also tracks lone pairs and unpaired electrons explicitly, and a reaction
+    is an *isomerisation of a whole ensemble*: both sides carry exactly the
+    same atoms and electrons, and only the bonds are rearranged. Conservation
+    is therefore structural rather than checked afterwards. A reaction class
+    is itself a graph saying which bonds break and form, which is enough to
+    grow an interstellar hydrogen-oxygen network from two atoms.
   aliases: ["synthon model", "Lenaerts-Bersini chemistry"]
   origin: "Lenaerts & Bersini, 2009"
   book: "18.3.2"

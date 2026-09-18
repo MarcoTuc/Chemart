@@ -2,6 +2,14 @@ chemistries:
 
 - id: naming-game-ac
   name: Naming game as an artificial chemistry
+  intuition: >
+    How a shared vocabulary appears, written as reactions. One species stands
+    for a meaning, others for words and for the internal associations linking
+    meaning to word. Reactions let a meaning produce a word, a word reinforce
+    its association, and - crucially - a word plus a competing association
+    convert that association to the winning one. The lateral inhibition that
+    gives is enough for a population to converge on a single shared lexicon,
+    reproducing what agent-based naming games show.
   origin: "De Beule, Hovig & Benson (book ref [212]); after Steels' naming games"
   book: "16.3.3"
   refs: ["[212]", "[804]", "[805]", "[806]", "[809]"]

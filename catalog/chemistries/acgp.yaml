@@ -2,6 +2,15 @@ chemistries:
 
 - id: acgp
   name: Algorithmic Chemistry GP (ACGP)
+  intuition: >
+    Run this one backwards from the others: instead of building a chemistry,
+    it reads one out of a program. The registers of a virtual machine are the
+    species and their contents are concentrations, so an instruction like r3
+    <- r1 op r2 simply *is* the reaction r1 + r2 -> r3. Genetic programming
+    then evolves the instruction multiset, and the evolved classifier can be
+    inspected as a reaction network. Because an instruction is a reaction
+    rather than a step, order matters less and deleting instructions degrades
+    performance gracefully.
   aliases: ["sequenceless register machine programs"]
   origin: "Banzhaf & Lasarczyk, 2004-2008"
   book: "16.6"

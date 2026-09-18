@@ -2,6 +2,14 @@ chemistries:
 
 - id: hill-kinetics
   name: Hill kinetics (cooperative binding)
+  intuition: >
+    Cooperative binding, and the standard way a smooth input becomes a switch.
+    n copies of a protein bind a gene together, so the fraction of bound genes
+    follows P^n/(K^n + P^n) - a curve that sharpens into a step as n grows. It
+    is an idealisation on purpose: n molecules never actually arrive
+    simultaneously, and with a single gene copy and a handful of proteins a
+    differential equation is the wrong tool. Useful precisely because it
+    compresses a mechanism into one parameter.
   book: "18.2.2; used by the Repressilator 19.3.2"
   refs: ["[741]", "[916]"]
   family: systems-biology

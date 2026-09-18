@@ -1,0 +1,108 @@
+# Ecolab
+
+`ecolab` · *Standish, 1994-2004*
+
+Population dynamics with an open species set. A generalised Lotka-Volterra system runs the ecology, but new species arrive by mutation of existing ones, inheriting perturbed growth rates and interaction coefficients, and species whose populations vanish are removed. The dimension of the state space therefore changes as the system runs. What comes out looks like self-organised criticality: species lifetimes follow a power law, and diversity fluctuates without settling.
+
+| | |
+|---|---|
+| **family** | evolutionary-dynamics |
+| **kind** | generator |
+| **constructive** | yes — the species set grows at run time |
+| **fidelity** | `reconstructed` — built from the original papers listed below |
+| **book** | 8.2.3 |
+| **refs** | [795], [796], arXiv:nlin/0404011, arXiv:nlin/0004026, https://github.com/highperformancecoder/ecolab |
+| **provides** | `topology`, `stoichiometry`, `catalysts`, `rate-constants`, `initial-state` |
+
+## Molecules, reactions, reactor
+
+**S — molecules** (explicit): species S<label> of a generalised Lotka-Volterra ecosystem; each carries a phenotype (r_i, beta_ii, mu_i, its interaction row and column)
+
+**R — reactions** (explicit, arity [1, 2]): n_i' = r_i n_i - n_i sum_j beta_ij n_j ; S -> 2 S (r > 0) or S -> nothing (r < 0) ; 2 S -> S (beta_ii) ; Si + Sj -> 2 Si + Sj or Si + Sj -> Sj (off-diagonal terms); a predator-prey pair beta_ij = -beta_ji becomes Sj + Si -> 2 Si
+
+**A — reactor**: ode, well-stirred-multiset
+ · *dilution:* self-limitation beta_ii > 0 and beta_ij + beta_ji >= 0 keep populations bounded; integer populations by probabilistic rounding
+
+## What you get
+
+```python
+net = chemart.generate_network("ecolab", seed=1)
+```
+
+```
+ecolab: 54 species, 686 reactions, status=complete
+provides: catalysts, initial-state, rate-constants, stoichiometry, topology
+seed: 1
+extras: analysis, ecosystem
+```
+
+First reactions:
+
+```
+S0 -> 2 S0  [mass-action k=0.0023643249400513433]
+S8 -> 2 S8  [mass-action k=0.009918737534611893]
+S11 -> 2 S11  [mass-action k=0.007628662643855644]
+S35 -> 2 S35  [mass-action k=0.06057299955740229]
+S57 -> 2 S57  [mass-action k=0.05731243420951816]
+S60 -> 2 S60  [mass-action k=0.01046037180935318]
+S131 -> 2 S131  [mass-action k=0.05409348146407444]
+S144 -> 2 S144  [mass-action k=0.0822146723824421]
+… and 678 more
+```
+
+## Parameters
+
+| name | type | default | role | what it does |
+|---|---|---|---|---|
+| `nsp` | `int` | `20` | structural | number of species in the initial random ecosystem <br>`2` … `1000` · *range:* panmictic_ecolab.py starts from 100 species |
+| `density` | `int` | `100` | population | initial population of every species <br>`1` … `1000000` |
+| `conn` | `int` | `3` | structural | off-diagonal interactions drawn per row of the initial beta (random_interaction(conn, 0)); must be < nsp <br>`0` … `999` |
+| `repro_min` | `float` | `-0.1` | kinetic | lower bound of the uniform initial r_i; repro_max - repro_min also scales the mutation of r |
+| `repro_max` | `float` | `0.1` | kinetic | upper bound of the uniform initial r_i (0.1 in the Bedau-statistics runs) |
+| `beta_diag` | `float` | `0.001` | kinetic | initial self-interaction beta_ii (> 0); repro_max / beta_diag is roughly the carrying capacity <br>≥ `0` |
+| `odiag_min` | `float` | `-0.0001` | kinetic | lower bound of the uniform off-diagonal values, initially and for links added by mutation (paper sign of beta) |
+| `odiag_max` | `float` | `0.0001` | kinetic | upper bound of the uniform off-diagonal values; odiag_max - odiag_min also scales their mutation |
+| `mut_max` | `float` | `0.01` | stochastic | ceiling on the evolving mutation rates mu_i, and their initial value <br>`0` … `1` · *range:* Bedau-statistics runs use 0.0002 to 0.1; panmictic_ecolab.py 0.001; 0 switches evolution off |
+| `sp_sep` | `float` | `0.1` | stochastic | species radius rho: a species makes sp_sep r_i mu_i dt n_i mutants per mutation step <br>≥ `0` |
+| `gen_bias` | `float` | `` | stochastic | generalisation bias g: > 0 favours adding interaction links on mutation, < 0 deleting them <br>`-1` … `1` |
+| `cycles` | `int` | `100` | population | generate/mutate/condense cycles run before the ecosystem is returned; 0 returns the initial random ecosystem <br>`0` … `100000` · *range:* published runs last 1e6-1e7 timesteps |
+| `steps_per_cycle` | `int` | `100` | population | Lotka-Volterra timesteps between mutation steps (generate 100 in the Ecolab scripts) <br>`1` … `10000` |
+
+## Published phenomena
+
+What the literature reports this model produces. Whether the generator reproduces each one is recorded in the decisions below.
+
+- self-organised criticality: species lifetime distribution with a power-law tail (exponent about -1) at high mutation rates, lognormal at low rates (Standish 2004, fig. 1)
+- diversity time spectrum ~ 1/k (Standish 2004, fig. 2)
+- Bedau classes: class 2 with mutation off (diversity constant, activity unbounded), class 3 bounded diversity at intermediate rates, class 1 churn at high rates (Standish 2000)
+- inverse relation between diversity and connectivity; the mutation operator conserves connectivity on average
+- populations stay bounded: beta_ii > 0 is required and preserved by mutation
+
+## Sources
+
+- Standish, R. K. (2004). Ecolab, Webworld and self-organisation. Artificial Life IX. Eq. 1, speciation proportional to n_i r_i mu_i, boundedness and permanence conditions. https://arxiv.org/abs/nlin/0404011
+- Standish, R. K. (2000). An Ecolab perspective on the Bedau evolutionary statistics. Artificial Life VII. Initialisation, carrying capacity ~100, lognormal/normal mutation with capped mu, connectivity-conserving link mutation. https://arxiv.org/abs/nlin/0004026
+- Standish, R. K. EcoLab technical report, section 'The EcoLab Model' (doc/model.tex): the mutation algorithm (steps 1-6), the boundedness criterion and example input parameters. https://github.com/highperformancecoder/ecolab/blob/master/doc/model.tex
+- EcoLab source: models/ecolab_model.cc (generate, ROUND, mutate, do_row_or_col, condense, lifetimes, connectivity), src/arrays.cc (fillprand, gspread, lgspread), include/sparse_mat.h (init_rand), models/panmictic_ecolab.py and models/ecolab.tcl (initialisation and run loop). https://github.com/highperformancecoder/ecolab
+
+## Decisions
+
+Every gap, ambiguity or erratum in the sources, and how Chemart resolved it. Read this before quoting a number from this entry.
+
+- The book only names the model (generalised LV with mutation of r_i and b_ij, bounded populations, probabilistic rounding). Everything else is reconstructed from Standish's papers, the EcoLab technical report and the EcoLab source. Standish (1994, Complexity International 2) was not consulted; the 2004 paper defers to it for the mutation details, which the technical report and source give.
+- Sign convention: the network and extras use the 2004 paper's beta (n' = r n - n beta n, beta_ii > 0). The EcoLab code and technical report store b = -beta (b_ii < 0). The network maps each term to a mass-action reaction as lotka-volterra does, with time measured in EcoLab timesteps; the integer map n <- ROUND(n + n (r - beta n)) is the explicit Euler step of that ODE.
+- Algorithm (ecolab_model.cc): cycles of generate(steps_per_cycle), mutate, lifetimes, condense. Mutants per species = ROUND(sp_sep r_i mu_i dt n_i) and are taken out of the parent's population (clipped at n_i). Each mutant starts at population 1. The technical report writes mu alpha n / rho, but the code multiplies by sp_sep; the code is followed.
+- Genetic distance gdist = Exp(1) * mu_parent (fillprand draws -ln xi; the report calls this a 'Poisson' distribution). r' = r + N(0, (repro_max - repro_min) gdist). mu' and beta_ii' are multiplied by exp(N(0, gdist)) (lgspread); mu' is capped at mut_max and beta_ii' is kept >= |r'| / (0.1 INT_MAX).
+- Link mutation follows do_row_or_col. The child's row and column copy the parent's, and the child-parent entry is the parent's own beta_ii. Then floor(1/|x|) - 1 links are added (values uniform in [odiag_min, odiag_max]) when x > 0 or deleted when x <= 0, with x = (2 xi - 1 + g) renormalised by 1 +/- g. Nonzero values then get N(0, (odiag_max - odiag_min) gdist). The report's '(-2, 2) stepped distribution' description differs; the code is followed.
+- Boundedness uses the technical report's criterion b_ij + b_ji <= 0 (paper sign: beta_ij + beta_ji >= 0) for every pair, with beta_ii > 0; together they give n.beta.n > 0 for all n > 0, so the total population cannot diverge. Where a pair violates it, the excess is removed equally from its nonzero entries: a pair with both entries set becomes an exact predator-prey pair, and a lone positive link is dropped. ecolab_model.cc instead applies one aggregate correction per mutant, which is not sufficient and reads interaction.diag[i] where new_sp[i] is meant; that variant is not reproduced.
+- The initial ecosystem follows panmictic_ecolab.py: r_i uniform in [repro_min, repro_max], constant beta_ii = beta_diag, conn random off-diagonal links per row (a draw that hits the diagonal is dropped, as in init_rand), values uniform in [odiag_min, odiag_max], mu_i = mut_max. The pairwise boundedness criterion is applied to it too, so the returned ecosystem is bounded from the start.
+- Dropped parameters: migration rates, the spatial grid and the neutral shadow model do not change the panmictic network. The init_rand sigma is dropped (the scripts use 0). Permanence (det beta > 0 is necessary, Law & Blackford 1992) is not enforced by Ecolab, since its violation drives extinction avalanches. It is reported in extras.analysis.det_beta_positive together with EcoLab's maxeig of b and May's connectivity.
+- extras.ecosystem holds r, beta and mu of the survivors. extras.analysis records the per-cycle history (diversity, speciations, extinctions), the lifetimes of extinct species (from first exceeding 10 individuals, EcoLab's lifetimes()), and the phylogeny of every species that ever lived.
+
+## Notes
+
+The first published coupling of population dynamics to an evolutionary algorithm. Webworld is the functional-response relative that Standish compares it with.
+
+---
+
+*Specification: `catalog/chemistries/ecolab.yaml` · generator: `chemart/chemistries/ecolab.py` · tests: `tests/chemistries/test_ecolab.py`*

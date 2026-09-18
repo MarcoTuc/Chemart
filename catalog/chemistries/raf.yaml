@@ -2,6 +2,14 @@ chemistries:
 
 - id: raf
   name: RAF sets (reflexively autocatalytic, F-generated)
+  intuition: >
+    A test rather than a chemistry: given a catalytic reaction system and a
+    food set, is there a self-sustaining subset? A set is reflexively
+    autocatalytic if every reaction in it has a catalyst the set itself can
+    make, and food-generated if every reactant can be built from the food; a
+    RAF is both. The striking result is how cheap this is - the maximal RAF
+    can be found in polynomial time, and the catalysis needed for one to
+    appear grows only linearly with system size rather than exponentially.
   origin: "Hordijk & Steel, 2004-2015"
   book: "6.3.1"
   refs: ["[400]", "[402]", "[599]"]

@@ -2,6 +2,15 @@ chemistries:
 
 - id: arn
   name: Artificial Regulatory Network (ARN)
+  intuition: >
+    A gene regulatory network grown from one bitstring. Scanning the genome
+    for a promoter pattern marks genes; each gene's coding region is collapsed
+    by majority vote into a 32-bit protein, and the same gene carries enhancer
+    and inhibitor sites. How strongly protein j regulates gene i is set purely
+    by how complementary the protein is to that site - bit-matching stands in
+    for molecular affinity. Concentrations then follow an exponential response
+    on the simplex. Because the whole network is encoded in a sequence,
+    mutation and duplication act on the regulatory topology itself.
   origin: "Banzhaf, 2003"
   book: "11.3.4; GRN modelling 18.4.3; morphogenesis 18.6.1"
   refs: ["[67]", "[68]", "[73]", "[478]", "[479]", "[480]", "[504]", "[521]", "[522]", "[172]"]

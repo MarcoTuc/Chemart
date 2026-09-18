@@ -1,0 +1,84 @@
+site_name: Chemart
+site_description: A mart of artificial chemistries — all 98 chemistries of Banzhaf & Yamamoto (2015) behind one interface.
+copyright: All section references are to Banzhaf & Yamamoto, Artificial Chemistries (MIT Press, 2015).
+
+docs_dir: docs
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.top
+    - toc.follow
+    - content.code.copy
+    - search.highlight
+    - search.suggest
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  # md_in_html is what makes Material's `<div class="grid cards" markdown>`
+  # render its contents as Markdown rather than raw HTML.
+  - md_in_html
+  - def_list
+  - footnotes
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+
+plugins:
+  - search
+
+extra_css:
+  - stylesheets/extra.css
+
+nav:
+  - Home: index.md
+  - How it works: concepts.md
+  - Guide:
+      - Generating networks: guide/generating.md
+      - Simulating dynamics: guide/simulating.md
+      - Comparing and analysing: guide/analysing.md
+  - Reference:
+      - The network record: reference/record.md
+      - API and CLI: reference/api.md
+      - Catalog index (table): CATALOG.md
+  - Catalog: catalog/index.md
+  - Fidelity and trust: trust.md
+  - Contributing a chemistry: contributing.md
+  - Project:
+      - The output format: OUTPUT-SCHEMA.md
+      - Implementation plan: PLAN.md
+      - Implementer brief: IMPLEMENTING.md
+
+# The 98 per-chemistry pages are generated into docs/catalog/ by
+# tools/gen_catalog_pages.py and linked from catalog/index.md rather than
+# listed individually in the nav.
+not_in_nav: |
+  catalog/*.md
+  !catalog/index.md

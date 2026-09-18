@@ -2,6 +2,14 @@ chemistries:
 
 - id: mgs
   name: MGS
+  intuition: >
+    Rewriting where the neighbourhood relation is part of the data. A
+    collection is not just a bag - it can be a sequence, a grid, a graph, or a
+    group-based field - and a rule matches a *path of neighbouring* elements
+    and substitutes for it. One formalism therefore covers sorting a sequence,
+    a cellular automaton on a lattice, and restriction-enzyme cuts on a
+    string, differing only in which topology the collection carries. Useful to
+    Chemart as a way of thinking about space abstractly.
   aliases: ["(encore) un modele general de simulation", "topological collections and transformations"]
   origin: "Giavitto & Michel, 2001"
   book: "9.6; biology 18.3.2"

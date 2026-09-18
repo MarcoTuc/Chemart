@@ -1,0 +1,109 @@
+# Embedded particles in cellular automata
+
+`ca-embedded-particles` · *Hanson & Crutchfield 1992; Crutchfield & Mitchell 1995; Hordijk, Crutchfield & Mitchell 1996-1998*
+
+*Also known as:* *computational mechanics of cellular automata*, *domains, particles and particle interactions*, *embedded-particle model*
+
+A chemistry nobody wrote down - it is read out of a cellular automaton. Run a one-dimensional CA and its space-time pattern separates into regular domains; the moving boundaries between domains behave like localised, persistent objects. Treat those *particles* as the molecules and their collisions become reactions: two particles annihilate, or decay, or fuse into a third. Since the automaton is what actually computes, this gives a mechanical account of how a CA solves a global task - and it depends on the observer choosing a coarse-graining.
+
+| | |
+|---|---|
+| **family** | automata |
+| **kind** | analysis |
+| **constructive** | no — fixed species set |
+| **fidelity** | `reconstructed` — built from the original papers listed below |
+| **book** | 10.7.2 |
+| **refs** | [398], [399] |
+| **provides** | `topology`, `stoichiometry`, `initial-state`, `space` |
+
+## Molecules, reactions, reactor
+
+**S — molecules** (implicit): A molecule is a *particle*: a spatially localised, temporally periodic wall between two regular domains of a one-dimensional binary CA, visible as a propagating structure once the domains are filtered out of the space-time diagram (book figure 10.14). A particle is named by the ordered pair of domains it separates, following the published catalog: alpha, beta, gamma, delta, eta, mu; species structure is that wall plus the published velocity, e.g. "Λ0Λ2 (v=-1.0)". Walls between two patches of the same domain are dislocations that the published catalogs leave out; they appear as `wΛiΛi`. The domains themselves (Λ0 = 0+, Λ1 = 1+, Λ2 = (01)+ or (011)+) are the solvent, not molecules.
+
+**R — reactions** (explicit, arity [1, 2]): particle collisions: decay (alpha -> gamma + mu), reaction (beta + gamma -> eta; mu + beta -> delta; eta + delta -> beta) and annihilation (eta + mu -> ∅; gamma + delta -> ∅), each annihilation leaving one of the domains behind
+
+**A — reactor**: lattice-2d
+ · *dilution:* none: the lattice is finite and periodic and particles are only removed by annihilating each other, which is how the CA reaches a fixed point.
+
+## What you get
+
+```python
+net = chemart.generate_network("ca-embedded-particles", seed=1)
+```
+
+```
+ca-embedded-particles: 9 species, 7 reactions, status=observed
+provides: initial-state, space, stoichiometry, topology
+seed: 1
+extras: analysis, space
+```
+
+First reactions:
+
+```
+∅ -> wL2L2  (x1)
+beta + mu -> delta  (x1)
+delta -> ∅  (x1)
+delta + gamma -> ∅  (x1)
+eta -> beta  (x1)
+mu -> delta  (x1)
+wL2L2 -> ∅  (x1)
+```
+
+## Parameters
+
+| name | type | default | role | what it does |
+|---|---|---|---|---|
+| `rule` | `enum` | `phi-par-a` | structural | which published radius-3 rule to use: phi-par-a and phi-par-b are the two density-classification CAs evolved by the genetic algorithm of Crutchfield, Mitchell & Das (their Tables 3 and 4 give the particle catalogs); gkl is the hand-designed Gacs-Kurdyumov-Levin rule, which has the same three domains but no published particle catalog. phi-par-b is offered with reactions=published only (see decisions) <br>one of `phi-par-a`, `phi-par-b`, `gkl` |
+| `reactions` | `enum` | `observed` | structural | observed: run the automaton and record the particle interactions that actually fired, with counts (status observed); published: return the rule's published particle interaction table as a complete network, without running anything <br>one of `observed`, `published` |
+| `lattice` | `int` | `149` | spatial | number of cells N of the periodic lattice <br>`12` … `5000` · *range:* the papers measure performance at N = 149, 599 and 999; the book's figure 10.14 uses 75 |
+| `steps` | `int` | `298` | population | CA iterations to run; more iterations means more observed collisions <br>`1` … `20000` · *range:* the task's answer time is T_max = 2N |
+| `density` | `float` | `0.48` | population | density rho_0 of the initial configuration: exactly round(rho_0 N) cells are set to 1, in random positions (this is the only use of the seed) <br>`0` … `1` · *range:* the published space-time figures use rho_0 = 0.48 and 0.51; performance is measured over ICs drawn uniformly, which is what the module's performance() does |
+| `filter_window` | `int` | `3` | structural | half-width of the window used by the domain filter: a site belongs to a domain when the 2w+1 sites around it agree with one spatial phase of that domain's pattern. The default 3 is the CA radius, so the window is the neighbourhood; larger values demand wider domain patches and so report wider walls <br>`1` … `16` |
+
+## Published phenomena
+
+What the literature reports this model produces. Whether the generator reproduces each one is recorded in the decisions below.
+
+- a CA's space-time behaviour condenses into regular domains separated by particles; on N = 149 the condensation time of the density rules averages about 12 steps
+- the published particle catalog is internally consistent: every interaction composes the walls of its reactants, so beta ~ Λ1Λ0 colliding with gamma ~ Λ0Λ2 gives eta ~ Λ1Λ2, and gamma + delta annihilate into the domain Λ0 that both of them border
+- all six published interactions of phi_par^a fire in real runs, and they are the large majority of the collisions observed between catalogued particles; the rest involve the dislocations that the published catalogs leave out
+- particle velocities are fixed by the rule: gamma moves one cell per step to the left, mu one to the right, beta stands still, delta and eta move three cells per step, and alpha is unstable and decays at once into gamma + mu
+- particle collisions carry the density computation: the whole lattice ends in one domain, all-0s or all-1s, classifying the initial density correctly on about 78% of unbiased random ICs for phi_par^a and about 82% for GKL at N = 149, and performance falls as N grows
+- the density-classification task cannot be solved perfectly by any two-state CA (Land & Belew 1995), and the best known radius-3 rules reach P_149 of about 0.85
+
+## Sources
+
+- Banzhaf & Yamamoto, Artificial Chemistries (2015), section 10.7.2 'Embedded Particles in Cellular Automata as Molecules' and figure 10.14 (a filtered space-time diagram of a one-dimensional binary r = 3 CA on 75 sites, in which two particles collide), after book refs [398] and [399].
+- Crutchfield, J. P., Mitchell, M. & Das, R. (1998/2003). The Evolutionary Design of Collective Computation in Cellular Automata. Santa Fe Institute Working Paper 98-09-080, arXiv:adap-org/9809001, https://arxiv.org/pdf/adap-org/9809001 . Table 1: the look-up tables of phi_par^a and phi_par^b in hexadecimal with their performances P_149 = 0.775 / 0.766, P_599 = 0.740 / 0.687, P_999 = 0.728 / 0.641; Table 3: phi_par^a's catalog of regular domains (Λ0 = 0+, Λ1 = 1+, Λ2 = (01)+), particles with velocities (alpha ~ Λ0Λ1 unstable, beta ~ Λ1Λ0 v=0, gamma ~ Λ0Λ2 v=-1, delta ~ Λ2Λ0 v=-3, eta ~ Λ1Λ2 v=3, mu ~ Λ2Λ1 v=1) and interactions (decay alpha -> gamma + mu; react beta + gamma -> eta, mu + beta -> delta, eta + delta -> beta; annihilate eta + mu -> ∅ (Λ1), gamma + delta -> ∅ (Λ0)); Table 4: the same for phi_par^b with Λ2 = (011)+; Table 2: ECA 18's catalog; section 3: the task (rho_c = 1/2, T_max = 2N, no partial credit); Appendix A: the domain-recognising and filtering transducer.
+- Crutchfield, J. P. & Mitchell, M. (1995). The evolution of emergent computation. PNAS 92(23):10742-10746. doi:10.1073/pnas.92.23.10742, preprint 'EvEmComp' at https://csc.ucdavis.edu/~cmg/papers/ . Table 1: hexadecimal look-up tables and P_N of six r = 3 rules including GKL (005f005f 005f005f 005fff5f 005fff5f, P_149 = 0.816, P_599 = 0.766, P_999 = 0.757) and the convention for expanding the hex code; Table 2: a particle catalog of the same shape for the evolved rule phi_17083, whose caption notes that infrequent structures such as the dislocations within Λ2 are deliberately left out.
+- Hordijk, W., Crutchfield, J. P. & Mitchell, M. (1998). Mechanisms of emergent computation in cellular automata. In Parallel Problem Solving from Nature (PPSN V), 613-622. Springer. https://www.worldwidewanderings.net/Publications/mecca.pdf (book ref [399], the source of book figure 10.14). Section 3 and figure 1: domains, embedded particles and interactions of phi_dens5 and phi_sync5 on a 75-site lattice; table 1: phi_sync5's particle catalog with temporal periodicity p, displacement d and velocity v = d/p; section 4: the condensation time t_c (t_c ≈ 12 on average for phi_dens5 at N = 149) and the five simplifying assumptions of the embedded-particle model, including that interactions take time in the CA but are treated as instantaneous in the model.
+- Hordijk, W., Crutchfield, J. P. & Mitchell, M. (1996). Embedded-particle computation in evolved cellular automata. In PhysComp96, 153-158. New England Complex Systems Institute. https://www.worldwidewanderings.net/Publications/epcieca.pdf (book ref [398]). Table 1: a particle catalog with velocities, interaction-result probabilities and particle probabilities at t_c.
+- Hordijk, W., Shalizi, C. R. & Crutchfield, J. P. (2001). Upper bound on the products of particle interactions in cellular automata. Physica D 154:240-258. doi:10.1016/S0167-2789(01)00252-4, https://www.worldwidewanderings.net/Publications/ub.pdf . Definitions used here: a particle is a spatially localised, temporally periodic boundary between two adjacent domains; velocity v = d/P; interactions are written alpha + beta -> gamma, annihilation alpha + beta -> ∅, decay alpha -> beta + gamma; the collection of domains, particles and interactions is a 'particle catalog'.
+- Mitchell, M., Hraber, P. T. & Crutchfield, J. P. (1993). Revisiting the edge of chaos: evolving cellular automata to perform computations. Complex Systems 7:89-130. arXiv:adap-org/9303003, https://arxiv.org/pdf/adap-org/9303003 . The GKL rule's definition: if s_i = 0 then s_i' = majority(s_i, s_{i-1}, s_{i-3}), if s_i = 1 then s_i' = majority(s_i, s_{i+1}, s_{i+3}); and the description of GKL's checkerboard and white-to-black signals, which are the same three domains as phi_par^a's.
+
+## Decisions
+
+Every gap, ambiguity or erratum in the sources, and how Chemart resolved it. Read this before quoting a number from this entry.
+
+- The book describes the idea and shows one filtered space-time diagram; everything quantitative (rules, domains, particles, velocities, interaction tables, performances) is reconstructed from the papers above, hence fidelity: reconstructed.
+- kind stays analysis: the entry is a method for reading a reaction network out of a cellular automaton. It is exposed both ways: reactions=published hands back the published interaction table (complete), reactions=observed runs the automaton and reports the collisions that fired with their counts (observed).
+- Look-up tables are embedded verbatim as the published hexadecimal strings. The expansion convention is the sources' own (hex digits left to right give the 128 output bits in lexicographic order of neighbourhood, the leftmost bit being the output for neighbourhood 0000000). It is verified independently: expanding the published GKL hex code gives exactly the GKL majority rule as defined by Mitchell, Hraber & Crutchfield, bit for bit (test).
+- phi_par^a is the rule of Crutchfield, Mitchell & Das Table 1 (0504058605000F77 037755877BFFB77F). The same rule appears in Crutchfield & Mitchell (1995) Table 1 as phi_100 with two hexadecimal digits different (05040587 05000f77 03775583 7bffb77f); both reproduce the published performance within sampling error (measured P_149 = 0.78 for each against 0.775 and 0.769 published), so the difference is a transcription slip in one of the two papers and the later, catalogued form is used.
+- phi_par^b is offered with reactions=published only. Its look-up table as printed in Crutchfield, Mitchell & Das Table 1 (00240066A0A02246 76EFEFFFFBFFAAFE, checked against the typeset page, not only the extracted text) never classifies density in our implementation: measured P_149 = 0.00 against the published 0.766, under the same bit convention that reproduces GKL and phi_par^a, and under row swaps, bit reversal and complementation. A search over all 480 single-hexadecimal-digit corrections found none that reaches P = 0.6. The published catalog of Table 4 is therefore offered as data, and running that automaton is refused rather than reported as the published rule.
+- GKL has no published particle catalog in these sources. Its space-time behaviour has the same three domains (Mitchell, Hraber & Crutchfield describe its checkerboard signal and its white-to-black boundary), but its walls are not phi_par^a's particles: measured by probe(), GKL's Λ0Λ2 wall moves +3 where phi_par^a's gamma moves -1, its Λ2Λ0 wall +1 where delta moves -3, and its stable and unstable black-white boundaries are the other way round (Λ0Λ1 is stable and Λ1Λ0 decays). Borrowing the Greek names would therefore attach published velocities to walls that do not have them, so for GKL every wall is reported by the domains it separates (wΛ0Λ2 and so on) with a measured velocity, and no interaction table is claimed: reactions=published is refused for GKL.
+- The domain filter is the published construction in spirit, not the published transducer: a site is assigned to a domain when the 2w+1 sites around it (w = filter_window, default the CA radius 3, i.e. the neighbourhood) agree with one spatial phase of that domain's pattern, and the maximal runs of unassigned sites are the walls. The published filter is a finite-state domain-recognising transducer (Crutchfield, Mitchell & Das Appendix A; Crutchfield & Hanson 1993), which is equivalent for these periodic domains but additionally carries phase information.
+- A particle is identified by the ordered pair of domains its wall separates, which is exactly how the published catalogs define them (`p ~ Λi Λj`). Walls between two patches of the same domain are dislocations, which the published catalogs explicitly leave out; they are reported as species wΛiΛi rather than silently dropped.
+- Interactions are not instantaneous in the CA - for a few steps around a collision the lattice cannot be decomposed into domains and particles (the fourth simplifying assumption of the embedded-particle model). Chemart therefore collects what disappears and what appears within 14 cells and 4 steps into one event, and a particle that vanishes and returns within that window counts as having survived rather than as a reaction. Without this a single annihilation is reported as two events with an unassigned wall in between; and the radius has to be the width of a wall (14) rather than of the neighbourhood (7), because the centres of two colliding wedges are that far apart when they meet - with 7, every two-particle reaction of the published table is split into two one-sided events (beta + gamma -> eta is reported as gamma -> ∅ and beta -> eta).
+- Only collisions from the condensation time t_c on are recorded, t_c being the first step at which every site is in a regular domain or in a wall between two of them that is at most two neighbourhoods (14 cells) wide, dislocations allowed. Before t_c the configuration is not yet describable in terms of particles, so events there would be filter artefacts rather than reactions. The width bound cannot be one neighbourhood: a particle's wedge is wider than the neighbourhood - phi_par^a's beta wall is a steady 8 cells - so with a 7-cell bound no configuration ever condenses. With the 14-cell bound the measured t_c is 6 at N = 149 and 8 at N = 599 for the default IC, against the published average of about 12 at N = 149.
+- Particle velocities are measured, not assumed: particles are followed from step to step by taking the nearest wall of the same type within 4 cells (one more than the fastest published velocity), with no reference to the published velocity. The module's probe() measures a single particle in isolation by building a lattice that is one domain on each half, which reproduces the published velocities exactly and shows alpha decaying into gamma and mu.
+- Dropped v1 parameters: `rule` was an int CA rule number and `r` the radius; both are properties of the published rule, which is now a named choice, and every rule here is radius 3. `lattice_len` became `lattice`. Added: reactions, steps, density and filter_window.
+- Not implemented: the epsilon-machine reconstruction that discovers the domains automatically (the domains of the catalogued rules are given); the ballistic embedded-particle model that predicts P_N from the catalog and the particle distribution at t_c; interaction-result probabilities and three-particle interactions, which the sources list for the synchronisation rules but not for phi_par^a; the synchronisation rules themselves - the look-up tables printed for phi_sync1 and phi_parent (Hordijk, Shalizi & Crutchfield 2001, Table 1) do not synchronise in our implementation (measured 0.00 and 0.28 of ICs), so their catalogs are cited but not offered.
+
+## Notes
+
+The cleanest case in the book of a chemistry that is not written down but *read out*: the automaton is given, and the molecules and reactions are what an observer who filters the regular domains sees. Book 10.7.2 contrasts it with the self-replicating loops of `sr-loops`, where a molecule is a connected set of cells: here a molecule is a boundary, and it exists only in space-time. The default run is phi_par^a on 149 cells for 298 = 2N steps from a rho_0 = 0.48 initial configuration, which the CA classifies correctly.
+
+---
+
+*Specification: `catalog/chemistries/ca-embedded-particles.yaml` · generator: `chemart/chemistries/ca_embedded_particles.py` · tests: `tests/chemistries/test_ca_embedded_particles.py`*

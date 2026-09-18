@@ -2,6 +2,13 @@ chemistries:
 
 - id: dimerization
   name: Reversible dimerization
+  intuition: >
+    The hello-world of reaction networks: A and B bind to a dimer and it falls
+    apart again. There is nothing to discover here, which is exactly the point
+    - it is the fixture where you check that equilibrium comes out as
+    k_forward/k_reverse, that a stochastic run fluctuates around the
+    deterministic answer, and that the conversion between macroscopic and
+    stochastic rate constants is done right.
   origin: "textbook; used as PyCellChemistry's hello-world"
   book: "2.2.4, appendix (Dimer.py)"
   family: core

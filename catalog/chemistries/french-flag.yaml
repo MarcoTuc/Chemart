@@ -2,6 +2,14 @@ chemistries:
 
 - id: french-flag
   name: French flag model (positional information)
+  intuition: >
+    The textbook picture of positional information, kept as a benchmark rather
+    than as a mechanism. Cells sit along a morphogen gradient and read their
+    position by which concentration thresholds it exceeds, adopting one of
+    three fates - so a smooth gradient becomes three sharp stripes. It is the
+    standard target pattern for evo-devo experiments, and the standard
+    criticism is that it says nothing about where the gradient came from or
+    how the thresholds are set.
   origin: "Wolpert, 1969"
   book: "18.6"
   refs: ["[927]", "[928]", "[929]", "[930]", "[456]", "[34]", "[265]", "[715]"]

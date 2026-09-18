@@ -2,6 +2,14 @@ chemistries:
 
 - id: michaelis-menten
   name: Michaelis-Menten enzyme kinetics
+  intuition: >
+    The canonical enzyme mechanism, and a lesson about output formats. Written
+    elementarily it is three mass-action reactions among four species: enzyme
+    and substrate bind reversibly, then the complex releases product.
+    Eliminate the complex and you get the familiar saturating rate law over
+    just two species - fewer species and fewer reactions, but no longer mass
+    action. The same chemistry thus has two faithful representations, and any
+    schema that assumes mass action can only hold one of them.
   book: "18.2.1; also 4.4 (as an abridgement method)"
   refs: ["[42]", "[81]", "[503]"]
   family: systems-biology

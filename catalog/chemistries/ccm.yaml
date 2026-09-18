@@ -2,6 +2,15 @@ chemistries:
 
 - id: ccm
   name: Chemical Casting Model (CCM)
+  intuition: >
+    Emergent problem solving from purely local rules. The whole working memory
+    is a single candidate solution - one atom per queen, or per graph vertex -
+    and rules rewrite small groups of atoms, with the untouched atoms acting
+    as catalysts. A rule fires only if it does not lower a *local* order
+    degree, so nothing ever computes a global objective. Yet the system
+    reliably reaches global optima like an eight-queens solution or a valid
+    map colouring, because random local improvement plus the occasional
+    frustrated move is enough to escape traps.
   aliases: ["chemical casting model", "chemical computation model", "CCM with FAM", "annealed CCM"]
   origin: "Kanada, 1992-1996"
   book: "17.2.2"

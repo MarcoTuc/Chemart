@@ -2,6 +2,14 @@ chemistries:
 
 - id: squirm3
   name: Squirm3
+  intuition: >
+    A spatial chemistry where template replication really does emerge. Atoms
+    carry a fixed type and a mutable state, drift on a grid, and local rules
+    make or break bonds while changing states; a bonded group moves as one
+    molecule. Eight rules are enough for an arbitrary sequence flanked by two
+    markers to copy itself. Enzymes come later and are the clever part: the
+    whole reaction to be catalysed is encoded in a catalyst's state, read off
+    a genetic string, so which reactions exist becomes heritable.
   aliases: ["Hutton's artificial chemistry", "Organic Builder chemistry"]
   origin: "Hutton, 2002-2007"
   book: "11.4.1"

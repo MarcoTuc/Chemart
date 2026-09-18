@@ -2,6 +2,14 @@ chemistries:
 
 - id: repressilator
   name: Repressilator
+  intuition: >
+    A synthetic oscillator that was actually built in bacteria. Three genes
+    are arranged in a cycle so each represses the next, with repression
+    modelled as cooperative binding and both mRNA and protein decaying. With
+    enough cooperativity the loop cannot settle - the repression travels round
+    the ring and the protein levels oscillate. With no cooperativity it simply
+    relaxes, so the nonlinearity is doing the work, and the oscillation only
+    exists inside a bounded region of parameter space.
   origin: "Elowitz & Leibler, 2000"
   book: "19.3.2; appendix (Repressilator.py)"
   refs: ["[256]", "[518]", "[926]"]

@@ -2,6 +2,14 @@ chemistries:
 
 - id: high-order-chem
   name: High-order chemistry (rules as molecules)
+  intuition: >
+    A chemistry whose rules are themselves molecules. The vessel holds two
+    multisets, one of data and one of rules; each step draws a rule, counts
+    its binding sites, draws that many data molecules, applies it, and returns
+    everything - rule included - to the vessel. Because a rule is a molecule,
+    its concentration matters: rules compete for substrate and can be added or
+    removed at run time. The natural next step, rules that rewrite rules, is
+    what the design points at without yet doing.
   aliases: ["HighOrderChem", "NumberChemHO"]
   origin: "Yamamoto, 2014 (PyCellChemistry); Banzhaf & Yamamoto, 2015"
   book: "appendix: Writing Your Own Artificial Chemistry in Python, 'A High-Order Chemistry' (figure 3, divrule); module list (HighOrderChem.py)"

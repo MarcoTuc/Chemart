@@ -2,6 +2,15 @@ chemistries:
 
 - id: cpm-grn-evodevo
   name: Cellular Potts + GRN evo-devo models
+  intuition: >
+    Morphogenesis from two ingredients and nothing else. Cells are patches of
+    lattice sites whose shapes evolve by a Metropolis rule on an energy that
+    charges for surface contact between types and for deviating from a target
+    volume - so differential adhesion alone makes a mixed aggregate sort
+    itself out, with the more cohesive type engulfed. Give each cell a small
+    Boolean gene network that reads its neighbours' signals and sets its type,
+    and evolve the network: shapes, budding and engulfment appear without
+    anyone specifying a target shape.
   aliases: ["Hogeweg evo-devo model", "differential adhesion + gene regulation morphogenesis"]
   origin: "Hogeweg, 2000; Cellular Potts Model: Glazier & Graner, 1993"
   book: "18.6.1"

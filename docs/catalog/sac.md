@@ -1,0 +1,109 @@
+# SAC (string-based artificial chemistry with cells)
+
+`sac` · *Suzuki & Ono, 2002-2003*
+
+*Also known as:* *string-based artificial chemistry*, *Suzuki-Ono string rewriting chemistry*
+
+Strings rewriting strings, inside cells that divide. A molecule is a string over a small alphabet in which some characters are operators and some data; a collision has one string rewrite the other and cut it at marked points, with the operator surviving unchanged - so every reaction is catalytic. Cells accumulate strings and divide when they hold enough, which adds a population level above the string chemistry. A gene-copying string is the worked example.
+
+| | |
+|---|---|
+| **family** | bio-inspired |
+| **kind** | generator |
+| **constructive** | yes — the species set grows at run time |
+| **fidelity** | `reconstructed` — built from the original papers listed below |
+| **book** | 11.1.3 |
+| **refs** | [642], [823], [826], doi:10.1007/978-3-540-39432-7_9 |
+| **provides** | `topology`, `stoichiometry`, `catalysts`, `initial-state`, `sequence-structure-function` |
+
+## Molecules, reactions, reactor
+
+**S — molecules** (implicit): strings over the 19 symbols . 0 1 2 3 ' " ! ? % * / \ & $ M E L R (book table 11.4); species id s_<string transliterated to letters> (. t, ' d, " c, ! x, ? y, % z, * s, / p, \ b, & a, $ n; digits and M E L R unchanged), structure the raw string
+
+**R — reactions** (implicit, arity 2): operator + operand -> operator + pieces of the rewritten operand, cut at every unsuppressed '.'; elastic if the rules leave the operand unchanged. Example (book eq. 11.2-11.3, author's spelling): \0&\!$0'0"1*0'1"2 decodes to [\0]&[\!]$[00*01 → 01*02] and rewrites 002301 into 012302.
+
+**A — reactor**: compartments, well-stirred-multiset
+ · *dilution:* cells grow by producing strings and divide when their string count has doubled (model iii: only with a membrane string of ten M); max 100 cells with max 50 strings, an old cell removed when a new one is added
+
+## What you get
+
+```python
+net = chemart.generate_network("sac", seed=1)
+```
+
+```
+sac: 410 species, 410 reactions, status=complete
+provides: catalysts, initial-state, stoichiometry, topology
+seed: 1
+extras: analysis, cell_level, organisation, roles, seed
+```
+
+First reactions:
+
+```
+s_00d0d0c1c1c0c2c0c2s0011c0c2c0c2 + s_0000b0b0bdb0bdb0bcb1bcb1bcb0bcb2bcb0bcb2bsb0b0b1b1bcb0bcb2bcb0bcb20011 -> s_00d0d0c1c1c0c2c0c2s0011c0c2c0c2 + s_00110202b0b0bdb0bdb0bcb1bcb1bcb0bcb2bcb0bcb2bsb0b0b1b1bcb0bcb2bcb0bcb200110202
+s_00d0d0c1c1c0c2c0c2s0011c0c2c0c2 + s_0000bpbbb0bbb2bbb0bbb2bpbbbbbzbpbsbcbbbbbcbzb0b2b0b20011 -> s_00d0d0c1c1c0c2c0c2s0011c0c2c0c2 + s_00110202bpbbb0bbb2bbb0bbb2bpbbbbbzbpbsbcbbbbbcbzb0b2b0b200110202
+s_00d0d0c1c1c0c2c0c2s0011c0c2c0c2 + s_0000b0b0bdb1bdb1bcb0bcb0bsbdb0bdb2bdb0bdb2b0b0b1b1bcbbbtbcb0bcb0bcb0bcb0bsbdb0bdb2bdb0bdb2bcb0bcb0bcb1bcb10011 -> s_00d0d0c1c1c0c2c0c2s0011c0c2c0c2 + s_00110202b0b0bdb1bdb1bcb0bcb0bsbdb0bdb2bdb0bdb2b0b0b1b1bcbbbtbcb0bcb0bcb0bcb0bsbdb0bdb2bdb0bdb2bcb0bcb0bcb1bcb100110202
+s_00d0d0c1c1c0c2c0c2s0011c0c2c0c2 + s_0000b0b0bdb0bdb0bcb1bcb1bcb0bcb2bcb2bcb0bsb0b0b1b1bcb0bcb2bcb2bcb00011 -> s_00d0d0c1c1c0c2c0c2s0011c0c2c0c2 + s_00110202b0b0bdb0bdb0bcb1bcb1bcb0bcb2bcb2bcb0bsb0b0b1b1bcb0bcb2bcb2bcb000110202
+s_00d0d0c1c1c0c2c0c2s0011c0c2c0c2 + s_0000bpbbb0bbb2bbb2bbb0bpbbbbbzbpbsbcbzb0b2b2b00011 -> s_00d0d0c1c1c0c2c0c2s0011c0c2c0c2 + s_00110202bpbbb0bbb2bbb2bbb0bpbbbbbzbpbsbcbzb0b2b2b000110202
+s_00d0d0c1c1c0c2c0c2s0011c0c2c0c2 + s_0000b0b0bdb1bdb1bcb0bcb0bsbdb0bdb2bdb2bdb0b0b0b1b1bcbbbtbsbdb0bdb2bdb2bdb00011 -> s_00d0d0c1c1c0c2c0c2s0011c0c2c0c2 + s_00110202b0b0bdb1bdb1bcb0bcb0bsbdb0bdb2bdb2bdb0b0b0b1b1bcbbbtbsbdb0bdb2bdb2bdb000110202
+s_00d0d0c1c1c0c2c2c0s0011c0c2c2c0 + s_0000b0b0bdb0bdb0bcb1bcb1bcb0bcb2bcb0bcb2bsb0b0b1b1bcb0bcb2bcb0bcb20011 -> s_00d0d0c1c1c0c2c2c0s0011c0c2c2c0 + s_00110220b0b0bdb0bdb0bcb1bcb1bcb0bcb2bcb0bcb2bsb0b0b1b1bcb0bcb2bcb0bcb200110220
+s_00d0d0c1c1c0c2c2c0s0011c0c2c2c0 + s_0000bpbbb0bbb2bbb0bbb2bpbbbbbzbpbsbcbbbbbcbzb0b2b0b20011 -> s_00d0d0c1c1c0c2c2c0s0011c0c2c2c0 + s_00110220bpbbb0bbb2bbb0bbb2bpbbbbbzbpbsbcbbbbbcbzb0b2b0b200110220
+… and 402 more
+```
+
+## Parameters
+
+| name | type | default | role | what it does |
+|---|---|---|---|---|
+| `method` | `enum` | `closure` | structural | closure: every reaction reachable from the seed strings (chemart.expand); soup: random collisions inside one cell, observed reactions with firing counts <br>one of `closure`, `soup` |
+| `organisation` | `enum` | `independent-genes` | structural | published ancestral cell: (i) six separate genes + copier (3) + constructor (3), the book's 12-string replication system; (ii) one chromosome + copier (4) + constructor (4); (iii) seven separate genes regulated by L/R spindle tags + copier (4) + constructor (3) + membrane seed EM <br>one of `independent-genes`, `single-chromosome`, `spindle-membrane` · *range:* paper [823] models (i), (ii), (iii) |
+| `strings` | `list` | `` | structural | explicit seed strings (a multiset for soup); overrides organisation <br>*range:* e.g. the book's P0 (author's spelling, see R.scheme) with the operand 002301 |
+| `max_species` | `int` | `2000` | structural | closure only: species budget (status truncated when exceeded) <br>≥ `1` · *range:* model (i) closes at 410 species; the closures of models (ii) and (iii) are infinite and always truncated (see decisions) |
+| `steps` | `int` | `20000` | population | soup only: number of collisions, elastic ones included <br>`0` … `10000000` · *range:* model (i), one copy of each string: 20000 collisions grow the cell from 12 to 30-40 strings in under a second |
+| `copies` | `int` | `1` | population | soup only: copies of every seed string in the initial cell <br>`1` … `1000` |
+| `dilution` | `enum` | `none` | population | soup only: none lets the cell grow; constant removes random strings back to the initial size (a stand-in for the cell-size cap, not in the papers) <br>one of `none`, `constant` |
+
+## Published phenomena
+
+What the literature reports this model produces. Whether the generator reproduces each one is recorded in the decisions below.
+
+- the operator is never consumed: every reaction is catalytic (book: 'since the operations are catalytic, a system of this type will produce more and more of itself')
+- the copier makes an exact copy of any gene 0000 g 0011 by moving markers one suppressed character at a time and finally cutting the string at '.'; the constructor turns a gene into itself plus its phenotype (slides pp. 14-15), and is universal: it translates any gene
+- model (i): the 12 strings reproduce themselves; all genes and enzymes are products of the closure
+- model (iii): replication is regulated - a copied gene is tagged L0000g0011 and R0000g0011, which the copier guards refuse to copy again - and the last copying step releases the membrane seed EM and breeder "M\E\M, which grows EM to a ten-M membrane
+- cell level (not in the network): model (i) cannot conserve its genes through divisions (segregational instability), models (ii) and (iii) conserve the genome stably (book fig. 11.9, slides p. 21)
+
+## Sources
+
+- Banzhaf, W. & Yamamoto, L. (2015). Artificial Chemistries, section 11.1.3 and table 11.4 (symbol set, eqs. 11.2-11.3, the three models, cell division and cap).
+- Suzuki, H. (2003). Models for the conservation of genetic information with string-based artificial chemistry. ECAL 2003, LNCS 2801:78-88 (book ref [823]). Paper not openly accessible; used the author's conference slides: elementary character set (p. 9), reaction and rule punctuation (pp. 10-11), permutation and separation examples (pp. 12-13), replication and translation system (pp. 14-15), ancestral string sets of models (i)-(iii) (pp. 16-18), spindle and membrane (p. 19), cell selection scheme (p. 20), results (p. 21). http://web.archive.org/web/20041123213134/http://www.his.atr.jp:80/~hsuzuki/papers/2003.09_ECAL.presentation.pdf
+- Suzuki, H. (2001/2003). String rewriting grammar slides (ECAL 2001 talk; UEC open lecture 2003, pp. 59-64): single-character wild cards that are copied to the right-hand side, and * as the next nearest match (rule 5?*4 -> ?5*?4). http://web.archive.org/web/20041128171146/http://www.his.atr.jp:80/~hsuzuki/papers/2001.09_ECAL.presentation.pdf
+
+## Decisions
+
+Every gap, ambiguity or erratum in the sources, and how Chemart resolved it. Read this before quoting a number from this entry.
+
+- Neither [642] and [826] (J. Three Dimensional Images 16(4), 2002) nor the text of [823] could be obtained (not open access; the author's archived page links the PDFs but the Wayback Machine has no copy). Every string and example is taken from Suzuki's ECAL 2003 slides for [823]; the decoding details below are reconstructed so that all published examples and all three published ancestral cells work, and are not quoted from a paper.
+- Book erratum: eq. 11.2 prints P0 = \0!$0'0"1*0'1"2 but decodes it as [\0][\!]$[...]. Read literally, that string is the rules [0!] and [00*01 → 01*02] and the $ stops after [0!] matches, so 002301 is not rewritten. The author's slides spell the same string \0&\!$0'0"1*0'1"2 (with & and a suppressed !), which gives [\0]&[\!]$[00*01 → 01*02] and 002301 -> 012302; the slides' own example uses operand 003301 -> 013302.
+- Rule punctuation follows the slide 'the rewriting rules are operated sequentially while a rule does (&) or does not ($) match the operand': after a rule, & continues only if it matched and $ only if it did not. The book's reading (the AND of the first two rules is false, so the third rule applies) gives the same result on eq. 11.2 but differs when the first rule fails; the author's reading is used.
+- Matching: a rule's kept and deleted symbols form a pattern searched leftmost in the operand; * matches the shortest possible substring (lazy), and only the first occurrence is rewritten. Leftmost-shortest matching is what makes the copier and constructor move their markers one character at a time and stop at the next marker; greedy * breaks the published replication cycles.
+- Wild cards: the slides' permutation example /2/%/"% -> [2% → %2%] (002300 -> 0032300) shows that "% recreates the character matched by %, and the string rewriting grammar slides use ? the same way. Chemart makes a repeated wild-card symbol within one rule match the same character (the reason for three distinct symbols is inferred, never exercised by a published string). A created wild card that never matched makes the rule invalid (it never applies); "* recreates the most recent preceding * match.
+- Permutation /A/B/ matches A then B and writes B then A; the remaining rule text follows normally (slides p. 12 and the model (ii) constructor, which has two permutations in one rule). Slashes that do not complete a group of three are ignored.
+- Prefixes: ' and " act on the next symbol: a suppressed \x, a wild card, or otherwise the literal character, including another ', ", /, & or $. So "\. creates a separator (slide p. 13: 02"\.30 turns 002300 into 002 + 300) and '' deletes a literal '. The model (iii) copier byproducts ''\""\'"\'M\\\E\\\M and ''M"\'"\'MMMM use doubled prefixes whose intended meaning is not in any accessible source; they are kept as published and decoded with this rule, which may not be the authors'. A dangling prefix or suppressor at the end of a string is ignored.
+- Separation: after rewriting, the operand is cut at every '.' not suppressed by \ and empty pieces vanish; the operator is put back unchanged (slide p. 10), so every reaction has the operator as a catalyst. Seed strings may not contain an unsuppressed '.'.
+- The book's 12-string replication system is model (i): six genes and six enzymes (copier 00'0'0"1..., /\0\2\0\2/..., 00'1'1...; constructor likewise with marker 0220). The genes are generated as 0000 + escape(phenotype) + 0011 and equal the slide transcription character for character; model (ii) is one chromosome 0000 + escaped genes joined by 01010110 + 3300 (checked against the slide), model (iii) genes end in 0011 and the ancestral cell also gets the membrane seed EM (the slide lists the genes and enzymes only; EM is the seed named on p. 19).
+- Slides transcribed from images at 450 dpi; the model (iii) enzymes were cross-checked against their genes, which the slide prints separately.
+- The v1 parameters cell_cap, division_size and age_limit are dropped: cells, division, ages and the cell population act on whole sets of strings, not on one reaction network. Their published values (division when the string count doubles, membrane of ten M in model iii, max 100 cells with max 50 strings, age counter reset at division) are recorded in extras.cell_level. The v1 matrix parameter seed_program became organisation plus an optional strings list; 'compartments' is dropped from provides because the network does not contain cells.
+- Model (iii) membrane growth: the breeder "M\E\M decodes to [EM → MEM], so repeated collisions grow EM to MMMMMMMMMMEM, the ten-M membrane that allows division (slide p. 19); extras.analysis.max_membrane_M reports the largest M count of any membrane string.
+- No kinetics: the sources give no rates, so reactions carry no rate. method soup (chemart.soup.soup, two distinct strings drawn uniformly, the first as operator) and dilution constant are Chemart additions for one well-stirred cell; soup analysis records the population size and the largest membrane after every chunk of (initial size) collisions.
+- Model (ii) race in the published strings: at the end of a copy, the copier's single-character mover /\0\2\0\2/!/*"!\0\2\0\2 (needed for the unsuppressed gene separators 01010110) can also move the marker past the terminator 3300 before the cutting rule acts; the copy then runs on into the copy and never closes. If the cutting rule acts first, the chromosome is copied exactly (test). Whether the papers restrict ! or order the rules is unknown; Chemart applies no priority, so closures and soups of model (ii) contain these error branches.
+- Closure sizes with the published ancestral cells: model (i) 410 species and 410 reactions (complete, about a second, every seed string reproduced). The closures of models (ii) and (iii) are infinite: the model (ii) copier error branch keeps copying into its own copy, and the model (iii) breeder turns EM into M...MEM without bound (in the papers division stops it at ten M). They are always truncated by max_species (model (iii): 300 species / 563 reactions in about 1 s, 800 / 1394 in about 2.5 s; model (ii): 300 / 397 in about 1.6 s).
+
+## Notes
+
+The book's example string and the whole machinery are recovered from the author's slides; the journal papers remain unavailable. The generator also exports decode(), rewrite(), react() and ancestral_cell() for direct use.
+
+---
+
+*Specification: `catalog/chemistries/sac.yaml` · generator: `chemart/chemistries/sac.py` · tests: `tests/chemistries/test_sac.py`*

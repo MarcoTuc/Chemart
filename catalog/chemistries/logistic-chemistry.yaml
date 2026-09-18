@@ -2,6 +2,13 @@ chemistries:
 
 - id: logistic-chemistry
   name: Logistic growth ('replicate and fight')
+  intuition: >
+    Logistic growth expressed as two reactions: X duplicates, and two X's
+    collide to leave one. The second reaction supplies the crowding term, so
+    the population approaches its carrying capacity without any bound being
+    imposed. Worth keeping because the deterministic and stochastic readings
+    genuinely differ - a stochastic run fluctuates around the capacity and can
+    overshoot it, since nothing in the rules forbids that.
   book: "7.2.4; appendix (Logistic.py)"
   refs: ["[621]"]
   family: evolutionary-dynamics

@@ -159,6 +159,10 @@ class Chemistry:
     refs: list[str] = field(default_factory=list)
     reference_impl: str | None = None
     phenomena: list[str] = field(default_factory=list)
+    #: Plain-language explanation of how the chemistry works and why, for
+    #: readers meeting it for the first time. The (S, R, A) fields say what it
+    #: is; this says what the idea is.
+    intuition: str | None = None
     notes: str | None = None
     source_file: str = ""
 
@@ -281,6 +285,9 @@ def _v2_problems(c: Chemistry) -> list[str]:
         out.append("book+decisions entries must list their decisions")
     if not c.provides:
         out.append("implemented entries must declare provides")
+    if not (c.intuition or "").strip():
+        out.append("missing intuition: implemented entries need a plain-language "
+                   "explanation of how the chemistry works and why")
     for p in c.params:
         if p.type not in PARAM_TYPES:
             hint = " (seed is an argument of generate_network, not a param)" if p.type == "seed" else ""

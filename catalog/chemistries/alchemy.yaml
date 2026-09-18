@@ -2,6 +2,15 @@ chemistries:
 
 - id: alchemy
   name: AlChemy (lambda-calculus chemistry)
+  intuition: >
+    The chemistry that gave the field its vocabulary. Molecules are
+    lambda-expressions in normal form, and a collision applies one to the
+    other: s1 + s2 -> s1 + s2 + normal_form(s1 applied to s2). Both reactants
+    survive, so every molecule is simultaneously a function and a datum for
+    other functions. Left alone, a soup usually collapses to a single
+    self-copier; ban copying and it instead settles into self-maintaining sets
+    of molecules that collectively produce each other. Those sets are where
+    the notions of closure, self-maintenance and *organisation* come from.
   aliases: ["lambda chemistry", "Fontana's algorithmic chemistry", "Turing gas"]
   origin: "Fontana, 1991; Fontana & Buss, 1994"
   book: "9.1"

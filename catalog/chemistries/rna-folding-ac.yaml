@@ -2,6 +2,15 @@ chemistries:
 
 - id: rna-folding-ac
   name: RNA-folding ribozyme artificial chemistry
+  intuition: >
+    The most physically real chemistry in the catalog. Molecules are RNA
+    sequences, and each one is folded by actual free-energy minimisation into
+    a secondary structure; the structure's largest loop is then read as the
+    reaction that molecule catalyses. So genotype determines phenotype
+    determines function, with the middle step done by thermodynamics rather
+    than by a lookup table. It also exhibits the property that makes RNA
+    landscapes special: vast neutral networks, where many mutations leave the
+    fold and hence the function unchanged.
   aliases: ["Ullrich-Flamm ribozyme metabolism", "sequence-to-function map for ribozyme-catalyzed metabolisms"]
   origin: "Ullrich & Flamm, 2008"
   book: "18.1.1"

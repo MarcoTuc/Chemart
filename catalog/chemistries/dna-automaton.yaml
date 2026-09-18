@@ -2,6 +2,14 @@ chemistries:
 
 - id: dna-automaton
   name: DNA automaton (Benenson-Shapiro)
+  intuition: >
+    A finite automaton made of molecules, with no external control at all. The
+    input is a DNA duplex whose sticky end encodes the current state and next
+    symbol; eight small 'software' duplexes act as transition rules, and the
+    restriction enzyme FokI cuts at a fixed distance from wherever one binds.
+    Each cut exposes a new sticky end - the next state - and the process
+    repeats until no rule matches. Hardware, software and input are mixed
+    once; the input's own phosphodiester bonds supply the energy.
   aliases: ["molecular finite automaton", "DNA finite-state machine", "autonomous molecular computer", "doctor in a cell"]
   origin: "Shapiro 1998-1999 (blueprint); Benenson, Paz-Elizur, Adar, Keinan, Livneh & Shapiro 2001 (first automaton); Benenson, Adar, Paz-Elizur, Livneh & Shapiro 2003 (the ATP-free automaton implemented here)"
   book: "19.3.1"

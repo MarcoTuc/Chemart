@@ -2,6 +2,15 @@ chemistries:
 
 - id: rbn
   name: Random Boolean Networks (RBN) and RBN World
+  intuition: >
+    Kauffman's random Boolean networks, read as chemistry two different ways.
+    In the first, each node's on and off states are species and a truth-table
+    row becomes a reaction in which the inputs catalyse a switch of the
+    output; attractors of the network are then interpreted as cell types, and
+    tuning the number of inputs moves the system between frozen, critical and
+    chaotic. In RBN World the network itself is an atom: two such atoms bond
+    when their dynamics are compatible, so molecules are trees of Boolean
+    networks.
   origin: "Kauffman, 1969; RBN World: Faulconbridge, Stepney, Miller & Caves, 2009-2011"
   book: "18.4.2; subsymbolic AC 10.7.3"
   refs: ["[445]", "[243]", "[348]", "[447]", "[591]", "[263]", "[264]", "[291]"]

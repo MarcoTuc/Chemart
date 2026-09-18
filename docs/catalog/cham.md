@@ -1,0 +1,102 @@
+# Chemical Abstract Machine (CHAM)
+
+`cham` · *Berry & Boudol, 1990*
+
+The machine behind the chemical metaphor in computing. Molecules are terms of a process algebra held in a solution, and rules come in three kinds: heating breaks a compound term into simpler ones, cooling reassembles them, and reaction rules fire irreversibly when two ions meet - a.m with ~a.n becomes m, n. Concurrency is then just chemistry: independent molecules react in parallel, and non-determinism is which partner happens to collide. The heating/cooling pair is also the one place in these formalisms where reversibility is marked explicitly.
+
+| | |
+|---|---|
+| **family** | rewriting |
+| **kind** | formalism |
+| **constructive** | yes — the species set grows at run time |
+| **fidelity** | `reconstructed` — built from the original papers listed below |
+| **book** | 9.3 |
+| **refs** | [113], [422], doi:10.1145/96709.96717, doi:10.1016/0304-3975(92)90185-I, doi:10.1109/32.385973 |
+| **provides** | `topology`, `stoichiometry`, `compartments`, `initial-state`, `sequence-structure-function` |
+
+## Molecules, reactions, reactor
+
+**S — molecules** (implicit): molecules are terms of an algebra; for the process-calculus chams of Berry & Boudol: 0, process constants P, prefixes (ions) a.m / ~a.m / tau.m, parallel p|q, restriction m\a, relabelling m[b/a], internal sum p (+) q, external sum p [] q, fix_X(X=...), pairs <m,n>, l:<m,n>, r:<m,n>, solutions {|m1,...,mk|} (a solution is itself a molecule: the membrane operator) and airlocks m <| S. Species id = canonical text without spaces (solution members sorted); structure = the same term with spaces
+
+**R — reactions** (implicit, arity variable): rule schemata m1,...,mk -> m1',...,ml', classified as heating (a molecule is broken into simpler ones, e.g. parallel p|q ⇀ p, q), cooling (the inverse, ↽) and reaction rules (irreversible, e.g. a.m, ~a.n -> m, n). TCCS cham (sec. 4.3): parallel, reaction, restriction membrane m\a ⇌ {|m|}\a, restriction ion (α.m)\a ⇌ α.(m\a) if α ∉ {a, ~a}, relabelling membrane and ion, ⊕-left/right, []-expansion p[]q ⇌ <{|p|},{|q|}>, left/right []-ion <{|α.m|},S> ⇌ α.l:<m,S>, left/right projection l:<m,m'> ⇁ m, fixpoint, and the cleanup rules 0 ⇀, {||}\a ⇀, {||}[φ] ⇀; sec. 2.3 adds the heavy ion (α.p)◁S ⇌ α.(p◁S).
+
+**A — reactor**: maximally-parallel, compartments
+ · *dilution:* none
+
+## What you get
+
+```python
+net = chemart.generate_network("cham", seed=1)
+```
+
+```
+cham: 18 species, 30 reactions, status=complete
+provides: compartments, initial-state, stoichiometry, topology
+seed: 1
+extras: airlock_law, compartments, machine, reaction_rules, rules
+```
+
+First reactions:
+
+```
+a.0|(~a.P|Q)\b -> a.0 + (~a.P|Q)\b
+a.0 + (~a.P|Q)\b -> a.0|(~a.P|Q)\b
+(~a.P|Q)\b -> {|~a.P|Q|}\b
+{|~a.P|Q|}\b -> (~a.P|Q)\b
+{|~a.P|Q|}\b -> {|Q,~a.P|}\b
+{|Q,~a.P|}\b -> {|~a.P|Q|}\b
+{|Q,~a.P|}\b -> {|Q<|{|~a.P|}|}\b
+{|Q<|{|~a.P|}|}\b -> {|Q,~a.P|}\b
+… and 22 more
+```
+
+## Parameters
+
+| name | type | default | role | what it does |
+|---|---|---|---|---|
+| `program` | `enum` | `heavy-ion-communication` | population | initial solution: heavy-ion-communication {\| a.0 \| (~a.P \| Q)\b \|} (sec. 2.3), ccs-minus-execution {\| a.b.0 \| ~a.0 \| ~b.0 \|} (sec. 2.2), nondeterministic-choice {\| a.0, ~a.b.0, ~a.c.0 \|} (sec. 2.2), external-sum {\| a.~b.0 \| ((~a.0 \| b.0) [] Q) \|} (sec. 4.2), custom (the solution parameter) <br>one of `heavy-ion-communication`, `ccs-minus-execution`, `nondeterministic-choice`, `external-sum`, `custom` |
+| `solution` | `str` | `` | population | program=custom only: the molecules of the initial solution, in the syntax of S.repr <br>*range:* comma-separated molecules, e.g. 'a.0\|(~a.P\|Q)\b' or 'fix_X(X=a.X), ~a.0' |
+| `machine` | `enum` | `tccs` | structural | rule set: tccs = the complete TCCS cham of sec. 4.3 (with the heavy ion rule); ccs-minus = the CCS- cham of sec. 2.2-2.3 (parallel, reaction, restriction membrane and ion, heavy ion); custom = the rules parameter <br>one of `tccs`, `ccs-minus`, `custom` |
+| `rules` | `str` | `` | structural | machine=custom only: the specific rules of the cham, as text (see the module docstring); nothing is evaluated as Python <br>*range:* one rule per line, 'name: lhs ARROW rhs [if guard]' with <=> (heating paired with cooling), => (heating), ~> (cooling), -> (reaction); metavariables ?p ?q agents, ?m ?n molecules, ?S ?T solutions, ?a ?b names, ?l labels, ?f relabellings, ?F fixpoints; ?f(?l) relabels a label, unfold(?F) unfolds a fixpoint; guard 'if ?l notin {?a, ~?a}'. Example: 'reaction: ?a.?m, ~?a.?n -> ?m, ?n' |
+| `cleanup` | `bool` | `True` | structural | named machines only: include the additional cleanup rules (0 evaporates; empty restriction and relabelling membranes vanish) |
+| `airlock` | `bool` | `True` | structural | apply the airlock law {\|m\|} ⊎ S ⇌ {\|m ◁ S\|} (some chams do not use airlocks, sec. 3.1) |
+| `max_species` | `int` | `500` | structural | species budget of the closure; status truncated when exceeded <br>`1` … `100000` · *range:* the published examples close well below 100 species; recursive fixpoints can have infinite closures |
+
+## Published phenomena
+
+What the literature reports this model produces. Whether the generator reproduces each one is recorded in the decisions below.
+
+- CCS- execution (sec. 2.2): {|a.b.0 | ~a.0 | ~b.0|} heats to {|a.b.0, ~a.0, ~b.0|}, reacts to {|b.0, 0, ~b.0|} and then {|0, 0, 0|}, and the inaction cleanup leaves the empty solution
+- non-determinism (sec. 2.2): in {|a.0, ~a.b.0, ~a.c.0|} the ion a.0 reacts with either partner, giving {|b.0, ~a.c.0|} or {|~a.b.0, c.0|} after cleanup
+- communication through a membrane (sec. 2.3): {|a.0 | (~a.p | q)\b|} heats into a restriction membrane, the airlock isolates ~a.p, the heavy ion ~a.(p◁{|q|}) crosses the membrane as the restriction ion ~a.((p◁{|q|})\b), reacts with a.0, and cooling the airlock leaves {|{|p, q|}\b|}
+- external sum (sec. 4.2): {|a.~b.0 | ((~a.0 | b.0) [] q)|} exposes the valence ~a of its left summand as ~a.l:<0◁{|b.0|},{|q|}>; after the reaction the left projection discards q and cooling the airlock gives {|~b.0, 0, b.0|}
+- heating and cooling are reversible: every heating transition is undone by the corresponding cooling (sec. 2.2, 3.2)
+
+## Sources
+
+- Banzhaf, W. & Yamamoto, L. (2015). Artificial Chemistries, section 9.3 (molecules as terms, solutions, membranes, airlocks, heating/cooling/reaction rules, the four general laws).
+- Berry, G. & Boudol, G. (1990). The chemical abstract machine. Proc. 17th ACM Symposium on Principles of Programming Languages (POPL '90), pp. 81-94, doi:10.1145/96709.96717: CCS- cham and its execution example (sec. 2.2), membranes, airlocks, heavy ions and the communication example (sec. 2.3), formal definition and the four laws (sec. 3.1), classification of rules (sec. 3.2), the complete TCCS cham and the external sum example (sec. 4.1-4.3), CCS (sec. 4.5). https://www.lix.polytechnique.fr/~fvalenci/papers/cham.pdf (equations and derivations checked on rendered page images)
+
+## Decisions
+
+Every gap, ambiguity or erratum in the sources, and how Chemart resolved it. Read this before quoting a number from this entry.
+
+- Sources: the book's [113] is the TCS 1992 journal version, which could not be downloaded (ScienceDirect blocks scripted access); the implementation follows the POPL 1990 conference version of the same paper. The INRIA research report RR-1133 (December 1989, https://inria.hal.science/inria-00075426) is a scan without text and was not used. The book's [422] is Inverardi & Wolf, 'Formal specification and analysis of software architectures using the chemical abstract machine model', IEEE Trans. Software Engineering 21(4):373-386, 1995 (a cham for a multi-phase compiler): closed access and not used, so its chams are not offered as programs; the custom rule language cannot express their generic term algebra.
+- Machines: the CCS- cham of sec. 2 and the complete TCCS cham of sec. 4.3 are offered. The sec. 2 rules are written with agents p (restriction membrane p\a ⇌ {|p|}\a, heavy ion (α.p)◁S), but the sec. 2.3 derivation applies them to molecules such as ~a.(p◁{|q|}); both machines use the molecule forms of sec. 4.3. The CCS cham of sec. 4.5 (τ-reaction) is not offered: a τ-ion only moves when an external observer consumes it, which is an observation, not a rule, so its closure would stop at the first τ-ion. The γ-calculus cham of sec. 5 has a different molecule algebra and is not implemented.
+- Errata: the TCCS rule summary (sec. 4.3) omits the heavy ion rule, although the external sum example of the same section needs it (step 2, {|~a.(0◁{|b.0|})|}) and sec. 4.2 builds heavy ions; tccs includes it. In the sec. 2.3 communication example the second-last solution is printed {|{|p◁{|q|}|}\c|}: the membrane is \b as in every other line, and the 0 released by the reaction has been evaporated by the inaction cleanup rule without being listed.
+- Rule classes: the scanned rule summary prints the []-ion, projection, fixpoint and cleanup arrows as single harpoons whose direction cannot be read. The prose decides: the []-ions are reversible (sec. 4.2, <{|α.m|},S> ⇌ α.(l:<m,S>)), the projections are cooling rules without inverse ('we need a cooling rule', sec. 4.2), the fixpoint is a heating rule (sec. 4.2) and 0 'evaporates when heated' (sec. 2.2), so the cleanup rules are heating rules without inverse.
+- Syntax: ASCII notation with ~a for the co-name ā, <| for ◁, (+) for ⊕, [] for the external sum, m[b/a,~c/d] for the relabelling a ↦ b, d ↦ ~c, and fix_X(X=p;Y=q) for fix_i(x̃ = p̃) selecting X. The paper's metavariables p, q in the worked examples become the process constants P, Q (inert agents). Postfix restriction and relabelling bind tightest, then prefix, airlock, parallel and the sums; parallel and sums are left-associative, so a.b.0|~a.0|~b.0 is (a.b.0|~a.0)|~b.0. The operands of |, [] and (+) must be agents, as in the paper's grammar.
+- Rule language: specific rules are text with typed metavariables, one arrow per class and one guard form, since the only side condition in the paper is α ∉ {a, ā}. The named machines are written in this language (extras.rules), so custom rules use the same matcher. Following sec. 3.1, a solution pattern is S, {||} or {|m|}. A relabelling ion is matched in the cooling direction by enumerating the preimages of the label under φ.
+- Closure semantics: species are the molecules floating in the top solution; each reaction is one rule instance on a sub-multiset of it (reaction and chemical laws), one airlock transition, or a transition inside a membrane lifted to the enclosing molecule (membrane law, extras.reaction_rules depth >= 1). The structural relation is infinite (cooling rebuilds p|q, q|p, (p|q)|r, ... and airlocks nest around empty solutions), so exploration follows heating rules, reactions, cooling-only rules, the cooling direction of reversible rules with one molecule on the cooling side, airlock cooling, and airlock heating only inside membranes, isolating one molecule from all the others of a subsolution with at least two molecules. Heating that puts a membrane directly around a membrane (m\a ⇀ {|m|}\a with m already a solution, which would nest {|{|{|...|}|}|}\a without end) is skipped. Cooling that joins several molecules and airlocks built in the top solution appear only as the inverses of observed heatings: every structural reaction is recorded together with its inverse. Every step of the paper's three derivations is inside this closure; chemart.chemistries.cham.transitions(..., full=True) gives the unrestricted one-step relation of a finite solution.
+- No rates: the cham has no kinetics, and parallel application of non-conflicting rules is equivalent to sequences of single rules (sec. 3.1), so the network lists single-rule reactions with rate None. The v1 parameters heating_rules, cooling_rules, reaction_rules (callable) and membrane_structure (matrix) became the machine choice plus the rules text; the membrane structure is part of the molecules themselves and is reported in extras.compartments.
+- Closure sizes (measured, all complete in milliseconds): heavy-ion-communication 18 species / 30 reactions (the default), ccs-minus-execution 7 / 7, nondeterministic-choice 6 / 3, external-sum 19 / 29 with tccs (3 / 2 with ccs-minus, which has no external sum rules). A recursion through a membrane such as fix_X(X=(a.0|X)\b) has an infinite closure and is truncated by max_species.
+- constructive was false in v1; molecules are built at run time (heating, reactions, airlocks, fixpoint unfolding) and recursive processes can have infinite closures, so it is true.
+- extras: machine, rules (canonical text of every rule), airlock_law, reaction_rules (for each reaction: class heating/cooling/reaction, rule name or 'airlock', reversible, depth = number of membranes crossed) and compartments (for each species that contains solutions: the nested solutions in preorder with depth, enclosing operator and member molecules).
+
+## Notes
+
+The book notes that heating/cooling reversibility is the only place in its rewriting systems where pairs of rules are marked as thermodynamic inverses. The CHAM is the basis of the chemical rewriting systems on multisets (ARMS, section 9.4) and of SOAS (see `soas`). The module exports parse_molecule, parse_solution, parse_rules, machine_rules, Machine, transitions, closure, unfold and membranes for direct use.
+
+---
+
+*Specification: `catalog/chemistries/cham.yaml` · generator: `chemart/chemistries/cham.py` · tests: `tests/chemistries/test_cham.py`*

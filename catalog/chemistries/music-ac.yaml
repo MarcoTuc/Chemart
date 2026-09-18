@@ -2,6 +2,14 @@ chemistries:
 
 - id: music-ac
   name: Algorithmic chemistry for music composition
+  intuition: >
+    Composition without a fitness function. A molecule is a stack of lines of
+    musical elements with a displacement, so notes, chords and harmonic
+    functions can sit in registered columns. Recombination rules join
+    fragments that fit stylistically - a melody line only extends in ways the
+    chord beneath it allows - and a phrase is finished exactly when no rule
+    matches it any more. The style is in the rule set rather than in an
+    evaluation step, so every product is well formed by construction.
   aliases: ["Miura-Tominaga music chemistry", "algorithmic music composition with an artificial chemistry"]
   origin: "Miura & Tominaga, 2006 (homophonic); Tominaga & Setomoto, 2008 (polyphonic)"
   book: "16.4"

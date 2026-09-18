@@ -2,6 +2,15 @@ chemistries:
 
 - id: toychem
   name: ToyChem (graph-based toy model of chemistry)
+  intuition: >
+    The chemistry that feels most like chemistry. Molecules are structural
+    formulas - labelled graphs of atoms and bonds - and reactions are graph
+    rewriting rules that must conserve atoms and bond order. What makes it
+    distinctive is that energies are not supplied: the VSEPR rules turn each
+    structure into an orbital graph and an extended-Hückel calculation gives
+    its energy, so activation energies and hence rates are *computed from the
+    structure itself*. Networks built this way have the look and feel of real
+    reaction chemistry.
   aliases: ["Toy Model of chemistry", "graph-based artificial chemistry", "ToyChem package"]
   origin: "Benko, Flamm & Stadler, 2003-2006"
   book: "11.3.1; used in the RNA AC of 18.1.1"

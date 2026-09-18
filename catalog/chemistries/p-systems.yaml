@@ -2,6 +2,14 @@ chemistries:
 
 - id: p-systems
   name: P systems (membrane computing)
+  intuition: >
+    Computing with nested membranes. Objects are symbols held in the regions
+    of a membrane tree, and rules rewrite multisets of them while targeting
+    the products - keep them here, send them out, or push them into an inner
+    membrane - and may dissolve the membrane they fired in. Every rule that
+    can fire in a step does, so the parallelism is maximal. The structure
+    computes: halting configurations of a fixed small system can yield exactly
+    the square numbers.
   aliases: ["membrane systems", "transition P systems"]
   origin: "Paun, 1998"
   book: "9.5; multicompartment SSA 4.3; biology 18.3.2"

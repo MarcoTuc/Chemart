@@ -2,6 +2,15 @@ chemistries:
 
 - id: random-catalytic-networks
   name: Random catalytic reaction networks
+  intuition: >
+    The null model the more elaborate chemistries all instantiate. Species
+    have no internal structure at all; instead, for every pair, a randomly
+    drawn coefficient says how strongly that pair catalyses the production of
+    a third. With a dilution flux, the system settles onto a
+    mutually-catalysing subset and the rest dies out. Because it contains the
+    replicator and Lotka-Volterra equations as special cases, it is the
+    baseline against which structured chemistries have to justify their
+    structure.
   origin: "Stadler, Fontana & Miller, 1993"
   book: "7.2.9"
   refs: ["[792]"]

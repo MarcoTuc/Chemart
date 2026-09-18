@@ -2,6 +2,14 @@ chemistries:
 
 - id: mcs-bl
   name: Molecular Classifier System (MCS.bl)
+  intuition: >
+    Every molecule can be the enzyme or the substrate. Strings over a small
+    alphabet of data and control symbols act on each other by pattern
+    matching: one string's units match a region of another and rewrite it,
+    with both reactants surviving. Among all 4096 strings of length four
+    exactly one is a self-replicase that copies any string - and, tellingly,
+    it enjoys no selective advantage over non-enzymatic strings, which is the
+    model's point about how hard it is to get selection started.
   aliases: ["MCS.b", "Molecular Classifier System - broadcast language"]
   origin: "Decraene, Mitchell & McMullin, 2006-2011; based on Holland's Broadcast Language (1975) and classifier systems"
   book: "11.1.1"

@@ -1,0 +1,108 @@
+# Molecular Traveling Salesman
+
+`molecular-tsp` · *Banzhaf, 1990*
+
+*Also known as:* *molecular TSP*, *MolecularTSP*
+
+Optimisation as collision chemistry. Each molecule is a candidate tour carrying its own length as a leading value, and enzyme-like machines pick up a few tours, apply a hardwired operator - exchange two cities, move or invert a segment, recombine two tours - and release the best of what they now hold. There is no global controller and no fitness ranking of the population; quality is a local signal carried by each molecule, and good tours emerge from purely local encounters.
+
+| | |
+|---|---|
+| **family** | application |
+| **kind** | generator |
+| **constructive** | yes — the species set grows at run time |
+| **fidelity** | `reconstructed` — built from the original papers listed below |
+| **book** | 17.2.1 |
+| **refs** | [62], doi:10.1007/BF00203625 |
+| **provides** | `topology`, `stoichiometry`, `catalysts`, `initial-state`, `sequence-structure-function` |
+
+## Molecules, reactions, reactor
+
+**S — molecules** (implicit): data strings s = (s0, s1..sN): s0 = l(s) the tour length, s1..sN a permutation of the N cities; species id t<cities joined by dots> of the canonical cycle (starting at city 0, towards the smaller neighbour), structure '(l, s1, ..., sN)'; plus the machine molecules E-machine, C-machine, I-machine, R-machine
+
+**R — reactions** (implicit, arity [2, 3]): machine + n_op strings -> machine + the n_op best of the inputs and the trial string(s), ranked by l(s) = sum_i sqrt((x_{i+1}-x_i)^2 + (y_{i+1}-y_i)^2) with s_{N+1} = s_1 (book eq. 17.1). E exchanges two cities, C moves the segment between two cities behind a third, I does the same with the segment inverted (n_op = 1); R grafts a random segment of the first tour into the second at their overlapping city, deleting the duplicated cities (n_op = 2).
+
+**A — reactor**: well-stirred-multiset
+ · *dilution:* none - a machine releases exactly as many strings as it picked up, so M is constant; worse strings are discarded by the machine
+
+## What you get
+
+```python
+net = chemart.generate_network("molecular-tsp", seed=1)
+```
+
+```
+molecular-tsp: 84 species, 79 reactions, status=observed
+provides: catalysts, initial-state, stoichiometry, topology
+seed: 1
+extras: analysis, best_tour, cities, final_state, time_scales, tour_length
+```
+
+First reactions:
+
+```
+E-machine + t0.5.2.9.8.4.1.3.6.7 -> E-machine + t0.7.6.3.1.4.8.5.2.9  (x1)
+E-machine + t0.7.2.8.4.3.1.5.6.9 -> E-machine + t0.8.2.7.4.3.1.5.6.9  (x1)
+I-machine + t0.4.8.2.9.1.3.6.7.5 -> I-machine + t0.5.7.6.3.1.9.2.4.8  (x1)
+I-machine + t0.7.6.3.1.4.8.5.2.9 -> I-machine + t0.7.6.4.1.3.8.5.2.9  (x1)
+E-machine + t0.4.8.5.7.9.3.2.1.6 -> E-machine + t0.4.1.2.3.9.7.5.8.6  (x1)
+E-machine + t0.1.5.8.4.6.2.3.9.7 -> E-machine + t0.1.5.4.8.6.2.3.9.7  (x1)
+I-machine + t0.1.5.4.8.6.2.3.9.7 -> I-machine + t0.1.5.4.3.2.6.8.9.7  (x1)
+E-machine + t0.8.2.7.4.3.1.5.6.9 -> E-machine + t0.8.2.5.4.3.1.7.6.9  (x1)
+… and 71 more
+```
+
+## Parameters
+
+| name | type | default | role | what it does |
+|---|---|---|---|---|
+| `N` | `int` | `10` | structural | number of cities of the generated layout (ignored when cities is given) <br>`3` … `1000` · *range:* PyCellChemistry default 10; paper: 30 (tables 1-3), 20-100 (table 4) |
+| `layout` | `enum` | `ring` | structural | ring: N cities on a circle of radius N centred at (N, N), whose optimum is the regular polygon; random: N integer points on a 2N x 2N grid at least 2 apart (PyCellChemistry TSPgraph) <br>one of `ring`, `random` · *range:* paper simulation 1 and book fig. 17.2: ring; paper simulation 2: random |
+| `cities` | `list` | `` | structural | explicit problem instance as a list of [x, y] coordinates (at least 3); overrides layout and N |
+| `M` | `int` | `9` | population | number of data strings in the soup (at least 2 when the R-machine is active) <br>`1` … `10000` · *range:* paper: 9 (tables 1-2, figs. 3-5), 18-72 (table 3), 100 (fig. 6) |
+| `t_E` | `float` | `1.0` | kinetic | time scale (operation frequency) of the E-machine; 0 removes it (paper table 1a) <br>≥ `0` |
+| `t_C` | `float` | `1.0` | kinetic | time scale of the C-machine; 0 removes it <br>≥ `0` |
+| `t_I` | `float` | `1.0` | kinetic | time scale of the I-machine; 0 removes it <br>≥ `0` |
+| `t_R` | `float` | `0.01` | kinetic | time scale of the R-machine, the recombination frequency: higher converges faster but collapses the population variance <br>≥ `0` · *range:* paper: 1/1000 to 1 (tables 1b, 2b); 1/100 in simulations 1-2 |
+| `generations` | `int` | `1000` | population | run length in generations of c = ceil(M / sum t) operation cycles each <br>`0` … `1000000` · *range:* book fig. 17.2 and paper fig. 3: 1000; paper tables: up to 270000 |
+| `fitness` | `enum` | `tour-length` | selection | quality signal s0 hardwired in the machines: tour-length is the closed euclidean tour length of book eq. 17.1 (lower is better); other problems would add choices here <br>one of `tour-length` |
+
+## Published phenomena
+
+What the literature reports this model produces. Whether the generator reproduces each one is recorded in the decisions below.
+
+- convergence to near-optimal tours by purely local machine-string collisions, with no global information; the best tour length never increases
+- ring toy problem (paper simulation 1, book fig. 17.2): random tours approach the polygon; the ring has no local minima
+- recombination accelerates the search (paper tables 1a-b, 2a-b): E + R reaches the quality criterion far sooner than E alone, and raising t_R from 1/1000 to 1 cuts the number of generations
+- too frequent recombination collapses the population variance (overlap -> 1) before the optimum is reached on random instances (paper table 2b, t_R = 1)
+- local operators alone get trapped in local minima on random city layouts (paper table 2a)
+- E-machine contributes most early; C and I later; recombination later still (paper fig. 5)
+
+## Sources
+
+- Banzhaf, W. (1990). The "molecular" traveling salesman. Biological Cybernetics 64:7-14. Section 2 (operation cycle, eq. 1 p_eff, generation length, eq. 2, machine descriptions, fig. 2), section 3 (simulations 1-2, tables 1-2, eqs. 3-4 overlap, figs. 3-6), section 4 (tables 3-4). https://www.cs.mun.ca/~banzhaf/papers/MolTravelSalesman.pdf
+- Yamamoto, L. (2014). PyCellChemistry src/MolecularTSP.py (TSPgraph, exchange/cut/invert/recombination operators and machines, run) on src/HighOrderChem.py (iterate) and src/artchem/Multiset.py. https://github.com/laryamamoto/PyCellChemistry
+
+## Decisions
+
+Every gap, ambiguity or erratum in the sources, and how Chemart resolved it. Read this before quoting a number from this entry.
+
+- The book (17.2.1) gives the strings, eq. 17.1, the four machines and n_op but not the operators' details, the machine scheduling or the generation length; these follow PyCellChemistry MolecularTSP.py, the authors' re-implementation used for book fig. 17.2, checked against the paper's section 2 and fig. 2.
+- Operators, as in MolecularTSP.py: E swaps the cities at two distinct random positions; C/I remove the circular segment [p1, p2) and insert it (inverted for I) after the first p3 cities of the rest read from p2, 1 <= p3 < rest length, redrawing while the string is unchanged; R takes the circular segment [p1, p2) of the first tour, whose first city is the overlapping city, deletes its other cities from the second tour and inserts them right after the overlapping city. The operator examples of the reference code and all four panels of paper fig. 2 are reproduced exactly (tests).
+- Selection: single-string machines release the trial string only if strictly shorter (MolecularTSP.py fitter). R releases the two shortest of parent 1, parent 2 and the one child, with parents preferred on ties (a stable sort). MolecularTSP.py's three-way comparison differs only on ties, where it can discard the best parent (l1 < l2 = l3 releases 2 and 3); that contradicts 'the n_op best strings are released', so it is not copied.
+- Scheduling, as in HighOrderChem.iterate with rule multiplicities proportional to t_j: each cycle picks one machine with probability t_j / sum t and n_op distinct strings uniformly at random; paper eq. 1 with m_j = 1 (the paper's own restriction), so machine counts are not a parameter (only t_j m_j matters in a serial run) and v1 machine_counts is replaced by t_E, t_C, t_I, t_R.
+- Generation length c = ceil(M / sum t) cycles as in MolecularTSP.run; the paper writes c = floor(M / p_eff) ('next smaller integer'), which for M = 9 and t = (1, 1, 1, 1/100) gives 2 instead of 3 and would not give every string a chance to change. The code's reading is used.
+- Initial strings are uniform random permutations (MolecularTSP.randomTour is a self-avoiding random walk on the full mesh, i.e. a uniform permutation). Layouts are TSPgraph's: ring of radius N centred at (N, N) with city i at angle 2 pi i / N; random integer points in [0, 2N)^2 at least 2 apart. The reference code's road penalties never apply on the full mesh and are omitted.
+- The run has a fixed length (generations). MolecularTSP.run also stops once the best length is below pi * 2N, the circle's circumference; for the ring layouts checked by enumeration (N = 6, 8, 10: second-best tours 44.78, 59.37, 72.95 against circumferences 37.70, 50.27, 62.83) that only happens at the optimal polygon, so it is reported instead as analysis.generation_optimum_found (optimum = the polygon perimeter 2 N^2 sin(pi/N)) together with generation_mean_within_10_percent, the stopping criterion of paper table 1.
+- Paper eq. 4 is typeset as O = sum_ij (P^T)_ij (P)_ij / (M^2 N) with P the summed upper-half adjacency matrices; taken literally for an upper-triangular P the sum vanishes. It is read as sum_ij P_ij^2 / (M^2 N), which is 1 when all M tours coincide and 1/M when no edge is shared, matching 'percentage of overlapping edges' and the 90% threshold of fig. 4 and table 3b.
+- Species are canonical cycles (a tour, its rotations and its reversal have the same length and are one species), while the soup stores the oriented strings the operators act on, as the reference code does. A collision whose released strings are the same species as its inputs is elastic and not recorded. No rate constants: t_j are frequencies of a serial algorithm, not mass-action constants; they are recorded in extras.time_scales.
+- Observed network: species are the active machines, the initial strings and every string released; initial_state has one molecule of each active machine and the initial strings; extras.analysis holds best_length, mean_length (the paper's <l>) and overlap per generation from generation 0, machine_successes (paper fig. 5's contributions, as totals), generation_size and, for the ring, the known optimum; extras.cities, tour_length, final_state, best_tour.
+- The v1 fitness_fn callable becomes the enum fitness with the single published choice tour-length. The paper's CPU times and generation counts (tables 1-4) are for N = 30-100 and are not reproduced numerically; the tests check their qualitative content on smaller instances.
+
+## Notes
+
+Banzhaf's early chemical metaphor for evolutionary optimisation: strings carry their quality signal and enzyme-like machines apply hardwired variation and local selection. Swapping the string content, the fitness and the operators solves other problems with the same reactor.
+
+---
+
+*Specification: `catalog/chemistries/molecular-tsp.yaml` · generator: `chemart/chemistries/molecular_tsp.py` · tests: `tests/chemistries/test_molecular_tsp.py`*

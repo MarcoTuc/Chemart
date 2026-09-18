@@ -2,6 +2,15 @@ chemistries:
 
 - id: kauffman-autocatalytic-sets
   name: Kauffman autocatalytic sets (binary polymer model)
+  intuition: >
+    The original argument that metabolism could precede genes. Polymers join
+    and split, and any polymer may catalyse any such reaction with some
+    probability. As polymers get longer the number of possible reactions grows
+    faster than the number of molecules, so above a critical catalysis
+    probability a mutually-catalysing set almost surely exists - order for
+    free, from combinatorics rather than design. This entry gives the
+    topology; the dynamics and the formal test for such sets live in
+    bagley-farmer and raf.
   origin: "Kauffman, 1986; Farmer, Kauffman & Packard, 1986"
   book: "6.3.1"
   refs: ["[446]", "[447]", "[260]"]

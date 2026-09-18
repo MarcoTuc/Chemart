@@ -2,6 +2,15 @@ chemistries:
 
 - id: corewar
   name: Core War / Redcode
+  intuition: >
+    Programs fighting for control of a shared circular memory, and the
+    ancestor of every digital-organism chemistry that followed. Each warrior's
+    instructions execute in turn, writing into the core and trying to make
+    rivals execute an invalid instruction. Read chemically, the core cells are
+    the molecules and an executed instruction is a reaction that consumes and
+    rewrites the cells it touches. The famous warriors show what the medium
+    affords: the Imp copies itself one cell ahead forever, the Dwarf bombs
+    every fourth cell.
   aliases: ["Core War", "Redcode", "MARS (Memory Array Redcode Simulator)", "assembler automaton"]
   origin: "Dewdney, 1984"
   book: "10.6.2"

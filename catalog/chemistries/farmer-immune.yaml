@@ -2,6 +2,15 @@ chemistries:
 
 - id: farmer-immune
   name: Bitstring immune system model (idiotypic network)
+  intuition: >
+    An immune system as a reaction network, and one of the few chemistries
+    that fixes its own rate constants. Antibodies are bitstrings with two
+    sites; when one antibody's paratope matches another's epitope, the
+    recogniser is replicated and the recognised destroyed. The crucial move is
+    that the reaction rate is computed from the *degree* of complementarity
+    between the strings, over all alignments - structure determines kinetics.
+    Species below a concentration threshold are periodically culled and new
+    ones injected, so the species set turns over.
   origin: "Farmer, Packard & Perelson, 1986"
   book: "11.2.2"
   refs: ["[261]", "[262]", "[214]", "[287]", "[288]"]

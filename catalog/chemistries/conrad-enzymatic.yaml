@@ -2,6 +2,15 @@ chemistries:
 
 - id: conrad-enzymatic
   name: Conrad's lock-and-key enzymatic / self-assembly processor
+  intuition: >
+    Computation by molecular shape recognition. Ligands carry keys, an enzyme
+    carries locks, and binding happens when shapes are complementary. Signal
+    ions binding a modulator site switch the enzyme between conformations,
+    each with different catalytic behaviour - so a single enzyme, in a milieu
+    of two ion species, classifies input patterns by how much product it
+    makes. Conrad's argument was that this is what molecules are good at and
+    digital logic is not: recognition of a whole pattern in one step, rather
+    than a program over bits.
   aliases: ["enzymatic computing", "conformation-based computing", "lock-key paradigm"]
   origin: "Conrad, 1985-1992; wet realisation by Zauner & Conrad, 2001"
   book: "11.2.1; also 17.1.2 (emergence vs. programmability tradeoff)"

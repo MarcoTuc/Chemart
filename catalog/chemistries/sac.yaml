@@ -2,6 +2,14 @@ chemistries:
 
 - id: sac
   name: SAC (string-based artificial chemistry with cells)
+  intuition: >
+    Strings rewriting strings, inside cells that divide. A molecule is a
+    string over a small alphabet in which some characters are operators and
+    some data; a collision has one string rewrite the other and cut it at
+    marked points, with the operator surviving unchanged - so every reaction
+    is catalytic. Cells accumulate strings and divide when they hold enough,
+    which adds a population level above the string chemistry. A gene-copying
+    string is the worked example.
   aliases: ["string-based artificial chemistry", "Suzuki-Ono string rewriting chemistry"]
   origin: "Suzuki & Ono, 2002-2003"
   book: "11.1.3"

@@ -2,6 +2,14 @@ chemistries:
 
 - id: organization-computing
   name: Computing with chemical organizations
+  intuition: >
+    Computing where the answer is which species survive. Each Boolean variable
+    gets two species, one for true and one for false, and information is
+    carried by presence or absence rather than concentration. Gate reactions
+    produce output species from input species, and an annihilation reaction
+    removes any variable that holds both values at once. Run it and the set of
+    species that persists - the organisation - is the solution. The whole
+    computation is read off a lattice of self-maintaining sets.
   origin: "Matsumaru, Speroni di Fenizio, Centler & Dittrich, 2006-2011"
   book: "17.3.3"
   refs: ["[550]", "[551]", "[552]", "[553]", "[554]", "[555]", "[506]"]

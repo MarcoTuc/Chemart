@@ -8,3 +8,17 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Built documentation site (mkdocs build); the sources live in docs/
+site/
+
+# Never commit: copyrighted material and third-party agent skill libraries.
+# Only Chemart's own skill is tracked under .claude/.
+*.pdf
+.agents/
+agent/
+skills-lock.json
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/chemart/

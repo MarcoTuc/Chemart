@@ -2,6 +2,15 @@ chemistries:
 
 - id: soas
   name: Self-Organizing Assembly Systems (SOAS)
+  intuition: >
+    The chemical abstract machine applied to a factory floor. Molecules are
+    robots, grippers, feeders and human operators, each advertising a multiset
+    of skills, plus the manufacturing order. Reaction rules let a resource
+    that offers a needed skill join a growing coalition, provided interfaces
+    are compatible - so an assembly line assembles *itself* out of available
+    modules to satisfy the order. Because the rules are formal, the resulting
+    configurations can be verified rather than tested, and the published case
+    study yields 48 correct lines.
   aliases: ["self-organising assembly systems", "chemical reaction model for agile assembly"]
   origin: "Frei, Di Marzo Serugendo & Serbanuta, 2010-2012"
   book: "20.1"

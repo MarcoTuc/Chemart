@@ -2,6 +2,15 @@ chemistries:
 
 - id: autopoiesis-vmu
   name: Varela-Maturana-Uribe autopoiesis model
+  intuition: >
+    The model that named computational autopoiesis. A lattice holds substrate,
+    a catalyst and links. The catalyst turns two neighbouring substrates into
+    a link; links bond to adjacent links into chains; and links spontaneously
+    decay back to substrate. Nothing tells the system to build a membrane, yet
+    a closed chain forms around the catalyst - and because the catalyst keeps
+    producing links, the boundary repairs itself as its parts decay. Substrate
+    crosses it while the enclosed catalyst cannot escape. The interesting
+    behaviour lives entirely in space, not in the reaction list.
   aliases: ["SCL", "Substrate-Catalyst-Link model", "computational autopoiesis"]
   origin: "Varela, Maturana & Uribe, 1974"
   book: "6.1.5"

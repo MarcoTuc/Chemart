@@ -1,0 +1,113 @@
+# ToyChem (graph-based toy model of chemistry)
+
+`toychem` · *Benko, Flamm & Stadler, 2003-2006*
+
+*Also known as:* *Toy Model of chemistry*, *graph-based artificial chemistry*, *ToyChem package*
+
+The chemistry that feels most like chemistry. Molecules are structural formulas - labelled graphs of atoms and bonds - and reactions are graph rewriting rules that must conserve atoms and bond order. What makes it distinctive is that energies are not supplied: the VSEPR rules turn each structure into an orbital graph and an extended-Hückel calculation gives its energy, so activation energies and hence rates are *computed from the structure itself*. Networks built this way have the look and feel of real reaction chemistry.
+
+| | |
+|---|---|
+| **family** | network |
+| **kind** | generator |
+| **constructive** | yes — the species set grows at run time |
+| **fidelity** | `reconstructed` — built from the original papers listed below |
+| **book** | 11.3.1; used in the RNA AC of 18.1.1 |
+| **refs** | [102], [103], [104], [105], [333], [300], doi:10.1021/ci0200570, doi:10.1007/978-3-540-39432-7_2, doi:10.1007/11553090_73 |
+| **provides** | `topology`, `stoichiometry`, `rate-constants`, `rate-law`, `energies`, `mass-conservation`, `sequence-structure-function` |
+
+## Molecules, reactions, reactor
+
+**S — molecules** (implicit): a molecule is its structural formula: a vertex- and edge-labelled graph of atoms and bonds. The VSEPR rules turn that graph unambiguously into the orbital graph of Polansky, whose vertices are the outer orbitals (1s for H, sp3/sp2/sp hybrids plus the leftover p orbitals for C, N and O) and whose edges are orbital overlaps: sigma along a bond, pi between p orbitals, and the weaker semi-direct, hyperconjugation and banana-bond overlaps. Species id and structure are the canonical SMILES of the structure formula, so molecules are identified up to graph isomorphism.
+
+**R — reactions** (implicit, arity [1, 2]): graph rewriting rules on the structure formula, each a left graph, a right graph and a context; a bimolecular mechanism is split into one half rule per educt plus a join rule that forms the intermolecular bond. Every rule must conserve vertex labels (the atoms) and total bond order (the valence electrons). Implemented: the Diels-Alder rule transcribed verbatim from appendix B of the 2003 paper, the aldol condensation of its figure 5, and keto-enol tautomerism.
+
+**A — reactor**: ode, ssa, graph-rewrite
+ · *dilution:* none
+
+## What you get
+
+```python
+net = chemart.generate_network("toychem", seed=1)
+```
+
+```
+toychem: 11 species, 16 reactions, status=complete
+provides: energies, mass-conservation, rate-constants, rate-law, stoichiometry, topology
+seed: 1
+extras: analysis, conservation, energies, network, parameters, reaction_rules, rewrite_rules, rules, seed, species_encoding
+```
+
+First reactions:
+
+```
+O=CCO -> OC=CO  [arrhenius A=1.0 Ea=131.11036505407327 reactivity=0.17588653643431806 rules=keto-enol]
+OC=CO -> O=CCO  [arrhenius A=1.0 Ea=137.97957985078907 reactivity=0.16713015088854197 rules=keto-enol]
+C=O + OC=CO -> O=CC(O)CO  [arrhenius A=1.0 Ea=106.95649437718302 reactivity=0.215606804750694 rules=aldol]
+O=CCO + OC=CO -> O=CC(O)C(O)CO  [arrhenius A=1.0 Ea=88.27936923241182 reactivity=0.2612223920550319 rules=aldol]
+O=CC(O)CO -> OC=C(O)CO  [arrhenius A=1.0 Ea=130.82968441387322 reactivity=0.1762638815748351 rules=keto-enol]
+O=CC(O)C(O)CO -> OC=C(O)C(O)CO  [arrhenius A=1.0 Ea=130.82082709909778 reactivity=0.1762758156431121 rules=keto-enol]
+OC=C(O)CO -> O=C(CO)CO  [arrhenius A=1.0 Ea=124.60595143283525 reactivity=0.185067789578494 rules=keto-enol]
+OC=C(O)CO -> O=CC(O)CO  [arrhenius A=1.0 Ea=124.60595143283525 reactivity=0.185067789578494 rules=keto-enol]
+… and 8 more
+```
+
+## Parameters
+
+| name | type | default | role | what it does |
+|---|---|---|---|---|
+| `network` | `enum` | `formose` | structural | which published example network to build: diels-alder is the repetitive Diels-Alder network of the 2003 paper's figure 7 (seed: cyclobutadiene, ethenol, phthalic anhydride, methylbutadiene, cyclohexa-1,3-diene); formose is its figure 8 (seed: formaldehyde and glycol aldehyde, reacting by keto-enol tautomerism and aldol condensation); custom takes seed_molecules and rules <br>one of `diels-alder`, `formose`, `custom` |
+| `seed_molecules` | `list` | `` | structural | custom only: the initial list L0 of structure formulae, written as SMILES over H, C, N and O <br>*range:* e.g. ['C=CC=C', 'C=C'] for butadiene and ethene |
+| `rules` | `list` | `` | structural | custom only: which rewrite rules to apply, drawn from diels-alder, aldol and keto-enol <br>*range:* e.g. ['keto-enol', 'aldol'] |
+| `max_species` | `int` | `60` | structural | species budget of the closure; reactions whose novel products would exceed it are dropped and status becomes truncated <br>`2` … `5000` · *range:* the published networks have 40 (Diels-Alder) and 48 (formose) species, ECAL Table 1; the ECAL figure 4 series runs to 246 |
+| `max_carbons` | `int` | `4` | structural | a product with more carbons than this does not form, which is how the paper's figure 8 accounts for the cyclisation that limits the formose network; 0 would mean no limit but the minimum is 1 <br>`1` … `20` · *range:* the 2003 paper's figure 8 uses 4 |
+| `barrier_cutoff` | `float` | `` | thermodynamic | maximum activation energy (kcal/mol) for a reaction to be retained, the papers' reactivity threshold; 0 keeps every channel <br>≥ `0.0` · *range:* the ECAL figure 3 lowers its reactivity threshold through ln k = 108, 91.2 and 55.4 to grow the network |
+| `xi` | `float` | `1.0` | kinetic | proportionality constant of the Frontier Molecular Orbital reactivity index xi / (E_LUMO - E_HOMO), reported on every reaction <br>≥ `0.0` · *range:* the papers take xi from the literature per mechanism (Sauer for Diels-Alder, Klopman for nucleophilic substitution) without printing a value |
+| `arrhenius_prefactor` | `float` | `1.0` | kinetic | the prefactor A of the Arrhenius rate A exp(-Ea/RT) carried by every reaction; the papers give no value, so the default is 1 and only the barriers Ea carry model content <br>≥ `0.0` |
+| `temperature` | `float` | `298.15` | thermodynamic | temperature (K) at which the Arrhenius rates and Boltzmann weights are meant to be read; recorded, not applied, since the rate law carries A and Ea <br>≥ `1e-09` |
+| `kappa` | `float` | `1.75` | thermodynamic | the Wolfsberg-Helmholtz constant of H_ij = kappa (H_ii + H_jj) S_ij / 2; the paper invites varying its parameters to measure how robust the network is <br>≥ `0.0` · *range:* Table 1 gives 1.75 |
+| `semi_direct_scale` | `float` | `0.1` | thermodynamic | scaling factor of a semi-direct overlap, where only one of the two orbitals points along the bond (the paper's figure 1b) <br>`0.0` … `1.0` · *range:* Table 1 gives 0.1, and 0.0 for semi-direct overlaps involving hydrogen and for all indirect overlaps |
+| `rewrite_mode` | `enum` | `all` | stochastic | how the rewrite server picks among the subgraph isomorphisms of a reacting pair: all keeps every reaction channel and is what builds the published networks; random picks one channel at random (the paper's 'random rewrite' server mode); priority keeps the channel the model prefers, the most exothermic one (its 'priority rewrite' mode) <br>one of `all`, `random`, `priority` |
+
+## Published phenomena
+
+What the literature reports this model produces. Whether the generator reproduces each one is recorded in the decisions below.
+
+- reaction networks with the look-and-feel of real chemistry: the Diels-Alder rule builds cyclohexene from butadiene and ethene and 4-vinylcyclohexene from two butadienes, and the aldol rule builds glyceraldehyde, erythrose and dihydroxyacetone from formaldehyde and glycol aldehyde
+- built-in thermodynamics: every species carries a total atomization energy computed from its graph alone, so reaction energies come out of the model rather than being assigned (the Diels-Alder cycloadditions are exothermic, as published)
+- the total atomization energy of a homologous series is linear in chain length, the straight line of figure 3, and the C6H10 isomers fall in a band of about 90 kcal/mol as that figure shows
+- an activation-energy threshold decides how large the network grows: lowering barrier_cutoff removes channels and shrinks the closure, which is the threshold series of the ECAL figures 3 and 4
+- generic network statistics: the substrate graph of the Diels-Alder network is clustered and short-pathed (small-world), while the formose network is not, because its many non-reactive species must first be toggled by a keto-enol isomerisation (ECAL Table 1)
+
+## Sources
+
+- Banzhaf, W. & Yamamoto, L. (2015). Artificial Chemistries, section 11.3.1 and figure 11.12: one paragraph on the Benko et al. toy model - molecules as graphs, hybrid orbitals from the VSEPR rules abstracted into an orbital graph carrying bonds and energy, graph rewriting, conservation of mass and atom types, parameters for HCNOPS, and automatic generation of the differential equations of the resulting network.
+- Benko, G., Flamm, C. & Stadler, P. F. (2003). A graph-based toy model of chemistry. J. Chem. Inf. Comput. Sci. 43(4):1085-1093 (book [103]), doi:10.1021/ci0200570. Open copy: https://ul.qucosa.de/api/qucosa%3A32097/attachment/ATT-0/ - section 2 (the orbital graph, the Wolfsberg-Helmholtz parametrisation, equations 1-9), section 3 (graph rewriting, the two conservation laws, half rules and join rules, the Klopman-Salem formula equations 10-14 and its frontier-orbital simplification Delta E = xi/(E_zeta - E_alpha)), section 4 (orderly generation equation 16, canonical SMILES as the isomorphism test, the Diels-Alder network of figure 7 and the formose network of figure 8), appendix A with Table 1 (the complete parametrisation reproduced in the module) and appendix B (the Diels-Alder rule in GML, transcribed verbatim).
+- Benko, G., Flamm, C. & Stadler, P. F. (2003). Generic properties of chemical networks: artificial chemistry based on graph rewriting. Advances in Artificial Life (ECAL), LNCS 2801:10-19 (book [102]), doi:10.1007/978-3-540-39432-7_2. Open copy: https://ul.qucosa.de/api/qucosa%3A32096/attachment/ATT-0/ - the substrate graph as the one-mode projection of the reaction hypergraph and its measures <k>, <L>, <C> with the Erdos-Renyi references of equation (5); Table 1 (Formose n=48 <k>=3.25 <L>=3.55 <L_rand>=3.28 <C>=0.15 <C_rand>=0.068; Diels-Alder n=40 <k>=4.65 <L>=2.15 <L_rand>=2.40 <C>=0.72 <C_rand>=0.110; E. coli n=282); figures 3-4 (the network grows as the reactivity threshold is lowered) and figure 5 (degree rank statistics with power-law slope -1.19).
+- Benko, G., Flamm, C. & Stadler, P. F. (2005). Explicit collision simulation of chemical reactions in a graph based artificial chemistry. ECAL, LNCS 3630:725-733 (book [104]), doi:10.1007/11553090_73. Open copy: https://ul.qucosa.de/api/qucosa%3A32092/attachment/ATT-0/ - the later parametrisation (C, H, N, O, P, S, backbonding, banana overlaps, indirect overlaps), the elementary bond formation/fission/shift moves, the table of allowed orbital interactions, and Tables 2 and 3 of total atomization energies in kcal/mol used here as the energy benchmark.
+- Gillespie, R. J. & Nyholm, R. S. (1957). Inorganic stereochemistry. Quart. Rev. Chem. Soc. 11:339-380 (book [333]): the VSEPR rules that map the structure formula onto the hybrid orbitals, cited by the book for exactly that step.
+
+## Decisions
+
+Every gap, ambiguity or erratum in the sources, and how Chemart resolved it. Read this before quoting a number from this entry.
+
+- The book gives ToyChem one paragraph and one figure, so everything is reconstructed from the three original papers. The ToyChem package technical report (book [105], http://www.bioinf.uni-leipzig.de/Publications/PREPRINTS/05-002.pdf) is dead at that URL and at every variant tried, and the Internet Archive was offline throughout this session, so the released code was not consulted; the Haskell rewrite server and its client/server protocol are not reproduced.
+- Book reference [300] (Fujita's imaginary transition structures) belongs to the RNA artificial chemistry of section 18.1.1, which reuses ToyChem's rewriting scheme, not to ToyChem itself; it is kept in refs because the catalog entry cross-references that section, but nothing here implements it. Section 18.1.1 is about RNA folding and contributes no ToyChem specification.
+- Energy: Table 1 of the 2003 paper is implemented exactly - the Coulomb integrals, the sigma and pi overlap tables, kappa = 1.75, semi-direct 0.1 (0.0 with hydrogen), indirect 0.0, hyperconjugation 0.8, banana bonds 0.7 (3-ring) and 0.8 (4-ring). Two things the table leaves open were fixed by reading: the hyperconjugation factor scales the pi-table entry of the two elements (it is listed under 'sigma-pi coupling' and no direct p-sp3 value is tabulated), and the atomization reference is the valence state, one electron per valence orbital, since the model's orbitals are the hybridised ones.
+- Absolute energies are not reproducible from the published parametrisation: the 2005 tables were computed with the later C/H/N/O/P/S parameter set, whose values were only ever distributed with the unavailable technical report. On the four species of its Table 2 that are unambiguous, this reconstruction reproduces the published total atomization energies up to a single scale factor with correlation r = 0.9997 and a ratio spread of 0.011 (computed/published ratio 0.379-0.390), so relative energetics - orderings, reaction energies and barriers - carry over while the kcal/mol scale does not. The tests assert the relative agreement, never the absolute numbers.
+- Reaction rates: the papers give the Klopman-Salem energy increment (equations 10-14) and its frontier-orbital simplification Delta E = xi/(E_zeta - E_alpha), and say the reactivities 'can be translated into reaction rate constants e.g. using Arrhenius' law', without printing xi or a prefactor. Chemart therefore uses the frontier gap E_LUMO - E_HOMO of the partners as the Arrhenius activation energy Ea, keeps xi/gap alongside as the paper's reactivity index, and leaves A at 1: no invented number enters a rate. The full four-point Klopman-Salem expansion over atom quadruples is not implemented, only the frontier-orbital limit the paper itself used for figures 7 and 8.
+- Rules: the Diels-Alder rule is appendix B transcribed node for node (context six carbons; left 1=2, 2-3, 3=4, 5=6; right 1-2, 2=3, 3-4, 4-5, 5-6, 6-1), applied to the disjoint union of the educts so that it covers the intermolecular and the intramolecular case alike. The aldol condensation is figure 5's two half rules plus the join rule, read as the standard mechanism the figure draws: the enol's nucleophilic carbon attacks the carbonyl carbon, the enol oxygen becomes a carbonyl, and its hydrogen moves to the former carbonyl oxygen, giving the beta-hydroxy carbonyl the figure names. Keto-enol tautomerism is added because the formose network needs it - the ECAL paper says a species must be toggled from non-reactive to reactive by a keto-enol isomerisation - and the paper's 'dismutations' (Cannizzaro) are not implemented.
+- Aromatic bonds are excluded from the diene and dienophile patterns. The rules act on Kekule structure formulae, where a benzene ring would match the diene pattern and a Diels-Alder addition to it would be a pure artifact; the paper's own seed set contains phthalic anhydride, so the guard is needed to reproduce figure 7 at all.
+- The species budget replaces the iteration count. The paper builds figure 7 with 'three iterations of the orderly generation algorithm'; chemart.expand runs the same recursion (equation 16: only combinations involving a species found in the previous round are tried) to closure or to a species budget, so max_species is the knob and the round structure is not exposed.
+- max_carbons reproduces the cut stated in the caption of figure 8 ('we do not permit carbon chains with more than four members to undergo further aldol condensation'); it is applied to the products of the aldol rule. With it the formose closure is complete and small, which is why formose is the default network.
+- The second butadiene-dimer regioisomer of the 2005 Table 2 (the fused bicyclic, -1588.74 kcal/mol) is not produced here: it comes from that paper's explicit collision simulation, which builds products bond by bond, not from the prescribed Diels-Alder rewrite rule. The collision simulation itself is not implemented.
+- The caption of figure 3 of the 2003 paper calls its isomer series 'C4H10 isomers' and then lists hexynes, hexadienes and methylcyclopentenes, which are C6H10; the total atomization energies plotted (1520-1610 kcal/mol) confirm C6H10. The catalog and the tests follow the data, not the caption.
+- No initial state and no flow: the papers give the initial mixtures of figures 7 and 8 but no concentrations and no reactor, so the seed set is recorded in extras.seed and nothing is invented. Reverse reactions are not generated as pairs, so thermodynamic consistency is not claimed even though every species carries an energy.
+
+## Notes
+
+THE reference case for Chemart's thermodynamic tier: the only chemistry in the book that computes energies from the molecular structure itself and can therefore hand back per-species energies, per-reaction barriers, Arrhenius rates and a genuine atom-conservation vector. Everything an exporter needs is kept unflattened in extras: the seed set, the rule names per reaction, the orbital-model parameters, and the substrate-graph statistics the ECAL paper measures.
+
+---
+
+*Specification: `catalog/chemistries/toychem.yaml` · generator: `chemart/chemistries/toychem.py` · tests: `tests/chemistries/test_toychem.py`*

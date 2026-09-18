@@ -1,0 +1,103 @@
+# Matrix chemistry
+
+`matrix-chemistry` · *Banzhaf, 1993*
+
+*Also known as:* *algorithmic chemistry (Banzhaf)*, *MatrixChem*
+
+One string folds into an operator that acts on another. A binary string of length N is read as a sqrt(N) x sqrt(N) matrix, applied in chunks to a second string with a threshold, producing a third; both reactants survive, so every string is potentially an operator on every other. Self-replicators and small closed ecologies appear unprompted. Because the species set is finite yet built by the rule rather than listed, its closure provably terminates - which makes it the reference test for constructive machinery.
+
+| | |
+|---|---|
+| **family** | core |
+| **kind** | generator |
+| **constructive** | yes — the species set grows at run time |
+| **fidelity** | `book+decisions` — the book left gaps; each filled choice is listed below |
+| **book** | chapter 3; revisited in 12.5.2, 13.2 |
+| **refs** | [63], [64], [65] |
+| **provides** | `topology`, `stoichiometry`, `catalysts`, `rate-constants`, `initial-state`, `flow`, `sequence-structure-function` |
+
+## Molecules, reactions, reactor
+
+**S — molecules** (implicit): binary strings of length N, N a perfect square, named by the integer they encode (s(5) = (1,0,1,0)); |S| = 2^N - 1 (the all-zero 'destructor' s(0) is excluded from reacting)
+
+**R — reactions** (implicit, arity 2): s1 + s2 -> s1 + s2 + s3, where s1 folds into a sqrt(N) x sqrt(N) operator P and acts on s2 in sqrt(N)-sized chunks: s3[i + k*sqrt(N)] = 1 iff sum_j P[i][j] * s2[j + k*sqrt(N)] > Theta. Both reactants survive (catalytic). A product equal to s(0) is an elastic collision.
+
+**A — reactor**: well-stirred-multiset, ode
+ · *dilution:* each reaction removes a randomly drawn string s4, keeping M constant; in the ODE a non-selective flow Phi = sum_i x_i' keeps sum x = 1
+
+## What you get
+
+```python
+net = chemart.generate_network("matrix-chemistry", seed=1)
+```
+
+```
+matrix-chemistry: 23 species, 375 reactions, status=complete
+provides: catalysts, flow, initial-state, rate-constants, stoichiometry, topology
+seed: 1
+extras: analysis, encoding
+```
+
+First reactions:
+
+```
+2 s1 -> 3 s1  [mass-action k=1.0]
+s1 + s3 -> 2 s1 + s3  [mass-action k=2.0]
+s1 + s5 -> 2 s1 + s5  [mass-action k=2.0]
+s1 + s7 -> 2 s1 + s7  [mass-action k=2.0]
+s1 + s8 -> s1 + 2 s8  [mass-action k=1.0]
+s1 + s9 -> s1 + 2 s9  [mass-action k=1.0]
+s1 + s10 -> s1 + s10 + s8  [mass-action k=1.0]
+s1 + s11 -> s1 + s11 + s9  [mass-action k=1.0]
+… and 367 more
+```
+
+## Parameters
+
+| name | type | default | role | what it does |
+|---|---|---|---|---|
+| `N` | `int` | `9` | structural | string length; \|S\| = 2^N - 1 <br>`1` … `100` · *range:* perfect square; the book uses 4 (3.2) and 9 (3.3), table 3.1 lists 1, 4, 9, 16, 25, 100 |
+| `folding` | `enum` | `1` | structural | how a string is laid out into the operator matrix: 1 row-major (eq. 3.16), 2 transposed (eq. 3.17), 3 row snake (odd rows reversed), 4 column snake (odd columns reversed). Changes the number of self-replications/replications (N=9: 14/12028, 122/21310, 18/11822, 94/16830, table 3.4) <br>one of `1`, `2`, `3`, `4` |
+| `Theta` | `float` | `` | structural | threshold of the squashing function: an output bit is 1 iff the sum is strictly greater than Theta; Theta = 0 makes the operation purely Boolean |
+| `seed_species` | `list` | `[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,…` | population | integer names of the strings initially present; the closure starts from them and the initial state (or soup population) is split equally among them. The default is the book's s(1)..s(15) of figs. 3.7-3.8 |
+| `destructor_elastic` | `bool` | `True` | selection | collisions producing the all-zero destructor s(0) are elastic (book 3.1); false makes s(0) an ordinary species, which then replicates with every string |
+| `method` | `enum` | `closure` | structural | closure: every reaction among the strings reachable from seed_species (book 3.3), status complete or truncated; soup: the book's stochastic algorithm (3.1) with M strings for `steps` collisions, returning the reactions that fired with counts (status observed) <br>one of `closure`, `soup` |
+| `max_species` | `int` | `1000` | structural | closure only: budget on the number of strings; the status becomes truncated when it cuts the closure off <br>`1` … `4096` · *range:* the full N = 9 system has 511 strings (261,121 reactions) |
+| `M` | `int` | `1000` | population | soup only: constant number of strings in the vessel <br>`2` … `1000000` · *range:* book: 1,000 and 100,000 |
+| `steps` | `int` | `10000` | stochastic | soup only: number of collisions (draws of an operator/string pair) <br>`0` … `10000000` · *range:* book figures run 10^6 to 10^7 iterations |
+
+## Published phenomena
+
+What the literature reports this model produces. Whether the generator reproduces each one is recorded in the decisions below.
+
+- emergence of self-replicators (N=4: s(1), s(8), s(9), s(15); table 3.3)
+- closure of the reachable species set (N=9 from s1..s15 closes at s1..s27 minus s20..s23, book 3.3)
+- focusing of all mass into one self-replicator (fig. 3.3: s(1) or s(15) at N=4; 13.2.1: s(2)..s(7) all react to produce s(1))
+- ecosystem-like attractors of several strings (fig. 3.4: {s1, s2, s4, s8} and {s1, s2, s3, s4, s5, s8, s10, s12, s15})
+- organisations (N=4: 54, as the prose of 12.5.2 says; table 12.3 lists 52 of them, IDs 0..51)
+
+## Sources
+
+- Banzhaf, W. (1993). Self-replicating sequences of binary numbers. Computers and Mathematics with Applications 26:1-8 (book ref [63]); eq. 6 (threshold), the algorithm STEPs 1-8 and eqs. 16-19. http://www.cs.mun.ca/~banzhaf/papers/comp_appl93.ps.gz
+
+## Decisions
+
+Every gap, ambiguity or erratum in the sources, and how Chemart resolved it. Read this before quoting a number from this entry.
+
+- Threshold is strict: an output bit is 1 iff sum_j P_ij s_j > Theta. Book eq. 3.5 says >=, which with Theta=0 maps every zero sum to 1 and contradicts table 3.3 (operator s(1) on s(2) yields s(0)). The strict form reproduces tables 3.3 and 3.5, the N=4 counts, table 3.4 and the 3.3 closure exactly. The original paper [63] (eq. 6) uses >= with Theta fixed at 1, which for integer sums is the same as > 0, so the book's Theta = 0 is a misprint.
+- Foldings for N > 4 (book defers to [65]): 2 = transpose, 3 = row snake (odd rows reversed), 4 = column snake (odd columns reversed). These reproduce table 3.4 exactly for N=9: 14/12028, 122/21310, 18/11822, 94/16830 self-replications/replications. [64] and [65] (Biological Cybernetics) are not openly available; the author's page offers them only by email.
+- Organisations of the 4-bit system: table 12.3 lists 52 (IDs 0..51, including the empty and full sets); the prose of 12.5.2 says 54. The table's 52 entries are all correct, but the table is incomplete: since no reaction consumes anything, a set is an organisation under the dilution flow iff it is closed and every member is produced inside it, and that gives exactly 54, the 52 of the table plus {1,2,3,4,5,7,8,10,11,12,13,15} and {1,2,3,4,5,8,10,11,12,13,14,15} (tested). The same table has 122 closed sets including the empty one (the prose says '70+'). Table 12.2 is table 3.3 (first folding) with the destructor row/column added, although 12.5.2 calls it 'nontopological horizontal folding'.
+- Bit order: s(5) = (1,0,1,0), so component s_1 is the least significant bit of the integer name. Self-replication counts i with s(i)+s(i) -> +s(i); replication counts ordered pairs i != j whose product is s(i) or s(j); the destructor s(0) is excluded and producing s(0) is an elastic collision.
+- Reactions are multisets: operator s(a) on s(b) and operator s(b) on s(a) giving the same product are one reaction. Its mass-action constant is the number of ordered (operator, string) pairs that give it (1 or 2), and outflow is constant-total, so the mass-action ODE is exactly eq. 3.24 with W_ijk = 1 and Phi of eq. 3.25 (tested). The book gives no other rate constants.
+- Default network: the closure from seed_species (the procedure of 3.3, via expand over ordered pairs), restricted to reactions whose product is in the found set. The initial state gives the seeds equal concentrations summing to 1, as in figs. 3.7-3.8 ('nearly equal initial distribution'). Defaults N = 9, seeds s(1)..s(15) give the book's 23-string closure.
+- Soup mode follows the book's algorithm listing through chemart.soup with constant dilution: two distinct molecules are drawn as operator and string, and after a productive collision one random molecule is removed. The book draws s4 before inserting s3; here the removal happens after insertion, so the new string can itself be removed (an O(1/M) difference). The initial population is M split equally among the seeds.
+- The decay of eqs. 3.11-3.12 (p = (I/N)^n) is dropped with its exponent n: the book's algorithm listing does not use it. In [63] it is STEP 7 (a string is replaced by a random string with probability p), destructors are replaced by random strings (STEP 6), and the ODE (eq. 16) has matching D_i and A(t) terms; the book's eq. 3.24 omits them. Replacement by a random string is not a reaction, so none of this is represented. The mutation variants of 3.4 are not modelled either.
+- The prose of 3.3 lists the new strings made by s(10) on s(1)..s(15) as 's(16), s(17), s(17) s(19)' (garbled); table 3.7 row 10 gives s(16), s(17), s(18), s(19).
+
+## Notes
+
+Best-in-class test case for Chemart's whole pipeline: it is constructive but with a finite S, so `expand()` provably terminates and can be checked against the book's published closure and against the 54 organisations of the 4-bit system.
+
+---
+
+*Specification: `catalog/chemistries/matrix-chemistry.yaml` · generator: `chemart/chemistries/matrix_chemistry.py` · tests: `tests/chemistries/test_matrix_chemistry.py`*

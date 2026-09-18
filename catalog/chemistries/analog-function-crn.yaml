@@ -2,6 +2,14 @@ chemistries:
 
 - id: analog-function-crn
   name: Analog computation of algebraic functions with concentrations
+  intuition: >
+    Concentrations used as analog numbers. Pick reactions whose steady state
+    satisfies the algebraic relation you want, then read the answer off the
+    output species once it settles: X -> X + Y together with 2Y -> nothing
+    balances at y = sqrt(k1 x / 2 k2), so a square root falls out of mass
+    action. The idea is elegant and its limits are honest ones - no negative
+    numbers, you must wait for equilibrium, not every network has one, and
+    composing two such circuits is awkward.
   origin: "Hjelmfelt et al.; Deckard & Sauro; Dittrich et al."
   book: "17.4.3"
   refs: ["[141]", "[220]", "[511]", "[386]"]
