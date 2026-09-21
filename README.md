@@ -209,6 +209,13 @@ net = chemart.generate_network("gard", seed=0)
 assert chemart.generate_network("gard", seed=0).to_dict() == net.to_dict()
 ```
 
+### A notebook to start from
+
+[`examples/simulating-chemistries.ipynb`](examples/simulating-chemistries.ipynb)
+simulates a given network (the Brusselator, integrated as rate equations) and
+a generator (the prime-number chemistry, whose run generates its network).
+Open it with `uv run --group notebooks jupyter lab examples/`.
+
 ### For LLM agents
 
 The whole interface is three functions, exposed as JSON-Schema tool specs:
