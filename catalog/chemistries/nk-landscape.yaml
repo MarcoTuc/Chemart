@@ -18,6 +18,7 @@ chemistries:
   archived: pruned
   kind: analysis
   constructive: false
+  network: given
   S: {repr: "binary genotypes of length N", definition: implicit}
   R:
     definition: explicit

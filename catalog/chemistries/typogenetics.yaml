@@ -17,6 +17,7 @@ chemistries:
   family: automata
   kind: generator
   constructive: true
+  network: generated
   S:
     repr: "single strands over {A, C, G, T}; species id is the strand itself, structure the enzymes it codes with their binding base ('cop-swi-rpu-ina-swi-cop:G'). Double strands exist only while enzymes work and fall apart into single strands at the end"
     definition: implicit

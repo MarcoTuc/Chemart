@@ -16,6 +16,7 @@ chemistries:
   family: application
   kind: generator
   constructive: false
+  network: given
   S:
     repr: "abstract substances s1, s2, ...; sensor substances (b, c, d, e) receive sensor-driven inflow, the actuator substance a is read and consumed by the motor"
     definition: explicit

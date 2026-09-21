@@ -51,6 +51,14 @@ ARCHIVES = {
     "pruned": "set aside from the catalog",
     "artificial-life": "artificial life rather than artificial chemistry",
 }
+#: How a chemistry gets its reaction network (catalog/NETWORKS.md has the
+#: reasoning for every entry).
+NETWORKS = {
+    "given": "the chemistry is a reaction network, instantiated from its parameters "
+             "(written down, built by a formula, or drawn once at random)",
+    "generated": "the network is the output of the chemistry's algorithm (rules applied "
+                 "to molecules until closure, or the record of a simulation)",
+}
 ROLES = {
     "structural", "kinetic", "thermodynamic", "population", "spatial",
     "stochastic", "selection",
@@ -185,6 +193,9 @@ class Chemistry:
     notes: str | None = None
     #: None for the chemistry catalog; otherwise the archive group (ARCHIVES).
     archived: str | None = None
+    #: "given" or "generated" (NETWORKS): is the chemistry a reaction network,
+    #: or an algorithm whose output is one?
+    network: str | None = None
     source_file: str = ""
 
     @property
@@ -309,6 +320,8 @@ def entry_problems(c: Chemistry, *, hub: bool = False) -> list[str]:
         problems.append(f"unknown kind {c.kind!r}")
     if c.archived is not None and c.archived not in ARCHIVES:
         problems.append(f"unknown archive group {c.archived!r}; expected one of {sorted(ARCHIVES)}")
+    if c.network is not None and c.network not in NETWORKS:
+        problems.append(f"unknown network {c.network!r}; expected one of {sorted(NETWORKS)}")
     if not hub and not c.book:
         problems.append("missing book section")
     for p in c.provides:
@@ -364,6 +377,9 @@ def _v2_problems(c: Chemistry, *, hub: bool = False) -> list[str]:
     if not (c.intuition or "").strip():
         out.append("missing intuition: implemented entries need a plain-language "
                    "explanation of how the chemistry works and why")
+    if not hub and c.network is None:
+        out.append("missing network: say whether the network is given or generated "
+                   "(see catalog/NETWORKS.md)")
     for p in c.params:
         if p.type not in PARAM_TYPES:
             hint = " (seed is an argument of generate_network, not a param)" if p.type == "seed" else ""
@@ -397,12 +413,12 @@ def _status(c: Chemistry) -> str:
 
 
 def _index_table(entries: list[Chemistry]) -> list[str]:
-    out = ["| id | name | kind | constructive | tier | status | book |",
-           "|---|---|---|---|---|---|---|"]
+    out = ["| id | name | kind | network | constructive | tier | status | book |",
+           "|---|---|---|---|---|---|---|---|"]
     for c in sorted(entries, key=lambda c: c.id):
         tier = "".join(_TIER_MARK[t] for t in ("topology", "kinetics", "thermodynamics") if t in c.tiers) or "-"
         out.append(
-            f"| `{c.id}` | {c.name} | {c.kind} | "
+            f"| `{c.id}` | {c.name} | {c.kind} | {c.network or '-'} | "
             f"{'yes' if c.constructive else 'no'} | {tier} | "
             f"{_status(c)} | {(c.book or '-').split(';')[0]} |"
         )
@@ -444,6 +460,8 @@ def render_index(entries: list[Chemistry]) -> str:
         f"- implemented: **{len(done)}** of {len(main)}"
         + (" (" + ", ".join(f"{k}: {v}" for k, v in sorted(fidelity.items())) + ")" if done else "")
         + "\n"
+        f"- network given (a written, formula-built or sampled network): **{sum(1 for c in main if c.network == 'given')}**; "
+        f"generated (the output of the chemistry's algorithm): **{sum(1 for c in main if c.network == 'generated')}**\n"
         f"- constructive (open, growing species set): **{constructive}**\n"
         f"- carry their own kinetics: **{kin}**; carry energetics: **{thermo}**\n"
     )

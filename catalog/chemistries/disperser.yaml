@@ -16,6 +16,7 @@ chemistries:
   family: application
   kind: generator
   constructive: false
+  network: given
   S: {repr: "job molecules X_i (one species per node) and catalysts C_i_j (one per directed link, located at node i)", definition: explicit}
   R:
     definition: explicit

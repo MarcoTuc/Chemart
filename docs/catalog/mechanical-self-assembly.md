@@ -51,6 +51,7 @@ irreversible binding reactions among six species, closest in form to
 |---|---|
 | **family** | non-chemical |
 | **kind** | generator |
+| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
 | **constructive** | no — fixed species set |
 | **fidelity** | `book+decisions` — the book left gaps; each filled choice is listed under *Implementation decisions* |
 | **book** | 20.1 |

@@ -16,6 +16,7 @@ chemistries:
   family: origin-of-life
   kind: analysis
   constructive: false
+  network: given
   S:
     repr: "any catalytic reaction system Q = (X, R, C) plus a designated food set F; by default X = all strings up to length n over an alphabet of size B (Kauffman's binary polymer model) and F = all strings up to length t"
     definition: explicit

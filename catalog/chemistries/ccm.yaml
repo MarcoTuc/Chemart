@@ -18,6 +18,7 @@ chemistries:
   family: application
   kind: generator
   constructive: false
+  network: generated
   S:
     repr: >
       atoms with a type and a state, optionally connected by links; the whole working memory is ONE

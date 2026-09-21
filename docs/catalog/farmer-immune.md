@@ -60,6 +60,7 @@ treats immune networks and autocatalytic sets together.
 |---|---|
 | **family** | bio-inspired |
 | **kind** | generator |
+| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
 | **constructive** | yes — the species set grows at run time |
 | **fidelity** | `book+decisions` — the book left gaps; each filled choice is listed under *Implementation decisions* |
 | **book** | 11.2.2 |

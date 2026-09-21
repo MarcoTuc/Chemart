@@ -18,6 +18,7 @@ chemistries:
   family: rewriting
   kind: generator
   constructive: false
+  network: given
   S:
     repr: "symbols from a finite alphabet A; the reaction vessel is a multiset of symbols"
     definition: explicit

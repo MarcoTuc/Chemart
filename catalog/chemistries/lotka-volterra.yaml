@@ -15,6 +15,7 @@ chemistries:
   archived: pruned
   kind: generator
   constructive: false
+  network: given
   S: {repr: "n interacting species X_1..X_n; classically prey X1 and predator X2", definition: explicit}
   R:
     definition: explicit

@@ -17,6 +17,7 @@ chemistries:
   family: rewriting
   kind: formalism
   constructive: true
+  network: generated
   S:
     repr: >
       a system is a nest of membranes s[P] whose branes s are compositions of actions (s|t, !s, a.s),

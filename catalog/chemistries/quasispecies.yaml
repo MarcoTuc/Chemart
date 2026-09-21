@@ -17,6 +17,7 @@ chemistries:
   archived: pruned
   kind: generator
   constructive: false
+  network: given
   S:
     repr: "genome sequences of length L over an alphabet of size B; |S| = B^L"
     definition: implicit

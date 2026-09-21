@@ -17,6 +17,7 @@ chemistries:
   family: evolutionary-dynamics
   kind: generator
   constructive: true
+  network: generated
   S: {repr: "m nodes of a directed graph; only the CATALYTIC action is represented, not the underlying reactions", definition: explicit}
   R:
     definition: explicit

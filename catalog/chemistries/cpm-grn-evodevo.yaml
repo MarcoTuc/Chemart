@@ -21,6 +21,7 @@ chemistries:
   archived: pruned
   kind: framework
   constructive: false
+  network: generated
   S:
     repr: >
       Cell types: one species per gene-expression pattern of the Boolean GRN,

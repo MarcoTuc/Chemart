@@ -18,6 +18,7 @@ chemistries:
   archived: pruned
   kind: generator
   constructive: false
+  network: given
   S:
     repr: "one bitstring genome; each gene i (found by scanning for the promoter 01010101) yields a protein P_i: a 32-bit string obtained by bitwise majority voting over its 5 x 32-bit coding region"
     definition: implicit

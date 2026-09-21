@@ -51,6 +51,7 @@ action moves them.
 |---|---|
 | **family** | rewriting |
 | **kind** | formalism |
+| **network** | generated — the network is the output of the chemistry's algorithm |
 | **constructive** | yes — the species set grows at run time |
 | **fidelity** | `reconstructed` — built from the original papers listed under *References* |
 | **book** | 9.7 |

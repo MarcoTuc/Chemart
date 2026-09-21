@@ -18,6 +18,7 @@ chemistries:
   family: origin-of-life
   kind: generator
   constructive: false
+  network: given
   S:
     repr: >
       One particle per site of a 2D toroidal lattice: hole, substrate (O),

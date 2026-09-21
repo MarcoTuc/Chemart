@@ -49,6 +49,7 @@ binds two copies of the same molecule.
 |---|---|
 | **family** | core |
 | **kind** | generator |
+| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
 | **constructive** | no — fixed species set |
 | **fidelity** | `book` — implemented exactly as the book specifies |
 | **book** | 2.2.4, appendix (Dimer.py) |

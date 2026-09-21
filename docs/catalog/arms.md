@@ -56,6 +56,7 @@ Chemart implements the membrane-free ARMS of 1998 only.
 |---|---|
 | **family** | rewriting |
 | **kind** | generator |
+| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
 | **constructive** | no — fixed species set |
 | **fidelity** | `reconstructed` — built from the original papers listed under *References* |
 | **book** | 9.4; ecology application 8.2.3; p53 model 18.3.2 |

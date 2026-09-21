@@ -51,6 +51,43 @@ def test_archived_entries_leave_the_listings_but_still_run():
     assert chemart.generate_network("lotka-volterra", seed=0).reactions   # archived, still runnable
 
 
+def test_every_implemented_entry_says_how_it_gets_its_network():
+    from chemart.catalog import NETWORKS
+
+    missing = [c.id for c in load() if c.implemented and c.network not in NETWORKS]
+    assert not missing, f"set network: given | generated for {missing}"
+
+
+def test_the_network_table_matches_the_catalog():
+    """catalog/NETWORKS.md gives the reasoning; it must agree with the YAML."""
+    import re
+
+    from chemart.catalog import ROOT
+
+    rows = {}
+    for line in (ROOT / "catalog" / "NETWORKS.md").read_text().splitlines():
+        m = re.match(r"\| `([a-z0-9-]+)`[^|]* \| (given|generated)\b", line)
+        if m:
+            rows[m.group(1)] = m.group(2)
+    assert rows == {c.id: c.network for c in load()}
+
+
+def test_describe_reports_the_network():
+    import chemart
+
+    assert chemart.describe_chemistry("brusselator")["network"] == "given"
+    assert chemart.describe_chemistry("matrix-chemistry")["network"] == "generated"
+
+
+def test_a_given_network_needs_no_closure():
+    """A given network is instantiated whole; only a generated one can be cut short."""
+    import chemart
+
+    for c in load():
+        if c.network == "given" and c.implemented:
+            assert chemart.generate_network(c.id, seed=1).status != "truncated", c.id
+
+
 def test_catalog_index_is_current():
     from pathlib import Path
 

@@ -57,6 +57,7 @@ its own page.
 |---|---|
 | **family** | application |
 | **kind** | generator |
+| **network** | generated — the network is the output of the chemistry's algorithm |
 | **constructive** | yes — the species set grows at run time |
 | **fidelity** | `reconstructed` — built from the original papers listed under *References* |
 | **book** | 16.2.1, 17.3.1; appendix (Fraglets.py, NetFraglets.py) |

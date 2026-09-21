@@ -50,6 +50,7 @@ four fixed species.
 |---|---|
 | **family** | systems-biology |
 | **kind** | generator |
+| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
 | **constructive** | no — fixed species set |
 | **fidelity** | `book+decisions` — the book left gaps; each filled choice is listed under *Implementation decisions* |
 | **book** | 18.2.1; also 4.4 (as an abridgement method) |

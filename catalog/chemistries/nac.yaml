@@ -17,6 +17,7 @@ chemistries:
   family: network
   kind: generator
   constructive: true
+  network: generated
   S:
     repr: >
       a graph stands in for the solvent: every node is a molecule, classified as hydrophilic (i) or

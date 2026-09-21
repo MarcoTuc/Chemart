@@ -19,6 +19,7 @@ chemistries:
   archived: pruned
   kind: generator
   constructive: true
+  network: generated
   S:
     repr: >
       Species are genotypes: strings of n_genes genes over an alphabet of

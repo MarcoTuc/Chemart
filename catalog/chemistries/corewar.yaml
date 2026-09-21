@@ -19,6 +19,7 @@ chemistries:
   archived: artificial-life
   kind: generator
   constructive: true
+  network: generated
   S:
     repr: >
       Two kinds of molecules. (1) The Redcode instructions occupying the
