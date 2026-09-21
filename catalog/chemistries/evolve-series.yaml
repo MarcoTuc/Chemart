@@ -8,12 +8,15 @@ chemistries:
     mineral matter using light, or scavenging organic remains - and both
     matter and energy are tracked in a closed economy, so nothing an organism
     does is free. Starting from autotrophs alone, mutation discovers the
-    scavenger niche, which then appears, collapses and returns. It is early,
-    sparse, and the direct ancestor of every later digital ecology.
+    scavenger niche, which then appears, collapses and returns. It is early
+    and sparse: one of the earliest examples of digital evolution (Vostinar
+    et al. 2021), though modern digital-evolution systems trace their line
+    to Core War rather than to it.
   origin: "Conrad & Pattee, 1969-1970; Conrad & Strizich, 1985; Rizki & Conrad, 1985; Brewster & Conrad, 1998"
   book: "8.2.3"
   refs: ["[191]", "[195]", "[134]", "[135]", "[714]", "doi:10.1016/0022-5193(70)90077-9", "doi:10.1016/0303-2647(85)90079-6", "doi:10.1016/0303-2647(85)90065-6", "doi:10.1016/0167-2789(86)90235-6", "doi:10.1007/BFb0040799", "doi:10.1109/CEC.1999.781957"]
   family: evolutionary-dynamics
+  archived: pruned
   kind: generator
   constructive: true
   S:
@@ -107,10 +110,10 @@ chemistries:
     - "starting from autotrophs alone, a scavenger guild appears by mutation, goes extinct and reappears - the ecological niche of decomposing the metabolic remains of autotrophs (book 8.2.3)"
     - "matter is conserved exactly: every reaction balances and the world's total inventory never changes"
     - "energy enters only as light and is accounted for to the last unit: harvested + respired = spent + dissipated + what organisms still hold"
-    - "no light, no ecosystem: with the sun switched off nothing is fixed and the founders starve"
+    - "no light, no ecosystem: with the sun switched off the founders can spend only the energy they were endowed with (each fixes at most once), nothing reproduces, and all starve within two steps"
     - "the weighted lock-and-key match is under selection: a founder whose light and fix critical sections are scrambled leaves no descendants at all, and a population founded half on it ends with a mean light+fix efficiency well above the 1.0 it started from"
     - "mutation-selection balance, not improvement: started from near-optimal founders the mean enzyme match decays over a default run (mutation_rate 0.08 per gene) and is held near its initial value at 0.02"
-    - "resistance to phenotypic change evolves in a constant environment: the population's mean mutational sensitivity falls below the founders' (EVOLVE II, Conrad & Strizich 1985)"
+    - "EVOLVE II (Conrad & Strizich 1985) reports that resistance to phenotypic change evolved in slowly varying environments; in Chemart the population's mean mutational sensitivity falls below the founders' 3 in a constant environment, but it rises from founders at 1 or 2 and settles near 2.5 from any start, the mean of a randomly mutated locus, so the fall is mostly mutation bias, not evidence of that finding"
     - "trophic structure: the only source of organic matter is autotrophic fixing and dead bodies, and the only route back to mineral matter is scavenging"
   notes: >
     The oldest artificial ecosystem in the catalog and, with Dorin & Korb's

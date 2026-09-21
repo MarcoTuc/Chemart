@@ -1,0 +1,278 @@
+## Introduction
+
+Reversible dimerization is the smallest interesting chemical reaction network:
+two kinds of molecule, A and B, stick together to form a pair, the *dimer*
+`C` (the book writes it `A.B`), and the dimer can fall apart again into A and
+B. A single molecule of either kind is called a *monomer*. Nothing new is ever
+made; the three species simply trade amounts until binding and unbinding
+balance, and the mixture stops changing. That resting state is a *chemical
+equilibrium*.
+
+It is not a published model with an author. It is the textbook example that
+Banzhaf and Yamamoto use in chapter 2, "Basic Concepts of Artificial
+Chemistries" (book §2.2.4), to show what equilibrium is, and the first program
+in PyCellChemistry, the Python package that accompanies the book: the
+appendix walks through `Dimer.py` line by line as the template for "building a
+nonconstructive chemistry", that is, a chemistry whose molecules and reactions
+are all listed in advance. The book's Figure 2.3 was made with it.
+
+So this entry is not a model of anything in particular and has nothing to
+discover. Its use is as a check. Its equilibrium can be worked out by hand, so
+it tests that a deterministic integrator gets the right answer, that a
+stochastic simulation fluctuates around that answer, and that rate constants
+are converted correctly between the two kinds of simulation. The book uses it
+for exactly these three things.
+
+In the catalog it sits in the *core* family with the other small teaching
+examples from the book's early chapters and appendix, such as
+[the chameleon chemistry](chameleon.md) and the
+[prime-number chemistry](prime-number-chemistry.md). Its closest relatives are
+the other written-down kinetic networks that the book also runs both
+deterministically and stochastically, [logistic growth](logistic-chemistry.md)
+and [Lotka-Volterra](lotka-volterra.md); unlike them it has no growth,
+competition or oscillation, only relaxation to a fixed point. The same
+reaction `A + B ⇌ AB` also appears as a built-in model inside two richer
+entries: [SRSim](srsim.md), which simulates it as molecules moving and binding
+in space, and [Kappa](kappa-calculus.md), whose "symmetric dimerization" rule
+binds two copies of the same molecule.
+
+## How it works
+
+### Two reactions, one balance
+
+The network has three species and two reactions, one for each direction:
+
+```
+A + B -> C  [mass-action k=1.0]
+C -> A + B  [mass-action k=1.0]
+```
+
+The number after each reaction is its *rate coefficient* `k`: the forward one
+is called `k_f` (association), the reverse one `k_r` (dissociation). The
+*law of mass action* (book §2.2.2) says how fast each reaction runs in a
+well-stirred vessel: in proportion to the product of the concentrations of
+the molecules it consumes. So binding runs at speed `k_f·[A]·[B]` and
+unbinding at `k_r·[C]`, where square brackets mean concentration. The
+difference between the two is the net rate at which dimers form:
+
+```
+d[C]/dt = k_f·[A]·[B] − k_r·[C]
+d[A]/dt = d[B]/dt = −d[C]/dt
+```
+
+These are *ordinary differential equations* (ODEs), one per species; solving
+them gives the smooth curves of the book's Figure 2.3.
+
+Because every A and every B is either free or inside a dimer, two totals never
+change: `[A] + [C]` and `[B] + [C]`. The system is *closed*: nothing flows in
+or out.
+
+### A worked example: the book's Figure 2.3
+
+The default network is the book's example: `k_f = k_r = 1`, starting from
+`[A] = 2.0`, `[B] = 1.4` and no dimer. At first there is no C, so only binding
+happens; A and B fall and C rises. As C builds up, unbinding speeds up and
+binding slows down (there is less free A and B), until the two rates are
+equal and the concentrations stop changing. Setting `d[C]/dt = 0` gives the
+book's equation 2.27:
+
+```
+[C] / ([A]·[B]) = k_f / k_r ≡ K
+```
+
+`K` is the *equilibrium constant*. It depends only on the two rate
+coefficients, not on where the system started. With `K = 1` and the two
+conserved totals, writing `x` for the final `[C]` gives
+`x = (2 − x)(1.4 − x)`, a quadratic whose root is `x ≈ 0.7717`, leaving
+`[A] ≈ 1.2283` and `[B] ≈ 0.6283`. Integrating the generated network to
+`t = 10` gives the same values (the script is under "Using it" below).
+
+### The same chemistry, counted molecule by molecule
+
+An ODE treats concentrations as continuous numbers, which is accurate only
+for very many molecules. The alternative is *stochastic simulation*: keep
+integer counts of each molecule and fire one reaction at a time at random
+moments, with probabilities set by the current counts. The standard method is
+Gillespie's *stochastic simulation algorithm* (SSA, Gillespie 1976). The book's
+appendix switches `Dimer.py` from one to the other by swapping one class, and
+reports that the stochastic concentrations "now fluctuate a bit, but
+essentially we get the same equilibrium values as with the ODE case".
+
+Two quantities connect the two views. The first is the size of the vessel.
+PyCellChemistry calls it `NAV`, Avogadro's number `N_A` times the volume `V`:
+the number of molecules that make a concentration of 1. A small `NAV` means a
+few molecules and large fluctuations; a large one approaches the ODE.
+PyCellChemistry's default is 1000.
+
+The second is the rate coefficient itself. The `k` of the ODE (a
+*macroscopic* coefficient) is not the per-molecule reaction probability that
+the SSA needs (a *mesoscopic* coefficient `c`). The book converts one into the
+other with the Wolkenhauer relation (appendix, equation 4):
+
+```
+c = k / (N_A·V)^(m−1) · Π l_i!
+```
+
+where `m` is the number of molecules a reaction consumes and `l_i` the number
+of copies of each reactant species. For binding, `m = 2` and each `l_i = 1`, so
+`c = k_f / NAV`; for unbinding, `m = 1`, so `c = k_r`. The more molecules a
+reaction needs to bring together, and the larger the vessel, the smaller `c`.
+
+### What Chemart generates
+
+Chemart builds the network, not the simulation. `generate_network` returns
+the three species, the two reactions with their mass-action rate
+coefficients, and the initial concentrations. Integrating it, or running an
+SSA on it, is done by the caller; the recipes below show both. The
+specification that follows lists the molecules (S), the reactions (R) and the
+two reactor algorithms (A) that the book applies to them.
+
+## Using it
+
+The default call above gives the network of the book's Figure 2.3. It has no
+`net.extras`; everything is in `net.reactions` (each with `reactants`,
+`products` and a rate dict such as `{'law': 'mass-action', 'k': 1.0}`) and
+`net.initial_state` (`{'A': 2.0, 'B': 1.4, 'C': 0.0}`). `k_f` and `k_r` set
+the two rate coefficients and `A0`, `B0` the starting concentrations; see the
+parameter table below. The vessel size `NAV` is deliberately not a parameter:
+it belongs to a stochastic run, not to the network (see the implementation
+decisions).
+
+**Integrating the ODE.** The stoichiometric matrix from `net.matrices()` and
+the mass-action law are all that is needed:
+
+```python
+import numpy as np
+from scipy.integrate import solve_ivp
+import chemart
+
+net = chemart.generate_network("dimerization", seed=1)
+ids, R, P = net.matrices()                     # species order: A, B, C
+M = (P - R).toarray()                          # stoichiometric matrix
+k = np.array([r.rate["k"] for r in net.reactions])
+Rin = R.toarray()                              # reactant multiplicities
+
+def f(t, x):
+    v = k * np.prod(x[:, None] ** Rin, axis=0)  # mass-action speeds
+    return M @ v
+
+x0 = [net.initial_state[s] for s in ids]
+sol = solve_ivp(f, (0, 10), x0, rtol=1e-8, atol=1e-10)
+A, B, C = sol.y[:, -1]
+print(f"t=10: A={A:.4f} B={B:.4f} C={C:.4f}  C/(A*B)={C/(A*B):.4f}")
+```
+
+```
+t=10: A=1.2283 B=0.6283 C=0.7717  C/(A*B)=1.0000
+```
+
+**Shifting the equilibrium.** The appendix's suggested modification makes
+binding much faster than unbinding, `k_f = 2.0` and `k_r = 0.2`, so `K = 10`
+and more of the material ends up as dimer. Running the same script with
+`chemart.generate_network("dimerization", k_f=2.0, k_r=0.2)`, once to
+`t = 2` and once to `t = 10`:
+
+```
+t=2:  A=0.7717 B=0.1717 C=1.2283  C/(A*B)=9.2676
+t=10: A=0.7623 B=0.1623 C=1.2377  C/(A*B)=10.0000
+```
+
+B, the scarcer monomer, is now almost used up.
+
+**A stochastic run.** Convert each `k` to `c` with `chemart.kinetics.k_to_c`,
+turn concentrations into molecule counts with `NAV`, and run Gillespie's
+direct method. This short version computes propensities as `c` times the
+product of the reactant counts, which is right here because no reaction uses
+two copies of the same species:
+
+```python
+import numpy as np
+import chemart
+from chemart.kinetics import k_to_c, AVOGADRO
+
+net = chemart.generate_network("dimerization", seed=1)
+NAV = 1000                                   # molecules per unit concentration
+V = NAV / AVOGADRO                           # the matching vessel volume
+c = [k_to_c(r.rate["k"], r.reactants, V) for r in net.reactions]
+print("c =", c)
+
+ids, R, P = net.matrices()
+M, Rin = (P - R).toarray(), R.toarray()
+n = np.array([round(net.initial_state[s] * NAV) for s in ids])   # [2000, 1400, 0]
+
+rng = np.random.default_rng(1)
+t, samples = 0.0, []
+while t < 50:
+    a = np.array(c) * np.prod(n[:, None] ** Rin, axis=0)   # propensities
+    t += rng.exponential(1 / a.sum())
+    n = n + M[:, rng.choice(len(a), p=a / a.sum())]
+    if t > 10:
+        samples.append(n / NAV)
+s = np.array(samples)
+print("mean after t=10:", s.mean(axis=0).round(4))
+print("std  after t=10:", s.std(axis=0).round(4))
+print("events:", len(samples))
+```
+
+```
+c = [0.001, 1.0]
+mean after t=10: [1.2261 0.6261 0.7739]
+std  after t=10: [0.016 0.016 0.016]
+events: 61677
+```
+
+The mean (taken over the states after each reaction event) matches the ODE's
+1.2283, 0.6283, 0.7717 to within the fluctuations. Changing `NAV` in the same
+script shows how the fluctuations shrink as the vessel grows, roughly as
+`1/√NAV`:
+
+| `NAV` | mean `[C]` after t = 10 | standard deviation | events |
+|---|---|---|---|
+| 10 | 0.7624 | 0.1645 | 607 |
+| 100 | 0.7761 | 0.0581 | 6,217 |
+| 1,000 | 0.7739 | 0.0160 | 61,677 |
+| 10,000 | 0.7712 | 0.0050 | 617,431 |
+
+With this plain Python loop the run with `NAV = 1000` takes about 6 seconds
+and `NAV = 10000` about 30, and the cost grows in proportion to `NAV`.
+
+## Results
+
+This entry reproduces a textbook calculation, not a research result, so its
+"results" are the two behaviours the book uses it to show.
+
+**The equilibrium constant is `k_f / k_r`.** Book §2.2.4 derives
+`[A.B] / ([A][B]) = k_f / k_r = K` (equation 2.27) and shows the approach to
+it in Figure 2.3, for `k_f = k_r = 1` and the default starting amounts, over
+10 seconds. Chemart reproduces it: the test
+`test_dimerization_reaches_equilibrium_constant` in
+`tests/chemistries/test_w1_dynamics.py` integrates the network with
+`k_f = 2.0`, `k_r = 0.2` (the appendix's modification) to `t = 50` and checks
+that the ratio is 10 to within 0.01%. The runs above give the same for the
+default settings.
+
+**A stochastic run fluctuates about the ODE equilibrium.** The appendix
+reports that the Gillespie version of `Dimer.py` fluctuates but reaches
+"essentially" the ODE's equilibrium, and explains that the size of the
+fluctuations depends on `NAV`. The book gives no figure or numbers for this.
+Chemart has no stochastic simulator of its own and no test of this behaviour;
+it supplies the rate conversion instead. `chemart.kinetics.k_to_c` implements
+the Wolkenhauer relation, and `tests/test_core.py` checks it on small cases,
+including the factor 2 for a reaction with two copies of one reactant. The
+recipe in "Using it" shows the behaviour with that conversion.
+
+**What Chemart does not reproduce.** PyCellChemistry's own reactors, its
+Euler-method ODE integrator and its Gillespie vessel, are not part of
+Chemart, so the exact traces of `Dimer.py` are not reproduced; the equilibrium
+values they converge to are.
+
+## Further reading
+
+- Gillespie, D. T. (1976). A general method for numerically simulating the
+  stochastic time evolution of coupled chemical reacting systems. *Journal of
+  Computational Physics* 22, 403–434. The stochastic simulation algorithm
+  (book reference [328]).
+- Wolkenhauer, O., Ullah, M., Kolch, W. & Cho, K.-H. (2004). Modelling and
+  simulation of intracellular dynamics: choosing an appropriate framework.
+  *IEEE Transactions on NanoBioscience* 3(3), 200–207. The source of the
+  `k` to `c` conversion (book reference [926]).

@@ -67,9 +67,9 @@ print(" ", handle("generate_network", {"chemistry": "brusselator",
 # A practical hint for agent loops: keep records small before returning them to
 # a model. Several chemistries carry genomes or sequences in Species.structure,
 # and a default network can run to megabytes of JSON.
-big = chemart.generate_network("aevol", seed=1).to_dict()
+big = chemart.generate_network("automata-reaction", seed=1).to_dict()
 size = len(json.dumps(big))
-print(f"\naevol default record is {size/1e6:.1f} MB of JSON — summarise before "
+print(f"\nautomata-reaction default record is {size/1e6:.1f} MB of JSON — summarise before "
       f"returning records like this to a model")
 print("  e.g. drop structures:",
       len(json.dumps({**big, "species": [{"id": s["id"]} for s in big["species"]]}))/1e6,

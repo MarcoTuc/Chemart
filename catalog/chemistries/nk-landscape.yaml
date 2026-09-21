@@ -5,7 +5,8 @@ chemistries:
   intuition: >
     A dial for how rugged a fitness landscape is. A genotype's fitness is the
     average of per-gene contributions, and each gene's contribution depends on
-    itself plus K others chosen at random. K = 0 gives a single smooth peak;
+    itself plus K others (the next K genes along the genome, or K genes
+    chosen at random). K = 0 gives a single smooth peak;
     raising K towards N makes the landscape progressively more uncorrelated
     and multi-peaked. It is less a chemistry than a fitness function other
     models plug into, exposed through the same interface so it can be used
@@ -14,6 +15,7 @@ chemistries:
   book: "18.4.1; appendix (NKlandscape.py)"
   refs: ["[447]"]
   family: evolutionary-dynamics
+  archived: pruned
   kind: analysis
   constructive: false
   S: {repr: "binary genotypes of length N", definition: implicit}

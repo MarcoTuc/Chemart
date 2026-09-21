@@ -70,7 +70,7 @@ chemistries:
   phenomena:
     - "book eq. 9.17: with rules applied in index order, {a,b,a,a} -> {c,d} -> {e,f,f} -> {e,h,h}, a normal form (the system halts)"
     - "book eq. 9.18: with the reverse rule order the multiset expands without bound ({a,b,a,a} -> 6 a, 6 b, 1 d -> ...)"
-    - "[831] figs. 15-17: with heating probability p near 0 or 1 every calculation terminates (lambda_e = 0 or no cooling); for intermediate p calculations do not terminate and many cycles with many kinds of periods appear, the most kinds near p = 0.5 (lambda_e near 1)"
+    - "[831] figs. 15-17: with heating probability p near 0 or 1 most calculations terminate (lambda_e = 0 or no cooling); for intermediate p calculations do not terminate and many cycles with many kinds of periods appear, the most kinds near p = 0.5 (lambda_e near 1)"
     - "[831] fig. 3: Ru1 with maximal size 4 from {a,a,a,a} and the rule order r4, r1, r3, r2 gives {a,a,a,a} -> {b,a} -> {c,a,a} -> {c,a,a,a}"
     - "Brusselator-like oscillations of X and Y ([831] figs. 9-11, rule frequencies not published)"
     - "plant/herbivore/carnivore ecology ([828], [829]) and p53 signalling feedback loops ([832]); rules not accessible"

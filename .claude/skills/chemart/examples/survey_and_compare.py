@@ -7,10 +7,10 @@
 import numpy as np
 
 import chemart
-from chemart.catalog import load
+from chemart.catalog import active, load
 
 # ------------------------------------------------------- catalog-level survey
-entries = load()
+entries = active(load())          # the catalog, without the archive
 with_kinetics = [c for c in entries if "rate-constants" in c.provides]
 with_energy = [c for c in entries if "energies" in c.provides]
 both = [c for c in entries if {"rate-constants", "energies"} <= set(c.provides)]
@@ -37,7 +37,7 @@ def profile(cid, seed=1):
 
 print(f"{'chemistry':<26} {'S':>5} {'R':>6} {'rank':>5} {'laws':>5} {'cat':>5}  status")
 print("-" * 70)
-for cid in ["dimerization", "brusselator", "oregonator", "michaelis-menten",
+for cid in ["brusselator", "oregonator", "michaelis-menten",
             "matrix-chemistry", "prime-number-chemistry", "gard"]:
     p = profile(cid)
     print(f"{p['id']:<26} {p['species']:>5} {p['reactions']:>6} {p['rank']:>5} "
@@ -49,7 +49,7 @@ print("'laws' is the upper bound species - rank(S), not the number a chemistry")
 print("declares: most entries declare none, and a few declare fewer than the bound.")
 
 # ------------------------------------------------------- conservation laws
-# Use a chemistry that actually declares them: 31 of 98 do, and checking a
+# Use a chemistry that actually declares them: many do not, and checking a
 # declared law against S is the fastest way to catch a stoichiometry bug.
 net = chemart.generate_network("chameleon", seed=1)
 ids, R, P = net.matrices()

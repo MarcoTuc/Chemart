@@ -26,6 +26,31 @@ def test_every_entry_has_documented_params_or_says_why():
             assert c.params, f"{c.id} is ready or implemented but has no parameters"
 
 
+def test_archive_groups_are_known():
+    from dataclasses import replace
+
+    entries = load()
+    first = entries[0]
+    assert any("unknown archive group" in p for p in validate([replace(first, archived="attic")] + entries[1:]))
+    assert validate([replace(first, archived="artificial-life")] + entries[1:]) == []
+
+
+def test_archived_entries_leave_the_listings_but_still_run():
+    import chemart
+    from chemart.catalog import active
+
+    entries = load()
+    archived = {c.id for c in entries if c.archived}
+    assert archived and len(active(entries)) == len(entries) - len(archived)
+    assert not archived & {row["id"] for row in chemart.list_chemistries()}
+    full = chemart.list_chemistries(include_archived=True)
+    assert {row["id"] for row in full if row["archived"]} == archived
+    tools = {t["name"]: t for t in chemart.tool_definitions()}
+    assert not archived & set(tools["generate_network"]["input_schema"]["properties"]["chemistry"]["enum"])
+    assert chemart.describe_chemistry("tierra")["archived"] == "artificial-life"
+    assert chemart.generate_network("lotka-volterra", seed=0).reactions   # archived, still runnable
+
+
 def test_catalog_index_is_current():
     from pathlib import Path
 

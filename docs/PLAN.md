@@ -1,5 +1,10 @@
 # Chemart library: implementation plan (all 98 chemistries)
 
+> **Since then:** the catalog has been curated. Artificial-life systems and
+> entries set aside on review are kept in an archive (`archived:` in their
+> YAML); they are still implemented and tested, but no longer listed. The
+> [catalog](catalog/index.md) shows what it holds today.
+
 > **Status: complete.** All 98 chemistries are implemented (4 `book`,
 > 33 `book+decisions`, 61 `reconstructed`), the catalog validates with 0
 > problems, and the full suite passes with no xfails. The plan below is kept

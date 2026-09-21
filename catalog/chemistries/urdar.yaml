@@ -14,6 +14,7 @@ chemistries:
   book: "8.2.3"
   refs: ["[314]", "[315]", "[537]", "doi:10.1111/j.1558-5646.2010.01020.x", "doi:10.1007/s11538-013-9828-3"]
   family: evolutionary-dynamics
+  archived: pruned
   kind: generator
   constructive: true
   S:

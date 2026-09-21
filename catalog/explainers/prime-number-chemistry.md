@@ -1,0 +1,256 @@
+## Introduction
+
+The prime number chemistry is a test tube full of whole numbers. Two numbers
+meet at random; if the smaller one divides the larger one exactly, the larger
+one is replaced by the quotient, and the smaller one comes out unchanged. An
+`8` meeting a `4` becomes a `2`, while the `4` survives. An `8` meeting a `5`
+does nothing. Run this long enough and something appears that nobody asked
+for: the tube fills up with prime numbers. Nothing in the rule mentions
+primes. They accumulate because a prime has no divisor other than 1 and
+itself, so no collision can ever turn it into something else.
+
+The chemistry comes from Banzhaf, Dittrich and Rauhe's 1996 paper *Emergent
+computation by catalytic reactions*, one of three examples (with parity
+checking and sorting) of solving a computing problem with a simulated soup of
+reacting objects, a setting they place under the heading of emergent
+computation. For primes the paper's main message is a warning: the soup has
+to be large enough. In a small soup, a composite number may never meet a
+number that divides it, and the run gets stuck with non-primes left over.
+
+Banzhaf and Yamamoto use the same system as a teaching example throughout the
+book. Chapter 1 introduces number division (eqs. 1.4 and 1.5) to explain how a
+reaction can be more than a mathematical operation: the pair is sorted first,
+and a *filter condition* throws away results that are not whole numbers,
+making the collision *elastic* (a collision that changes nothing). Section
+2.5.2 then presents it as the standard example of a **constructive, implicit**
+chemistry. *Implicit* means the molecules and reactions are not listed but
+defined by a rule: the species are all integers from 2 upward, an infinite
+set, and whether two of them react follows from their values. *Constructive*
+means a run can produce species that were not there at the start. The
+appendix gives a Python implementation, `NumberChem.py`, which Chemart
+follows.
+
+That makes it the counterpart of the [colored chameleon chemistry](chameleon.md)
+of section 2.5.1: the chameleons have three species and a reaction list you
+can write out in full, while here no finite list of reactions exists, and
+which numbers will appear is only known by running the rule.
+[Matrix chemistry](matrix-chemistry.md) and [AlChemy](alchemy.md) are
+constructive too, but their molecules are strings and lambda-expressions, and
+a collision adds a third molecule while both reactants survive. Here one
+reactant is transformed and nothing is added. The book also writes a division rule for primes in the language
+[Gamma](gamma.md) (eq. 9.9), and the 1996 paper cites Gamma for prime
+computation. The N-economy, archived in Chemart, also uses natural numbers,
+as commodities: primes are raw materials and composites manufactured goods.
+
+## How it works
+
+### Molecules, reactions, and the reactor
+
+A molecule is an integer of 2 or more. The book leaves out 0 and 1 because
+they "behave rather exceptionally under division". Chemart names the species
+`n2`, `n3`, `n4`, ..., so that a count and a value are never confused: the
+reaction `n2 + n4 -> 2 n2` reads "a 2 and a 4 give two 2s".
+
+There is one reaction rule, the book's eq. 2.43:
+
+```
+s1 + s2 -> s1 + s2/s1      if s1 < s2 and s1 divides s2
+```
+
+and every other collision is elastic. The divisor `s1` is a **catalyst**: it
+takes part in the reaction and comes out unchanged. So a reaction never
+changes the number of molecules, only the value of one of them.
+
+The reactor is a **well-stirred multiset**: a bag of molecules with no
+spatial position, where any molecule can meet any other. One step, as in
+`NumberChem.py`, takes out two different molecules at random, puts them in
+order, divides the larger by the smaller if the division is exact, and puts
+both back. Time is counted in collisions, elastic ones included, and `M`
+collisions in a soup of `M` molecules make one **generation** (book §2.6.1),
+the time in which each molecule has, on average, taken part in two
+collisions.
+
+### A worked example
+
+Start from the three numbers 12, 2 and 3. Chemart's closure mode (explained
+under Using it) lists every reaction that can ever happen from them:
+
+```
+n2 + n12 -> n2 + n6
+n3 + n12 -> n3 + n4
+n2 + n6 -> n2 + n3
+n3 + n6 -> n3 + n2
+n12 + n6 -> n6 + n2
+n2 + n4 -> 2 n2
+n12 + n4 -> n4 + n3
+```
+
+Two new numbers, 6 and 4, can appear, and only 2 and 3 never appear on the
+consumed side of a reaction. Follow one run. If the 12 first meets the 2, it
+becomes 6 and the bag holds {2, 3, 6}. The 6 can then meet the 2 (and become
+3) or the 3 (and become 2). If the 12 first meets the 3, it becomes 4, and the
+4 can only meet the 2, ending as 2. Every path ends with a bag of three
+primes, but not always the same bag. In 200 soup runs from {2, 3, 12}, 157
+ended as {2, 2, 3} and 43 as {2, 3, 3}.
+
+This small case shows three things that hold in general. Primes are never
+consumed, so their count never goes down. The division does not copy the
+divisor, so the result is not the prime factorisation of the starting numbers:
+12 = 2 × 2 × 3, yet the bag can end as {2, 3, 3}, with a single 2. And every
+new number divides some number that was already present, so the set of
+numbers a starting bag can reach is finite, even though the chemistry as a
+whole has infinitely many species.
+
+### When a run gets stuck
+
+A composite number (a number with a divisor other than 1 and itself) can only
+change if a molecule that divides it is present. In the bag {4, 9}, neither
+number divides the other and nothing ever happens, although neither is prime.
+This is the *dead end* that Banzhaf, Dittrich and Rauhe found in small soups:
+each molecule is also one of the few "machines" that can act on others, and a
+small soup may not contain the divisor a composite needs.
+
+## Using it
+
+The default run above is the book's appendix experiment: `M = 100` numbers
+drawn uniformly from 2 to 1000 (`minn` and `maxn`, both ends included, so a
+number can be drawn twice), then 10,000 collisions, which is 100 generations.
+The network records what happened rather than what could happen (status
+`observed`): each reaction carries the number of times it fired, shown as
+`(x1)`, and `n162 + n324 -> n162 + n2` is 324 divided by 162.
+
+The rest of the run is in `net.extras`:
+
+```python
+a = net.extras["analysis"]
+a["effective_collisions"]            # 172    reactions out of 10,000 collisions
+len(a["new_numbers"])                # 104    numbers produced that were not drawn
+a["prime_fraction"][0], a["prime_fraction"][-1]   # (0.14, 1.0)
+net.extras["final_state"]            # {'n2': 10, 'n3': 10, 'n5': 6, 'n7': 5, ...}
+```
+
+`prime_fraction` holds the fraction of molecules that are prime at the start
+and after each generation (101 values here). In this run it was 0.14, 0.20,
+0.41, 0.67, 0.82, 0.90 and 0.97 at generations 0, 10, 20, ... 60, then
+reached 1.0 at generation 66 and stayed there: an S-shaped curve.
+`initial_state` is the drawn bag, `final_state` the bag at the end, and
+`extras["primes"]` lists the prime species among all numbers seen (51 here).
+The 201 species are the 97 distinct drawn numbers plus the 104 new ones.
+
+**A soup that invents nothing (book fig. 2.7).** Give each of 2 to 101 once
+with `numbers`, which replaces the random draw:
+
+```python
+net = chemart.generate_network("prime-number-chemistry", seed=1,
+                               numbers=list(range(2, 102)), iterations=20000)
+a = net.extras["analysis"]
+a["new_numbers"], a["prime_fraction"][0], a["prime_fraction"][-1]   # ([], 0.26, 1.0)
+```
+
+Every quotient of two numbers up to 101 is itself between 2 and 101, so no new
+species can appear: the run is not constructive, and the network has exactly
+the 100 starting species. It still ends all-prime, with 19 copies of 2 and 17
+of 3.
+
+**Soup size and dead ends (paper fig. 6).** The paper drew from 2 to 10,000
+and ran 700 generations. Here are ten seeds for each soup size:
+
+```python
+import statistics
+for M in (20, 50, 100, 200):
+    finals = [chemart.generate_network("prime-number-chemistry", seed=s, M=M,
+              maxn=10000, iterations=700 * M).extras["analysis"]["prime_fraction"][-1]
+              for s in range(10)]
+    print(M, round(statistics.mean(finals), 2), sum(f == 1.0 for f in finals))
+```
+```
+20 0.2 0
+50 0.51 1
+100 0.91 4
+200 1.0 9
+```
+
+The columns are soup size, mean final prime fraction, and runs that ended
+all-prime. The loop takes about half a minute, mostly for `M = 200`: cost
+grows with the number of collisions, here 140,000 per run.
+
+**Every reaction a bag can reach.** `method="closure"` is a Chemart addition,
+not in the book. Instead of simulating, it applies the rule to the distinct
+starting numbers, then to everything produced, until nothing new appears, as
+in the {2, 3, 12} example above. The result has status `complete`, since the
+closure is always finite, unless it exceeds `max_species` and is cut off
+(`truncated`). It records which reactions are possible, not how often they
+fire, and copies in the starting bag do not matter.
+
+## Results
+
+**Primes emerge as the non-reactive set.** The book's figure 2.7 follows the
+count of each number over the first 1,000 iterations in a soup that starts with each of
+2 to 101 once: "prime numbers emerge as stable (nonreactive) elements and the
+whole population tends to eliminate nonprime numbers". This is surprising
+at first, the book says, until one sees that "the reaction rule precisely
+determines primes as nonreactive". Chemart's tests check this on a closure: the numbers
+consumed by some reaction are exactly the ones that have a smaller divisor in
+the set, and none of them is prime. They also check, on a soup run, that every
+reaction follows eq. 2.43, that no reaction consumes a prime, and that the
+prime fraction never decreases from one generation to the next.
+
+**Sigmoidal growth to an all-prime soup.** The book describes the prime
+concentration as showing "a typical sigmoidal growth pattern", finally
+reaching 1.0. The paper's figure 5 shows one run with `M = 100` numbers from
+2 to 10,000 in which "the concentration of prime numbers increases until no
+non-prime is left", and calls the whole process the "emergence" of the feature
+prime. Chemart's tests run the book's default setting on ten seeds and require
+the prime fraction to rise from a mean below 0.3 to a mean above 0.95, and to
+grow through the run rather than only at the end.
+
+**New numbers only from a wide interval.** The book uses the two starting
+conditions to show what makes the chemistry constructive. Starting with each
+of 2 to 101 "doesn't produce new types of numbers". Drawing 100 numbers from 2
+to 1000 does, because the interval is much larger than the soup, and figures
+2.8 and 2.9 show numbers that "appear and disappear" while "primes emerge and
+stay". Chemart's tests reproduce both: no new numbers from 2 to 101, and new
+numbers from the default draw.
+
+**No prime factorisation.** Because the divisor is a catalyst, the book notes,
+"this AC does not produce the prime factorization of the initial set of
+numbers", which is why only a limited number of copies of each prime is left
+at the end. Chemart's test states the limit exactly: each molecule can only
+turn into divisors of its starting value, so a prime `p` can never end with
+more copies than there were starting multiples of `p`.
+
+**A phase transition in soup size.** The paper's main finding is that success
+depends critically on the size of the soup. For soup sizes up to 200 it
+measured the prime concentration after 700 generations, 30 runs per size. For
+`M < 40` the algorithm "runs mostly into a dead end" with many non-primes
+left; for `M > 100` it is "nearly always able to transform every number to
+prime number"; in between, the result fluctuates strongly from run to run.
+The paper compares this to a phase transition, with fluctuations growing
+near the critical point, and explains it by the numbers' double role: "the numbers
+can be viewed as simple machines that manipulate other numbers by dividing
+them", and a small soup "does not provide enough useful 'machines'" to start
+the avalanche of divisions seen in figure 5. Chemart's tests use a shorter
+version (200 generations, six seeds each): soups of 15 end with a mean prime
+fraction below 0.5 and never all-prime, and soups of 150 score at least 0.3
+higher. The ten-seed scan under Using it shows the same trend but is not a
+reproduction of the paper's 30-run curves: at `M = 100` only 4 of 10 runs
+ended all-prime (mean 0.91), and at `M = 200` 9 of 10.
+
+**Order matters for the details.** In its chapter on chemical computing
+(§17.1.1) the book gives the prime number chemistry as an example of a
+stochastic algorithm with a deterministic outcome: "The computation produces
+the same result whatever the order we choose to pick the molecules." That
+holds for the kind of result, a bag of primes, whenever the run does not
+stall. With the catalytic rule the exact bag can depend on the order, as the
+{2, 3, 12} example shows, and in a small soup whether the run stalls can
+depend on it too.
+
+## Further reading
+
+- Banâtre, J.-P. & Le Métayer, D. (1990). The Gamma model and its discipline
+  of programming. *Science of Computer Programming* 15, 55. Cited by the
+  1996 paper for prime number computation in a multiset language.
+- Berry, G. & Boudol, G. (1992). The chemical abstract machine. *Theoretical
+  Computer Science* 96(1), 217–248. The book cites it (ref. [113]) with the
+  1996 paper as a previous study of number division, although it is about
+  the [chemical abstract machine](cham.md) in general.

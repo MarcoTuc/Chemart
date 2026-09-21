@@ -1,0 +1,232 @@
+## Introduction
+
+The colored chameleon chemistry is the first of two worked examples that
+Banzhaf and Yamamoto give in chapter 2 of their book: a teaching model, not a
+research model. It takes a recreational maths puzzle from Peter Winkler's "Puzzled" column in
+*Communications of the ACM* (2009) and turns it into a chemistry. The book
+quotes the puzzle like this:
+
+> A colony of chameleons includes 20 red, 18 blue, and 16 green individuals.
+> Whenever two chameleons of different color meet, each changes to the third
+> color. [...] Is it possible that at the end of this period all 54 chameleons
+> are the same color?
+
+Read as chemistry, the chameleons are molecules of three species, red `r`,
+green `g` and blue `b`, and a meeting of two different colours is a reaction
+that turns both into the third colour. Meetings of two chameleons of the same
+colour change nothing. The number of chameleons never changes.
+
+The book uses it for one purpose: to show, on the smallest non-trivial case,
+how an *explicit* simulation that draws random pairs of molecules one
+collision at a time relates to the *rate equations* (ordinary differential
+equations, ODEs) that describe the same system with continuous
+concentrations. Banzhaf and Yamamoto say plainly that they are "not so much
+interested in the answer to this concrete question" as in the modelling. The
+puzzle's answer is still instructive: it is "no" for 20, 18 and 16, because of
+a conservation law that holds only in whole numbers, modulo 3. In Chemart that
+law is the entry's main contribution: it is a conserved quantity that the
+usual linear-algebra check for conservation laws does not find.
+
+It sits in book §2.5.1, "A Nonconstructive Explicit Chemistry". *Nonconstructive*
+means that all molecule types are known in advance (here, three); *explicit*
+means the reactions are listed one by one. Its companion in §2.5.2 is the
+[prime number chemistry](prime-number-chemistry.md), which is constructive and
+defined by a rule instead of a list. The other minimal fixture in the catalog,
+[reversible dimerization](dimerization.md), checks equilibrium; this one checks
+conservation laws.
+
+## How it works
+
+### Molecules and reactions
+
+There are three species and three reactions, one for each pair of different
+colours. This is the network the default call generates:
+
+```
+r + g -> 2 b  [mass-action k=1.0]
+r + b -> 2 g  [mass-action k=1.0]
+g + b -> 2 r  [mass-action k=1.0]
+```
+
+Each reaction takes two chameleons and gives back two, so the total is fixed
+and no outflow is needed to keep the population bounded. The book notes that
+the reactions are symmetric (`g` meeting `r` does the same as `r` meeting `g`),
+and that encounters of two chameleons of the same colour are *elastic*: they
+happen but change nothing.
+
+### The reactor: random encounters or rate equations
+
+The book gives two ways to run it. In the explicit simulation, the population
+is a list of 5,400 chameleons; each iteration draws two at random, and if
+their colours differ they are replaced by two of the third colour, put back in
+the slots the reactants came from. Starting from only red and blue, green
+appears quickly and the three colours level out at about one third each, then
+only fluctuate (book figure 2.5).
+
+In the ODE description, `x_r`, `x_g`, `x_b` are the fractions of each colour,
+summing to 1. With all rate constants equal to 1, mass-action kinetics gives the
+book's equations 2.40–2.42:
+
+```
+dx_r/dt = 2·x_g·x_b − x_r·x_b − x_r·x_g
+dx_g/dt = 2·x_r·x_b − x_g·x_b − x_g·x_r
+dx_b/dt = 2·x_r·x_g − x_b·x_r − x_b·x_g
+```
+
+The first term is the gain (two red from each `g + b` meeting), the others the
+losses. The only interior fixed point is `x_r = x_g = x_b = 1/3`.
+
+To compare the two, the book warns, the time scales must be matched, and the
+elastic collisions must be accounted for. Two chameleons drawn at random have
+the same colour with probability `p_e = x_r² + x_g² + x_b²`, so only a fraction
+`1 − p_e` of iterations are reactions, and the ODE time has to be corrected by
+that factor. From half red and half blue `p_e` is 0.5; at the fixed point it
+is 1/3. As the population grows, the fluctuations of the explicit simulation
+average out and it approaches the ODE (book figure 2.6).
+
+### Conservation laws, real and modular
+
+A *conservation law* is a weighted sum of species counts that no reaction
+changes. The standard way to find them is linear algebra: write the change
+each reaction makes as a column of the *stoichiometric matrix*, and look for
+weight vectors that are orthogonal to every column (the left null space). For
+this network that finds exactly one law, weights (1, 1, 1): the total.
+
+But there are more, which hold only as remainders after division by 3. Take the
+difference `r − g`. The reaction `r + g -> 2 b` lowers both by one, so the
+difference is unchanged; `r + b -> 2 g` changes it by −1 − 2 = −3; and
+`g + b -> 2 r` by +2 + 1 = +3. So `(r − g) mod 3` never changes, and by the same
+argument neither does `(g − b) mod 3`. These are integer invariants, and a
+real-valued null-space computation cannot see them, because −3 is not zero.
+
+That settles the puzzle. With 20 red, 16 green and 18 blue, `(r − g) mod 3 = 1`
+and `(g − b) mod 3 = 1`. If all 54 were one colour, the other two counts would
+both be 0, and both differences would be 0 mod 3 (54 is also a multiple of 3).
+Since the invariants cannot change, no sequence of meetings gets there. In
+general, the colony can end up all colour *k* only if the two other counts
+start congruent modulo 3.
+
+## Using it
+
+The generator returns the three reactions, the initial counts, and the
+conservation laws. It does not run a simulation; the reactor is up to you.
+
+The default is the setting of the book's figure 2.5: 5,400 chameleons, half
+red and half blue:
+
+```python
+net.initial_state             # {'r': 2700, 'g': 0, 'b': 2700}
+net.extras["conservation"]
+# [{'vector': {'r': 1, 'g': 1, 'b': 1}},
+#  {'vector': {'r': 1, 'g': -1}, 'modulus': 3},
+#  {'vector': {'g': 1, 'b': -1}, 'modulus': 3}]
+```
+
+A law with a `modulus` holds only modulo that number. Code that checks
+conservation laws against the stoichiometric matrix must take the residual
+modulo 3 for those two, or it will report them as violated.
+
+`M` sets the colony size and `x0` the starting fractions of (r, g, b), which
+must sum to 1; counts are `M · x0` rounded so that they add up to `M`. The
+puzzle's colony is:
+
+```python
+net = chemart.generate_network("chameleon", M=54, x0=[20/54, 16/54, 18/54])
+net.initial_state             # {'r': 20, 'g': 16, 'b': 18}
+```
+
+**The explicit simulation.** Chemart's generic multiset reactor,
+`chemart.soup.soup`, draws random pairs and applies a rule you supply. This
+reproduces the kind of run behind figure 2.5, for 10,800 iterations:
+
+```python
+import numpy as np
+from collections import Counter
+from chemart.soup import soup
+
+third = {frozenset("rg"): "b", frozenset("rb"): "g", frozenset("gb"): "r"}
+def react(a, b):
+    return None if a == b else (third[frozenset((a, b))],) * 2
+
+net = chemart.generate_network("chameleon")
+pop = [s for s, n in net.initial_state.items() for _ in range(n)]
+rng = np.random.default_rng(1)
+for step in range(6):
+    _, pop = soup(react, pop, 1800, rng)
+    print((step + 1) * 1800, Counter(pop))
+```
+
+With seed 1 the counts after each 1,800 iterations were:
+
+```
+ 1800  r 2183  g 1040  b 2177
+ 3600  r 1935  g 1401  b 2064
+ 5400  r 1855  g 1657  b 1888
+ 7200  r 1844  g 1718  b 1838
+ 9000  r 1851  g 1758  b 1791
+10800  r 1785  g 1782  b 1833
+```
+
+Green rises from zero towards 1,800 (one third), and `(r − g) mod 3` and
+`(g − b) mod 3` stayed 0 at every checkpoint, as they started. The run takes a
+few seconds.
+
+**The rate equations.** The network's rate constants give equations 2.40–2.42
+directly; the integrator in the
+[simulating guide](../guide/simulating.md#writing-your-own-integrator) works
+as is. Integrated from (0.5, 0, 0.5):
+
+```
+t =  0    0.5    0      0.5
+t =  1    0.380  0.240  0.380
+t =  2    0.349  0.302  0.349
+t =  4    0.335  0.329  0.335
+t = 10    0.333  0.333  0.333
+```
+
+**Small colonies.** A colony of one colour is a dead end: every meeting is then
+elastic. It is reachable only when the modular invariants allow it, and likely
+only when the colony is small. Over 100 seeds of 5,000 iterations each, starting
+half red and half blue (both invariants 0), the colony ended all one colour
+in 100 runs with 6 chameleons, 79 with 12, and 0 with 30. The puzzle's colony
+of 54 never did, and cannot.
+
+## Results
+
+This is a textbook example, not a published model, so its "results" are the
+three things the book uses it to show. Chemart reproduces all three in the
+runs above; its tests check only the network and its laws.
+
+- **The total is conserved.** Every reaction is two in, two out. The test in
+  `tests/chemistries/test_w1_structure.py` checks that the default colony has
+  5,400 chameleons (2,700 red, 0 green, 2,700 blue) and that the law (1, 1, 1)
+  is orthogonal to every reaction.
+- **Relaxation to equal thirds.** From only two colours, the explicit
+  simulation moves to about one third each and then fluctuates (book figure
+  2.5, 5,400 chameleons over 10,800 iterations); the ODE goes smoothly to
+  (1/3, 1/3, 1/3), and matches the explicit simulation once time is corrected
+  for elastic collisions (figure 2.6). No test checks the dynamics; the runs
+  under *Using it* show it.
+- **The modulo-3 invariants, which make the puzzle unsolvable.** The same test
+  checks that `(r − g)` and `(g − b)` change only by multiples of 3 in every
+  reaction. The book gives the puzzle's answer, "no", citing Winkler's solution
+  column, and adds that reaching one colour, even where the invariants allow
+  it, is "extremely unlikely" in a large population, because the most
+  frequent colours meet most often. The small-colony runs above illustrate
+  that point.
+
+What Chemart does not reproduce: the book's figures come from its own Python
+code (`Chameleons.py` in the PyCellChemistry package of the book's appendix)
+with a randomised initial condition, "virtually equal" red and blue; Chemart's
+default uses exactly equal counts, and it provides no chameleon-specific
+simulator or ready-made time rescaling between the two descriptions.
+
+The book comes back to the example once, in §2.6.1 "Measuring Time", as the
+case that shows why elastic collisions must be taken into account when the
+time of a stochastic simulation is compared with that of an ODE. No later work
+building on it is described in the book.
+
+## Further reading
+
+- The book's appendix lists `Chameleons.py` among the PyCellChemistry examples,
+  downloadable from <http://www.artificial-chemistries.org>.

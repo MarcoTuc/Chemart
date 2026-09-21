@@ -1,6 +1,6 @@
 ---
 name: chemart
-description: Generate, inspect, simulate and compare chemical reaction networks from Chemart — a library holding all 98 artificial chemistries in Banzhaf & Yamamoto's *Artificial Chemistries* (MIT Press, 2015), from the Brusselator and Oregonator to AlChemy, Tierra, Avida, matrix chemistry, RAF sets, P systems and DNA computing. Use this skill whenever the user wants an artificial chemistry or an abstract CRN: naming any catalogued chemistry, asking for a reaction network to analyse or simulate, comparing chemistries by what they supply (kinetics, energetics, conservation laws, space, compartments), exploring constructive or open-ended chemistries, or adding a new chemistry to the catalog. Also use it when someone asks for "a toy CRN", "an artificial chemistry", a model of autocatalysis / self-replication / origin-of-life / protocells, or wants to drive Chemart from an LLM tool loop. Prefer it over hand-rolling a reaction network from memory — the catalogued ones are sourced and tested, and a hand-rolled Brusselator will not match the book.
+description: Generate, inspect, simulate and compare chemical reaction networks from Chemart — a library of the artificial chemistries in Banzhaf & Yamamoto's *Artificial Chemistries* (MIT Press, 2015), from the Brusselator and Oregonator to AlChemy, matrix chemistry, RAF sets, P systems and DNA computing, with artificial-life systems such as Tierra and Avida kept in an archive. Use this skill whenever the user wants an artificial chemistry or an abstract CRN: naming any catalogued chemistry, asking for a reaction network to analyse or simulate, comparing chemistries by what they supply (kinetics, energetics, conservation laws, space, compartments), exploring constructive or open-ended chemistries, or adding a new chemistry to the catalog. Also use it when someone asks for "a toy CRN", "an artificial chemistry", a model of autocatalysis / self-replication / origin-of-life / protocells, or wants to drive Chemart from an LLM tool loop. Prefer it over hand-rolling a reaction network from memory — the catalogued ones are sourced and tested, and a hand-rolled Brusselator will not match the book.
 allowed-tools: Read Write Edit Bash
 compatibility: Requires the Chemart repository and its uv environment. Run everything through `uv run` from the repo root (Python 3.12+, numpy/scipy/pyyaml, plus rdkit and ViennaRNA for a few entries). No network access needed for the built-in catalog; the optional Chemart Hub (shared chemistries and networks, ids like `ada/my-chem`) talks to `$CHEMART_HUB_URL`.
 metadata:
@@ -9,12 +9,12 @@ metadata:
 
 # Chemart — a mart of artificial chemistries
 
-Chemart turns 98 published artificial chemistries into one uniform,
+Chemart turns published artificial chemistries into one uniform,
 JSON-friendly interface. Each one generates a **chemical reaction network**:
 species, reactions with reactant/product stoichiometry, optional rate laws,
 and the provenance to reproduce it.
 
-The point is comparability. The Brusselator and Tierra have nothing in common
+The point is comparability. The Brusselator and AlChemy have nothing in common
 as models, but both hand back the same record, so you can hold them side by
 side, count conservation laws, simulate the ones with kinetics, and export any
 of them the same way.
@@ -31,7 +31,7 @@ already in the right place — the repo root is three levels up from this file.
 ```bash
 cd <repo>                    # the directory containing chemart/ and catalog/
 uv sync                      # once
-uv run chemart list          # sanity check: 98 entries
+uv run chemart list          # sanity check: a JSON list of the catalog
 ```
 
 From another directory, point `uv` at the project instead of cd-ing:
@@ -84,8 +84,8 @@ will find it. `observed` means these are the reactions that *fired in a
 simulation*, each carrying a firing `count`; absence of a reaction is evidence
 about that run, not about the chemistry.
 
-**Zero reactions is legal.** `swarm-chemistry` defines motion rather than
-transformation, and is the only entry whose default network has no reactions:
+**Zero reactions is legal.** `swarm-chemistry` (archived) defines motion rather
+than transformation, and is the only entry whose default network has no reactions:
 `net.reactions == []`, with the law in `net.extras["interaction_law"]`.
 `summary()` says so rather than looking broken. Code that walks reactions
 should handle the empty case.
@@ -102,7 +102,7 @@ Full field-by-field spec: `references/network-record.md`.
 
 | You want to… | Go to |
 |---|---|
-| find the right chemistry out of 98 | `references/finding-chemistries.md` |
+| find the right chemistry, or read about the archive | `references/finding-chemistries.md` |
 | understand every field of the record | `references/network-record.md` |
 | simulate the dynamics / plot time courses | `references/simulating-dynamics.md` + `scripts/simulate.py` |
 | compare chemistries, find conservation laws, study closures | `references/comparing-and-analysing.md` + `scripts/survey.py` |
@@ -138,16 +138,18 @@ reliable starting points:
 
 - **oscillation / pattern** — `brusselator`, `oregonator`, `repressilator`
 - **enzyme kinetics** — `michaelis-menten`, `hill-kinetics`
-- **evolution / selection** — `quasispecies`, `replicator-equation`, `ecolab`
+- **evolution / selection** — `jain-krishna`, `random-catalytic-networks`
 - **autocatalysis, origin of life** — `kauffman-autocatalytic-sets`, `raf`,
   `bagley-farmer`, `chemoton`, `gard`
 - **constructive / open-ended** (species set grows) — `matrix-chemistry`,
   `alchemy`, `combinator-chemistry`, `prime-number-chemistry`
-- **digital organisms** — `tierra`, `avida`, `corewar`, `coreworld`
 - **rewriting formalisms** — `gamma`, `p-systems`, `kappa-calculus`, `mgs`
-- **spatial / agent** — `squirm3`, `swarm-chemistry`, `sr-loops`
+- **spatial / agent** — `squirm3`, `sr-loops`, `flow-ac`
 - **wet chemistry in silico** — `dna-hpp`, `dna-automaton`,
   `self-propelled-droplets`
+
+Digital organisms (`tierra`, `avida`, `corewar`, `coreworld`) and `swarm-chemistry`
+are artificial life, kept in the archive: run them by id only when asked for.
 
 `scripts/survey.py` answers the harder questions ("which chemistries give me
 both energies and conservation laws?") without guessing.

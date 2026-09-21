@@ -16,6 +16,7 @@ chemistries:
   book: "10.7.1; ecology 8.2.3; evolving distributed algorithms 17.3.2"
   refs: ["[19]", "[16]", "[21]", "[22]", "[567]", "[628]", "[629]", "[467]", "[468]", "doi:10.1162/106454604773563612", "doi:10.1038/nature01568"]
   family: automata
+  archived: artificial-life
   kind: generator
   constructive: true
   S:
@@ -94,6 +95,7 @@ chemistries:
     - "evolved decentralised synchronization and desynchronization with group selection on demes and germline replication (Knoester & McKinley 2011; book 17.3.2)"
   notes: >
     The observed network of a short run is a sample of genotype space: with the
-    default mutation rates about a quarter of births give a new genotype, most
-    of them neutral nop-C changes. Set copy_mut_prob, divide_ins_prob and
+    default mutation rates a little over half of all births give a new
+    genotype (55% over seeds 1-5), and about four in five of the ancestor's
+    direct mutants differ from it only in its nop-C filler. Set copy_mut_prob, divide_ins_prob and
     divide_del_prob to 0 for a pure replication network of the ancestor.

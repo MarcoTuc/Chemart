@@ -28,7 +28,7 @@ Derived views, computed rather than stored: `provides`, `matrices()` returning
 
 Everything is plain JSON — no numpy scalars, no objects — so
 `Network.from_dict(net.to_dict())` round-trips exactly. That round trip is the
-format's contract and is tested for all 98 entries.
+format's contract and is tested for every entry.
 
 Full field-by-field detail is in [The network record](reference/record.md).
 
@@ -57,7 +57,7 @@ from the record — yet they are exactly what sets the propensity
 `k·[s1]·[s2]`, and *which* species catalyses *which* reaction is frequently the
 entire content of the model.
 
-**74 of 98** entries produce catalytic reactions. Whole analyses are defined in
+Most entries produce catalytic reactions. Whole analyses are defined in
 terms of that relation: autocatalytic-set detection and the RAF algorithm ask
 "which species catalyses which reaction", and the answer is unrecoverable from
 `S` alone.
@@ -68,7 +68,7 @@ terms of that relation: autocatalytic-set detection and the RAF algorithm ask
 
 ### 2. For constructive chemistries there is no finite matrix
 
-**51 of 98** entries are *constructive*: the species set is open and grows as
+Many entries are *constructive*: the species set is open and grows as
 reactions produce new molecules. `prime-number-chemistry` ranges over the
 naturals; `alchemy` over lambda normal forms; `stringmol`, `typogenetics` and
 `squirm3` over arbitrary-length strings.
@@ -143,21 +143,21 @@ A related rule: where a source publishes no rate constant, the entry stores
 Consumers need to ask, before running an analysis, whether a network has real
 rate constants or whether Chemart picked 1.0 for everything. `net.provides`
 answers that, computed from content on every access. Rolled up, the catalog
-falls into three tiers:
+falls into three tiers (the [catalog index](CATALOG.md) counts each):
 
-| tier | meaning | entries |
-|---|---|---|
-| **topology** | who reacts with whom; rates are yours to choose | all 98 |
-| **kinetics** | the chemistry prescribes rate constants or a rate law | 44 |
-| **thermodynamics** | per-species energies, or reverse rates constrained by ΔG | 11 |
+| tier | meaning |
+|---|---|
+| **topology** | who reacts with whom; rates are yours to choose (every entry) |
+| **kinetics** | the chemistry prescribes rate constants or a rate law |
+| **thermodynamics** | per-species energies, or reverse rates constrained by ΔG |
 
 Two details about the thermodynamic tier change how it must be stored:
 
 - **Consistency is a constraint between forward and reverse rates, not extra
   data.** In `bigan-conservative-crn` the forward constants are drawn
   log-uniformly and the backward ones computed so detailed balance holds. Only
-  3 entries claim `thermodynamic-consistency`.
-- **Mass conservation deserves its own field.** **31** entries carry an exact
+  a few entries claim `thermodynamic-consistency`.
+- **Mass conservation deserves its own field.** Many entries carry an exact
   atom or mass vector `m` with `Sᵀm = 0`, declared in
   `extras["conservation"]`. Some laws are **modular** rather than zero —
   `chameleon`'s hold mod 3 — so a real-valued nullspace computation will not

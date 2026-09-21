@@ -16,6 +16,7 @@ chemistries:
   book: "18.5, 18.6"
   refs: ["[301]", "[302]", "[303]", "[304]", "[840]", "[345]", "[658]"]
   family: systems-biology
+  archived: pruned
   kind: generator
   constructive: false
   S:
@@ -96,7 +97,7 @@ chemistries:
   fidelity: reconstructed
   sources:
     - "K. Kaneko & T. Yomo (1997). Isologous diversification: a theory of cell differentiation. Bulletin of Mathematical Biology 59(1):139-196, doi:10.1007/BF02459474. Preprint: arXiv:adap-org/9606002, https://arxiv.org/abs/adap-org/9606002 - the model (eqs. 1-9), the five stages of section 5, the parameters of the captions of Figs. 4, 6, 15 and 18, and appendix 1 (winner-takes-all)"
-    - "K. Kaneko & T. Yomo (1998). Emergence of rules in cell society: differentiation, hierarchy, and stability. Bulletin of Mathematical Biology 60:659-687, doi:10.1006/bulm.1997.0034. Preprint: arXiv:adap-org/9802002, https://arxiv.org/abs/adap-org/9802002 - the quadratic-enzyme variant (eqs. 1-3), the distance between cell types (eqs. 5-6), the cell-type automaton 0 -> {0, 1, 2}, 1 -> {3, 4, 5} and the statistics of oscillatory networks"
+    - "C. Furusawa & K. Kaneko (1998). Emergence of rules in cell society: differentiation, hierarchy, and stability. Bulletin of Mathematical Biology 60:659-687, doi:10.1006/bulm.1997.0034. Preprint: arXiv:adap-org/9802002, https://arxiv.org/abs/adap-org/9802002 - the quadratic-enzyme variant (eqs. 1-3), the distance between cell types (eqs. 5-6), the cell-type automaton 0 -> {0, 1, 2}, 1 -> {3, 4, 5} and the statistics of oscillatory networks"
     - "C. Furusawa & K. Kaneko (1998). Emergence of multicellular organisms with dynamic differentiation and spatial pattern. Artificial Life 4(1):79-93 (the book's ref [301]; the spatial 2D-grid version, not implemented - no open copy was found)"
   decisions:
     - "The book (18.5) describes the model only qualitatively, so it is reconstructed from Kaneko & Yomo (1997). Every term of the returned network is one term of their eq. (1): X0 + Xl -> 2 Xl at e0 x(0) x(l) for the source paths S(l) = 1, Xm + Xj -> Xl + Xj for each catalytic path Con(m, l, j), and Xl -> DF at gamma for the paths to the division factor P(l) = 1. All of this is checked against the equations in the tests."

@@ -1,0 +1,438 @@
+## Introduction
+
+The machine-tape chemistry is a population model of two kinds of binary
+string that need each other to reproduce. *Tapes* are short circular strings
+of bits that play the part of genetic descriptions. *Machines* are slightly
+longer strings that act: a machine binds to a tape, walks along part of it
+like the read/write head of a tiny Turing machine, rewriting bits as it goes,
+and the rewritten tape is then *translated* into a new machine. One encounter
+therefore yields a new machine and a new tape, and both parents survive:
+
+```
+machine + tape -> machine + tape + new machine + new tape
+```
+
+Takashi Ikegami and Takashi Hashimoto, at the University of Tokyo, introduced
+it in 1995 (a conference paper at ECAL 95 and a longer paper in the journal
+*Artificial Life*). Their starting point is von Neumann's answer to the puzzle
+of self-reproduction: a machine cannot copy itself by inspecting itself, but
+it can if it carries a separate description that it reads. Ikegami and
+Hashimoto asked what happens when many such machines and descriptions live
+together. A tape can then give rise to different machines depending on which
+machine reads and rewrites it, machines make mistakes, and a slight change can stop reproduction
+altogether. Their question was how self-reproduction by description can
+become stable in such a crowd, and how a system's own read/write actions
+relate to the mutations imposed on it from outside.
+
+They distinguish two kinds of mutation. *Passive mutation* is external noise:
+random bit flips while a machine reads a tape. *Active mutation* is the
+machine's own doing: a machine that rewrites a tape instead of copying it
+faithfully produces a changed tape deterministically, every time. The main
+finding is that the amount of external noise decides what kind of organisation
+emerges. With little noise the population settles on a single machine that
+copies itself and its own tape exactly. With moderate noise, after a long
+turbulent phase, a dense *core network* of some 40 to 60 machines appears,
+held together by loops in which machines rewrite tapes rather than copy them,
+and this network survives when the noise is switched off. In the authors'
+words, "self-replication not as an individual but as a network now becomes
+important".
+
+It is a simulation model. Banzhaf and Yamamoto describe it as the last example
+of chemistries based on Turing machines (book §10.5.4). Its neighbours there
+also let strings act on strings: in [Typogenetics](typogenetics.md) a strand
+is read into an enzyme that edits strands, in the
+[pattern-processing polymers](mccaskill-polymer-tm.md) of McCaskill every
+string is at once processor and tape, and in the
+[automata reaction](automata-reaction.md) every 32-bit word is both automaton
+and input. What sets this chemistry apart is the strict split into two
+populations, so that no machine can persist without a tape that encodes it,
+and the use of noise as the control knob. Its world is also very small, with
+65,536 possible machines and 128 possible tapes, so that every reaction is a
+table lookup and the interest lies entirely in the network of who makes whom.
+The loops it finds are compared throughout with Eigen and Schuster's
+replicators (see [quasispecies](quasispecies.md)); the paper also relates its
+levels of organisation to Fontana's [AlChemy](alchemy.md).
+
+## How it works
+
+### Tapes and machines
+
+A **tape** is a ring of 7 bits. Each tape has a marked starting site, its
+*source*, and Chemart names a tape by its bits read clockwise from the source,
+in hexadecimal: `T01` is the ring `0000001` read from its source. Because the
+ring can be read from any of its 7 sites, the same ring appears under up to 7
+names. The papers name a ring by its smallest reading, so `T01`, `T02`, `T04`,
+... are all the papers' "T1"; Chemart keeps this translation in
+`net.extras["paper_names"]`.
+
+A **machine** is 16 bits, written as 4 hex digits. The last two digits are
+its **head** and **tail**, two 4-bit patterns it looks for on a tape. The
+first two digits are its **transition table**. The machine has an internal
+state of one bit, and at each step it looks at the pair (tape bit, machine
+state), which can be 00, 01, 10 or 11. The table says, for each of these four
+cases, which bit to write on the tape (the first hex digit, the "T' column")
+and which state to go into (the second hex digit, the "M' column").
+
+### One reaction, step by step
+
+The papers' Figure 1 works through machine `Mebbd` reading the tape
+`0011011`. The machine's digits give:
+
+```
+T' column  e = 1110   write 1, 1, 1, 0  for (tape, state) = 00, 01, 10, 11
+M' column  b = 1011   next state 1, 0, 1, 1
+head       b = 1011
+tail       d = 1101
+```
+
+**Binding.** Starting at the source and going clockwise, the machine looks
+for its head pattern among the 7 windows of 4 consecutive bits. `1011` first
+appears at site 3 (sites are numbered 0 to 6 from the source; the window
+wraps round the ring). It then looks for its tail at a different site,
+continuing clockwise after the head: `1101` is found at site 2, six sites on.
+The stretch from the head's first site up to the site before the tail's
+first site is the **reading frame**, here sites 3, 4, 5, 6, 0, 1, so its
+length is `L = 6`. A machine whose head or tail does not occur on a tape
+cannot react with it. The frame length is always between 1 and 6.
+
+**Rewriting.** The machine walks along the frame. Half of the machines in the
+population start in state 0, the other half in state 1. Here is Chemart's
+trace for the start in state 1, one line per step (tape, then machine state):
+
+```
+0011011 1
+0010011 1
+0010111 0
+0010111 1
+0010110 1
+1010110 0
+1110110 1
+```
+
+At the first step the machine sits on site 3, which holds a 1, in state 1:
+case 11, so it writes 0 and stays in state 1. It then moves to site 4 and
+so on, round the ring, until the frame ends. The tape that comes out is
+`1110110`.
+
+**Translation.** The new machine is read off the rewritten tape. Chemart reads
+16 bits clockwise from the source, going round the 7-bit ring more than twice,
+so most bits are used more than once. The even-numbered bits 0, 2, 4, 6 give
+the T' column, the odd bits 1, 3, 5, 7 the M' column, then bits 8 to 15,
+alternately, the head and the tail. For `1110110` this gives `ebbd` again.
+So `Mebbd` reading `0011011` produces a copy of itself, but it does not copy
+the tape: it writes a different one, `1110110`. It rewrote 5 of the 6 bits in
+its frame. From state 0 it rewrites 4 and writes `1111110`, which translates
+into a different machine, `Meffd`.
+
+This bit layout follows the papers' Figure 1. Their text, and the book, give a
+different order and start the translation at the head's binding site instead
+of the source; Chemart takes the figure, which is the version that
+reproduces the published machines (see the implementation decisions below).
+One consequence: in Chemart a tape read from a given source always
+translates into the same machine. Which machine reads a tape matters only
+through what it writes, and the same ring read from another source gives
+another machine.
+
+### Exact copies and active mutation
+
+Machine `M1002` has the T' column `1` = `0001`, so it writes 0 in every
+case except (tape 1, state 1), the M' column `0` = `0000`, so it always
+returns to state 0, the head `0000` and the tail `0010`. On `T01` =
+`0000001` it finds its head at site 0 and its tail at site 4, so its frame is the four zeros at
+sites 0 to 3. It writes 0 over each of them, so the tape comes out unchanged,
+and `T01` translates into `M1002`. The pair copies both itself and its tape,
+from either starting state. This is the papers' **minimal self-replicating
+loop**.
+
+The **active mutation rate** of a reaction measures how far it is from such
+exact copying: `μA = w / L`, the number of bits the machine rewrote divided
+by the length of the frame. It is 0 for `M1002` on `T01`, and 5/6 for `Mebbd`
+on `0011011` from state 1. The papers average it over all reacting pairs,
+weighting each pair by the product of the populations of its machine and
+tape, to get `⟨μA⟩`. Chemart also averages over the two starting states.
+
+### The reactor: two capped populations
+
+Machines and tapes live in two separate pools, each with room for `N`
+objects. The simulation runs in discrete generations. In each generation:
+
+1. Each machine or tape has a concentration `f = n / N`.
+2. A fraction `c` of each pool, `c N` new machines and `c N` new tapes, is
+   made by reactions. The products are shared among all pairs that can react,
+   in proportion to `f_M × f_T`, half from each starting state.
+3. The old populations shrink by the same fraction (`d = c`; both are 0.6 in
+   the papers), so the pools stay full.
+4. Populations are rounded down to whole numbers, so anything with less than
+   one copy disappears.
+
+The consequence is the model's basic selection pressure. A machine is only
+ever made by translating a tape, so a machine whose encoding tape nobody
+produces loses 60% of its numbers each generation and is gone in a few
+generations. To persist, machines must form a closed loop: each machine's
+tape must be made by some machine that is itself sustained. The papers
+distinguish two kinds of loop. In an **Eigen-Schuster loop**, named after
+Eigen and Schuster's hypercycles, every tape in the loop is copied exactly;
+the minimal loop `M1002` + `T01` is the simplest case, and its active
+mutation is zero. In a **double autocatalytic loop**, machines produce one
+another in a cycle and the tapes also form a cycle, each tape being rewritten
+into the next, so the tapes are reproduced as a set rather than one by one.
+The papers call the first a "DNA-like replicating system" and the second an
+"RNA-like editing system".
+
+**External noise.** Each bit of the reading frame is flipped with probability
+`μP` (the parameter `noise`). A fraction `ε = 1 − (1 − μP)^L` of each
+reaction's products therefore comes out mutated, and the rest is exact.
+Chemart applies the flips to the tape the machine writes and translates the
+mutant machine from the mutated tape, drawing the mutants at random (the
+papers used a Monte Carlo step too). Noise is the only way a machine or tape
+that no machine present makes can appear. When a new tape ring appears, it is
+given a random source; a tape whose ring is already present takes the source
+of the copies already there, as the papers specify.
+
+## Using it
+
+The default run is not one of the published figures, but it uses the papers'
+starting point: 10 random machines and 3 random tapes, each pool of 1,000
+objects shared equally among the seeds, external noise 0.05, for 150
+generations. The papers ran up to 3,000 generations. In the run above, the
+population ended with 61 kinds of machine and 19 kinds of tape. The records are in `net.extras`:
+
+```python
+net.extras["final_state"]          # populations at the end, largest first
+# {'Mbff7': 265, 'Meddd': 164, 'M3ee7': 146, 'M666c': 94, ...}
+a = net.extras["analysis"]         # one entry per generation
+a["distinct_machines"][::15]       # [10, 54, 58, 67, 59, 55, 53, 61, 59, 57, 61]
+a["distinct_tapes"][::15]          # [3, 18, 19, 19, 19, 19, 19, 19, 19, 19, 19]
+a["active_mutation"][::15]         # ⟨μA⟩: 0.17 at the start, then about 0.05-0.07
+a["reading_length"][::15]          # ⟨L⟩: 3.3 at the start, then about 4.9
+len(net.extras["noise_induced"])   # 766
+```
+
+The network lists every reaction that fired at least once, with `(x n)` the
+number of generations in which it fired. Reactions that a machine performs
+on its own carry a mass-action rate constant `k` (0.6 if both starting states
+give the same products, 0.3 each if they differ) and the frame length `L`.
+Reactions that happened only through a noise error have no rate; their
+indices are in `extras["noise_induced"]`. That is why the first reactions
+printed above, such as `M7922 + T22 -> M7922 + 2 T22 + M0aa1`, have no
+bracket: the written tape was mutated back into `T22`, and the machine
+translated from it is not the one `M7922` makes on its own.
+
+With `method="closure"` Chemart instead builds the noise-free network: every
+machine and tape that can be reached from the seeds by exact reactions, with
+every reaction between them. This is a Chemart addition, useful for
+analysing a set of machines without running the population dynamics.
+
+**The minimal loop.** Seeded with `M1002` and `T01` and no noise, the pair
+fills both pools and nothing else ever happens:
+
+```python
+net = chemart.generate_network("ikegami-hashimoto", machines=["1002"], tapes=["01"],
+                               noise=0.0, generations=30)
+net.reactions[0].to_text()
+# 'M1002 + T01 -> 2 M1002 + 2 T01  [mass-action k=0.6 frame_length=4]  (x30)'
+net.extras["final_state"]          # {'M1002': 1000, 'T01': 1000}
+```
+
+**A machine without its tape.** Add `M3006`, whose tape is not present. It
+starts with half the machine pool and is gone within 12 generations:
+
+```python
+net = chemart.generate_network("ikegami-hashimoto", machines=["1002", "3006"], tapes=["01"],
+                               noise=0.0, generations=12)
+net.initial_state                  # {'M1002': 500, 'M3006': 500, 'T01': 1000}
+net.extras["final_state"]          # {'M1002': 999, 'T01': 1000}
+```
+
+**The papers' first parasites.** The closure of `M1002`, `M3006` and `M1222`
+with the tapes `T01`, `T05` and `T03` is the chain of the papers' Figure 7a–c:
+
+```python
+net = chemart.generate_network("ikegami-hashimoto", method="closure",
+                               machines=["1002", "3006", "1222"], tapes=["01", "05", "03"])
+```
+```
+M1002 + T01 -> 2 M1002 + 2 T01  [mass-action k=0.6 frame_length=4]
+M1002 + T05 -> M1002 + 2 T05 + M3006  [mass-action k=0.6 frame_length=2]
+M3006 + T03 -> M3006 + 2 T03 + M1222  [mass-action k=0.6 frame_length=4]
+```
+
+`M1002` copies itself on `T01`, but on `T05` it makes `M3006`, and `M3006` on
+`T03` makes `M1222`. Neither `M3006` nor `M1222` makes a copy of itself: they
+live off the loop.
+
+**Low noise, starting from the loop.** With `noise=0.04`, as in the papers'
+Figure 2a, the loop is invaded. Over 150 generations (under a second):
+
+```python
+net = chemart.generate_network("ikegami-hashimoto", seed=0, machines=["1002"], tapes=["01"],
+                               noise=0.04, generations=150)
+```
+
+With seeds 0 and 2, `M1002` stays the most common machine (412 and 502 copies
+at the end), up to 27 and 29 kinds of machine appear, and `⟨μA⟩` stays below
+0.08. `M3006` and `M1222` are among the machines that appear. With seed 1 the
+loop is lost: `⟨μA⟩` rises to 0.57 and the pools end dominated by `Mffff` and
+its tape `T7f`, another exact self-replicator.
+
+**Long runs and core networks.** The papers' core-network experiments run for
+3,000 generations with the noise turned off at generation 2,000 (`noise_off`).
+A run from random seeds takes 5 to 50 seconds, depending on how many kinds of
+machine the noise keeps alive:
+
+```python
+net = chemart.generate_network("ikegami-hashimoto", seed=0, noise=0.055,
+                               generations=3000, noise_off=2000)
+```
+
+What such runs give is described under Results.
+
+## Results
+
+### Machines need their tapes, and loops
+
+Ikegami and Hashimoto start their simulations from about 10 random machines
+and 2 or 3 tapes. Their first observation is that "a machine without
+description tape is unstable and smoothly removed from the system", so a
+starting set that contains none of its machines' tapes dies out unless noise
+makes the tapes by mistake. A machine can also get its tape from another
+machine, but then that machine needs its own tape, and so on: to last, the
+producers must close into a loop. Chemart reproduces the washing out: its
+tests seed `M1002` and `M3006` with only `T01` and check that `M3006` has
+vanished after 12 generations while `M1002` fills the pool.
+
+### Low noise: the minimal self-replicating loop
+
+With low external noise, the papers report that "many initial configurations"
+end in the minimal loop of `M1002` and its tape `T1`, which copies itself
+exactly and so has zero active mutation. They call this state *metastable*:
+it stays when the noise is turned off, but more noise destabilises it. They
+also note that `M1002` is the machine produced by the largest variety of
+machines, which is why random populations so often end up with it.
+
+Chemart's tests check that `M1002` + `T01` is a fixed point without noise
+(one reaction, both pools full, `⟨μA⟩ = 0`, `⟨L⟩ = 4`), that the five
+self-replicating pairs the Artificial Life paper lists (`M1002`/`T1`,
+`M2004`/`T1`, `Mdffb`/`T3f`, `M9dd3`/`T1d` and `Mbdd7`/`T37`) do copy
+themselves, and, by enumerating all machine-tape pairs, that `M1002` is the
+machine made by the most different machines. Two differences from the paper
+are worth knowing. The paper prints the fifth pair as `Mbdd1` with `T37`,
+which cannot work (its tail cannot bind that tape), so Chemart uses `Mbdd7`.
+And with this encoding the five are not the only self-replicators: counting
+every machine that reproduces itself and its tape exactly from at least one
+starting state, there are 18, including the all-zeros pair `M0000`/`T0`, the
+all-ones pair `Mffff`/`T7f` and `Mbff7`/`T3f`. The paper does not say how its
+five were chosen. In Chemart's runs from random seeds these other
+self-replicators are what the population usually collapses to: in the 35
+long runs of the scan below, the pairs left at the end were `Mbff7`/`T3f`,
+`Mffff`/`T7f` and `M0000`/`T0`, never `M1002`. In the default run above
+`Mbff7` is the most common machine.
+
+### Higher noise: parasites and oscillations
+
+Raising the noise makes many new machines, most of them *parasites*: machines
+that cannot reproduce without the help of others. In the papers' Figure 2a
+(noise 0.04), the parasite `M1222` and its tape `T3` invade the minimal loop,
+with `M3006` and `T5` also present, and bursts of active mutation are caused
+by the parasite. At noise 0.055 (Figure 2b), from the same start, the
+populations swing in large, irregular oscillations and `⟨μA⟩` oscillates
+too; eventually the oscillation crashes, and the system either restarts from
+the surviving loop or dies out. The papers draw the sequence as reaction
+graphs (Figure 7): `M1002` is exploited by `M3006` (made by `M1002` from
+`T5`), then by `M1222` (made by `M3006` from `T3`), then by whole parasitic
+networks and "hyper-parasitic" networks hanging on those, which vanish
+again if the host loop weakens.
+
+Chemart reproduces the first steps. Its tests check that the noise-free
+closure of `M1002`, `M3006` and `M1222` with their tapes is exactly the chain
+of Figure 7a–c, and that runs from `M1002` + `T01` at noise 0.04 (seeds 0 to
+2, 150 generations) produce `M3006` together with tape T5 and `M1222`
+together with tape T3, with non-zero active mutation and more than 5 kinds
+of machine at some point. The large oscillations of Figure 2b are not checked.
+
+### Moderate noise: core networks
+
+The central result. At noise between about 0.05 and 0.1, the unstable
+oscillations settle, around generation 600 in the papers' Figure 3 (noise
+0.07), into a stable structure with a high active mutation rate. If the noise
+is turned off after that point, much of the diversity remains; if it is
+turned off before, the system falls back to the minimal loop. The authors
+call the structure that remains a **core network**. In Figure 4 (noise 0.08)
+the transition happens at generation 1,100 and the noise is switched off at
+2,000: the number of kinds of machine drops abruptly, and what is left is
+"a true core network". In Figure 5 the core oscillates after the noise is
+removed, and the number of kinds of machine even grows.
+
+The Artificial Life paper sorts the end states into three kinds: the minimal
+loop (active mutation fully suppressed); non-trivial fixed points, in which
+"most core networks have roughly 60 different machines but there is an
+exceptional core with roughly 40 machines"; and oscillatory states, where
+populations and even the set of species present oscillate, with high average
+active mutation. Figure 6 plots the final number of kinds of machine and
+tape, and the final `⟨μA⟩`, against the noise level: rich cores appear only
+between a lower and an upper noise bound, and at high noise the system again
+ends in a minimal loop or dies out. The result depends on the starting set.
+Oscillating cores were found only from starts containing `M9dd3` with `T1d`
+or the `T37` pair; the other three pairs mostly led to fixed-point cores. A
+core found at noise 0.05 was smaller and used more tapes rich in 0s, while
+the other fixed cores used tapes rich in 1s.
+
+Dissecting a core network (Figure 8), they find four embedded loops, two of
+the Eigen-Schuster type and two double loops. Their interpretation: at low
+noise exact replication (the DNA-like loops) can survive, but at high noise
+it is hard to maintain, and the network switches to loops that edit tapes
+(the RNA-like loops), so that "passive mutation caused by external noise is
+replaced by active mutation". They compare the transition to the
+"homeochaos" of Kaneko and Ikegami's earlier host-parasite model, and point
+to a biological case of edited, rearranged genetic material, the formation
+of the macronucleus in the ciliate *Oxytricha nova*.
+
+**What Chemart shows.** None of the core-network results is covered by the
+tests, and Chemart does not reproduce Figures 3 to 8. The papers do not
+state the pool size `N` or the initial populations, so Chemart's defaults
+(`N = 1000`, seeds sharing it equally) are a guess. A scan in the style of
+Figure 6, five random starts (seeds 0 to 4) at each noise level, 3,000
+generations, noise off at 2,000, gave the following numbers of kinds of
+machine left at the end:
+
+| noise | 0.02 | 0.04 | 0.055 | 0.07 | 0.08 | 0.1 | 0.13 |
+|---|---|---|---|---|---|---|---|
+| seed 0 | 37 | 41 | 59 | 31 | 37 | 24 | 2 |
+| seed 1 | 3 | 3 | 3 | 3 | 7 | 6 | 4 |
+| seed 2 | 6 | 17 | 2 | 2 | 4 | 2 | 2 |
+| seed 3 | 1 | 2 | 2 | 15 | 2 | 2 | 2 |
+| seed 4 | 2 | 2 | 2 | 2 | 2 | 2 | 2 |
+
+Most runs collapse to one self-replicating pair, often with a parasite or
+two, when the noise stops. Some keep a large set of machines with a high
+active mutation rate: seed 0 keeps 24 to 59 kinds of machine, with `⟨μA⟩`
+between 0.49 and 0.66, at every noise level up to 0.1. These resemble the
+papers' fixed-point cores. But they depend far more on the starting set than
+on the noise, they appear at low noise (0.02) as well as in the papers'
+window, and every end state was a fixed point: none of the 35 runs
+oscillated after the noise was turned off. So the scan does not reproduce
+Figure 6.
+
+### Cells of core networks
+
+The book adds that the core networks are so stable that there is no further
+development once they appear, and that Ikegami and Hashimoto went on to
+enclose reaction systems in cells, between which substances diffuse, which
+"can result in complex, coevolutive behavior" (their 1997 Artificial Life V
+paper). The Artificial Life paper mentions "glue" machines exchanged between
+cells of core networks, which make the cells differentiate. Chemart does not
+implement the cell model: the Artificial Life V paper was not available.
+
+## Further reading
+
+- von Neumann, J. (1966). *Theory of Self-Reproducing Automata*, ed. A. W.
+  Burks. University of Illinois Press (cited by Ikegami and Hashimoto in
+  its 1968 printing). The constructor-plus-description
+  scheme this chemistry starts from.
+- Ikegami, T. & Hashimoto, T. (1997). Replication and diversity in
+  machine-tape coevolutionary systems. In C. G. Langton & K. Shimohara (eds.),
+  *Artificial Life V*, 426–433. MIT Press. The cell model (book reference
+  [420]).
+- Kaneko, K. & Ikegami, T. (1992). Homeochaos: dynamic stability of a
+  symbiotic network with population dynamics and evolving mutation rate.
+  *Physica D* 56, 406–429.

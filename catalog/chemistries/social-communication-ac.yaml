@@ -15,6 +15,7 @@ chemistries:
   book: "20.4"
   refs: ["[234]", "https://www.jasss.org/6/1/3.html", "[235]"]
   family: non-chemical
+  archived: pruned
   kind: generator
   constructive: false
   S:

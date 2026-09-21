@@ -10,7 +10,8 @@ chemistries:
     particles repel water and so cluster; give them an orientation and the
     clusters become filaments that close into compartments. The enclosure
     retains the autocatalyst while food and waste pass through. There is no
-    genome and no replication, only self-maintenance.
+    genetic material and no evolution mechanism (book 6.3.2), although the
+    autocatalyst replicates and the published protocells grow and divide.
   origin: "Ono & Ikegami, 1999-2003"
   book: "6.3.2"
   refs: ["[637]", "[639]", "[641]", "[538]"]

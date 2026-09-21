@@ -78,6 +78,6 @@ chemistries:
     - "Salzberg 2007 (abstract): continuous emergence of complex self-similar topologies, novel reaction pathways, seemingly open-ended diversity"
   notes: >
     Chemart observation, not a published result: random soups of two-state machines usually collapse to one
-    species within a few thousand collisions, typically a small machine that reproduces itself under
+    species within a few thousand collisions, a machine of tens of states that reproduces itself under
     self-composition (s o s = s). The module exports canonical, parse, compose, elementary and number for
     working with the machines directly.

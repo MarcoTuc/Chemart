@@ -1,6 +1,6 @@
 # Chemart Hub
 
-The catalog holds the 98 chemistries of the book. The **Chemart Hub** is where
+The catalog holds the chemistries of the book. The **Chemart Hub** is where
 everything else goes: chemistries people invent or reconstruct, and reaction
 networks they want to hand to someone else. It is a website you can browse,
 and `chemart` talks to it directly, so a shared chemistry loads with the same
@@ -28,7 +28,7 @@ namespace is a user or an organisation.
 | runs code on your machine | yes: needs `trust_remote_code=True` | never |
 | files | `chemart.yaml`, `generator.py` (+ helper `.py` files), `preview.json`, `README.md` | `network.json`, `README.md`, optional `chemart.yaml` |
 
-The official `chemart/` organisation holds the 98 book chemistries. Those repos
+The official `chemart/` organisation holds the book chemistries. Those repos
 are **built-in backed**: they contain the catalog entry but no code, because
 the generator ships with the library. Loading `chemart/tierra` runs your
 installed `tierra` generator and needs no trust flag.
@@ -114,7 +114,7 @@ uv run chemart check my-chem        # the checks the hub will apply, run locally
 uv run chemart push my-chem         # -> you/my-chem
 ```
 
-`chemart.yaml` is a catalog file, with the same schema as the 98 built-ins
+`chemart.yaml` is a catalog file, with the same schema as the built-ins
 (`catalog/SCHEMA.md` in the repository), plus a `hub:` block:
 
 ```yaml
@@ -183,7 +183,7 @@ uv run --package chemart-hub chemart-hub create-user you --admin     # prompts f
 uv run --package chemart-hub chemart-hub create-org chemart --owner you
 uv run --package chemart-hub chemart-hub serve                       # http://127.0.0.1:8000
 
-# in another terminal: stock the official shelf with the 98 built-ins
+# in another terminal: stock the official shelf with the built-ins
 uv run --package chemart-hub chemart-hub token you > /tmp/token
 uv run --package chemart-hub chemart-hub seed --token "$(cat /tmp/token)"
 ```

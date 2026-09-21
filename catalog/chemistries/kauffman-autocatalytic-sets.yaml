@@ -25,7 +25,7 @@ chemistries:
     arity: [1, 2, 3]
     scheme: "condensation A + B -> AB and cleavage AB -> A + B for every split of every polymer, each optionally catalysed by a polymer E: A + B + E <-> AB + E"
   A:
-    reactor: graph-rewrite
+    reactor: "n/a - static graph analysis"
     dilution: "food set inflow keeps the system out of equilibrium"
     notes: "the original analysis is graph-theoretic and static, with no kinetics"
   params:

@@ -9,8 +9,7 @@ chemistries:
     them, and reaction rules fire irreversibly when two ions meet - a.m with
     ~a.n becomes m, n. Concurrency is then just chemistry: independent
     molecules react in parallel, and non-determinism is which partner happens
-    to collide. The heating/cooling pair is also the one place in these
-    formalisms where reversibility is marked explicitly.
+    to collide. Heating and cooling are reversible; reaction rules are not.
   origin: "Berry & Boudol, 1990"
   book: "9.3"
   refs: ["[113]", "[422]", "doi:10.1145/96709.96717", "doi:10.1016/0304-3975(92)90185-I", "doi:10.1109/32.385973"]
@@ -48,7 +47,7 @@ chemistries:
       structural transition. Subsolutions in rule schemata are a solution variable S or {|m|}, to
       avoid multiset matching.
   A:
-    reactor: [maximally-parallel, compartments]
+    reactor: [well-stirred-multiset, compartments]
     dilution: none
     notes: >
       A cham may apply any number of rules in parallel provided no molecule is used twice, and
@@ -87,8 +86,8 @@ chemistries:
     - "external sum (sec. 4.2): {|a.~b.0 | ((~a.0 | b.0) [] q)|} exposes the valence ~a of its left summand as ~a.l:<0◁{|b.0|},{|q|}>; after the reaction the left projection discards q and cooling the airlock gives {|~b.0, 0, b.0|}"
     - "heating and cooling are reversible: every heating transition is undone by the corresponding cooling (sec. 2.2, 3.2)"
   notes: >
-    The book notes that heating/cooling reversibility is the only place in its rewriting systems where
-    pairs of rules are marked as thermodynamic inverses. The CHAM is the basis of the chemical
+    The book notes that heating and cooling are reversible while reaction rules are irreversible
+    (section 9.3). The CHAM is the basis of the chemical
     rewriting systems on multisets (ARMS, section 9.4) and of SOAS (see `soas`). The module exports
     parse_molecule, parse_solution, parse_rules, machine_rules, Machine, transitions, closure, unfold
     and membranes for direct use.

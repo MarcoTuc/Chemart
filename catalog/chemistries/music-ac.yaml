@@ -6,9 +6,12 @@ chemistries:
     Composition without a fitness function. A molecule is a stack of lines of
     musical elements with a displacement, so notes, chords and harmonic
     functions can sit in registered columns. Recombination rules join
-    fragments that fit stylistically - a melody line only extends in ways the
-    chord beneath it allows - and a phrase is finished exactly when no rule
-    matches it any more. The style is in the rule set rather than in an
+    fragments that fit stylistically - a melody grows only by steps to a
+    neighbouring note, a bar only takes a chord that contains its first note,
+    and bars are only joined along cadence rules - and a phrase is finished
+    when it is cut out and capped with Start and Stop, after which no rule
+    matches it unless it still carries an avoid note. The style is in the
+    rule set rather than in an
     evaluation step, so every product is well formed by construction.
   aliases: ["Miura-Tominaga music chemistry", "algorithmic music composition with an artificial chemistry"]
   origin: "Miura & Tominaga, 2006 (homophonic); Tominaga & Setomoto, 2008 (polyphonic)"

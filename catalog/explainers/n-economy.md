@@ -1,0 +1,211 @@
+## Introduction
+
+The N-economy (for "natural number economy") treats the production side of an
+economy as if it were a set of chemical reactions. A firm that turns labour
+and raw materials into a product is read as a reaction that consumes some
+"molecules" and makes others. The goods are labelled by natural numbers:
+prime numbers stand for raw materials, and a manufactured good carries a
+number that is a product of primes, so that factorising it shows which raw
+materials went into it. The number 2 stands for labour and 3 for money.
+
+The model comes from Straatman, White and Banzhaf (2008), "An artificial
+chemistry-based model of economies", in the proceedings of Artificial Life
+XI. Their full model is agent-based and has two halves: a
+production system, whose agents are firms, and a consumption system, whose
+agents are households, joined by the flow of goods and services and by a
+market that sets prices. The artificial-chemistry part is the production
+system. The idea of numbering goods this way comes from an earlier web
+page on a "natural number economy" by Herriott and Sawmill (book
+reference [377]). On the economics side, the book relates the production
+system to the von Neumann technology matrix, a classical table of which
+inputs each technology turns into which outputs; von Neumann's model finds an
+equilibrium by setting prices. Banzhaf, who co-wrote both the model and the
+book, writes there: "Here we are not so much interested in the equilibrium
+features of this model as we are in its similarity with an artificial
+chemistry."
+
+Banzhaf and Yamamoto describe it in book §20.3, "Economic Systems", in the
+chapter "Beyond Chemistry and Biology", which collects uses of artificial
+chemistries outside chemistry and biology. It is a simulation model. The book's
+account is short: one example production system, one figure from the
+original paper, and a general form for production reactions. The book also says plainly that
+it "is not an artificial chemistry in pure form, but rather a mixture with a
+market and an agent-based model". Its neighbours in the same chapter are
+[nuclear reaction networks](nuclear-reaction-networks.md) (§20.2), another
+case of listing reactions outside chemistry, and the
+[artificial chemistry of social communication](social-communication-ac.md)
+(§20.4). The [prime number chemistry](prime-number-chemistry.md) also uses
+numbers as molecules, but there the numbers react by arithmetic (division),
+so the reactions follow from the numbers. In the N-economy the numbers are
+only labels and the reactions are written down by hand. Chemart implements
+only the production system, as a fixed list of reactions.
+
+## How it works
+
+### Goods, technologies and reactions
+
+The molecules are goods. The book's example uses seven:
+
+```
+P = {2, 3, 5, 13, 104, 130, 260}
+```
+
+2 is labour, 3 is money, 5 and 13 are raw materials, and 104, 130 and 260 are
+manufactured goods. Chemart records each good's prime factorisation as its
+structure: `130` is `2*5*13`, `260` is `2^2*5*13` and `104` is `2^3*13`. In
+the original idea, a firm's output is "literally the products of these
+numbers": combining labour (2), good 5 and good 13 gives good 130 = 2 × 5 × 13.
+
+A firm can only make a product if it has the matching *technology* (the book
+also says *skill*). Each technology is a reaction with integer
+*stoichiometry*: whole numbers of units in and whole numbers of units out.
+The book's production system (its equation 20.6) has five, and these are the
+five reactions of Chemart's default network:
+
+```
+2 2 -> 2 5
+2 2 + 2 5 + 2 13 -> 3 130
+3 2 + 3 130 -> 6 260
+6 2 + 6 260 -> 6 104
+6 104 -> 13 2
+```
+
+Here `2 13` means "two units of good 13". Read the second line: two units of
+labour, two of good 5 and two of good 13 make three units of good 130. The
+book calls good 13 "a free resource (e.g., sunlight)". The last reaction turns
+good 104 back into labour. Money (3) is in the product set but in none of the
+five reactions; in the full model it belongs to the market.
+
+### A production system in balance
+
+The book says the example "was constructed such that it is in balance". One
+way to see this is to run every reaction once and add up what each good gains
+and loses. Using Chemart's stoichiometric matrices:
+
+```python
+import numpy as np
+import chemart
+
+net = chemart.generate_network("n-economy")
+goods, consumed, produced = net.matrices()
+change = (produced - consumed).toarray()      # net change of each good, per reaction
+once_each = change @ np.ones(len(net.reactions), dtype=int)
+print(dict(zip(goods, once_each.tolist())))
+```
+
+```
+{'2': 0, '3': 0, '5': 0, '13': -2, '104': 0, '130': 0, '260': 0}
+```
+
+Labour, for example, is used 2 + 2 + 3 + 6 = 13 times and produced 13 times.
+After one round of all five technologies every good is back where it
+started, except that two units of the free resource 13 have been used up. The
+chain is a cycle driven by the free resource.
+
+### What the numbers do not do
+
+The numbers carry a good's composition, but the reactions do not conserve
+prime factors. The first reaction, `2 2 -> 2 5`, turns labour into a
+different prime, and `6 2 + 6 260 -> 6 104` makes 104 = 2³ × 13, which is not
+2 × 260. So the arithmetic does not force any conservation law on this
+system, and Chemart does not claim one (see the decisions below).
+
+### The general form
+
+The book then sketches a simpler artificial economy, "more akin to an AC",
+in which the agents themselves act as catalysts and consumption is written
+like production, with some kind of waste as output. It proposes that
+general reactions of this form "could model an economy":
+
+```
+α1 G1 + α2 G2 + … + αm Gm → β1 G1 + … + βm Gm + βm+1 Gm+1 + … + βm+n Gm+n
+```
+
+where `G1 … Gm` are the input goods, `αi` and `βi` are non-negative whole
+numbers with `βi ≤ αi` (an input may be partly left over but not multiplied),
+and `Gm+1 … Gm+n` are the new goods the process makes. The agent that runs
+the process is the catalyst: it is needed but not consumed, and could be
+written on both sides. The book adds that, unlike a molecule, such a catalyst
+"should be able to assume different states, e.g., based on skills and
+energy".
+
+### The reactor in the original model
+
+In Straatman and colleagues' model, the reactions are run by production
+agents organised into "a cellular-automata like grid", and a separate consumption
+system of households, with a market, closes the economy. The formal
+specification below lists this as a two-dimensional lattice reactor with
+consumption agents and a market. None of this is in Chemart, which produces
+only the reaction network: there are no rates, no agents, no grid and no
+dynamics.
+
+## Using it
+
+The default call returns the book's equation 20.6 exactly: seven goods, five
+reactions. The seed does nothing, because the generator draws no random
+numbers, and `net.extras` is empty. Each species' name is its number, and its
+`structure` is its factorisation (`260` has structure `2^2*5*13`). The good
+`3` (money) is an isolated species, since no reaction uses it.
+
+You can write your own production system with the two parameters listed
+below: `product_set`, the goods, and `technology`, one entry per production
+process, each an `in` and an `out` mapping from good to number of units. For
+example, a single firm that combines labour with raw materials 7 and 11 into
+the good 2 × 7 × 11 = 154:
+
+```python
+net = chemart.generate_network(
+    "n-economy",
+    product_set=[2, 3, 7, 11, 154],
+    technology=[{"in": {"2": 1, "7": 1, "11": 1}, "out": {"154": 1}}],
+)
+print(net.to_text())
+print({s.id: s.structure for s in net.species})
+```
+
+```
+2 + 7 + 11 -> 154
+{'2': '2', '3': '3', '7': '7', '11': '11', '154': '2*7*11'}
+```
+
+The generator checks that every good is a whole number of at least 2 and that
+every amount is a positive whole number, and it refuses a technology that
+names a good outside `product_set`:
+
+```
+ValueError: technology[0].out: good '6' is not in product_set
+```
+
+It does not check that an output is the product of its inputs; the book's own
+example does not always follow that rule. Generation is instant.
+
+## Results
+
+**The published simulation.** The book shows one figure from Straatman and
+colleagues (its figure 20.6): a typical run of the production system of
+equation 20.6, with production agents on a grid. It describes "the noisy rise and fall of certain products,
+which seem to equilibrate around iteration 300". The book gives no other
+numbers, and the original paper could not be obtained for this page, so its
+further findings are not reported here.
+
+Chemart does not reproduce this run. It generates the production reactions
+but not the agents, the grid, the market or the consumption system, so there
+is no time course to compare. What the tests check
+(`tests/chemistries/test_w1_structure.py`, `test_n_economy_default_is_book_eq_20_6`)
+is that the default network is exactly the five reactions of equation 20.6,
+and that good 260 carries the factorisation `2^2*5*13`.
+
+**Later work.** The book lists Straatman's artificial economy among the
+artificial-chemistry platforms that have aimed at open-ended evolution
+(§20.4), but it does not report results from that line of work, and none are
+given here.
+
+## Further reading
+
+- Straatman, B., White, R. & Banzhaf, W. (2008). An artificial
+  chemistry-based model of economies. In *Proceedings of Artificial Life XI*,
+  pp. 592–602. MIT Press. The original model (book reference [816]).
+- Herriott, J. & Sawmill, B. Web-economy as a self-organizing systems [sic].
+  <http://www.redfish.com/research/webEconomyIdeas/> (last accessed by the
+  book's authors on 11 October 2013). The "natural number economy" web page
+  (book reference [377]).

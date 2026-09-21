@@ -21,7 +21,7 @@ chemistries:
     definition: explicit
     arity: [1, 2]
     scheme: "A + Y --k1--> X ; X + Y --k2--> P ; B + X --k3--> 2X + Z ; 2X --k4--> Q ; Z --k5--> f Y"
-  A: {reactor: [ode, continuous-space], dilution: "A and B buffered; reaction-diffusion on a grid for spatial patterns"}
+  A: {reactor: [ode, lattice-2d], dilution: "A and B buffered; reaction-diffusion on a grid for spatial patterns"}
   params:
     - {name: k1, type: float, default: 1.0, min: 0, role: kinetic, meaning: "A + Y -> X"}
     - {name: k2, type: float, default: 10.0, min: 0, role: kinetic, meaning: "X + Y -> P"}

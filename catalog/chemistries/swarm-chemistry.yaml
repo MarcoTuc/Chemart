@@ -15,6 +15,7 @@ chemistries:
   book: "11.4.2"
   refs: ["[746]", "[747]", "[748]", "[749]", "[709]", "[259]"]
   family: spatial
+  archived: artificial-life
   kind: generator
   constructive: false
   S:

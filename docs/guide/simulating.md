@@ -7,9 +7,10 @@
 
 ## Which networks can be simulated at all
 
-You need rate constants. **44** of the 98 entries carry them or a rate law; the
-rest are topology or structure only, by the nature of the model. Tierra has no
-rate constants because Tierra is not that kind of object.
+You need rate constants. Many entries carry them or a rate law (the
+[Catalog](../catalog/index.md) counts them); the rest are topology or structure
+only, by the nature of the model. The Chemical Casting Model has no rate constants
+because it is not that kind of object.
 
 ```python
 import chemart
@@ -23,21 +24,18 @@ A network can be *partially* rated. Reactions with `rate=None` have no
 propensity, so an integrator cannot fire them; treat a mixed network as a
 modelling question rather than a bug.
 
-**29 entries** integrate cleanly at default parameters — fully rated, fixed
-species set, no spatial or compartment structure to lose:
+These integrate cleanly at default parameters — fully rated, fixed species
+set, no spatial or compartment structure to lose:
 
-`analog-function-crn`, `arn`, `bagley-farmer`, `bigan-conservative-crn`,
-`brusselator`, `chameleon`, `dimerization`, `ecolab`, `farmer-immune`,
-`hill-kinetics`, `jain-krishna`, `kappa-calculus`, `logistic-chemistry`,
-`lotka-volterra`, `matrix-chemistry`, `mcs-bl`, `mechanical-self-assembly`,
-`metabolic-robot-controller`, `michaelis-menten`, `naming-game-ac`,
-`nk-landscape`, `okamoto-switch`, `quasispecies`, `random-catalytic-networks`,
-`replication-death`, `replicator-equation`, `repressilator`,
-`selection-equation`, `synthon`.
+`analog-function-crn`, `bagley-farmer`, `bigan-conservative-crn`, `brusselator`,
+`chameleon`, `farmer-immune`, `hill-kinetics`, `jain-krishna`, `kappa-calculus`,
+`matrix-chemistry`, `mcs-bl`, `mechanical-self-assembly`,
+`metabolic-robot-controller`, `michaelis-menten`, `okamoto-switch`,
+`random-catalytic-networks`, `repressilator`, `synthon`.
 
-!!! warning "Six more are integrable only as a mean field"
-    `chemoton`, `disperser`, `gard` and `isologous-diversification` define
-    **compartments**; `flow-ac` and `oregonator` define **space**. Their
+!!! warning "Some more are integrable only as a mean field"
+    `chemoton`, `disperser` and `gard` define **compartments**; `flow-ac`
+    and `oregonator` define **space**. Their
     networks carry rate constants, so an integrator will happily run them — and
     silently discard structure that is part of the published model. Treat a
     well-mixed run of these as an approximation you chose, not as the model.

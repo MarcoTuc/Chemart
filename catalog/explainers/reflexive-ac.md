@@ -1,0 +1,309 @@
+## Introduction
+
+The reflexive artificial chemistry is a chemistry of **finite state machines**
+that act on each other. A finite state machine (FSM) is the simplest abstract
+machine of computer science: a handful of states, and a table saying, for each
+state and each input symbol, which state to move to and which symbol to write
+out. Drawn on paper it is a small graph: states are nodes, and each arrow is
+labelled `input/output`. In this chemistry such a graph is a molecule. When two
+molecules meet, one machine's output is fed into the other, and the combined
+machine that results, again a graph, is the product.
+
+Chris Salzberg proposed it in "A graph-based reflexive artificial chemistry"
+(*BioSystems*, 2007), written while he was at the University of Tokyo. The
+starting point is a divide he saw in the classic models of computation. In an
+FSM, in the abstract's words, "the machine (state-transition graph) and input
+string (series of binary digits) are fundamentally distinct objects". The same
+split between machine and tape runs through Turing machines and von Neumann's
+self-reproducing automata, and through the machine-tape chemistries in this
+catalog. Salzberg's system dissolves it: the input data is written as a graph
+of the same kind as the machine, so any graph can play either role, and a graph
+can be composed with itself. The abstract calls this a construction process
+that is reflexive, "graphs interact with their own topological structure to
+generate a product", and argues that reflexivity is "a key element missing from
+earlier model chemistries". An earlier paper by Salzberg, Sayama and Ikegami
+(2004) had set out the same programme under the name "a tangled hierarchy of
+graph-constructing graphs".
+
+What sets it apart from its neighbours is this symmetry. In the
+[machine-tape chemistry](ikegami-hashimoto.md) and in
+[Laing's molecular machines](laing-molecular-machines.md), machines and tapes
+are different kinds of object. In the [automata reaction](automata-reaction.md)
+any 32-bit word can be either, but within one collision the first word is the
+machine and the second the tape. [AlChemy](alchemy.md) and
+[combinator chemistry](combinator-chemistry.md) apply one expression to another,
+again an operator and an operand. In reflexive composition the two machines
+swap the roles of sender and receiver at every step of the computation, so
+neither is only the processor or only the data.
+
+Banzhaf and Yamamoto mention it in one sentence, at the end of their chapter on
+rewriting systems (book §9.8): a chemistry that "deconstructs finite state
+machines and their input data into a graph that rewrites a graph, and in
+principle itself". Chemart's version is a reconstruction. The 2007 paper could
+not be obtained, so the reaction is rebuilt from a 2025 paper by Salzberg and
+Sayama that restates the formulation, and from the 2004 paper.
+
+## How it works
+
+### The molecules: pointed state machines
+
+Every molecule is a machine over a small alphabet of symbols, usually `{0, 1}`.
+Each state has at most one outgoing link per input symbol, labelled with the
+symbol it writes; one state is marked as the *current* state, the machine's
+pointer. Links may be missing, which is how input data fits in: a tape is a
+chain of states with one link each, so a tape is a (very poor) machine too.
+
+The 2025 paper names the 256 complete machines with two states and two symbols
+by a number, in the manner of Wolfram's numbering of cellular automaton rules.
+For each of the four (state, input) cases it writes the destination state and
+the output as two bits, and reads the eight bits as a binary number. Machine
+`M45`, the default seed, is `00101101`:
+
+```
+M45@S0 q0[0:q0/0 1:q1/0] q1[0:q1/1 1:q0/1]
+```
+
+This is the readable form that Chemart stores with each species: state `q0`
+goes to `q0` on input 0 and to `q1` on input 1, writing 0 either way; state
+`q1` goes to `q1` on 0 and to `q0` on 1, writing 1 either way. The state is the
+running sum of the inputs modulo 2, and the output always reports the state
+before the move. The paper calls M45 "the minimal representation of an adding
+machine modulo 2".
+
+A species name is a compact text for the same graph, with states numbered in
+the order a breadth-first walk from the pointer reaches them. State `j` lists
+its links for inputs 0, 1, ... as `destination/output` (or `-` for a missing
+link), and states are separated by `;`. M45 is `0/0,1/0;1/1,0/1`. States the
+pointer cannot reach are dropped, and two graphs that differ only in how their
+states are labelled get the same name. So `M45@S1`, M45 with the pointer on the
+other state, becomes the same species as `M120`: the paper lists 120 as M45's
+"mirror", the machine with its two states swapped.
+
+### The reaction: reflexive composition
+
+Take a sender machine `s` in state `x` and a receiver machine `r` in state
+`y`. An input symbol `i` arrives. The sender reads it, moves along its link and
+writes a message; the receiver reads the message, moves and writes the output.
+Then the two swap roles: the machine that was receiving sends next time. In the
+paper's notation, with `δ` the transition and `φ` the output of a state
+(eqs. 1-2):
+
+```
+o(t)      = φ_r(φ_s(i))       output: the sender's message piped into the receiver
+q_r(t+1)  = δ_s(i)            the sender's new state moves to the receiver position
+q_s(t+1)  = δ_r(φ_s(i))       the receiver's new state moves to the sender position
+```
+
+The paper states the purpose of the swap: it is "essential to ensuring that no
+element of the system acts exclusively as information processor or information
+carrier. We refer to this symmetry between sender and receiver as
+'reflexivity'."
+
+The pair of machines, run this way, is itself a machine. Its states are pairs
+(state in the sender position, state in the receiver position), and following
+every input from the starting pair traces out a new graph. That graph is the
+product of the reaction. Both reactants survive and act as catalysts:
+
+```
+s1 + s2 -> s1 + s2 + s1∘s2        (s1 sends first, s2 receives)
+```
+
+Order matters: `s1∘s2` and `s2∘s1` are usually different machines. When `s1`
+and `s2` are different, a product state also records which of the two is
+currently sending, so the product has at most `2 × |s1| × |s2|` states, where
+`|s|` is a machine's number of states. When a machine meets a copy of itself,
+the two are indistinguishable and the product has at most `|s|²` states.
+
+### Worked example: M45 reads itself
+
+The first reaction of the default network is M45 composed with itself:
+
+```
+2 0/0,1/0;1/1,0/1 -> 2 0/0,1/0;1/1,0/1 + 0/0,1/0;2/1,3/1;3/0,2/0;1/1,0/1
+```
+
+Walk it from the start, with both copies in state 0, the pair `(0, 0)`. On
+input 1 the sender moves to state 1 and writes 0 (it reports its old state).
+The receiver reads that 0, stays in state 0 and writes 0. The swap puts the
+receiver's new state first, giving `(0, 1)`, a new product state, reached with
+output 0. On input 0 from `(0, 0)` both stay put: a loop with output 0. That is
+product state 0 in the name above, `0/0,1/0`. Continuing from `(0, 1)` reaches
+`(1, 0)` and `(1, 1)`, and the walk closes after four states:
+
+```
+q0[0:q0/0 1:q1/0] q1[0:q2/1 1:q3/1] q2[0:q3/0 1:q2/0] q3[0:q1/1 1:q0/1]
+```
+
+Here state `qj` stands for the pairs `(0,0)`, `(0,1)`, `(1,0)`, `(1,1)` in
+that order, and the output of each is the second number of its pair: the
+receiver, being M45, reports its state. All four possible pairs are reachable,
+so the product has the full `2² = 4` states.
+
+### Growth, and where it stops
+
+Products react again. Composing M45 with the 4-state product gives 16 states,
+and chaining more copies gives 32, 64, 128: each new machine doubles the state
+count. The 2025 paper says the earlier studies used exactly this "repeated
+application of composition to generate exponentially larger state-space
+graphs". A chain of `n` machines is the one-dimensional lattice of machines
+that the 2025 paper studies (its eqs. 3-4): an input enters the first machine,
+each machine's message feeds the next, and the last one writes the output.
+
+Because state counts multiply, any closure would explode. Chemart puts a
+boundary on it: a product with more than `max_states` states is not made, and
+the collision is *elastic* (nothing happens). This boundary is a Chemart
+choice, not something from the papers.
+
+### The reactor
+
+Chemart offers two reactors. The **closure** starts from the seed machines, composes every
+ordered pair, adds the new products and repeats until nothing new appears or
+the species budget `max_species` is spent. The **soup** is the book's standard
+well-stirred flow reactor: a population of `M` molecules, from which an
+ordered pair is drawn at random; the product is added and a random molecule
+removed, so the population stays at `M`.
+
+## Using it
+
+The default run is the closure from a single M45 with `max_states = 64`. It is
+complete, with six species of 2, 4, 16, 16, 32 and 64 states: the growth
+series described above. The first reaction is the worked example; the others
+compose the products with M45 and with each other. The species names get long quickly, so use `net.extras`:
+
+```python
+a = net.extras["analysis"]
+sorted(a["states"].values())      # [2, 4, 16, 16, 32, 64]   states per species
+a["elastic"]                      # {'too_large': 24}         products over max_states
+net.species[1].structure          # 'q0[0:q0/0 1:q1/0] q1[0:q2/1 1:q3/1] q2[0:q3/0 1:q2/0] q3[0:q1/1 1:q0/1]'
+```
+
+Of the 36 ordered pairs of the six species, 24 would exceed 64 states. The rest
+give the seven reactions; M45 composed with the 4-state machine gives the same
+16-state product in either order, so the two orders count as one reaction.
+
+A reaction stores its two reactants as a multiset, so the network does not say
+which one was the sender. When the two orders give different products, the
+network holds two reactions with the same reactants. To tell them apart, or to
+work with machines directly, use the module's functions:
+
+```python
+from chemart.chemistries.reflexive_ac import parse, compose, to_text
+m45, m61 = parse("M45"), parse("M61")
+len(compose(m45, m61)), len(compose(m61, m45))    # (8, 8)
+compose(m45, m61) == compose(m61, m45)            # False
+```
+
+`parse` accepts `M<n>`, `M<n>@S1` and the species text; `compose(s, r)` returns
+the product with `s` as the sender.
+
+**Two seed machines.** Seeds are a list over one alphabet. M45 with M61
+closes at 64 species and 194 reactions (3,892 elastic pairs); in 89 reactant
+pairs the two orders give different products. More seeds or a larger
+`max_states` make the closure grow fast, until `max_species` stops it with
+status `truncated`:
+
+```python
+net = chemart.generate_network("reflexive-ac", machines=["M45", "M61"])
+net.summary()     # reflexive-ac: 64 species, 194 reactions, status=complete
+```
+
+**A soup of random machines.** With `machines=[]`, Chemart draws `M` random
+machines with `states` states over `symbols` symbols (links uniform, then cut
+to the part reachable from state 0). In the soup, `extras["analysis"]
+["distinct_species"]` gives the number of distinct species after every `M`
+collisions, and `extras["final_state"]` the final population:
+
+```python
+net = chemart.generate_network("reflexive-ac", seed=3, method="soup", machines=[], M=50)
+net.extras["analysis"]["distinct_species"]
+# [38, 46, 47, 47, 38, 42, 43, 39, 32, 29, 22, 21, 14, 16, 11, 10, 8, 7, 8, 8,
+#  7, 6, 7, 6, 5, 5, 4, 4, 4, 4, 4, 4, 4, 3, 2, 2, 2, 2, 2, 2, 2]
+```
+
+Diversity first rises, as compositions make new machines, then collapses. The
+two survivors here have 28 and 17 states (34 and 16 copies), and each one is a
+fixed point of self-composition: `compose(s, s) == s`, so `s + s -> 3 s` and the
+machine copies itself. Over seeds 0-9, the default 2,000 collisions left one
+species in 4 runs and two to four in the others, always self-reproducing
+machines of 7 to 57 states; with `collisions=6000`, seeds 0-4 all ended with a
+single species. This is a Chemart observation, not a published result. A run
+of 2,000 collisions takes about two seconds.
+
+## Results
+
+Salzberg's 2007 paper and its two companions from 2006 could not be obtained
+(see the implementation decisions), so this section reports what the 2007
+abstract says and what the 2025 paper, by the same author, shows with the same
+composition.
+
+**Self-similar growth and open-ended diversity (2007).** The abstract reports
+that "examples demonstrate the continuous emergence [of] complex self-similar
+topologies, novel reaction pathways, and seemingly open-ended diversity". The
+2025 paper adds that the focus of the earlier studies "was on state-space
+complexity", with composition generating exponentially larger graphs. Chemart
+reproduces the growth. Its tests check that the default closure is complete
+with products of 2, 4, 16, 16, 32 and 64 states, that every product stays
+within the size bound, that the self-composition `M45 + M45` is among the
+reactions and gives four states, and that large products are elastic. The
+claims of self-similar topologies, new pathways and open-ended diversity
+cannot be checked against the paper's examples, which are not available, and
+are not tested. Chemart's own soup, a reactor the paper may not have used, does
+not show open-ended diversity: a random population collapses to one or a few
+self-reproducing machines.
+
+**Reflexive composition as a lattice (2025).** Salzberg and Sayama's 2025 paper
+turns from growing graphs to trajectories: a row of identical two-state
+machines updated by reflexive composition, much like a one-dimensional
+cellular automaton (a row of cells, each updated from its neighbours). The
+tests check that product graphs follow eqs. 1-2 on 300 random pairs of
+two-state machines, and that a chain of five M45 machines matches the lattice
+of eqs. 3-4.
+
+**Naming and equivalence.** The paper's Table 1 numbers the 256 two-state
+two-symbol machines. Swapping the symbols 0 and 1 (the *complement*) or the
+two states (the *mirror*) gives a machine with the same dynamics, so each
+machine has up to three equivalents, and only 76 are unique (Table 2). The
+tests reproduce the numbering, the count of 76 and Table 2's equivalents for
+M7, M44, M45, M54, M60 and M61.
+
+**M45 is rule 90.** The paper's most concrete result links M45 to Wolfram's
+elementary cellular automaton rule 90, in which each cell becomes the
+exclusive-or of its two neighbours, and which draws the Sierpiński triangle
+from a single live cell. Two steps of reflexive composition equal one step of
+rule 90, given the right boundary inputs: 0 on even steps, and on odd steps the
+output of the previous step (figs. 5-7). The tests run 19 cells from one live
+cell and check nine steps against rule 90, including the Sierpiński counts of
+live cells.
+
+**M54 and M60 run rule 90 backwards.** Running rule 90 backwards means finding
+*preimages*, configurations that lead to a given one; earlier work developed
+separate techniques for this, and the paper notes that the reverse process is
+not expressible as a cellular automaton. The paper finds that M54 and M60, fed inputs chosen so that the boundaries stay empty
+(eqs. 6-7), produce a trajectory whose even steps are rule 90 in reverse
+(figs. 10-15), "the first study to produce such inverse dynamics naturally
+from the formalism itself". M54 and M60 are *message-propagating*: their output depends
+on the input, so a signal can cross many cells in one step, which no
+synchronous cellular automaton can do. And M54 is M45 transposed: exchanging the roles of states and messages turns
+one into the other (fig. 17), while M60 transposes into itself. The paper
+concludes that "the direction of time, for these machines, is fundamentally a
+product of which elements in the system one chooses to treat as operator and
+operand". The tests check the transpositions, and run M54 on eight cells from
+two central live cells, checking that each new even row is a rule-90 preimage
+of the previous one. Two details did not reproduce: the input sequence in the
+caption of fig. 12 (all 0 up to t = 5, then 1 and 1), since the run needs
+input 1 at the first step, and fig. 13's claim that M60 has the same even rows
+as M54, which failed when M60 was fed M54's inputs. Only M54 is tested.
+
+**Other machines.** M44 shows reversible "billiard ball" dynamics and "can be
+inverted simply by flipping the lattice of states" (fig. 8); the tests check
+that inversion on 50 random rows of 20 cells. M61 draws the patterns of a
+substitution system along its boundaries (fig. 9); Chemart does not test this.
+
+**Tapes as graphs (2004).** The ALife IX paper writes a tape as a chain of
+links, so machine and tape meet as graphs of one kind, and builds on it a
+construction process that grows and folds new graphs, with a Turing machine
+representation that establishes computation universality. Chemart keeps only
+the tapes: a test composes M45 with a two-link tape and checks that the product
+stops where the machine has no link for the tape's symbol. The construction
+machinery is not modelled; the 2025 restatement does not use it, and the 2004
+paper leaves open how its conflicts are resolved.

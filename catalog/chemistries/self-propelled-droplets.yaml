@@ -12,7 +12,7 @@ chemistries:
     the chemistry and its own local environment.
   origin: "Hanczyc et al., 2007-2011"
   book: "19.2.5"
-  refs: ["[363]", "[364]", "[365]", "[858]", "[483]", "[885]"]
+  refs: ["[363]", "[364]", "[365]", "[403]", "[858]", "[483]", "[885]"]
   family: wet
   kind: wet
   constructive: false

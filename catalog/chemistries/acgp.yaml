@@ -5,20 +5,22 @@ chemistries:
   intuition: >
     Run this one backwards from the others: instead of building a chemistry,
     it reads one out of a program. The registers of a virtual machine are the
-    species and their contents are concentrations, so an instruction like r3
-    <- r1 op r2 simply *is* the reaction r1 + r2 -> r3. Genetic programming
-    then evolves the instruction multiset, and the evolved classifier can be
-    inspected as a reaction network. Because an instruction is a reaction
-    rather than a step, order matters less and deleting instructions degrades
-    performance gracefully.
+    species, so an instruction like r3 <- r1 op r2 is read as the reaction
+    r1 + r2 -> r3, and the instructions are drawn in random order, so what
+    acts like a concentration is how often each instruction appears in the
+    multiset. Genetic programming then evolves the instruction multiset, and
+    the evolved classifier can be inspected as a reaction network. Because
+    an instruction is a reaction rather than a step, no execution order is
+    stored, and the authors argue that the multiplicity of an instruction
+    reflects its importance, which should make programs fault tolerant.
   aliases: ["sequenceless register machine programs"]
-  origin: "Banzhaf & Lasarczyk, 2004-2008"
+  origin: "Banzhaf & Lasarczyk, 2004-2007"
   book: "16.6"
   refs: ["[74]", "[75]", "[497]", "[498]"]
   family: application
   kind: generator
   constructive: false
-  S: {repr: "registers r0..r(n-1) of a virtual machine (species) and their contents (concentrations)", definition: explicit}
+  S: {repr: "registers r0..r(n-1) of a virtual machine (species); their contents are real numbers, and the multiplicity of each instruction plays the role of a concentration", definition: explicit}
   R:
     definition: explicit
     arity: [1, 2]
@@ -37,7 +39,7 @@ chemistries:
   decisions:
     - "The generator samples one random program: n_instructions instructions with uniformly random operand registers, a random writable destination (not an input register) and an operator from {+, -, *, /}. Each instruction is the reaction of eq. 16.9, repeated instructions stay repeated (multiset), and extras.program lists the instructions in reaction order."
     - "Evolution of programs (population, generations, executions_per_eval) acts on populations of such networks and is not part of one network, so those parameters are dropped."
-  phenomena: ["evolves classifiers (e.g. UCI thyroid) as bipartite register/instruction graphs", "robust to instruction deletion", "trivially parallelisable - no coordination between instruction executions"]
+  phenomena: ["evolves classifiers (e.g. UCI thyroid) as bipartite register/instruction graphs", "argued (not measured) to be fault tolerant, since an instruction's multiplicity reflects its importance", "trivially parallelisable - no coordination between instruction executions"]
   notes: >
     The inverse case: here a CRN is READ OUT of a program rather than
     generated. The bipartite graph (registers = species, instructions =

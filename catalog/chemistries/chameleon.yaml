@@ -11,7 +11,7 @@ chemistries:
     conserved *modulo 3* - an integer invariant that any real-valued nullspace
     computation will miss entirely.
   aliases: ["chameleon colony puzzle"]
-  origin: "Winkler, 2007 puzzle; formulated as an AC by Banzhaf & Yamamoto"
+  origin: "Winkler, 2009 puzzle (Communications of the ACM); formulated as an AC by Banzhaf & Yamamoto"
   book: "2.5.1"
   refs: ["[921]", "[922]"]
   family: core

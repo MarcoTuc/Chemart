@@ -1,6 +1,6 @@
 """Command line interface over `chemart.api` and `chemart.hub`.
 
-    chemart list
+    chemart list                 # the chemistry catalog (--all adds the archive)
     chemart describe matrix-chemistry
     chemart generate matrix-chemistry -p N=4 --seed 0 --format json
 
@@ -43,7 +43,8 @@ def _print_json(data) -> None:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="chemart", description="A mart of artificial chemistries.")
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("list", help="list every built-in chemistry (JSON)")
+    listing = sub.add_parser("list", help="list every built-in chemistry (JSON)")
+    listing.add_argument("--all", action="store_true", help="also list archived entries")
 
     describe = sub.add_parser("describe", help="describe one chemistry (JSON)")
     describe.add_argument("chemistry", help="catalog id, or namespace/name on the hub")
@@ -121,7 +122,7 @@ def main(argv: list[str] | None = None) -> int:
 
 def _run(parser, args, api) -> int | None:
     if args.command == "list":
-        _print_json(api.list_chemistries())
+        _print_json(api.list_chemistries(args.all))
     elif args.command == "describe":
         _print_json(api.describe_chemistry(args.chemistry, args.revision))
     elif args.command == "generate":

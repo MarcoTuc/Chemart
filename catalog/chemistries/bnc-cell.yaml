@@ -14,6 +14,7 @@ chemistries:
   book: "18.3.1"
   refs: ["[384]", "[441]", "doi:10.1371/journal.pcbi.0040023"]
   family: systems-biology
+  archived: pruned
   kind: generator
   constructive: false
   S:

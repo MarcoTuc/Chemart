@@ -1,6 +1,6 @@
 # Comparing and analysing
 
-The reason 98 unrelated models share one record is so you can ask questions
+The reason unrelated models share one record is so you can ask questions
 across them.
 
 ## Structural profiles
@@ -23,7 +23,7 @@ def profile(cid, seed=1):
         catalysed=sum(1 for r in net.reactions if r.catalysts),
     )
 
-for cid in ["dimerization", "brusselator", "oregonator", "matrix-chemistry"]:
+for cid in ["michaelis-menten", "brusselator", "oregonator", "matrix-chemistry"]:
     print(profile(cid))
 ```
 

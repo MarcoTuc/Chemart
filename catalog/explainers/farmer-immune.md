@@ -1,0 +1,390 @@
+## Introduction
+
+This is a model of the immune system written as a chemical reaction network.
+J. Doyne Farmer, Norman Packard and Alan Perelson, then at Los Alamos, proposed
+it in 1986 in the paper "The immune system, adaptation, and machine learning".
+They wanted a model of the immune system "simple enough to simulate on a
+computer" that still captured the *idiotypic network*, Niels Jerne's hypothesis
+that antibodies regulate each other: an antibody is itself a molecule with
+recognisable surface patches, so other antibodies can recognise it, just as
+they recognise a virus. In Jerne's picture an antibody type is enhanced when it
+recognises something and suppressed when something recognises it, and chains
+of recognition (A recognises B, which recognises C, ...) form a network.
+
+The model reduces each antibody to two binary strings: an *epitope*, the patch
+that others recognise (the lock), and a *paratope*, the patch it recognises
+others with (the key). A paratope recognises an epitope when the two strings
+are nearly complementary, bit by bit. When that happens the recogniser
+multiplies and the recognised is destroyed, and the better the fit, the faster
+this goes. So the strings, and nothing else, decide which reactions exist and
+how fast each one runs. Foreign molecules (*antigens*) carry an epitope only:
+antibodies can destroy them, but they recognise nothing. On top of these
+reactions the authors added a slow outer loop, which they called
+*metadynamics*: every so often, types whose concentration has fallen below a
+threshold are removed and new types, made by mutating and recombining the
+strings of existing ones, are added. The set of molecules therefore changes
+over time, which makes this a constructive system.
+
+The paper's main purpose was a comparison. Farmer and colleagues showed that
+their equations have the same form as a version of John Holland's *classifier
+system*, a machine-learning method in which rules written as bit strings
+compete, pass messages and are bred by a genetic algorithm. Antibody types play
+the role of rules, concentration the role of rule strength, epitope and
+paratope the role of condition and action. They argued that the immune system
+could suggest better learning algorithms.
+
+It is a simulation model: a set of ordinary differential equations plus a rule
+for changing the equations themselves. Banzhaf and Yamamoto describe it in
+§11.2.2, among the "lock-and-key" chemistries, where molecules react according
+to how well their shapes complement each other. Its neighbour there is
+[Conrad's enzymatic computer](conrad-enzymatic.md) (§11.2.1), which uses
+shape complementarity to classify input patterns rather than to regulate a
+population; [Typogenetics](typogenetics.md) and
+[Stringmol](stringmol.md) also bind strings by complementarity, but their
+strings act as programs that rewrite each other. Within the catalog, what sets
+this model apart is that the kinetics are not free parameters: every rate
+constant is computed from the bit strings. The book counts it among the
+founding works of the field of *artificial immune systems* (AIS). Farmer and
+Packard also co-authored the polymer model behind
+[Kauffman's autocatalytic sets](kauffman-autocatalytic-sets.md), and Farmer the
+[Bagley-Farmer metabolism](bagley-farmer.md); their 1987 follow-up paper
+treats immune networks and autocatalytic sets together.
+
+## How it works
+
+### Antibodies and antigens as strings
+
+There are `N` antibody types, `X1` … `XN`, and `M` antigen types, `Y1` … `YM`.
+Each antibody is a pair of bit strings, an epitope `e` and a paratope `p`;
+each antigen has only an epitope. The variables of the model are
+concentrations: `x_i` is how much of antibody type `X_i` there is, `y_j` how
+much of antigen `Y_j`. The model lumps free antibodies and the B cells (the
+white blood cells that make them) into one number per type.
+
+### How strongly one string recognises another
+
+Two molecules need not fit perfectly to react, and they may be able to meet in
+more than one orientation. The model captures both with a sliding comparison.
+Lay the paratope against the epitope at some offset `k` and count the
+positions where the bits differ (a 0 facing a 1 is a complementary, fitting
+pair). If that count reaches a threshold `s`, the alignment contributes
+`count − s + 1`: 1 at exactly the threshold, one more for each extra fitting
+bit. Below the threshold it contributes nothing. Summing over every offset at
+which the strings overlap gives the *matching specificity* `m_ij`, the strength
+with which the paratope of `X_j` recognises the epitope of `X_i`. Note the
+order: the first index is the epitope (the one recognised), the second the
+paratope (the recogniser). The function that clips negative values to zero is
+called `G` in the formula below, and `XOR` (exclusive or, 1 when two bits
+differ) is how complementarity is counted.
+
+Here is a pair from the default network (`seed=1`, 8-bit strings, `s = 6`):
+
+```
+X1   e=01110011  p=00100100
+X2   e=11001111  p=10010000
+```
+
+Does `X1` recognise `X2`? Put `X1`'s paratope under `X2`'s epitope with no
+offset:
+
+```
+epitope of X2     1 1 0 0 1 1 1 1
+paratope of X1    0 0 1 0 0 1 0 0
+complementary?    1 1 1 0 1 0 1 1    -> 6 fitting bits
+```
+
+Six fitting bits meet the threshold, so this alignment contributes
+`6 − 6 + 1 = 1`. Shifted by one position the overlap has only 5 fitting bits,
+and every other offset does worse, so the total strength is `m = 1`. The other
+way round, `X2`'s paratope against `X1`'s epitope never reaches 6 fitting bits
+at any offset, so `X2` does not recognise `X1`. Recognition is not symmetric.
+An antibody can also recognise its own epitope: `X2`'s paratope matches its own
+epitope with strength 2.
+
+### What a recognition does
+
+When the paratope of `X_i` binds the epitope of `X_j`, two things happen: `X_i`
+is stimulated to make more copies of itself, and `X_j` is removed. A
+recognised antigen is removed in the same way. Antibodies that recognise
+nothing still decay at a constant rate. The paper turns these events into rate
+equations by the law of mass action: the chance that two types meet is
+proportional to the product of their concentrations, `x_i x_j`, and the match
+strength scales how often a meeting leads to a reaction. Four weights set the
+balance between the effects: `c` scales all the interactions against decay,
+`k1` weighs being suppressed against being stimulated (between antibodies),
+`k2` is the decay rate, and `k3` scales how fast antibodies remove antigens.
+
+Chemart writes each term of those equations as one mass-action reaction. The
+recognition of `X2` by `X1` above becomes a pair of reactions:
+
+```
+X1 + X2 -> 2 X1 + X2   rate constant c·m    = 1.0   (X1 is stimulated)
+X2 + X1 -> X1          rate constant c·k1·m = 1.0   (X2 is suppressed)
+```
+
+`X2` recognising itself gives `2 X2 -> 3 X2` and `2 X2 -> X2`, both with rate
+constant 2.0, and every antibody has a decay reaction such as
+`X2 -> ∅` with rate constant `k2 = 0.5`. For an antigen recognised by
+antibody `X_i` with strength `m` there is a stimulation
+`X_i + Y_j -> 2 X_i + Y_j` (rate `c·m`) and a removal `Y_j + X_i -> X_i`
+(rate `k3·m`). Integrating these reactions with mass-action kinetics gives
+back exactly the rate equations printed in the formal specification below;
+Chemart's tests check this term by term.
+
+### The reactor and the metadynamics
+
+The reactor has two time scales. On the fast one, the rate equations are
+integrated for a while: antibodies that recognise something grow, those that
+are recognised shrink, those that do neither decay. On the slow one, the
+population is inspected: every type below a minimum concentration is deleted
+with all its reactions (the death of the last cell of that type, or the
+elimination of an antigen), which frees room for new types. New antibody types
+come from point mutation, crossover (swapping the ends of two strings) and
+inversion (reversing a segment) applied to existing strings, with random
+choices weighted by concentration; the paper also mentions generating them
+at random as a crude alternative. Each change of the type list changes the
+equations themselves.
+
+The paper discusses two ways to handle decay. With a constant decay rate
+`k2`, the equations are as written below. The scheme the authors found "to
+work best" varies `k2` over time so that the total antibody concentration
+stays constant.
+
+## Using it
+
+The default call above builds the fast part of the model only: ten random
+antibody types and two random antigens, with 8-bit epitopes and paratopes and
+threshold `s = 6`. Those string lengths and that threshold are the ones of the
+paper's worked example (its Fig. 3); the book gives no values, and the paper
+reports none for its simulations. The network is a snapshot: Chemart does not
+remove types or breed new ones. The strings are in each species' `structure`
+(`net.species`), in the form `e=01110011 p=00100100`; `net.extras` is empty,
+and the network carries no initial concentrations.
+
+The defaults are not a regime in which anything lives. Weighting suppression
+equally with stimulation (`k1 = 1`) with a constant decay makes every antibody
+die out, which the next recipes show.
+
+### Integrating the rate equations
+
+Chemart generates networks; it does not integrate them. This helper, which
+uses SciPy, integrates any of these networks from all concentrations equal to
+1, and optionally applies the paper's constant-total decay:
+
+```python
+import numpy as np
+from scipy.integrate import solve_ivp
+import chemart
+
+def integrate(net, t_end, constant_total=False):
+    """Mass-action rate equations, every concentration starting at 1.
+    constant_total=True rescales decay at each instant so the total antibody
+    concentration stays fixed (generate the network with k2=0 for this)."""
+    ids, R, P = net.matrices()
+    S, R = (P - R).toarray(), R.toarray()
+    k = np.array([r.rate["k"] for r in net.reactions])
+    antibody = np.array([s.startswith("X") for s in ids])
+
+    def f(t, x):
+        dx = S @ (k * np.prod(np.maximum(x, 0.0)[:, None] ** R, axis=0))
+        if constant_total:
+            dx[antibody] -= dx[antibody].sum() / x[antibody].sum() * x[antibody]
+        return dx
+
+    sol = solve_ivp(f, (0, t_end), np.ones(len(ids)), method="LSODA",
+                    rtol=1e-9, atol=1e-12, dense_output=True)
+    return ids, sol
+
+def show(ids, sol, times):
+    for t in times:
+        alive = {s: round(float(v), 3) for s, v in zip(ids, sol.sol(t)) if v > 1e-3}
+        print(f"t={t:<4}", alive)
+```
+
+Each run below takes well under a second.
+
+**The default network.** Types below 0.001 are omitted from the output:
+
+```python
+ids, sol = integrate(chemart.generate_network("farmer-immune", seed=1), 20)
+show(ids, sol, [1, 5, 20])
+```
+
+```
+t=1    {'X1': 0.173, 'X2': 0.06, 'X3': 2.056, 'X4': 1.369, 'X5': 0.482, 'X6': 0.634, 'X7': 0.609, 'X8': 0.514, 'X9': 0.035, 'X10': 0.752, 'Y1': 0.1, 'Y2': 1.0}
+t=5    {'X1': 0.004, 'X2': 0.044, 'X3': 0.234, 'X4': 0.171, 'X5': 0.02, 'X6': 0.166, 'X7': 0.021, 'X8': 0.09, 'X10': 0.173, 'Y1': 0.024, 'Y2': 1.0}
+t=20   {'Y1': 0.019, 'Y2': 1.0}
+```
+
+Antigen `Y1` is recognised by `X2`, `X7` and `X9` and falls fast, but all
+antibodies die before it is gone, so a remnant is left. No antibody recognises
+`Y2`, which stays untouched.
+
+**Why everything dies at `k1 = 1`.** With equal weights, every stimulation of
+one antibody is matched by an equal suppression of another, so the
+interactions cancel in the total and, without antigens, the total antibody
+concentration simply decays as `e^(−k2·t)`:
+
+```python
+ids, sol = integrate(chemart.generate_network("farmer-immune", seed=1, M=0), 10)
+for t in [0, 2, 5, 10]:
+    print(t, round(sol.sol(t).sum(), 5), round(10 * np.exp(-0.5 * t), 5))
+```
+
+```
+0 10.0 10.0
+2 3.67879 3.67879
+5 0.82085 0.82085
+10 0.06738 0.06738
+```
+
+This is the paper's own observation (see Results), here exact.
+
+**`k1 < 1` with constant decay blows up.** When stimulation outweighs
+suppression the quadratic terms win. With `k1=0.5` and `M=0`, the total
+concentration passes 10¹⁵ at `t ≈ 0.37` and the integration fails. This is
+why the constant-total scheme matters.
+
+**`k1 < 1` with constant total antibody.** Generate the network with `k2=0.0`
+and let the helper set the decay:
+
+```python
+net = chemart.generate_network("farmer-immune", seed=1, M=0, k1=0.5, k2=0.0)
+ids, sol = integrate(net, 200, constant_total=True)
+show(ids, sol, [1, 10, 50, 200])
+```
+
+```
+t=1    {'X1': 0.012, 'X2': 0.031, 'X3': 2.659, 'X4': 2.836, 'X5': 2.284, 'X6': 0.071, 'X7': 0.314, 'X8': 1.684, 'X9': 0.007, 'X10': 0.103}
+t=10   {'X4': 9.467, 'X8': 0.533}
+t=50   {'X2': 0.011, 'X8': 9.989}
+t=200  {'X2': 10.0}
+```
+
+Dominance passes from `X4` to `X8` to `X2`, which ends up holding the whole
+total. `X2` is the antibody that recognises its own epitope: with `k1 < 1` its
+self-stimulation beats its self-suppression, a recognition loop of length one,
+and every type that could recognise it has died out.
+
+**With antigens.** The same settings with the two default antigens:
+
+```python
+net = chemart.generate_network("farmer-immune", seed=1, k1=0.5, k2=0.0)
+ids, sol = integrate(net, 200, constant_total=True)
+show(ids, sol, [1, 5, 20, 30, 200])
+```
+
+```
+t=1    {'X1': 0.013, 'X2': 0.059, 'X3': 2.03, 'X4': 3.365, 'X5': 2.119, 'X6': 0.048, 'X7': 0.478, 'X8': 1.838, 'X9': 0.009, 'X10': 0.04, 'Y1': 0.064, 'Y2': 1.0}
+t=5    {'X2': 0.003, 'X3': 0.238, 'X4': 9.563, 'X5': 0.005, 'X8': 0.192, 'Y1': 0.047, 'Y2': 1.0}
+t=20   {'X2': 9.73, 'X8': 0.27, 'Y2': 1.0}
+t=30   {'X5': 0.068, 'X8': 9.932, 'Y2': 1.0}
+t=200  {'X8': 10.0, 'Y2': 1.0}
+```
+
+Now `Y1` is eliminated: `X2`, one of its recognisers, has been amplified. But
+at `t = 30` `X5`, which had fallen far below 0.001, comes back: it recognises
+`X2`, grows on it and destroys it, and is in turn destroyed by `X8`. In the
+paper's scheme `X5` would have been deleted once it crossed the concentration
+threshold; this integration has no threshold, so a type is never quite gone.
+Adding one, and the breeding of new types, is up to the user.
+
+### Other settings
+
+`s` sets how selective recognition is. For 8-bit strings and seeds 1 to 5,
+the network has 234 to 250 reactions at `s=4`, 72 to 88 at `s=6` and 14 to 28
+at `s=7`. `N` and the string lengths set the size: `N=100` gives about 5,800
+reactions and takes about 4 seconds to generate (pure Python matching over all
+pairs). The ranges are in the parameter table below.
+
+## Results
+
+### What the 1986 paper reports
+
+The paper presents the model and the classifier-system comparison; it contains
+no plots or numbers from simulations. The authors wrote that "a more detailed
+discussion, along with simulation results, will appear elsewhere". The book
+goes further and says they "did not report any concrete simulation results".
+That is true of quantitative results, but the paper does describe, in words,
+the outcome of "preliminary simulations of systems without external antigens
+and without the time-dependent introduction of new antibody types":
+
+- Antibodies whose paratopes match epitopes are amplified at the expense of
+  others.
+- With `k1 = 1` (equal stimulation and suppression) and positive decay, every
+  antibody type eventually dies.
+- With `k1 < 1`, reaction loops are favoured, since all members of a loop gain
+  concentration and can fight the decay; the number and length of loops grow
+  with `N`.
+- Loops are robust, so the system can remember states when new types are
+  introduced; new types that recognise something are kept and amplified, and
+  those that recognise nothing are washed out, which the authors call
+  "immunological forgetting".
+
+They also proposed a memory mechanism on paper. Antibodies that recognise an
+antigen (call them Ab1) are amplified; so are those recognising Ab1 (Ab2), and
+so on. If some Abn happens to resemble the antigen, Ab1 recognises it and the
+chain closes into a loop, which keeps Ab1 alive after the antigen is gone: the
+antigen's shape is "remembered" in the network.
+
+On the machine-learning side, they derived equations of motion for a
+classifier system with stochastic bidding and showed that, apart from the
+driving term, they are identical to the immune equations. Both, they noted,
+have the form "internal interactions + driving − damping", like autocatalytic
+reaction networks and Lotka-Volterra population equations, and both change
+their own equations over time as elements are added and removed.
+
+### Influence
+
+According to the book, this constructive model on binary strings with
+metadynamics "was quite novel at the time" and "spawned a surge of interest",
+with other authors building variants focused on learning or memory. It names
+Forrest and colleagues' use of a bitstring immune system with a genetic
+algorithm to study pattern recognition (1993), their self-nonself
+discrimination algorithm for detecting computer viruses (1994), and the wider
+AIS literature, and it calls the model a pioneering work of the AIS field.
+
+### The three phenomena, and what Chemart reproduces
+
+- **Clonal selection**, the amplification of the antibody types that recognise
+  something and the decay of the rest: this is built into the equations, and
+  the runs above show it (the recognisers of `Y1` are amplified in the last
+  recipe; antibodies that recognise nothing decay). Chemart's tests (in
+  `tests/chemistries/test_w2_book.py`) check that
+  the generated reactions reproduce the paper's rate equations exactly: for
+  random strings and non-default constants they compare the network's
+  mass-action derivatives with equations 11.5 and 11.6 term by term. They also
+  check the matching function on hand-worked cases (for example `0000`
+  against `1111` gives 1 at `s = 4` and 16 at `s = 1`). No test runs a
+  simulation.
+- **Idiotypic network memory**, the loops that preserve an antigen's shape
+  after it is gone: not reproduced. It needs long runs with antigens that come
+  and go, the constant-total damping and the metadynamics, none of which the
+  generator provides; the recipes above only show a loop of length one
+  surviving.
+- **Constructive dynamics via metadynamics**, the periodic deletion of
+  low-concentration types and the breeding of new ones: not implemented. The
+  implementation decisions below say so. The catalog marks the chemistry as
+  constructive because the model is; Chemart's network is one fixed snapshot
+  of it.
+
+## Further reading
+
+- Farmer, J. D., Packard, N. H. & Perelson, A. S. (1986). The immune system,
+  adaptation, and machine learning. *Physica D* 22, 187–204. The original
+  paper; the book's bibliography entry [262] omits Perelson. A copy is on the
+  INET Oxford site:
+  <https://www.inet.ox.ac.uk/publications/the-immune-system-adaptation-and-machine-learning>
+- Farmer, J. D., Kauffman, S. A., Packard, N. H. & Perelson, A. S. (1987).
+  Adaptive dynamic networks as models for the immune system and autocatalytic
+  sets. *Annals of the New York Academy of Sciences* 504, 118–131. The book's
+  other source for the equations.
+- Forrest, S., Javornik, B., Smith, R. E. & Perelson, A. S. (1993). Using
+  genetic algorithms to explore pattern recognition in the immune system.
+  *Evolutionary Computation* 1(3), 191–211.
+- Forrest, S., Perelson, A. S., Allen, L. & Cherukuri, R. (1994).
+  Self-nonself discrimination in a computer. *Proceedings of the IEEE Computer
+  Society Symposium on Research in Security and Privacy*, 202–212.
+- de Castro, L. N. & Timmis, J. (2002). *Artificial Immune Systems: A New
+  Computational Intelligence Approach*. Springer. The book's reference for the
+  model's place in the AIS field.

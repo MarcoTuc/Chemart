@@ -9,7 +9,8 @@ chemistries:
     Self-replicators exist - a string that copies itself via its complement -
     and so do parasites: strings carrying the replicator's recognition site
     but no replication machinery of their own, which get copied for free. It
-    was designed with hardware implementation in mind.
+    began as a C program (1988) and was later realised in special-purpose
+    parallel hardware.
   aliases: ["polymer chemistry on tape", "McCaskill pattern processing chemistry"]
   origin: "McCaskill, 1988; hardware realisations NGEN/POLYP with Tangen, Schulte, Maeke, Gemm, Breyer, Ackermann"
   book: "10.5.3"

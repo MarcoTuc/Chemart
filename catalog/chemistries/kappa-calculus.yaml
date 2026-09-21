@@ -8,8 +8,8 @@ chemistries:
     site, and a rule rewrites a *partial* pattern - bind these two sites,
     phosphorylate this one - regardless of what else is attached. One rule
     therefore stands for an enormous number of concrete reactions between
-    complexes. Twenty-odd rules for a receptor pathway expand to tens of
-    thousands of reactions, which is exactly why you keep the rules and never
+    complexes. Twenty-odd rules for a receptor pathway expand to thousands
+    of reactions, which is exactly why you keep the rules and never
     flatten them.
   aliases: ["κ-calculus", "Kappa", "Kappa language", "rule-based modelling of site graphs"]
   origin: "Danos & Laneve, 2004; the Kappa language: Danos, Feret, Fontana, Harmer, Krivine et al., 2007 onwards"
@@ -79,7 +79,7 @@ chemistries:
     - "Truncation: max_complex_size drops reactions whose products exceed it (KaDE offers the same truncation); max_species is expand's species budget. Either sets status truncated. polymerization is infinite: with max_complex_size n it gives chains of 1..n agents and rings of 2..n (a monomer cannot bind itself because embeddings are injective)."
     - "Mass-action is the only law: Kappa rules carry stochastic rate constants and the flattened ODE is the mass-action system over complexes. No flow, no energies."
   phenomena:
-    - "a handful of rules stands for many reactions: the 22 EGFR rules (37 one-way rules) flatten to 356 species and 3749 reactions (Blinov et al. 2006)"
+    - "a handful of rules stands for many reactions: the 23 EGFR rules (39 one-way rules) flatten to 356 species and 3749 reactions (Blinov et al. 2006)"
     - "ABC model (reference guide fig. 3): unmodified C is replaced first by singly (Cpu) then doubly phosphorylated C (Cpp); the AB complexes settle slightly below 400"
     - "asymmetric binding polymerises (chains and, with a unimolecular rate, rings); symmetric binding gives strict dimers (reference guide 2.3.1.1)"
     - "rule symmetries change rates: under stance D a symmetric rule that breaks its symmetry ('1p') fires twice as often as one that keeps it ('2p')"
