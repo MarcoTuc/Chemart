@@ -1,0 +1,348 @@
+## Introduction
+
+The molecular traveling salesman is an optimisation algorithm dressed as a
+chemistry. Wolfgang Banzhaf published it in 1990, while at Mitsubishi
+Electric's Central Research Laboratory, as "a method for optimization of
+NP-problems motivated by natural evolution" (paper abstract). The problem it
+attacks is the travelling salesman problem (TSP): given a map of cities, find
+the shortest round trip that visits every city once and returns to the start.
+The TSP is NP-hard: the time needed to find the exact answer grows so fast with
+the number of cities that, beyond small maps, one settles for a good
+approximate tour.
+
+The picture is a soup of molecules. Each molecule is a *data string* that
+holds one complete candidate tour and carries its own quality, the tour
+length, written at its front. A few *machines*, which Banzhaf compares to
+enzymes working on macromolecules, drift in the same soup. A machine grabs one
+or two tours at random, changes them in one fixed way (swap two cities, move a
+stretch of the tour elsewhere, move it and reverse it, or splice two tours
+together), and puts back only the best of what it now holds. No part of the
+system ranks the whole population or knows the best tour so far. Each machine
+compares only the few strings in its hands, and the population still drifts
+towards short tours.
+
+This is what we would now call an evolutionary algorithm with purely local
+selection: random variation plus "keep the better one" decided inside each
+encounter. Banzhaf's stated reasons were that such a process needs almost no
+communication between parallel processors, and that the rate of recombination
+can be tuned, by analogy with the "isolated evolution" of subpopulations in
+biology, to keep the population diverse long enough to avoid poor local
+optima.
+
+Banzhaf and Yamamoto present it in their chapter on computing with artificial
+chemistries (book §17.2.1), as the first of two early examples of search and
+optimisation algorithms inspired by chemistry. The second, the
+[Chemical Casting Model](ccm.md), works the other way round: there the whole
+soup is *one* candidate solution and each molecule is a piece of it, whereas
+here each molecule is a whole solution and the soup is a population of them.
+The same machines also appear as one of the built-in rule sets of
+[high-order chemistry](high-order-chem.md), the book's PyCellChemistry
+framework in which rules are themselves molecules. Chemart's entry is a
+simulation model: it runs the algorithm and records which tours were made.
+
+## How it works
+
+### Molecules: tours that carry their length
+
+A data string is `s = (s0, s1, ..., sN)`. The entries `s1 ... sN` list the N
+cities in the order they are visited, and `s0` is the tour's length `l(s)`:
+the sum of the straight-line (euclidean) distances from each city to the next,
+including the step from the last city back to the first (book eq. 17.1). The
+book's example `(l, 3, 1, 4, 2)` is the round trip 3 → 1 → 4 → 2 → 3. Shorter
+is better; the length is the "quality signal" each molecule carries.
+
+A tour read from a different starting city, or backwards, is the same round
+trip with the same length. Chemart therefore names a tour species by its
+canonical form, starting at city 0 and heading towards the smaller of its two
+neighbours. `t0.1.2.3.4.5.6.7.8.9` is the tour that visits the ten cities in
+numerical order. Cities are numbered from 0 (the book and paper number them
+from 1).
+
+The default map is a **ring**: the N cities sit evenly spaced on a circle, so
+the best tour is obvious, the regular polygon that follows the circle. Banzhaf
+used it as a toy problem whose solution is known, and the book's Figure 17.2
+shows it because the optimum is easy to see. The other map is random cities on a grid, a real
+TSP instance with no known answer.
+
+### Machines: four fixed operators
+
+There are four machines, one of each sort. Each machine applies its operator
+to strings it picks up and releases the best `n_op` strings, where `n_op` is
+the number it picked up:
+
+- **E-machine** (exchange): swaps two randomly chosen cities. `n_op = 1`.
+- **C-machine** (cut): takes the stretch of tour between two random positions
+  and reinserts it behind a third city. `n_op = 1`.
+- **I-machine** (inversion): like C, but the stretch is reinserted reversed.
+  `n_op = 1`.
+- **R-machine** (recombination): takes two tours, cuts a random stretch out of
+  the first, and splices it into the second after the city where the stretch
+  starts; the spliced cities are deleted from their old places in the second
+  tour, so the child is still a valid tour. `n_op = 2`.
+
+Paper Figure 2 shows each operator on the tour 1 2 3 4 5 6 7; for instance
+the exchange of cities 4 and 6 gives 1 2 3 6 5 4 7.
+
+A single-string machine releases the changed tour only if it is strictly
+shorter; otherwise it puts the original back and nothing has happened. The
+R-machine holds three tours after its operation (the two parents and the
+child) and releases the two shortest. The machines are never used up: in the
+language of chemistry they are catalysts.
+
+### A worked example
+
+Here is the first reaction of the default run (ten cities on a ring of radius
+10):
+
+```
+E-machine + t0.5.2.9.8.4.1.3.6.7 -> E-machine + t0.7.6.3.1.4.8.5.2.9
+```
+
+The E-machine picked up the tour 0 5 2 9 8 4 1 3 6 7, of length 144.04, and
+swapped cities 5 and 9, giving 0 9 2 5 8 4 1 3 6 7, of length 140.22. Read
+backwards from city 0, that is `t0.7.6.3.1.4.8.5.2.9`. The new tour is shorter,
+so the machine released it in place of the old one.
+
+A recombination from the same run:
+
+```
+R-machine + t0.1.2.9.7.6.5.4.3.8 + t0.1.7.4.3.2.6.5.8.9 -> R-machine + t0.1.2.9.7.6.5.4.3.8 + t0.1.2.9.7.6.5.3.4.8
+```
+
+The parents have lengths 96.77 and 107.48. The child, 0 1 2 9 7 6 5 3 4 8, has
+length 101.37. The two shortest of the three are the first parent and the
+child, so the second parent is discarded. The population size never changes:
+every machine puts back as many strings as it took.
+
+### The reactor: random collisions, counted in generations
+
+The soup holds M strings, all random tours at the start. At each *operation
+cycle* one machine is chosen, machine j with probability proportional to its
+**time scale** `t_j` (its operating frequency), and it picks its `n_op`
+strings uniformly at random. By default E, C and I have time scale 1 and R has
+1/100, so recombination happens about once for every 300 single-string
+operations. Setting a time scale to 0 removes that machine.
+
+Time is counted in **generations**. A generation is `c = ceil(M / Σ t_j)`
+operation cycles, meant to give every string a chance to change. With M = 9
+and all four machines, `c = ceil(9 / 3.01) = 3`; with the E-machine alone it is
+9. So a generation does not contain a fixed number of operations: it shrinks as
+machines are added. Keep this in mind when comparing generation counts between
+machine sets.
+
+Two quantities track the population. The *mean length* `<l>` is the average
+tour length. The **overlap** O (paper eqs. 3–4) measures how alike the tours
+are: it counts, for every road between two cities, how many of the M tours use
+it, and normalises so that O = 1 when all tours are identical and O = 1/M when
+no two tours share a road. Banzhaf used it as a measure of the population's
+variance: high overlap means low diversity.
+
+## Using it
+
+The default run uses the settings of PyCellChemistry's `MolecularTSP.py`, the
+authors' re-implementation that produced book Figure 17.2: ten cities on a
+ring, M = 9 random tours, all four machines with `t_R = 1/100`, 1000
+generations. (The paper's ring had 30 cities.) It takes about two seconds. Every string ends as the polygon:
+
+```python
+a = net.extras["analysis"]
+a["optimum"]                                   # 61.80   the polygon's perimeter
+a["best_length"][0], a["mean_length"][0]       # (111.37, 140.39)   the random start
+a["best_length"][-1], a["mean_length"][-1]     # (61.80, 61.80)
+a["generation_optimum_found"]                  # 155
+a["generation_mean_within_10_percent"]         # 425
+a["overlap"][0], a["overlap"][-1]              # (0.33, 1.0)
+a["machine_successes"]                         # {'E': 33, 'C': 25, 'I': 21, 'R': 1}
+net.extras["final_state"]                      # {'t0.1.2.3.4.5.6.7.8.9': 9}
+```
+
+`best_length`, `mean_length` and `overlap` have one value per generation,
+starting from generation 0. `generation_mean_within_10_percent` is the first
+generation at which the mean tour is within 10% of the optimum, the stopping
+criterion of paper Table 1; it and `generation_optimum_found` exist only for
+the ring, where the optimum is known, and are `None` if not reached.
+`machine_successes` counts, per machine, the operations that changed the soup.
+`best_tour`, `cities` (the coordinates) and `tour_length` (the length of every
+species) are also in `net.extras`.
+
+The network records only operations that changed the soup, each distinct one
+once with its count, so the 84 species are the four machines and the 80
+distinct tours that were ever present. A failed attempt leaves no trace.
+
+**Which machines matter (paper Table 1a).** Switch machines off with time
+scale 0. On a 20-city ring, five seeds, 1500 generations:
+
+```python
+def run(seed, **kw):
+    return chemart.generate_network("molecular-tsp", seed=seed, N=20,
+                                    generations=1500, **kw).extras["analysis"]
+[run(s, t_C=0, t_I=0, t_R=0)["generation_mean_within_10_percent"] for s in range(5)]
+# E alone:   [None, None, None, None, None]
+# E + R  (t_C=0, t_I=0):  [729, 744, 1083, 806, 829]
+```
+
+With E alone the best string does reach the polygon (between generations
+436 and 806), but other strings get stuck, so the mean never gets within 10%;
+recombination lets stuck strings inherit from the successful one. E + C + I
+without R, and all four machines at `t_R = 0.01`, did not reach the criterion
+within 1500 generations on any of these seeds (they also run 3 operations per
+generation against E + R's 9).
+
+**Recombination frequency (paper Table 1b).** On the same 20-city ring with
+all four machines, the generation at which the mean came within 10% of the
+optimum, five seeds:
+
+```
+t_R = 0.01   [2129, 3123, 2477, 1923, 2447]     (5000 generations, about 1.5 s per run)
+t_R = 0.1    [1416, 1140, 1299, 1403, 1597]
+t_R = 1      [349, 452, 748, 440, 352]          (1000 generations)
+```
+
+`t_R = 0.001` did not get there within 1000 generations.
+
+**Random cities and variance collapse (paper Table 2b).** With
+`layout="random"`, the seed also draws the map, so the same seed gives the same
+cities for every `t_R`. N = 20, 4000 generations, final overlap and best
+length:
+
+```python
+a = chemart.generate_network("molecular-tsp", seed=s, N=20, layout="random",
+                             t_R=t_R, generations=4000).extras["analysis"]
+a["overlap"][-1], a["best_length"][-1]
+```
+
+```
+t_R = 0.001   overlap [0.78, 0.74, 0.66, 0.71, 0.71]   best [157.0, 160.1, 161.2, 162.0, 167.3]
+t_R = 0.01    overlap [0.87, 0.78, 0.78, 0.75, 0.71]   best [157.0, 162.5, 161.2, 164.6, 167.2]
+t_R = 0.1     overlap [1.0, 1.0, 0.93, 1.0, 0.93]      best [157.0, 163.8, 161.2, 162.0, 167.2]
+t_R = 1       overlap [1.0, 1.0, 1.0, 1.0, 1.0]        best [157.0, 163.8, 161.2, 162.0, 167.2]
+```
+
+Frequent recombination is much faster early on (after 400 generations the
+`t_R = 1` runs are already at 170–187, the `t_R = 0.001` runs at 185–237), but
+by generation 4000 its population is a single tour. On seed 1 it froze at
+163.8, while the slowest recombination, still diverse, went on to 160.1.
+
+**Paper-sized problems.** `N=30` matches the paper's tables. Runs are slower:
+30 random cities for 30,000 generations take about 15 s, and the paper's
+Figure 5 run spans 10^5 generations. Use `cities=[[x, y], ...]` to solve your
+own map; it overrides `N` and `layout`.
+
+## Results
+
+All results below are from Banzhaf (1990). Tables 1–2 and Figures 3–6 of the
+paper are single runs; Tables 3–4 summarise 50 to 100 runs each. CPU times
+are for a 1990 workstation (a SUN SPARC 1) and are not reproduced.
+
+**Convergence by local encounters.** The central claim is that machines
+acting only on the strings they hold, "without any reference to the global
+state of the system", produce steady progress in the mean tour length. Because
+a machine never releases a string worse than those it took, neither the best
+nor the mean length can increase. Chemart's tests check this on the default
+run: the best and mean lengths never rise, the population converges to the
+polygon, and every recorded reaction obeys the release rule.
+
+**The ring toy problem (paper simulation 1; book Figure 17.2).** Thirty
+cities on a ring, M = 9, `t_R = 1/100`. After 1000 generations the random
+initial tours had moved close to the polygon, each string along its own path;
+Banzhaf attributes this to the low recombination rate, which lets parts of the
+population develop separately before recombination merges them. The paper
+says the ring has "no local minima". Chemart reproduces the convergence on a
+ten-city ring (tested with seed 3: the best string is exactly the polygon after
+1000 generations). It does not bear out "no local minima" for its own
+E-machine: see below.
+
+**Recombination speeds the search (paper Tables 1a and 1b).** On the 30-city
+ring, generations until the mean tour was within 10% of the optimum:
+
+| machines | generations | CPU time (s) |
+|---|---|---|
+| E | 3846 | 20.93 |
+| E + C + I | 5447 | 24.27 |
+| E + R | 1322 | 7.59 |
+| E + C + I + R | 4358 | 19.47 |
+
+Raising the recombination rate `t_R` from 1/1000 to 1 cut the count from 5000
+to 738 generations (1/500 gave 6110, which Banzhaf calls a statistical
+fluctuation). By the paper's own generation rule (`c = floor(M / Σ t_j)`), a
+generation of E alone is 9 operation cycles, of E + R 8, of E + C + I 3 and
+of all four machines 2, so the table compares runs with different numbers of
+operations per generation. Chemart's tests check the qualitative content on a 20-city ring
+over three seeds: E + R reaches the criterion within 1500 generations while E
+alone does not, and `t_R = 1` reaches it within 1000 generations while
+`t_R = 1/1000` does not.
+
+One difference: in the paper E alone does reach the criterion, while in
+Chemart it stalls, because single strings get stuck in tours that no swap of
+two cities can shorten. Chemart's E-machine is a swap, as in the authors'
+PyCellChemistry re-implementation. The paper describes it as fixing two cities
+and inverting "their order in the tour", and calls it an "exchange-2"
+operation, wording that also fits reversing the whole stretch between the two
+cities. In a quick check outside the generator, a single 20-city ring tour
+improved by random swaps reached the polygon in 4 of 8 trials, and by random
+stretch reversals in 8 of 8.
+
+**Local operators get trapped on random maps (paper Table 2a).** On 30 random
+cities, E alone had not reached the preset quality after 270,000 generations,
+nor E + C + I after 100,000; with recombination added, E + R reached it in
+27,667 generations and all four machines in 24,900, the quality criterion then
+being "nearly 1%" from the global optimum. Chemart does not repeat this
+table; its tests check only that frequent recombination ends with shorter best
+tours than rare recombination on 20 random cities after 400 generations.
+
+**Too much recombination collapses diversity (paper Table 2b).** On the same
+random map, generations to the preset quality fell from 105,000 at
+`t_R = 1/1000` to 2767 at `t_R = 1/5`, but at `t_R = 1` the run failed with a
+"variance breakdown": the tours became alike before the good one was found.
+Banzhaf concludes that an optimal recombination frequency should exist,
+depending on N, the number of operators and M. Chemart's tests check the
+overlap side of this: after 400 generations on 20 random cities, `t_R = 1`
+ends with overlap above 0.8 and `t_R = 1/1000` below 0.5. They do not
+reproduce the failure itself; in the runs under *Using it*, `t_R = 1` reached
+tours as short as any other setting on four of five maps.
+
+**Which machine does the work, and when (paper Figure 5).** In a 30-city
+random run, the E-machine contributed most at the very beginning, C and I took
+over later, and recombination later still, while progress slowed in what looks
+like an exponential decay and reached a plateau after about 10^5 generations.
+Chemart keeps only totals in `machine_successes`, not the time course, and the
+tests do not check this. Because a shorter run with the same seed is the start
+of a longer one, the time course can be recovered by differencing. For seed 0,
+N = 30, random layout, default time scales:
+
+```
+generations 0-10:          E 8   C 5   I 4   R 0
+generations 10-100:        E 22  C 31  I 24  R 1
+generations 100-1000:      E 74  C 70  I 64  R 6
+generations 1000-10000:    E 73  C 53  I 44  R 15
+generations 10000-30000:   E 1   C 7   I 0   R 16
+```
+
+Recombination does take over at the end, as in the paper; the early lead of E
+over C and I is weak here.
+
+**Statistics over many runs (paper Tables 3 and 4).** On one 30-city random
+map with a known optimum, 100 runs per population size found the global
+optimum in about 90% of cases (M = 9, `t_R = 1/100`: 9 failures by variance
+collapse, 2 by time limit). Failures shifted from variance collapse in small
+populations to the time limit in large ones. On 50 random 100-city maps,
+stopping when the overlap reached 90%, the best tour found with M = 9 was within 10% of the
+Bonomi–Lutton estimate `l ≈ 0.739 √N` for the average optimal tour, an
+estimate valid for very large N, which Banzhaf warns is far from N = 100. The CPU
+time to 90% overlap grew from 35 s at N = 20 to 1616 s at N = 100, which
+Banzhaf read as not exploding. Chemart does not reproduce these tables: they
+need many long runs at N = 30–100, and the generator has no stopping rule on
+overlap.
+
+**Later work.** The book notes that the recombination-versus-diversity
+trade-off "is well known today in the domain of evolutionary algorithms", and
+that changing the strings, the fitness and the operators would let the same
+chemical algorithm solve other problems. It lists more recent
+chemistry-inspired optimisation algorithms but does not describe any that
+builds on this one.
+
+## Further reading
+
+- Bonomi, E. & Lutton, J.-L. (1984). The N-city travelling salesman problem:
+  statistical mechanics and the Metropolis algorithm. *SIAM Review* 26,
+  551–568. The source of the 0.739 √N estimate used in paper Table 3b.

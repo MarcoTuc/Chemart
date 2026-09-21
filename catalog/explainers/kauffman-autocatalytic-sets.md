@@ -1,0 +1,341 @@
+## Introduction
+
+This is the model behind one of the best-known arguments about the origin of
+life: that a self-sustaining chemistry could arise from a random soup of
+polymers without any molecule that copies itself from a template. Stuart
+Kauffman proposed it in "Autocatalytic sets of proteins" (1986). The same year
+J. Doyne Farmer, Kauffman and Norman Packard worked it out further in
+"Autocatalytic replication of polymers", whose stated thesis is "that
+templating is not required to achieve an autocatalytic set". According to the
+book, Kauffman was motivated by the Miller-Urey experiments, in which amino
+acids formed from simple ingredients. The question was how one gets from
+such building blocks to a system rich enough to sustain itself.
+
+The key notion is the **autocatalytic set**: a group of molecules in which
+every member is produced by at least one reaction that another member
+catalyses (speeds up). No member copies itself. The set as a whole
+regenerates itself, provided it is fed simple raw materials, the **food set**.
+The book's figure 6.12 gives an example among strings of two letters, `a` and
+`b`: `abb` catalyses the formation of `baab`, which catalyses the formation of
+the long string `aabaabbb`, which catalyses the cleavage of `abab` into two
+`ab`, each of which catalyses the formation of `abb`. The loop is closed, and in
+the figure every string in it is built up from the food `a`, `b`, `aa` and
+`bb`.
+
+The argument is combinatorial. Molecules are strings that join end to end
+(condensation) and split (cleavage). Suppose each string catalyses each
+possible reaction with the same small probability, as if catalytic ability
+were handed out at random. A longer string can be split in more places, so the
+number of possible reactions grows faster than the number of strings: Farmer,
+Kauffman and Packard say the ratio of reactions to species grows with the
+length of the longest string present. Above a critical catalysis probability,
+the web of catalysed reactions starting from the food no longer fizzles out
+but keeps growing, and autocatalytic sets become likely. Kauffman's conclusion
+was that such sets are to be expected in any sufficiently rich chemistry, not
+an improbable accident.
+
+The original analysis is a static graph calculation, with no reaction rates.
+Chemart's entry is a **generator of the reaction graph**: it builds every
+string up to a length limit, every condensation and cleavage between them, and
+a random catalysis assignment. It runs no simulation and does not by itself
+look for autocatalytic sets. Banzhaf and Yamamoto cover the model in §6.3.1,
+"Autocatalytic Sets", of the chapter on the origin of life. Its neighbours in
+the catalog build on the same string chemistry:
+[Bagley and Farmer's autocatalytic metabolism](bagley-farmer.md) adds rate
+equations and a flow reactor; [RAF sets](raf.md) is the algorithm that finds
+autocatalytic sets in such a graph; the [Jain-Krishna model](jain-krishna.md)
+keeps only the "who catalyses whom" graph and lets it evolve; and
+[random catalytic networks](random-catalytic-networks.md) drop molecular
+structure altogether. This entry is the bare graph from which the first two
+start.
+
+## How it works
+
+### Molecules are strings
+
+A molecule is a string over an alphabet of `B` letters: `a` and `b` for the
+binary model, up to `a`–`d` in Chemart. The letters stand for monomers, such as
+amino acids for proteins or nucleotides for RNA; a string of length n is a
+polymer made of n monomers. The strings are read left to right, so `ab` and
+`ba` are different molecules. Chemart lists every string up to a maximum
+length. With `B = 2` and length at most 5 that is 2 + 4 + 8 + 16 + 32 = 62
+species.
+
+### Reactions: join and split
+
+Two strings join into their concatenation, and a string splits into two
+pieces. Each split point of each string gives one reversible pair:
+
+```
+a + b -> ab
+ab -> a + b
+```
+
+A string of length n has n − 1 split points, so there are Σ (n − 1)·Bⁿ pairs.
+For the default network that is 1·4 + 2·8 + 3·16 + 4·32 = 196 pairs, or 392
+reactions counting both directions. When both pieces are the same, Chemart
+writes `2 a -> aa`.
+
+In a real protein or RNA, joining two pieces releases a water molecule and
+splitting consumes one (the book's eq. 6.2, `A + B ⇌ C + H`). Chemart leaves
+water out, as the usual formulation of the polymer model does. Because a
+reaction only moves letters between strings, the number of `a` letters and the
+number of `b` letters, summed over all molecules, never change. These are the
+network's conservation laws.
+
+### Catalysis is assigned at random
+
+Nobody can predict which real polymer catalyses which reaction, so the model
+hands out catalytic ability at random. Each string catalyses each
+condensation/cleavage pair with probability `P`, independently. A catalyst
+appears on both sides of the reaction, because it is not used up. Here are two
+reactions from the default network (seed 1):
+
+```
+ab + b + baab -> abb + baab
+abb + baab -> ab + b + baab
+```
+
+Read the first as: `ab` and `b` join into `abb`, and `baab` speeds this up.
+The second is the same catalyst splitting `abb` again. A catalyst speeds up a
+reaction and its reverse alike, which is why Chemart always adds the two
+directions together. With `P = 0.05`, each of the 62 strings is expected to
+catalyse 196 × 0.05 ≈ 10 pairs, about 608 catalysed pairs in total; seed 1 drew
+exactly 608, which with both directions gives 1,216 catalysed reactions.
+
+### The food set and the critical probability
+
+The food set is the set of small molecules supplied from outside. Farmer,
+Kauffman and Packard use a **firing disk**: every string up to some length L,
+about B^L strings for large B. Starting from the firing disk, they grow the
+graph step by step. Catalysed condensations among the strings present produce
+new, longer strings; the new strings open new reactions and can catalyse
+reactions themselves; and so on. If each step adds fewer new strings than the
+last, growth stops (they call this *subcritical*). If it adds more, the graph
+grows without bound (*supracritical*). The boundary lies near
+
+```
+P_crit ≈ B^(−2L)      (book eq. 6.3)
+```
+
+that is, the graph takes off once the firing disk holds roughly √(1/P)
+different strings. A larger alphabet or longer food strings lower the
+threshold.
+
+Chemart does not reproduce this growth process. It builds all strings up to a
+fixed maximum length at once, whether or not they can be reached from the
+food, and records the food set only as data. (The table above marks the
+chemistry as constructive because in the papers the species set grows; the
+network Chemart returns is fixed.) Whether a self-sustaining set
+exists in the result is a separate question, which the [RAF](raf.md) entry
+answers (see the recipe below).
+
+### No reactor
+
+The graph is the whole model: there are no rates, no concentrations and no
+time. The formal specification below mentions a food inflow that keeps the
+system out of equilibrium. That is the chemical setting the book describes and
+the one the kinetic follow-ups simulate. Chemart does not implement it here.
+
+## Using it
+
+The default call above builds the binary model with strings up to length 5,
+`P = 0.05` and the book's food set `a`, `b`, `aa`, `bb` from figure 6.12. It
+reproduces no published experiment: the papers study far larger graphs. The
+network lists the 392 uncatalysed reactions first, then the catalysed ones.
+Each species name is the string itself. Two fields of `net.extras` matter:
+
+- `food_set`: the food set you passed. It does not change the network.
+- `conservation`: one law per letter, giving how many of that letter each
+  species holds:
+
+```
+monomer a {'a': 1, 'aa': 2, 'ab': 1, 'ba': 1, 'aaa': 3, 'aab': 2}
+monomer b {'b': 1, 'ab': 1, 'ba': 1, 'bb': 2, 'aab': 1, 'aba': 1}
+```
+
+(first six entries of each). Each catalysed reaction carries its catalyst in
+`reaction.catalysts`, for example `{'baab': 1}`.
+
+Note that the default food set is not a complete firing disk: it lacks `ab`
+and `ba`, so eq. 6.3 does not strictly apply to it.
+
+### Sizes
+
+`B` and `max_length` set the size, which is capped at 512 strings. Seed 1 gave:
+
+```
+P = 0                      62 species    392 reactions
+max_length = 8, P = 0.001  510 species  9350 reactions
+B = 3, max_length = 5, P = 0.001   363 species  3440 reactions
+B = 4, max_length = 4, P = 0.001   340 species  2386 reactions
+```
+
+All of these build in well under a second. `B = 4, max_length = 5` would give
+1,364 strings and raises a `ValueError`. The number of catalysed reactions
+grows as `P` × (pairs) × (strings), so at the largest sizes keep `P` small:
+`max_length = 8` with `P = 0.05` would add about 160,000 reactions.
+
+### Looking for autocatalytic sets
+
+The [RAF](raf.md) entry can analyse any catalytic reaction system passed as
+its `system` parameter. A RAF (reflexively autocatalytic and food-generated
+set) is a set of reactions in which every reaction is catalysed by a molecule
+the set can make, and every reactant can be built from the food by the set's
+own reactions: the formal version of an autocatalytic set. This script turns a
+Kauffman network into that format and asks, for ten seeds at each `P`, whether
+a RAF exists and how many reactions the largest one (the maxRAF) holds:
+
+```python
+import chemart
+
+def as_raf_system(net):
+    """One reversible reaction per condensation/cleavage pair, with its catalysts."""
+    pairs = {}
+    for r in net.reactions:
+        e = list(r.catalysts)
+        lhs = [s for s, n in r.reactants.items() if s not in e for _ in range(n)]
+        rhs = [s for s, n in r.products.items() if s not in e for _ in range(n)]
+        if len(rhs) != 1:          # keep the condensation direction only
+            continue
+        pairs.setdefault((tuple(lhs), rhs[0]), set()).update(e)
+    reactions = [{"id": f"{'+'.join(l)}={c}", "reactants": list(l), "products": [c],
+                  "catalysts": sorted(cs), "reversible": True}
+                 for (l, c), cs in pairs.items()]
+    return {"food": net.extras["food_set"], "reactions": reactions}
+
+for P in [0.001, 0.002, 0.005, 0.01, 0.02]:
+    found, sizes = 0, []
+    for seed in range(1, 11):
+        net = chemart.generate_network("kauffman-autocatalytic-sets", seed=seed, P=P)
+        raf = chemart.generate_network("raf", system=as_raf_system(net), irreducible_rafs=0)
+        a = raf.extras["analysis"]
+        found += a["raf_exists"]; sizes.append(a["max_raf_size"])
+    print(f"P = {P}: RAF in {found}/10 networks, maxRAF sizes {sizes}")
+```
+
+```
+P = 0.001: RAF in 0/10 networks, maxRAF sizes [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+P = 0.002: RAF in 1/10 networks, maxRAF sizes [0, 0, 1, 0, 0, 0, 0, 0, 0, 0]
+P = 0.005: RAF in 2/10 networks, maxRAF sizes [1, 0, 44, 0, 0, 0, 0, 0, 0, 0]
+P = 0.01: RAF in 9/10 networks, maxRAF sizes [81, 107, 97, 95, 89, 93, 81, 72, 0, 95]
+P = 0.02: RAF in 10/10 networks, maxRAF sizes [136, 176, 151, 150, 155, 158, 169, 142, 127, 153]
+```
+
+The whole sweep, 50 networks, takes about 10 seconds. Self-sustaining sets go
+from absent to almost certain between `P = 0.005` and `P = 0.01`, and from `P = 0.01` on they are large, holding 72 to 176 of the
+196 reaction pairs. In the
+units the RAF papers use, the average number of pairs each string catalyses
+(196 × `P`), the jump falls between about 1 and 2. The two maxRAFs of size 1 are
+single reactions catalysed by a food molecule (`b + b ⇌ bb` catalysed by `a`,
+and `a + bb ⇌ abb` catalysed by `aa`), which the RAF definition used in
+Chemart allows. This transition is not the one of eq. 6.3, which concerns
+unbounded growth of the graph from the food; here the strings are capped at
+length 5 and all present from the start.
+
+## Results
+
+### Farmer, Kauffman and Packard (1986): the critical transition
+
+Kauffman (1986) calculated, from the combinatorics of the binary model, the
+catalysis probability above which autocatalytic sets form with high
+probability. Farmer, Kauffman and Packard checked and extended this with the
+step-by-step graph growth described above, allowing strings up to length 1000.
+
+- **Two regimes.** Plotting the number of new species created at each growth
+  step (their figure 2, `B = 2`, firing disk up to length 6), they found that
+  below the critical point this number decays exponentially until growth
+  stops. Near it, the count fluctuates, and a given run may either stop or run
+  away. Above it, after an initial decay, the graph grows faster than
+  exponentially. They compare this to random graphs, where most nodes are
+  isolated when edges are few and one giant cluster forms once edges per node
+  pass a threshold, and note that the critical point is defined only on
+  average, since reseeding can change the outcome.
+- **The threshold.** Finding the critical `P` by bisection for several
+  alphabet sizes and firing-disk radii, they found criticality roughly at
+  `P = B^(−2L)`, in good agreement with Kauffman's earlier combinatorial
+  estimate, which they extended in an appendix from `B = 2` to any alphabet.
+  Plotted against the number of species in the firing disk, the critical
+  probabilities for different alphabets fall on one line (their figure 3b).
+- **Not much diversity is needed.** By this estimate, a firing disk of all
+  monomers and dimers of a twenty-letter alphabet (420 strings) is already
+  supracritical near `P ≈ 20⁻⁴ ≈ 6 × 10⁻⁶`. For the binary alphabet, the
+  appendix finds that catalysis probabilities of order 10⁻⁶ need a firing disk
+  of strings up to length 9 or more. As a rough guide to realistic values of
+  `P`, the paper cites the probability, about 10⁻⁵, that an antibody recognises
+  a random antigen, while warning that binding is not catalysis.
+- **Length distribution.** In a supracritical graph, the number of species of
+  each length has a roughly exponential tail (their figure 4).
+
+The book summarises the consequence (the entry's second phenomenon): since a
+larger alphabet lowers the threshold, proteins, with about 20 amino acids, are
+better suited to forming autocatalytic sets than RNA or DNA, with 4
+nucleotides, for the same length of food polymers.
+
+### Adding kinetics
+
+The same paper already went beyond the graph. It modelled a stirred flow
+reactor, a *chemostat*, fed with the firing disk and overflowing at a constant
+rate, with rate equations that account for catalysts being bound up while they
+work. A new string may catalyse only once its concentration passes a
+threshold. With a binary alphabet and a firing disk of radius 2 (their
+figure 5), the number of polymers rises sharply once `P` passes the critical
+value, for a low threshold of 10⁻¹³. Because mass is finite, kinetics caps the
+growth: strictly, there is no unbounded supracritical regime any more, though
+the contrast between few and many polymers remains. Their conclusion is that
+the chemistry needs a minimum complexity, set by the size of the food set and
+the probability of catalysis, for autocatalytic behaviour to occur. The book
+calls these kinetic results preliminary, and describes both papers as mostly
+graph-theoretic and static.
+
+Kauffman (1986) also suggested that the same picture could describe the origin
+of metabolism, with proteins catalysing reactions among other organic
+compounds, which is why the strings in Farmer's model are left abstract.
+
+### Later work
+
+- **Dynamics.** Bagley and Farmer (1992) turned the model into a dynamical
+  system and showed that, under a steady food supply, catalysis concentrates
+  mass into a small core of molecules: see [bagley-farmer](bagley-farmer.md).
+- **Formal detection.** Hordijk and Steel (2004) defined RAF sets and a
+  polynomial-time algorithm to find them. According to the book, their
+  computational and analytical results show that the catalysis needed for
+  autocatalytic sets grows only linearly with system size, not exponentially
+  as Kauffman had argued. They also note the framework's limits: no dynamics,
+  no compartments, no heredity. See [RAF sets](raf.md).
+- **Criticism.** The book reports that Kauffman's static argument is widely
+  criticised for overestimating the probabilities involved once dynamic and
+  stochastic effects are included. Stochastic studies by Filisetti and
+  colleagues (2010, 2011) found that autocatalytic sets emerge more rarely than
+  in deterministic models, and that those that form are often unstable. Side
+  reactions that drain the sets remain the main objection.
+
+### What Chemart reproduces
+
+Chemart reproduces the network the papers analyse, not their results. The
+tests (`tests/chemistries/test_w2_book.py`) check that with `P = 0` the network
+has exactly the 62 strings and 392 reactions predicted by the counting above,
+that every reaction conserves both letter counts, and that with `P = 1` every
+string catalyses every pair. Neither the critical transition of eq. 6.3 nor
+the alphabet-size trend is simulated or tested: the generator has no growth
+process, caps networks at 512 strings (the papers use strings up to length
+1000), and has no kinetics. The kinetic side lives in
+[bagley-farmer](bagley-farmer.md), and the RAF recipe above gives a related,
+but different, transition.
+
+## Further reading
+
+- J. D. Farmer, S. A. Kauffman and N. H. Packard. Autocatalytic replication of
+  polymers. *Physica D* 22(1–3):50–67, 1986. Open copy:
+  <https://www.inet.ox.ac.uk/publications/autocatalytic-replication-of-polymers>
+  (the book's bibliography gives the volume as 2; it is 22).
+- R. J. Bagley and J. D. Farmer. Spontaneous emergence of a metabolism. In
+  C. G. Langton et al. (eds.), *Artificial Life II*, pp. 93–140.
+  Addison-Wesley, 1992.
+- W. Hordijk and M. Steel. Detecting autocatalytic, self-sustaining sets in
+  chemical reaction systems. *Journal of Theoretical Biology*
+  227(4):451–461, 2004.
+- A. Filisetti, A. Graudenzi, R. Serra, M. Villani, D. De Lucrezia,
+  R. M. Füchslin, S. A. Kauffman, N. H. Packard and I. Poli. A stochastic model
+  of the emergence of autocatalytic cycles. *Journal of Systems Chemistry*
+  2(1), 2011.

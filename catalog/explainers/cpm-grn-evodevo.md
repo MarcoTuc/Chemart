@@ -1,0 +1,440 @@
+## Introduction
+
+This entry is Paulien Hogeweg's model of the *evolution of development*
+(evo-devo), published in two papers in 2000, together with the cell simulation
+it is built on, the Cellular Potts Model of James Glazier and François Graner
+(1993). It is a simulation model. It asks how much of an embryo's shaping,
+its *morphogenesis*, comes for free once cells stick to each other with
+different strengths and switch genes on and off. Nothing else is modelled: no
+diffusing chemical signals, no genes that command a cell to grow or die, no
+target shape.
+
+Picture a two-dimensional embryo, which Hogeweg calls a *critter*. Each cell is
+a blob of pixels on a grid. Its membrane jiggles at random, and a jiggle is
+more likely to stick when it lowers the cell's surface energy, the cost of its
+contacts with the cells and liquid around it. That alone is enough for a mixed
+clump of two kinds of cells to sort itself out, with the stickier kind ending
+up inside, which was Glazier and Graner's result. Hogeweg gives every cell the
+same small network of on-off genes. Some genes set the cell's surface
+molecules, and so how strongly it sticks to each neighbour; two of them also
+signal to the cells it touches. When a cell's genes change, its stickiness
+changes, cells move, touch new neighbours, and their genes change again.
+Stretched cells grow and divide; squeezed cells shrink to nothing and die.
+
+Hogeweg then evolves the gene networks. The fitness she selects for is only
+the number of distinct cell types and how different they are. Shape is never
+scored. Yet engulfing that resembles gastrulation, budding, elongation and
+plant-like growth zones appear anyway, as side effects. Her point was that
+such shapes are "relatively generic" for cells that adhere differentially and
+differentiate, and arise "even if they are 'good for nothing'" (Hogeweg 2000,
+J. theor. Biol., section 5).
+
+Banzhaf and Yamamoto describe the model briefly in their chapter on modelling
+biological systems (book §18.6.1, "Evolution of Morphogenesis"), next to other
+evo-devo models, and close that section by criticising the usual fitness
+function, "the distance to a target pattern", as biologically implausible.
+Hogeweg's model is the one that avoids it, which is why this entry implements
+it and not the others the book names. Its nearest neighbours in the catalog are
+the [French flag model](french-flag.md), the classic target pattern that such
+distance-based fitness functions use;
+[isologous diversification](isologous-diversification.md), in which cell types
+split apart through the internal chemical dynamics of identical cells rather
+than through maternal signals and contact; [random Boolean networks](rbn.md),
+Kauffman's on-off gene networks whose attractors are read as cell types, the
+same kind of network each cell carries here; and the
+[artificial regulatory network](arn.md), a continuous gene network model that
+Chavoya and Duthen later extended to grow patterns. Unlike all of these, this
+entry has real cell mechanics: cells have shape, volume and position, and they
+push each other around.
+
+## How it works
+
+The model has three levels, each running inside the next: the lattice, where
+cells move; the gene network inside each cell; and evolution, which changes the
+gene networks between critters.
+
+### Cells on a lattice: the Cellular Potts Model
+
+The world is a square grid of sites. Each site carries a number σ (sigma): the
+identity of the cell that covers it, or 0 for the *medium*, the liquid around
+the critter. A cell is therefore a patch of sites that share the same σ, and
+its *volume* v is the number of its sites.
+
+The model gives every configuration an energy H, and the cells move by
+lowering it:
+
+```
+H = Σ over neighbouring site pairs with different σ of J(type, type)
+  + λ Σ over cells of (v − V)²
+```
+
+The first term is surface energy. Every pair of neighbouring sites that belong
+to different cells, or to a cell and the medium, costs a *bond energy* J that
+depends on the two cell types. A low J means the two surfaces stick well; a high
+J means they would rather not touch. Neighbours here are the eight surrounding
+sites (the *Moore neighbourhood*). The second term keeps each cell near its
+*target volume* V: a cell that is too small or too large pays λ(v − V)², where
+λ (lambda) sets how stiff the cell is.
+
+Time runs in steps. In one step the simulation picks a site and one of its
+neighbours at random, as many times as there are sites, and each time proposes
+to copy the neighbour's σ into the site: one cell pushes its membrane one site
+into the other. With ΔH the change in energy this copy would cause, it is
+accepted with probability
+
+```
+P = 1                       if ΔH < −0.1
+P = exp(−(ΔH + 0.1) / T)    otherwise
+```
+
+This is the *Metropolis rule* of statistical physics: moves that lower the
+energy happen, and moves that raise it happen sometimes, more often at a higher
+*temperature* T, which here sets how much membranes fluctuate. The small offset
+0.1 comes from Savill and Hogeweg (1997), who explain it as what keeps cells
+from moving when nothing drives them. The outermost ring of sites is never
+changed, so the critter never touches the edge of the grid.
+
+With two fixed cell types A and B, this is Glazier and Graner's cell-sorting
+experiment. If a contact between an A and a B costs more than the average of
+an A–A and a B–B contact, a mixed clump lowers its energy by grouping like
+with like. Which type ends up inside follows the condition Hogeweg quotes from
+them: type A engulfs type B when `J_ab < J_mb` and `J_am < J_bm` (m is the
+medium), that is, when a B cell would rather touch an A cell than the medium,
+and A cells mind the medium less than B cells do.
+
+### Growth, division and death come from the mechanics
+
+Hogeweg deliberately chose a low λ = 0.5, so that the volume constraint is weak.
+A cell squeezed hard enough by its neighbours can be reduced to zero sites, and
+then it dies. The reverse also happens. When stretching takes a cell's volume
+more than a threshold τ (tau) above its target, its target volume grows by one;
+when the target reaches twice the original, the cell divides, cut in half across
+its longest axis. No gene says "grow" or "die": both follow from the forces that
+differential adhesion creates.
+
+### The gene network inside each cell
+
+Every cell of a critter carries the same Boolean network of 24 genes (nodes).
+Each gene is on (1) or off (0). It reads two inputs and applies one of the 16
+possible two-input logical functions (AND, OR, XOR and so on) to compute its
+next state. All genes update at once, once per time step. The pattern of all
+24 on-off states is the cell's *expression pattern*.
+
+An input is either another gene of the same cell or a slot of the cell's
+*environment vector*. Only the first two slots carry anything: slot k is on when
+gene k is on in any of the cells this cell touches (a logical OR over its
+neighbours). The remaining slots are always 0. Because half of all randomly drawn
+inputs point into the environment vector, and most of those read a constant 0,
+many genes are wired to nothing useful, which gives the genome much built-in
+redundancy.
+
+Ten of the genes are the cell's surface receptors, and they set its bond
+energies. Five are *locks* and five are *keys*. Key k of one cell matches lock k
+of the other when the two are complementary (one on, one off), and each match
+adds its binary place value, 2^k, to the bond energy:
+
+```
+J between cells i and j = ( Σk 2^k [key k of i complements lock k of j]
+                          + Σk 2^k [key k of j complements lock k of i] ) / 2
+J between cell i and the medium = Σl 2^l (gene l of i),  over five of the ten receptor genes
+```
+
+So J runs from 0 to 31. Two cells of the same type can stick well or badly, as
+Hogeweg intended. Two of the receptor genes are also the two signalling genes.
+The paper states the lock-and-key rule but its text layer loses the exponents;
+Chemart's reading of them as binary place values, and its choice of which five
+genes face the medium, are recorded in the implementation decisions below.
+
+A *cell type* is an expression pattern. In Chemart's network each distinct
+pattern that appears is one species, named `T0`, `T1`, … in order of first
+appearance, with the 24-bit pattern as its structure.
+
+### Development: one zygote, seven cleavages, two maternal signals
+
+A critter starts as one cell, the *zygote*, with every gene off. It then goes
+through a fixed number of scheduled *cleavages*: at the end of each stage every
+cell divides at once, and both daughters inherit the mother's gene states.
+Hogeweg used seven, which gives 128 cells. After the first and second cleavage,
+one gene (a *maternal factor*) is flipped for one step in one daughter. This is
+the only thing that breaks the symmetry between cells. Whether it leads to a
+lasting difference depends on the gene network; further differences arise when
+cells respond to what they touch.
+
+### Evolution selects for differentiation, not shape
+
+A population of random gene networks is developed, and each critter scored.
+The fitness is the summed Hamming distance (the number of genes that differ)
+between every pair of distinct cell types, counting only cells whose pattern
+has settled onto a fixed point or a short cycle. It is taken as the minimum
+over a window at the end of development, so transient types do not count.
+Parents are chosen by tournament (the fittest of seven drawn at random), and a
+child receives a point mutation, a new input or a new logical function for one
+gene, with probability 0.5. While no network differentiates at all, winners are
+replaced by fresh random networks. As in the paper, growth by stretching is
+switched off while evolving, and switched on when the best network is finally
+developed and studied.
+
+### What the network records
+
+Chemart's reaction network is the list of events seen in that final
+development, each with how often it happened:
+
+- `Ta -> Tb`: a cell of type a changed its expression pattern to b;
+- `Ta -> 2 Ta`: a cell divided (a scheduled cleavage, or growth by stretching);
+- `Ta -> `: a cell was squeezed to zero volume and died.
+
+There are no rates. The events are what the lattice and the gene networks
+produced, so the network is an observed record, not a kinetic model.
+
+### A worked example: the default run
+
+Here are all 17 events of the default run (`seed=1`), with the genes that change
+in each, numbered from 0:
+
+```
+T0 -> T1  (x1)     genes 2, 3, 5, 6, 7, 9, 13, 14, 15, 17, 18, 20-23 switch on
+T1 -> T2  (x1)
+T2 -> T3  (x1)
+T3 -> T4  (x70)    gene 13
+T4 -> T3  (x69)    gene 13
+T4 -> T5  (x1)     gene 19: the first maternal flip
+T5 -> T6  (x1)
+T6 -> T7  (x1)
+T7 -> T8  (x35)    genes 1, 6, 13, 16, 18
+T8 -> T7  (x34)
+T7 -> T9  (x1)     gene 20: the second maternal flip
+T9 -> T8  (x1)
+T4 -> 2 T4  (x4)
+T7 -> 2 T7  (x3)
+T8 ->  (x2)
+T7 ->  (x1)
+T4 ->  (x1)
+```
+
+The zygote `T0` starts with every gene off. In its first three steps the
+network switches genes on and settles into a two-step cycle, flipping gene 13
+back and forth between `T3` and `T4`. That is a cycle of period 2, which counts
+as settled. After the first cleavage, gene 19 is flipped in one daughter
+(`T4 -> T5`). In this network the flip sticks: the daughter moves through `T5`
+and `T6` into a cycle of its own, `T7 ↔ T8`, and becomes the founder of a
+second lineage. The second maternal flip (`T7 -> T9`) does not stick: `T9`
+falls back into the same cycle. The seven divisions are the 1 + 2 + 4 cells
+of the three scheduled cleavages; none came from growth.
+
+The two lineages differ in genes 18 and 19 when both are in the same phase of
+their cycles, and in genes 1, 6, 16 and 19 when they are out of phase, so the
+differentiation score alternates between 2 and 4. The fitness takes the
+minimum, 2. Their bond energies are all equal (J = 25 between any two of the
+cells, 21 with the medium), so in this network the two types do not adhere
+differently and there is nothing to sort. Four of the eight cells were squeezed
+to death; the four survivors hold 12 to 18 sites each, far below their target
+of 50, because ten steps between cleavages are too few for the daughters to
+grow back. Two generations of four networks is a smoke test, not an evolution
+experiment; the recipes under *Using it* go further.
+
+## Using it
+
+The default run above is deliberately tiny: a 38 × 38 grid, three cleavages
+(8 cells), 10 steps per stage and 30 after the last, and four networks evolved
+for two generations. It takes about two seconds and shows the machinery, not
+Hogeweg's results. Its outcome is in `net.extras`:
+
+```python
+a = net.extras["analysis"]
+a["fitness"]["best_evolved"], a["fitness"]["final_development"]   # (2, 2)
+[g["best_fitness"] for g in a["fitness"]["per_generation"]]        # [0, 1, 2]
+a["divisions"], a["deaths"], a["differentiations"]                 # (7, 4, 216)
+a["cells_alive"], a["cell_types"], a["types_seen"]                 # (4, 2, 10)
+net.extras["final_state"]                                          # {'T4': 3.0, 'T7': 1.0}
+```
+
+`differentiations` counts every `Ta -> Tb` event, so a cell cycling between two
+patterns adds one per step. `a["per_step"]` records, for every time step, the
+number of cells and types, the differentiation score, the fraction of cell–cell
+contacts that join two different types, the critter's surface and its volume.
+`net.extras["space"]["sigma"]` is the final lattice (site index
+`row * width + column`), `net.extras["compartments"]["cells"]` gives each cell's
+type, volume, target volume and centre, `net.extras["grn"]` is the evolved gene
+network, and `net.extras["energies"]` holds the bond energies J between the
+surviving types and with the medium.
+
+**The cell-sorting experiment.** `mode="cell-sorting"` runs Glazier and
+Graner's experiment instead: 12 cells of type A and 12 of type B, of 20 sites
+each, laid out in a mixed square block, with fixed bond energies
+(`sorting_energies`, by default A–A 6, A–B 11, B–B 2, A–medium 8,
+B–medium 20). B is the more cohesive type, so it should end up inside.
+
+```python
+net = chemart.generate_network("cpm-grn-evodevo", seed=1, mode="cell-sorting")
+a = net.extras["analysis"]
+a["heterotypic_contact_fraction"]   # {'initial': 0.526, 'final': 0.383}
+a["energy"]                         # {'initial': 6918.0, 'final': 4608.0}
+a["engulfed_type"], a["cells_alive"]   # ('B', {'A': 12, 'B': 10})
+```
+
+Over 150 steps the share of contacts between unlike cells falls from 53% to
+38%, the energy falls by a third, and the B cells are the ones furthest from
+the medium. Two B cells were squeezed out of existence. With
+`sorting_steps=1000` (about 3 seconds) the fraction falls to 33% and the energy
+to 3988. The only reaction in this mode is the death of a cell, `B -> `.
+
+**More evolution.** Raising the population and the number of generations lets
+selection act. With `population=6, generations=4` (2 to 3 seconds per run), the
+best fitness per generation was:
+
+```
+seed 1: [0, 0, 0, 0, 3]
+seed 2: [6, 12, 12, 12, 12]
+seed 3: [1, 1, 1, 1, 1]
+```
+
+Seed 2 found a network with five cell types at the end of development; seed 3
+never improved. The published runs used a population of 20 and generated
+thousands of critters.
+
+**Longer development.** Giving the cells time to regain their volume between
+cleavages changes the picture. This run took 30 seconds:
+
+```python
+net = chemart.generate_network("cpm-grn-evodevo", seed=2, divisions=4, grid=60,
+                               steps_per_stage=40, final_steps=200,
+                               population=6, generations=5)
+```
+
+All 16 cells survived, with 43 to 48 sites each, in four types, 19 expression
+patterns were seen during development, and the best fitness was 12 from the
+first generation on. Cost grows with the grid area, the number of steps and the
+number of critters developed. Hogeweg's settings (`grid=100`, `divisions=7`,
+`steps_per_stage=500`, `final_steps=5000`, `population=20`, thousands of
+generations; see the *range* column of the table below) would take hours.
+
+**Growth by stretching** (`growth_threshold`) is only active in the final
+development. In none of the runs above, nor in eight default runs with
+`final_steps=200`, did a cell divide by growth: the largest target volume
+reached was 53, against the 100 needed.
+
+## Results
+
+**Differential adhesion sorts cells.** Glazier and Graner (1993) introduced the
+Cellular Potts Model to simulate cell sorting driven by differential adhesion.
+Hogeweg (2000, J. theor. Biol.) summarises their result as sorting "which is
+quantitatively in agreement with that shown in retina cell in vitro", and
+quotes their engulfment condition. Their paper is behind a paywall and was not
+read for this entry, so Chemart reproduces the experiment, not their numbers:
+its tests check, on three seeds, that a mixed aggregate's share of unlike
+contacts falls by at least 15%, that the energy falls, and that the cohesive
+type B ends up inside. The default bond energies are Chemart's own choice,
+made to satisfy the engulfment and sorting conditions.
+
+**The volume constraint, and death by squeezing.** Hogeweg chose λ = 0.5 so that
+"a cell can 'die' because its volume goes to zero" (Artificial Life paper,
+section 2), citing experiments in which squeezing triggers cell death and
+stretching triggers growth. Chemart's tests check that a lone cell of target 50
+keeps 70% to 120% of its volume against any medium bond energy from 0 to 31,
+and that a cell of target 20 evaporates against a bond energy of 16 but
+survives when λ is raised to 8.
+
+**Five critters, five mechanisms.** The J. theor. Biol. paper describes five
+evolved critters in detail (its Fig. 1). One engulfs its own cell clump in a
+way that resembles gastrulation, forming a hollow structure with only four
+cell types, all fixed points of the gene network. One grows a stem from a small
+bud: the stem persists with cell division and breaks into two blobs without it.
+One keeps a complex asymmetric shape through a balance of cell death,
+redifferentiation and growth, which the paper shows is needed to maintain the
+shape (its Fig. 2). One forms a protrusion two to three cells wide by
+"intercalate and stretch", squeezing one layer of cells between two others.
+The most complex uses 24 different expression patterns during development and
+grows from a *meristem*, a zone of dividing cells like the growing tips of
+plants. The Artificial Life paper names four recurring mechanisms: engulfing,
+budding and elongation, intercalation and elongation, and meristematic growth
+and differentiation.
+
+The paper draws several conclusions from these critters. No two are identical,
+even with the same genome, because random membrane movements are amplified by
+differentiation; early development is more sensitive to this noise than later
+stages. In most cases the network answers one or both maternal signals with a stable
+switch, so the critter has up to three stably different cell lineages; further
+differentiation depends on the current neighbours, and reverses when the
+neighbours change. This contact-dependent redifferentiation
+keeps cell layers intact. The "animal-like" mechanisms (engulfing,
+intercalation) depend on stable lineages, while the "plant-like" meristem
+depends on redifferentiation. Growth happens in zones of stretch and death in
+zones of squeeze, and instead of relaxing the critter to a blob, together with
+differentiation they keep it out of equilibrium: the shapes are, in the
+paper's words, the "maintenance of a transient".
+
+Chemart does not reproduce these critters or identify the mechanisms. Its slow
+tests check only that, over four small runs, cells divide, die and change type,
+and that more than two expression patterns appear. None of Chemart's runs
+produced a division by growth, and no test checks one.
+
+**How the evolution unfolds.** In the Artificial Life paper, "about one-third
+of the evolutionary runs lead to extensive cell differentiation and
+morphogenesis". Following one such run, Hogeweg found that the genome changes
+at a steady rate, like a molecular clock, while fitness climbs in steps
+separated by long plateaus (*punctuated equilibria*), during which the
+population drifts along *neutral paths*, sequences of mutations that leave
+fitness unchanged. Differentiation came first: three stable types from the
+maternal signals, then layers induced by neighbour signals (critters 430 and
+518, numbered by order of birth), then cell movement, with one lineage engulfing
+the critter at critter 753, and a higher fitness plateau at 2143. Over the run,
+cell signalling increased and the number of XOR-like functions and of genes that
+regulate nothing decreased.
+
+Chemart reproduces only the first step. Its slow test checks, over three seeds
+with a population of 6 for 4 generations, that the best fitness and the number
+of differentiating networks both rise in total. It does not track genome
+distances, so the molecular clock and neutral drift are not measured, and its
+default runs are far too short for one-third statistics.
+
+**Shapes in the shadow.** The most unusual result, and the title of the
+Artificial Life paper, is where the interesting shapes are found. They are
+rarely the fittest critters. They are mutants one or two point mutations away
+from the main line of descent, in the "shadow" of the neutral path. They have
+lower fitness because their cells move and change type so much that many types
+exist only briefly, and fitness is measured over a short window; so the shapes
+are "actually negatively selected". The same shape was reinvented six times in
+one run. Features recombine in new ways, a *mosaic evolution* of shape, even
+though the model has no recombination and the genomes diverge linearly. When a
+run was restarted from the same population with a different random seed, the
+genomes diverged, but a distinctive two-armed shape appeared in the shadow of
+both branches. Hogeweg compares this to Anolis lizards, which evolved similar
+forms independently on different Caribbean islands. Chemart does not reproduce
+any of this.
+
+**What Chemart does reproduce.** The model's components are tested against the
+papers' equations: the energy and its change on small hand-counted
+configurations, the acceptance rule, division across the longest axis, the
+lock-and-key bond energies (from 0 to 31, symmetric, possibly non-zero between
+cells of one type), the truth tables of the 16 logical functions, point
+mutations, neighbour signalling through the OR of the two signalling genes, and
+the first maternal flip, after which the two daughters differ in exactly that
+gene. The Cellular Potts Model is exposed as a class of its own
+(`chemart.chemistries.cpm_grn_evodevo.CPM`), so it can be used and tested apart
+from evolution. Not implemented: the parallel scheduling noise of Hogeweg's
+runs (Chemart's runs repeat exactly for a seed), the rule of later Potts
+models that forbids a cell from splitting in two, and the chemotaxis and
+diffusing signals of Savill and Hogeweg's slime-mould model.
+
+**Later work in the book and the sources.** The book places Hogeweg's model
+among other evo-devo models (§18.6.1), none of which Chemart implements:
+Kitano's evolution of cell metabolism for morphogenesis; Knabe, Schilstra and
+Nehaniv (2008), who grow a French flag with a continuous gene network on a
+Potts grid with diffusing morphogens (book Fig. 18.15); Chavoya and Duthen's
+extension of the artificial regulatory network to grow concentric squares and
+French flags; and Astor and Adami's model, in which artificial neurons grow into something
+like a nervous system. Hogeweg
+credits Roeland Merks with programming the original model and notes that Nick
+Savill and Stan Marée used the same developmental model with long-range signals
+to model the slime mould *Dictyostelium*; Marée and Hogeweg (2001) went on to
+simulate its culmination into a fruiting body.
+
+## Further reading
+
+- Marée, A. F. M. & Hogeweg, P. (2001). How amoeboids self-organize into a
+  fruiting body: multicellular coordination in *Dictyostelium discoideum*.
+  *Proceedings of the National Academy of Sciences USA* 98(7), 3879–3883,
+  doi:10.1073/pnas.061535198. Open copy:
+  <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC31146/>
+- CompuCell3D, an open-source Cellular Potts simulator (used by Knabe et al.):
+  <https://compucell3d.org/>

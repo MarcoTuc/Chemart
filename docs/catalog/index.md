@@ -55,7 +55,7 @@ Each chemistry's own page has the full capability list, the complete attribution
 
 | chemistry | origin | grows | fidelity | S/R | beyond topology |
 |---|---|:--:|---|--:|---|
-| [Colored chameleon chemistry](chameleon.md) | Winkler, 2007 puzzle | · | book | 3/3 | kinetics, conservation |
+| [Colored chameleon chemistry](chameleon.md) | Winkler, 2009 puzzle (Com… | · | book | 3/3 | kinetics, conservation |
 | [Reversible dimerization](dimerization.md) | textbook | · | book | 3/2 | kinetics |
 | [High-order chemistry (rules as molecules)](high-order-chem.md) | Yamamoto, 2014 (PyCellChe… | yes | book+decisions | 198/154 | — |
 | [Matrix chemistry](matrix-chemistry.md) | Banzhaf, 1993 | yes | book+decisions | 23/375 | kinetics, flow |

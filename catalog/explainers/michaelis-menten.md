@@ -1,0 +1,362 @@
+## Introduction
+
+Michaelis-Menten kinetics is the textbook model of how fast an enzyme works.
+An enzyme is a catalyst, usually a protein: it grabs a molecule of its
+*substrate*, turns it into *product*, lets the product go, and is ready for
+the next substrate molecule. Because each enzyme molecule can handle only one
+substrate at a time, adding more substrate speeds the reaction up only to a
+point. When every enzyme is busy, the reaction runs at a maximum speed, and
+more substrate changes nothing. The Michaelis-Menten equation describes that
+saturating curve with two numbers: the maximum rate, and the substrate level
+at which the rate is half the maximum.
+
+The model is named after Leonor Michaelis and Maud Menten, who published it
+in 1913 in a German paper on the kinetics of the enzyme invertase ("Die
+Kinetik der Invertinwirkung"). The book does not cite that paper;
+it cites the physical chemistry textbook of Atkins and de Paula for the
+model. This entry is not a research model of its own and not an artificial
+world: it is a small, standard reaction scheme and the rate law derived from
+it, an **analysis device**.
+
+Banzhaf and Yamamoto use it twice. In the chapter on modelling biological
+systems (book §18.2.1) it is the basic kinetics of enzymes. In the chapter
+on computing chemical reactions (book §4.4) it is their example of
+*abridgement*: replacing a reaction system by a smaller one that behaves
+nearly the same for the species of interest. Michaelis and Menten's
+kinetics, the book says, is "one such attempt to abridge a more complex
+reaction system - simply by using a more complex kinetic law". Chemart keeps
+both versions, and that is the point of the entry. The same chemistry can be
+written as three ordinary reactions among four species, or as one reaction
+between two species with an unusual rate law. Anything that stores reaction
+networks and assumes every rate is plain mass action (defined below) can hold
+the first but not the second.
+
+Its nearest neighbour in the catalog is [Hill kinetics](hill-kinetics.md),
+the next section of the book: the same kind of object, an elementary
+mechanism plus the lumped rate law derived from it, but for a gene switched
+by cooperating proteins, with an S-shaped instead of a hyperbolic curve. The
+[isologous diversification](isologous-diversification.md) model of Kaneko
+and Yomo uses a Michaelis-Menten saturation factor inside its catalysed
+reactions. Nothing in this entry evolves or builds new molecules: it has
+four fixed species.
+
+## How it works
+
+### Four molecules, three reactions
+
+The elementary form, printed below under *Using it in Chemart*, has four
+species: `E`, the free enzyme; `S`, the substrate; `ES`, the enzyme with a
+substrate molecule bound to it (the *enzyme-substrate complex*); and `P`,
+the product. Its three reactions are the book's scheme 18.3:
+
+```
+E + S -> ES  [mass-action k=1.0]
+ES -> E + S  [mass-action k=1.0]
+ES -> E + P  [mass-action k=1.0]
+```
+
+Enzyme and substrate bind (rate constant `ka`), the complex can fall apart
+again (`ka'`, called `ka_rev` in Chemart), or the enzyme converts the
+substrate and releases it as product (`kb`, the *turnover* rate). The last
+step is taken as irreversible: product never binds back. The real mechanism
+has a further enzyme-product complex, `E + S ⇌ ES ⇌ EP ⇌ E + P` (book
+reaction 18.2); the Michaelis-Menten model simplifies it to these three
+steps.
+
+Every reaction follows **mass action**: it fires at a rate equal to its rate
+constant times the amounts of its reactants. Binding runs at `ka · [E] · [S]`,
+where `[X]` is the concentration of `X`; unbinding at `ka' · [ES]`; turnover
+at `kb · [ES]`. Two totals never change. The enzyme is only ever free or
+bound, so `[E] + [ES] = [E0]`, the total enzyme. Substrate is free, bound, or
+already turned into product, so `[S] + [ES] + [P]` stays equal to the
+starting substrate.
+
+### From three reactions to one
+
+Watch the default run (every rate constant 1, one unit of enzyme, ten of
+substrate), integrated with the script under *Using it* (a few of its 201
+time points):
+
+```
+t=  0.0  E=1.000 ES=0.000 S=10.000 P=0.000
+t=  0.5  E=0.186 ES=0.814 S=8.846 P=0.340
+t=  1.0  E=0.190 ES=0.810 S=8.444 P=0.746
+t=  5.0  E=0.266 ES=0.734 S=5.418 P=3.848
+t= 10.0  E=0.449 ES=0.551 S=2.337 P=7.112
+t= 20.0  E=0.942 ES=0.058 S=0.102 P=9.840
+```
+
+In the first half time unit the enzyme fills up: most of it becomes `ES`.
+After that the complex changes only slowly, following the substrate down as
+it is used up, and product appears at the rate `kb · [ES]`. The derivation
+takes that second phase as the whole story: it sets the net rate of change
+of `[ES]` to zero (the *quasi-steady-state* assumption), which means that
+binding balances unbinding plus turnover:
+
+```
+ka · [E] · [S] = (ka' + kb) · [ES]
+```
+
+Substituting `[E] = [E0] − [ES]` and solving for `[ES]` gives
+`[ES] = [E0] · [S] / (km + [S])`, and so the rate of product formation
+
+```
+d[P]/dt = vm · [S] / (km + [S])        (book eq. 18.4)
+vm = kb · [E0]                          the maximum rate
+km = (ka' + kb) / ka                    the Michaelis-Menten constant
+```
+
+With every rate constant 1, `km = 2`. The run above agrees: at `t = 1`,
+`[S] = 8.444` and the formula predicts `[ES] = 8.444 / (2 + 8.444) = 0.808`,
+against 0.810 in the simulation. When substrate is abundant (`[S]` much
+larger than `km`) the rate tends to `vm`, every enzyme busy; when it is
+scarce the rate is nearly proportional to `[S]`; at `[S] = km` it is exactly
+half of `vm`. The constant `km` is therefore the half-saturation level.
+
+The **abridged form** is this equation as a single reaction, `S -> P`, whose
+rate is not mass action but the Michaelis-Menten law, with `vm` and `km`
+computed from the elementary rate constants. Enzyme and complex disappear
+from the network. It has fewer species and fewer reactions, but its rate law
+is no longer a product of concentrations, so a tool that only understands
+mass action would silently change the model.
+
+### The reactor
+
+Chemart builds the network; it does not run it. The specification allows
+two reactors: deterministic rate equations (ordinary differential equations,
+ODEs), as in the book's derivation, or Gillespie's stochastic simulation
+algorithm (SSA), which fires individual reaction events at random times.
+Nothing flows in or out; the population is bounded only by the two
+conservation laws above.
+
+## Using it
+
+The default call gives the elementary form with every rate constant 1,
+`E0 = 1` and `S0 = 10`. These values are Chemart's choice: the book gives no
+numbers for this model. `net.initial_state` holds `E = 1`, `S = 10` and
+`ES = P = 0`; `net.extras` is empty, and nothing in the generator is random,
+so the `seed` changes nothing.
+
+`form="abridged"` gives the one-reaction version:
+
+```python
+import chemart
+net = chemart.generate_network("michaelis-menten", form="abridged")
+print(net.summary())
+for r in net.reactions:
+    print(r.reactants, "->", r.products, r.rate)
+print(net.initial_state)
+```
+
+```
+michaelis-menten: 2 species, 1 reactions, status=complete
+provides: initial-state, rate-constants, rate-law, stoichiometry, topology
+{'S': 1} -> {'P': 1} {'law': 'michaelis-menten', 'vmax': 1.0, 'km': 2.0}
+{'S': 10.0, 'P': 0.0}
+```
+
+`rate-law` now appears among what the network provides: a simulator must
+read the `michaelis-menten` law as `vmax · [S] / (km + [S])`. The constant
+`km` is never a parameter; it is computed from `ka`, `ka_rev` and `kb`, and
+`vmax` from `kb` and `E0`. The abridged form therefore refuses `ka = 0`:
+
+```python
+try:
+    chemart.generate_network("michaelis-menten", form="abridged", ka=0)
+except ValueError as err:
+    print("ValueError:", err)
+```
+
+```
+ValueError: ka must be > 0 for the abridged form, since k_m = (ka_rev + kb) / ka
+```
+
+### Running it
+
+Chemart has no simulator of its own. This script integrates either form with
+SciPy:
+
+```python
+import numpy as np
+from scipy.integrate import solve_ivp
+
+import chemart
+
+
+def simulate(net, t_end, n=201):
+    ids, R, P = net.matrices()
+    R = R.toarray()
+    S = (P.toarray() - R).astype(float)
+    x0 = np.array([net.initial_state[s] for s in ids])
+
+    def rate(r, reac, x):
+        law = r.rate
+        if law["law"] == "mass-action":
+            return law["k"] * np.prod(x ** reac)
+        s = x[reac.argmax()]                          # law == "michaelis-menten"
+        return law["vmax"] * s / (law["km"] + s)
+
+    def f(t, x):
+        return S @ np.array([rate(r, R[:, j], x) for j, r in enumerate(net.reactions)])
+
+    t = np.linspace(0, t_end, n)
+    sol = solve_ivp(f, (0, t_end), x0, t_eval=t, method="LSODA", rtol=1e-9, atol=1e-12)
+    return t, dict(zip(ids, sol.y))
+```
+
+The table in *How it works* came from
+`simulate(chemart.generate_network("michaelis-menten"), 20.0)`. Each recipe
+below runs in a second or two.
+
+#### When is the abridged form faithful?
+
+The quasi-steady-state assumption needs the enzyme to be scarce compared
+with the substrate. At the defaults it is not (one unit of enzyme to ten of
+substrate), and the two forms drift apart:
+
+```python
+t, xe = simulate(chemart.generate_network("michaelis-menten"), 20.0)
+_, xa = simulate(chemart.generate_network("michaelis-menten", form="abridged"), 20.0)
+for i in (10, 20, 50, 100, 200):
+    print(f"t={t[i]:5.1f}  P elementary={xe['P'][i]:.3f}  abridged={xa['P'][i]:.3f}")
+```
+
+```
+t=  1.0  P elementary=0.746  abridged=0.827
+t=  2.0  P elementary=1.549  abridged=1.641
+t=  5.0  P elementary=3.848  abridged=3.984
+t= 10.0  P elementary=7.112  abridged=7.347
+t= 20.0  P elementary=9.840  abridged=9.935
+```
+
+The abridged form runs ahead: it skips the initial binding phase, and it
+counts substrate held in the complex as free substrate. With a hundred times
+less enzyme, at the settings the test suite uses (`E0=0.01, S0=10.0,
+ka=10.0, ka_rev=1.0, kb=1.0`, so `km = 0.2`), the same loop with `t_end =
+2000` shows the two agreeing to three decimals over the whole run, which now
+takes about a thousand time units:
+
+```
+t=   100  P elementary=0.979  abridged=0.979
+t=   200  P elementary=1.956  abridged=1.956
+t=   500  P elementary=4.866  abridged=4.867
+t=  1000  P elementary=9.426  abridged=9.428
+t=  2000  P elementary=10.000  abridged=10.000
+```
+
+#### The saturation curve, from the elementary reactions
+
+With scarce enzyme (`E0 = 0.01`, other rates 1, so `km = 2` and
+`vm = 0.01`), run the elementary network for five time units, long enough
+for the complex to settle, and read the rate of product formation `kb · [ES]`
+for several starting substrate levels. It follows the Michaelis-Menten curve,
+and only with `km = (ka' + kb) / ka`, not with the binding equilibrium
+`ka' / ka` alone:
+
+```python
+for S0 in (0.5, 2, 8, 32, 128, 512):
+    t, x = simulate(chemart.generate_network("michaelis-menten", E0=0.01, S0=S0), 5.0, n=51)
+    v, S = x["ES"][-1], x["S"][-1]            # kb = 1, so v = kb * [ES] = [ES]
+    print(f"S0={S0:5}  measured v={v:.5f}  vm*S/(km+S)={0.01*S/(2+S):.5f}  with km=ka_rev/ka: {0.01*S/(1+S):.5f}")
+```
+
+```
+S0=  0.5  measured v=0.00197  vm*S/(km+S)=0.00196  with km=ka_rev/ka: 0.00328
+S0=    2  measured v=0.00497  vm*S/(km+S)=0.00496  with km=ka_rev/ka: 0.00663
+S0=    8  measured v=0.00799  vm*S/(km+S)=0.00799  with km=ka_rev/ka: 0.00888
+S0=   32  measured v=0.00941  vm*S/(km+S)=0.00941  with km=ka_rev/ka: 0.00970
+S0=  128  measured v=0.00985  vm*S/(km+S)=0.00985  with km=ka_rev/ka: 0.00992
+S0=  512  measured v=0.00996  vm*S/(km+S)=0.00996  with km=ka_rev/ka: 0.00998
+```
+
+At `S0 = 2 = km` the rate is half of `vm`; by `S0 = 512` it is within half a
+percent of it.
+
+#### The curves of figure 18.4
+
+The book's figure plots the rate against `[S]` from 0 to 1000 for `km = 1`,
+10 and 100, with a maximum rate of 1. Since `km = (ka_rev + kb) / ka`,
+setting `ka = 2 / km` with the other defaults gives those curves:
+
+```python
+for km in (1, 10, 100):
+    law = chemart.generate_network("michaelis-menten", form="abridged", ka=2 / km).reactions[0].rate
+    v = [law["vmax"] * s / (law["km"] + s) for s in (10, 100, 1000)]
+    print(f"km={law['km']:g}  vmax={law['vmax']:g}  rate at S=10, 100, 1000: " + ", ".join(f"{r:.3f}" for r in v))
+```
+
+```
+km=1  vmax=1  rate at S=10, 100, 1000: 0.909, 0.990, 0.999
+km=10  vmax=1  rate at S=10, 100, 1000: 0.500, 0.909, 0.990
+km=100  vmax=1  rate at S=10, 100, 1000: 0.091, 0.500, 0.909
+```
+
+## Results
+
+This entry reproduces a textbook derivation, not a research programme, so
+its results are the derivation itself, the book's figure, and the use the
+book makes of it.
+
+**The rate law and its figure.** From scheme 18.3, mass action in each step,
+and a zero net rate of formation of `ES`, the book obtains eq. 18.4 and plots
+it (figure 18.4) for `km = 1`, 10 and 100: the rate rises and saturates at
+`vm`, "the maximum rate of the reaction", reached when there is not enough
+enzyme to convert all the substrate. Chemart reproduces the curves from the
+abridged form (last recipe) and shows that the elementary network follows
+the same curve when enzyme is scarce (the saturation recipe). In the
+extracted text of the book the constant reads `km = (ka + kb)/ka`, with the
+prime of `ka'` lost; Chemart uses `(ka' + kb)/ka`, which the derivation
+gives and which the saturation recipe confirms numerically (see the
+*Implementation decisions*).
+
+**Abridgement.** In §4.4 the book names Michaelis-Menten kinetics as an
+example of lumping or abridging a reaction system into one with fewer
+reactions or species that behaves the same, or nearly so, for the species of
+interest, which "when applied properly" can save a lot of computation. For
+more on abridgement it points to Barrio, Leier and Marquez-Lago (2013) and
+Leier, Barrio and Marquez-Lago (2014). These papers take another route: they
+replace chains of reactions by delays drawn from a distribution, fed to a
+delayed stochastic simulation algorithm, and the 2013 abstract reports an
+exact reduction when the chain consists only of consecutive first-order
+reactions. Chemart does not implement delay-based reduction; the entry only
+offers the classical rate-law abridgement. The runs above show the
+condition "applied properly" in practice: with ten times more substrate
+than enzyme (the defaults) the abridged form makes product too fast, 11% too
+much at `t = 1` and 3% at `t = 10`; with a thousand times more substrate
+than enzyme it agrees with the elementary form to within 0.03%.
+
+**The original paper.** Johnson and Goody's 2011 translation of the 1913
+paper reports, in its abstract, that Michaelis and Menten showed the rate to
+be proportional to the concentration of the enzyme-substrate complex, fitted
+whole time courses (not only initial rates) to the integrated rate
+equations, including product inhibition, and summarised all their data by
+one constant, `Vmax/Km`, rather than by the Michaelis constant itself. None
+of this is part of the book's treatment or of Chemart's entry.
+
+**What the tests check.** One test,
+`test_michaelis_menten_abridged_matches_elementary_when_enzyme_is_scarce` in
+`tests/chemistries/test_w1_dynamics.py`, integrates both forms with
+`E0=0.01, S0=10, ka=10, ka_rev=1, kb=1` up to `t = 200` and checks that the
+final product agrees to 2%. At that time about a fifth of the substrate has
+been converted (`P ≈ 1.96`), and the forms agree to three decimals, so the
+test confirms the quasi-steady-state limit but not the saturation curve or
+the value of `km` over a range of substrate levels, which the runs on this
+page show. There is no dedicated `test_michaelis_menten.py`.
+
+## Further reading
+
+- Michaelis, L. & Menten, M. L. (1913). Die Kinetik der Invertinwirkung.
+  *Biochemische Zeitschrift* 49, 333–369.
+- Johnson, K. A. & Goody, R. S. (2011). The original Michaelis constant:
+  translation of the 1913 Michaelis-Menten paper. *Biochemistry* 50(39),
+  8264–8269. [doi:10.1021/bi201284u](https://doi.org/10.1021/bi201284u)
+- Barrio, M., Leier, A. & Marquez-Lago, T. T. (2013). Reduction of chemical
+  reaction networks through delay distributions. *The Journal of Chemical
+  Physics* 138, 104114.
+  [doi:10.1063/1.4793982](https://doi.org/10.1063/1.4793982) (book ref. [81]).
+- Leier, A., Barrio, M. & Marquez-Lago, T. T. (2014). Exact model reduction
+  with delays: closed-form distributions and extensions to fully
+  bi-directional monomolecular reactions. *Journal of the Royal Society
+  Interface* 11, 20140108.
+  [doi:10.1098/rsif.2014.0108](https://doi.org/10.1098/rsif.2014.0108) (book
+  ref. [503]).

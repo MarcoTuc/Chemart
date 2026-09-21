@@ -1,0 +1,367 @@
+## Introduction
+
+MGS is a rule-based programming language, presented by Jean-Louis Giavitto
+and Olivier Michel of the University of Évry in 2001, in which every program is a
+set of rewriting rules applied to a collection of values, as in a chemical
+reactor. What sets it apart is that the collection has a *shape*. In most
+artificial chemistries the molecules float in a well-stirred bag, and any two
+of them can meet. In MGS the collection can instead be a sequence, a grid, a
+hexagonal lattice or a bag, and a rule can only act on elements that are
+*neighbours* in that shape. The name is French: "(encore) un modèle général de
+simulation (de système dynamique)", which the book translates as "yet another
+general model for the simulation of dynamical systems".
+
+The central idea is that one rule can mean different things depending on the
+shape it runs on. The rule `x, y / x > y => y, x` reads "take two neighbouring
+elements x and y; if x is greater than y, swap them". Applied to a sequence
+until nothing changes, it sorts the sequence. The rule `x, <undef> / x => x, true`
+reads "an occupied cell next to an empty one fills it"; applied to a square grid
+or to a hexagonal lattice, unchanged, it grows a blob from a single cell. The
+authors call a collection with a neighbourhood relation a **topological
+collection**, and a set of rules acting on it a **transformation**. Their stated
+aim (Giavitto and Michel, 2002) is a "unified view" of several computing models
+that were themselves inspired by biology or chemistry: Gamma and the chemical
+abstract machine (multisets), Lindenmayer systems (sequences), Păun's membrane
+systems and cellular automata (grids).
+
+The motivation behind the language, as the book puts it, is to model
+*dynamical systems with a dynamical structure*, written (DS)²: systems whose
+set of state variables changes as they run, such as an embryo growing from a
+single cell, where both the cells and who touches whom keep changing. The book
+contrasts this with constructive dynamical systems: (DS)² puts the emphasis on
+the shape of the space in which things evolve, rather than on the content of
+the rules that make structure unfold.
+
+MGS is a **formalism**, and a real one: two interpreters existed (in OCaml and
+C++) when the 2002 paper was written. Banzhaf and Yamamoto present it in
+chapter 9, "Rewriting Systems" (book §9.6), next to [Gamma](gamma.md),
+[the chemical abstract machine](cham.md), [P systems](p-systems.md) and
+[L-systems](l-systems.md). The book describes MGS as integrating elements of
+cellular automata, the chemical abstract machine, P systems and L-systems into
+one rule system: a bag gives multiset rewriting as in Gamma, a sequence gives
+string rewriting as in L-systems, a grid gives something close to a cellular
+automaton. It returns briefly in §18.3.2 as a tool for modelling biochemical pathways in space. The
+book shows only two small MGS programs (the sort and a restriction enzyme
+cutting DNA) and says a full account of the language is outside its scope.
+
+## How it works
+
+### Collections and neighbours
+
+A topological collection is a set of values plus a rule saying which values are
+neighbours. MGS has two families.
+
+- **Monoidal collections**: `set`, `bag` (a multiset, where values may repeat)
+  and `seq` (a sequence). In a set or a bag every element is a neighbour of
+  every other, so these behave like a well-stirred reactor. In a sequence an
+  element's neighbour is the element to its right.
+- **Group-based data fields** (GBFs): arrays generalised to other lattices. A
+  GBF is declared by naming the directions one can step in, its *generators*.
+  `gbf Grid2 = <north, east>` is the square grid in which each cell has four
+  neighbours (up, down, left, right). `gbf Hexagon = <east, north, northeast;
+  east + north = northeast>` is a hexagonal lattice with six neighbours; the
+  equation says that one step northeast is the same as one step east followed
+  by one step north.
+
+The two families differ in a way the authors describe with a physics analogy.
+In a GBF the positions exist in advance, whether or not anything occupies them,
+as space does in Newton's physics; an empty position holds the special value
+`<undef>`. In a monoidal collection there are no empty places: the neighbour
+relation exists only between the values actually present, as in Leibniz's view
+of space. So a rule may insert elements into a sequence, but not into a grid
+(Chemart allows length changes only for strands in a tube).
+
+Collections can be nested. The restriction-enzyme program uses a `TUBE`, a bag
+whose elements are DNA strands, each strand itself a sequence of letters.
+
+### Rules, patterns and guards
+
+A rule has the form `pattern / guard => replacement`. The pattern describes a
+**path**: a chain of elements, each a neighbour of the previous one. In the
+pattern `x, y` the comma means "y is a neighbour of x"; on a grid, `x |north> y`
+restricts this to "y is the north neighbour of x". `X+` matches one or more
+consecutive elements of a strand and names them `X`. The guard is a condition
+on the matched values, such as `x > y`. The replacement gives the new values,
+which are put back in place of the matched ones, first for first.
+
+A **transformation** is a list of rules, `trans T = { rule; rule; ... }`. One
+step of a transformation works like this, in the default strategy: take the
+rules in order; for each, pick a maximal set of matches that do not share any
+element; replace them all at once. This *maximal-parallel* step is the one
+L-systems and P systems use. A later rule applies only to elements no earlier
+rule has matched, so the order of the rules sets their priority. The step can
+be repeated a fixed number of times, or until a **fixpoint**, a collection no
+rule changes. MGS also offers asynchronous strategies (one rewrite at a time)
+and, in the 2011 description, a stochastic one based on Gillespie's algorithm.
+
+### From a program to a reaction network
+
+Chemart turns an MGS program into a chemical reaction network. The species
+depend on the shape of the collection.
+
+- In a sequence or a GBF, a species is a value *at a position*, written
+  `value@position`. In the default sort, `4@0` is "the value 4 in position 0".
+  Grid positions are `row_column`, with row 0 to the north: `true@1_4`,
+  `undef@0_0`.
+- In a set or a bag, a species is just a value, and a rule is ordinary multiset
+  rewriting.
+- In a tube, a species is a whole strand, such as `CCCGAATTCAA`.
+
+Each rewrite of a match becomes a reaction. The first reaction of the default
+network (printed below) is the sort rule acting on positions 0 and 1:
+
+```
+4@0 + 2@1 -> 2@0 + 4@1
+```
+
+The value 4 sits left of the smaller value 2, the guard `x > y` holds, and the
+two trade places. Every reaction on a sequence or a grid keeps exactly one
+species per position, so each position gives a conservation law. A rule that
+leaves a matched element unchanged makes that element a catalyst. In a sieve of
+Eratosthenes on a set of integers, `2 + 4 -> 2` removes a multiple while the
+divisor survives. In the Eden growth model (the growing blob above), `true@3_3 + undef@2_3 -> true@3_3 + true@2_3` fills the empty cell north
+of the centre while the occupied centre cell looks on. In the tube, EcoRI cuts
+a strand in two, after the G of its recognition site `GAATTC`:
+
+```
+CCCGAATTCAA -> CCCG + AATTCAA
+```
+
+The network is the **closure** of the starting collection: every rewrite
+reachable species by species, starting from the initial species. This is
+larger than what any single run visits, because a reaction may combine site
+values that never coexist in one collection. The Turn program, which rotates a
+five-cell cross on a grid, shows this most clearly: its closure has 252 reactions, although a run only ever cycles through
+four states. MGS itself has no reaction rates, so the reactions carry none.
+
+### Watching a run
+
+Next to the network, Chemart runs the transformation once to its fixpoint. For
+the default sort on `[4, 2, 5, 1, 3]` with the maximal-parallel strategy, the
+run is:
+
+```
+[4, 2, 5, 1, 3]
+[2, 4, 1, 5, 3]    swaps at positions (0,1) and (2,3), at the same time
+[2, 1, 4, 3, 5]
+[1, 2, 3, 4, 5]    no pair is out of order: fixpoint after 3 steps
+```
+
+In the first step the pairs (4, 2) and (5, 1) are both out of order and do not
+overlap, so both are swapped at once. In the second step (4, 1) and (5, 3) are
+out of order, and again they share no element. With the asynchronous strategy, which makes one swap per
+step, the same sort always takes 6 steps: one for each of the six out-of-order
+pairs in the input.
+
+## Using it
+
+The default network is the book's sort, `x, y / x > y => y, x` on the sequence
+`[4, 2, 5, 1, 3]`. The book gives the rule but no input; the input is Chemart's
+choice. Of the 25 possible `value@position` species, the closure reaches 21:
+`5@0`, `5@1`, `1@4` and `2@4` never appear, because a value can only move right
+past smaller values. The run is in `net.extras["run"]`:
+
+```python
+net.extras["run"]
+# {'strategy': 'maximal-parallel', 'steps': 3, 'fixpoint': True, 'final': [1, 2, 3, 4, 5]}
+net.extras["conservation"][0]
+# {'name': 'site 0', 'vector': {'4@0': 1, '2@0': 1, '1@0': 1, '3@0': 1}}
+net.extras["rules"]
+# ['r1: x, y / x > y => y, x']
+```
+
+`extras["space"]` describes the collection (its type, neighbourhood and, for
+positional collections, the list of edges between positions), and
+`extras["reaction_rules"]` gives the rule that produced each reaction, in the
+order of `net.reactions`. The run does not change the network; `strategy`
+changes only the run, never the closure.
+
+#### The published programs
+
+`program` selects one of six programs from the sources. Each builds in about a
+second or less.
+
+| `program` | collection | what it does | network | run |
+|---|---|---|---|---|
+| `sort` | seq | book's sort of `[4, 2, 5, 1, 3]` | 21 species, 25 reactions | sorted in 3 steps |
+| `sieve` | set | Cohen's sieve on 2..30 | 29 species, 52 reactions | the 10 primes up to 29, in 4 steps |
+| `restriction-enzymes` | tube | EcoRI on the two published strands | 6 species, 2 reactions | 1 step |
+| `eden` | grid | growth from one cell of a 7×7 grid | 97 species, 164 reactions | grid full after 8 steps |
+| `bead-sort` | grid | Cohen's bead-sort of 3, 2, 4, 2 | 22 species, 4 reactions | 2 steps |
+| `turn` | grid | the five-cell cross turned by 90° | 21 species, 252 reactions | no fixpoint |
+
+```python
+net = chemart.generate_network("mgs", program="restriction-enzymes")
+net.extras["run"]["final"]
+# {'CCCG': 1, 'AATTCAA': 1, 'TTG': 1, 'AATTCGGG': 1}
+```
+
+In the tube, the `Void` rule (a strand without a recognition site is kept as it
+is) never produces a reaction, because it changes nothing; `reaction_rules`
+lists only `EcoRI`.
+
+**Same rule, other shape.** `collection` overrides a program's own collection.
+The Giavitto and Michel (2002) point about Eden is that "exactly the same
+transformation" runs on both lattices:
+
+```python
+net = chemart.generate_network("mgs", program="eden", collection="hexagon")
+# mgs: 97 species, 234 reactions; the run fills the window in 9 steps
+```
+
+The hexagonal version has more reactions because each cell has six neighbours
+instead of four. With the maximal-parallel strategy an occupied cell can claim
+only one empty neighbour per step, so the number of occupied cells at most
+doubles: one run on the grid had 2, 4, 8, 15, 25, 37, 45, 49 occupied cells
+after successive steps. `torus=True`
+wraps the window's edges around; a hexagonal Eden on a torus has 288 reactions.
+
+**Turn, step by step.** The Turn program never reaches a fixpoint, so its run
+stops at the 10,000-step limit. To see it rotate, use the `Machine` class,
+whose `step` method applies one transformation step:
+
+```python
+import numpy as np
+from chemart.chemistries.mgs import Machine, PROGRAMS
+m = Machine("grid", PROGRAMS["turn"]["rules"], PROGRAMS["turn"]["initial"])
+state = m.step(m.start, "maximal-parallel", np.random.default_rng(1))
+m.to_json(state)
+# [[None, 1, None], [2, 0, 4], [None, 3, None]]
+```
+
+The cross starts as `[[None, 2, None], [3, 0, 1], [None, 4, None]]` (`None` is
+`<undef>`), and after four steps it is back where it began.
+
+#### Your own programs
+
+With `program="custom"`, give `collection`, `rules` (one string per rule, in
+priority order) and `initial`. Gamma's classic "maximum of a multiset", keep the
+larger of any two, is one rule on a bag:
+
+```python
+net = chemart.generate_network("mgs", program="custom", collection="bag",
+                               rules=["x, y / x >= y => x"], initial=[3, 7, 1, 7, 4])
+net.extras["run"]["final"]      # {'7': 1}, after 3 steps
+# 4 species, 10 reactions, such as 7 + 3 -> 7 and 7 + 7 -> 7
+```
+
+The random walk of the 2002 paper, `x, <undef> => <undef>, x` on a grid, is
+also a one-liner; it never settles, so its run always goes to the step limit.
+Grids and hexagons take a list of equal-length rows, with `None` for empty
+sites. The pattern and guard language is a subset of MGS, parsed by Chemart and
+never evaluated as Python; its grammar is in the docstring of
+`chemart/chemistries/mgs.py`. The module also exports `Rule`, `Topology` and
+`evaluate`. Rules that grow strands in a tube or values in a bag can have an
+infinite closure, which `max_species` truncates.
+
+## Results
+
+MGS is a programming language, so its published results are demonstrations:
+programs showing that a phenomenon can be written in a few rules, and that the
+same rule works across shapes. The sources give few quantitative findings.
+
+**Sorting without an imposed order.** The book's example (§9.6, from Giavitto
+2003) is the one-rule sort. Its point is a comparison: a conventional sort
+compares elements in a fixed order, and a sort in [Gamma](gamma.md) must work on
+(index, value) pairs "since a multiset has no intrinsic sequence". MGS needs
+neither, because the sequence's neighbourhood is part of the data. Cohen (2003)
+calls the same program "a kind of bubble-sort" and notes that it is not really
+one, because swaps happen anywhere. Chemart reproduces it: the tests check that
+the default run ends in `[1, 2, 3, 4, 5]`, that every reaction swaps a larger
+value with its smaller right neighbour, that the sorted configuration is inert
+(no reaction can fire), that other inputs sort under both strategies, and that
+Cohen's notation (`y :: x :: empty_seq`) gives the same network.
+
+**Restriction enzymes on DNA.** Giavitto and Michel (2002, sec. 3.1) model the
+enzyme EcoRI, which cuts DNA at the site G^AATTC, as one rule, with a second
+rule `Void` that keeps uncut strands. It combines two shapes: strands are
+sequences, the tube holding them is a bag. Applied to a tube with
+`CCCGAATTCAA` and `TTGAATTCGGG` and iterated to a fixpoint, it returns the four
+fragments `AATTCAA`, `TTG`, `CCCG` and `AATTCGGG`. The book quotes the first
+cut. Chemart's tests check both cuts and the final tube, that EcoRI needs at
+least one letter on each side of the site, and that a strand with two sites is
+cut at each.
+
+**Eratosthenes' sieve on a set.** Cohen (2003) writes the sieve as
+`x, y/(y mod x = 0) => [x]`, applied to the integers 2..n until a fixpoint:
+whenever x divides y, the pair is replaced by x alone, so what remains is the
+primes. (Cohen writes "less than n"; with n included in the set, the primes up
+to and including n remain.) Chemart's tests check that 2..30 leaves the primes up
+to 29, that in every reaction the divisor is a catalyst, that the primes are
+exactly the species no reaction consumes, and that 2..50 run asynchronously
+gives the primes up to 47. This is a different sieve from the one in
+[the prime number chemistry](prime-number-chemistry.md), where a divisible
+number is replaced by the quotient rather than removed.
+
+**Eden growth on two lattices.** The Eden model is a model of growth "used
+since the 1960's as a model for such things as tumor growth and growth of
+cities" (Giavitto and Michel, 2002, sec. 3.2). Their Figure 1 shows the
+states after 3 and 7 steps on a square grid and on a hexagonal mesh, grown by
+the same one-rule transformation, to argue that a transformation is
+independent of the collection it acts on. Chemart's tests check, on both
+lattices, that growth can happen along every edge except into the seed, that
+every reaction has the occupied cell as a catalyst, and that the run fills the
+window; they also check that in maximal-parallel steps the blob never more
+than doubles or spreads faster than one cell per step. The figure's exact
+shapes are random outcomes and are not compared.
+
+**Turn: a rule over several cells.** The authors use Turn to contrast GBFs with
+cellular automata: in a cellular automaton a rule updates one cell from its
+neighbours, while an MGS pattern can match "an arbitrary domain". The
+five-cell rule rotates a cross by 90° per step (2002, Figure 2). Chemart's tests
+check both panels of the figure exactly and that the cross returns to its start
+after four steps.
+
+**Bead-sort on a grid.** Cohen (2003, Figure 4) writes the bead-sort, a way of
+sorting positive integers written in unary as rows of beads that fall down, as
+one rule on a Boolean grid: a bead (`true`) with an empty place (`false`) below
+it moves down. Rows 3, 2, 4, 2 become 2, 2, 3, 4. Chemart's tests check this
+result, that every reaction moves one bead one row south, and a second input
+sorted asynchronously.
+
+**Types for topological collections.** Cohen's paper itself is about type
+inference: it shows that transformations over topological collections fit the
+Hindley–Milner type system of ML-like languages, with the collection's shape
+as part of its type. The algorithm was included in a prototype MGS compiler.
+This is not reproduced; Chemart does not type-check rules.
+
+**Biology and later work.** According to the book (§18.3.2), Giavitto and
+Michel (2003) used MGS to model growth with a single rule, the growth and
+filament formation of the cyanobacterium *Anabaena catenula*, the restriction
+enzymes and the cAMP cell-signalling pathway. Chemart does not offer the
+*Anabaena* or cAMP models, because that paper could not be obtained. Giavitto,
+Michel and Spicher (2011) describe a later MGS in which a collection can be a
+**Delaunay collection**, whose neighbourhood is recomputed from the positions
+of its elements at each step. They show two examples: a flock of 50 birds
+following three local rules (separation, cohesion, alignment), plotted after 300
+and 900 iterations, and the growth of an epithelial tissue (simulated in 3D in their figure), coupling
+spring mechanics, a reaction-diffusion model and cell division, in "less than
+150 lines" of MGS. That paper states that MGS has been used to model several
+developmental processes in systems biology. Chemart implements neither Delaunay
+collections nor these models.
+
+**What Chemart covers.** Chemart's MGS is a small interpreter for part of the
+language: sets, bags, sequences, square and hexagonal grids, and tubes of
+strands, with the maximal-parallel and asynchronous strategies. It does not
+cover maps and records, tree-shaped GBFs, Delaunay or cellular-complex
+collections, rule probabilities, sub-collection patterns such as
+`(x / x < 3)+ as S`, user-defined functions, or the Gillespie strategy (no
+rates are published for these programs). The book's primary reference, the
+2001 ENTCS paper, could not be downloaded; the language was reconstructed from
+the 2002 paper by the same authors, which restates it, from Cohen (2003) and
+from the 2011 paper. The implementation decisions above list each gap.
+
+## Further reading
+
+- Giavitto, J.-L. & Michel, O. (2003). Modeling the topological organization of
+  cellular processes. *BioSystems* 70(2), 149–163. The biological models
+  (*Anabaena*, cAMP) summarised in book §18.3.2; book reference [321].
+- Giavitto, J.-L. (2003). Topological collections, transformations and their
+  application to the modeling and the simulation of dynamical systems.
+  *Rewriting Techniques and Applications (RTA 2003)*, LNCS 2706, 208–233. The
+  source of the book's sort example; book reference [317].
+- Giavitto, J.-L., Michel, O. & Spicher, A. (2013). Unconventional and nested
+  computations in spatial computing. *International Journal of Unconventional
+  Computing* 9(1–2), 71–95. The overview of later applications that the book
+  recommends; book reference [322].
+- The MGS project page given in the book: <http://mgs.spatial-computing.org/>
