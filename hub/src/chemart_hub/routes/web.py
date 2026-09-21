@@ -149,16 +149,19 @@ def home(request: Request, c: sqlite3.Connection = Depends(deps.conn),
     featured, _ = service.search(c, featured=True, sort="updated", limit=12)
     recent, _ = service.search(c, sort="updated", limit=6)
     official, n_official = service.search(c, author=settings.official_namespace, sort="name", limit=12)
-    # A chemistry whose network is given (the Brusselator) is a network on the
-    # shelf, like a shared network repo; the rest generate their networks.
+    # Every chemistry (generator repo) is in stock; it either generates its
+    # network or is a given network such as the Brusselator. Shared network
+    # snapshots (network repos) are counted on their own.
     counts = dict(c.execute(
-        "SELECT CASE WHEN repo_type = 'network' OR network = 'given' THEN 'network' ELSE 'chemistry' END, "
-        "COUNT(*) FROM repos WHERE head IS NOT NULL AND archived_at IS NULL AND hidden = 0 "
-        "GROUP BY 1").fetchall())
+        "SELECT CASE WHEN repo_type = 'network' THEN 'shared' WHEN network = 'given' THEN 'given' "
+        "ELSE 'generator' END, COUNT(*) FROM repos WHERE head IS NOT NULL AND archived_at IS NULL "
+        "AND hidden = 0 GROUP BY 1").fetchall())
+    n_generators, n_given = counts.get("generator", 0), counts.get("given", 0)
     return _page(request, "home.html", p, banner=BANNER, featured=_cards(c, featured, settings),
                  trending=_cards(c, trending, settings), recent=_cards(c, recent, settings),
                  official=_cards(c, official, settings), n_official=n_official,
-                 n_chemistries=counts.get("chemistry", 0), n_networks=counts.get("network", 0))
+                 n_chemistries=n_generators + n_given, n_generators=n_generators, n_given=n_given,
+                 n_shared=counts.get("shared", 0))
 
 
 @router.get("/browse", response_class=HTMLResponse)

@@ -116,12 +116,15 @@ def test_pages_are_static_and_link_under_the_project_path(site):
     assert 'href="/hub/ada/"' in repo                  # folders get their trailing slash
 
 
-def test_the_stock_line_counts_given_networks_as_networks(site):
-    """Under the search bar: gamma and ada/tiny-chem generate their networks; the
-    Brusselator is a given network, and ada/snapshot a shared one."""
+def test_the_stock_line_splits_the_chemistries(site):
+    """Under the search bar: three chemistries in stock, of which gamma and
+    ada/tiny-chem are generators and the Brusselator a given network; the
+    network repo ada/snapshot is a shared network."""
     home = (site["out"] / "index.html").read_text()
-    assert "<b>2</b> chemistries in stock" in home
-    assert "<b>2</b> networks" in home
+    assert "<b>3</b> chemistries in stock" in home
+    assert "<b>2</b> generators" in home
+    assert "<b>1</b> given network<" in home
+    assert "<b>1</b> shared network<" in home
     index = {r["id"]: r for r in json.loads((site["out"] / "api/v1/index.json").read_text())["repos"]}
     assert index["chemart/brusselator"]["network"] == "given"
     assert index["chemart/gamma"]["network"] == "generated"
