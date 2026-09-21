@@ -14,6 +14,7 @@ chemistries:
   book: "16.3.3"
   refs: ["[212]", "[804]", "[805]", "[806]", "[809]"]
   family: application
+  archived: pruned
   kind: generator
   constructive: false
   S: {repr: "one meaning molecule M, word molecules S_j and adaptor/code molecules C_j for j = 1..N_s", definition: explicit}

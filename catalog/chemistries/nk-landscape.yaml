@@ -15,6 +15,7 @@ chemistries:
   book: "18.4.1; appendix (NKlandscape.py)"
   refs: ["[447]"]
   family: evolutionary-dynamics
+  archived: pruned
   kind: analysis
   constructive: false
   S: {repr: "binary genotypes of length N", definition: implicit}

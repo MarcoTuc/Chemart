@@ -21,7 +21,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from chemart.catalog import PROVIDES, load
+from chemart.catalog import PROVIDES, active, load
 
 FIDELITIES = ("book", "book+decisions", "reconstructed")
 
@@ -50,7 +50,7 @@ def main(argv=None) -> int:
             return 2
 
     rows = []
-    for c in load():
+    for c in active(load()):
         if args.provides and not set(args.provides) <= set(c.provides):
             continue
         if args.family and c.family != args.family:

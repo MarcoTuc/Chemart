@@ -13,6 +13,7 @@ chemistries:
   book: "7.2.5"
   refs: ["[621]"]
   family: evolutionary-dynamics
+  archived: pruned
   kind: generator
   constructive: false
   S: {repr: "n species X_1..X_n with fitnesses f_i >= 0", definition: explicit}

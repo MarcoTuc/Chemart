@@ -17,24 +17,26 @@
               ║ [A] [B] [X] [Y] [λ] [RNA] [01101] [●─●] ║
               ╚═════════════════════════════════════════╝
 
-             one stop shop for artificial chemistry & life
-                  98 chemistries in stock · open 24/7
+                one stop shop for artificial chemistry
+                   chemistries in stock · open 24/7
 ```
 
-# Chemart — the one stop shop for artificial chemistry and artificial life
+# Chemart — the one stop shop for artificial chemistry
 
-Chemart makes every artificial chemistry in the literature available behind one
-interface, so you can generate its reaction network, look at it, simulate it,
-and compare it with any other — without reimplementing 98 papers.
+Chemart makes the artificial chemistries of the literature available behind one
+interface, so you can generate a chemistry's reaction network, look at it,
+simulate it, and compare it with any other — without reimplementing the papers.
 
-All 98 chemistries from the field's reference survey — Wolfgang Banzhaf & Lidia
-Yamamoto, *Artificial Chemistries* (MIT Press, 2015) — are catalogued **and
-implemented**, each with tests reproducing published results wherever any exist.
+The chemistries come from the field's reference survey — Wolfgang Banzhaf &
+Lidia Yamamoto, *Artificial Chemistries* (MIT Press, 2015) — and every one is
+catalogued **and implemented**, with tests reproducing published results
+wherever any exist. Entries that are not chemistry, such as the artificial-life
+systems, are kept in an [archive](#the-archive).
 
 ```python
 import chemart
 
-chemart.list_chemistries()                      # all 98
+chemart.list_chemistries()                      # the whole catalog
 net = chemart.generate_network("brusselator", seed=1)
 print(net.to_text())
 # A -> X  [mass-action k=1.0]
@@ -65,14 +67,14 @@ Banzhaf & Yamamoto define one as a triple **(S, R, A)**:
 | **A** | the **algorithm** — the reactor: a well-stirred multiset, an ODE system, a lattice, a virtual machine |
 
 That definition is broad on purpose, and it is why the field is hard to survey:
-the Brusselator (three coupled differential equations) and Tierra (self-replicating
-assembly programs competing for CPU time) are both artificial chemistries, and
-they share almost nothing operationally.
+the Brusselator (three coupled differential equations) and AlChemy (λ-terms that
+react by applying one to the other) are both artificial chemistries, and they
+share almost nothing operationally.
 
 Chemart's bet is that they can still share an **output**. Whatever a chemistry is
 internally, it can hand back a chemical reaction network: which species exist,
 which reactions consume and produce them, and — when the model defines them —
-the rates. That common output is what makes 98 incomparable models comparable.
+the rates. That common output is what makes incomparable models comparable.
 
 ## How Chemart works
 
@@ -116,7 +118,7 @@ Network(
 ```
 
 It is plain JSON throughout, so `Network.from_dict(net.to_dict())` round-trips
-exactly — a property tested for all 98. From there:
+exactly — a property tested for every chemistry. From there:
 
 ```python
 net.summary()                    # counts, status, what it provides
@@ -137,7 +139,7 @@ statuses is how you get nonsense:
   firing `count`. A reaction's absence tells you about that run, not about the
   chemistry.
 
-Half of these chemistries are **constructive**: the species set is open and
+Many of these chemistries are **constructive**: the species set is open and
 grows as reactions produce new molecules. For those, the interesting object is
 a closure, and `truncated` is a normal answer rather than a failure.
 
@@ -146,11 +148,11 @@ a closure, and `truncated` is a normal answer rather than a failure.
 Reproducing published models honestly means admitting where the sources ran out.
 Every entry carries a `fidelity`:
 
-| | count | meaning |
-|---|---|---|
-| `book` | 4 | implemented exactly as the book specifies |
-| `book+decisions` | 33 | the book left gaps; each filled choice is in `decisions` |
-| `reconstructed` | 61 | built from the original papers, cited in `sources` |
+| | meaning |
+|---|---|
+| `book` | implemented exactly as the book specifies |
+| `book+decisions` | the book left gaps; each filled choice is in `decisions` |
+| `reconstructed` | built from the original papers, cited in `sources` |
 
 `reconstructed` is usually the *stronger* label — a primary paper is more precise
 than a survey chapter, and several of these were cross-checked against compiled
@@ -165,18 +167,20 @@ those are reported, not tuned away.
 
 ## What's in the box
 
-| | |
-|---|---|
-| chemistries catalogued and implemented | 98 |
-| constructive (open, growing species set) | 51 |
-| carry their own rate constants or rate law | 44 |
-| carry energetics / thermodynamic consistency | 11 |
-| declare a conservation law | 31 |
-| define space | 21 |
-| define compartments | 10 |
+Browse the chemistries in [`docs/CATALOG.md`](docs/CATALOG.md) or on the docs
+site. Both are generated from the catalog, and count what it holds: how many
+chemistries, how many are constructive, how many carry their own kinetics or
+energetics, and each one's fidelity.
 
-By kind: 80 generators, 7 formalisms, 4 analyses, 4 wet, 3 frameworks.
-Browse them all in [`docs/CATALOG.md`](docs/CATALOG.md) or on the docs site.
+### The archive
+
+Some entries are kept out of the catalog: the artificial-life systems (Tierra,
+Avida, Core War, Coreworld, Swarm Chemistry), since Chemart is about chemistry,
+and others set aside on review. Each is marked `archived:` in its YAML and keeps
+its generator, tests and page. `list_chemistries()`, `chemart list` and the LLM
+tools leave them out; `list_chemistries(include_archived=True)` and
+`chemart list --all` include them, and `generate_network(id)` still runs any of
+them. Deleting the `archived:` line brings an entry back.
 
 ## Quickstart
 
@@ -185,7 +189,7 @@ through `uv run` so you get the project's own `./.venv`.
 
 ```bash
 uv sync
-uv run chemart list                     # every chemistry, as JSON
+uv run chemart list                     # every chemistry, as JSON (--all adds the archive)
 uv run chemart describe brusselator     # metadata + parameter JSON Schema
 uv run chemart generate brusselator --format text
 uv run chemart generate matrix-chemistry -p N=4 --seed 0 --format summary
@@ -271,7 +275,7 @@ every chemistry generated from the catalog so the site cannot drift from the
 library.
 
 ```bash
-uv run python tools/gen_catalog_pages.py     # regenerate the 98 chemistry pages
+uv run python tools/gen_catalog_pages.py     # regenerate the chemistry pages
 uv run mkdocs serve                          # http://127.0.0.1:8000
 uv run mkdocs build                          # static site into site/
 ```
@@ -306,7 +310,7 @@ chemart/
   soup.py          well-stirred run that records which reactions fired
   contract.py      the checks every generator must pass (tests, `chemart check`, push)
   cli.py           the `chemart` command
-  chemistries/     98 modules, one `generate(p, rng)` each
+  chemistries/     one module per chemistry, each defining `generate(p, rng)`
   helpers/         explicit reaction syntax, parameter validation
   hub/             Chemart Hub client: ids, cache, trust gate, push/load (stdlib only)
 hub/               the Chemart Hub server (package `chemart-hub`)
@@ -314,7 +318,8 @@ hub/               the Chemart Hub server (package `chemart-hub`)
   tests/           API, web, and end-to-end client <-> server tests
 catalog/
   SCHEMA.md        field definitions
-  chemistries/     98 YAML entries - the specification
+  chemistries/     one YAML entry per chemistry - the specification
+  explainers/      the prose of each chemistry's documentation page
 docs/              the documentation site
 tests/
   test_contract.py the contract every chemistry must satisfy

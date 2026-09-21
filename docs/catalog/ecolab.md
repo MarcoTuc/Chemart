@@ -4,6 +4,9 @@
 
 `ecolab` · *Standish, 1994-2004*
 
+!!! warning "Archived: pruned"
+    This entry is not part of the chemistry catalog (set aside from the catalog). It keeps its specification, generator and tests, and `generate_network` still runs it by id, but listings and the LLM tools leave it out. See the [catalog's archive](index.md#archive).
+
 ## Introduction
 
 Population dynamics with an open species set. A generalised Lotka-Volterra system runs the ecology, but new species arrive by mutation of existing ones, inheriting perturbed growth rates and interaction coefficients, and species whose populations vanish are removed. The dimension of the state space therefore changes as the system runs. What comes out looks like self-organised criticality: species lifetimes follow a power law, and diversity fluctuates without settling.

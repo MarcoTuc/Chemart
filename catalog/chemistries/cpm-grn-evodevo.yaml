@@ -18,6 +18,7 @@ chemistries:
          "doi:10.1006/jtbi.2000.1087", "doi:10.1162/106454600568339",
          "doi:10.1103/PhysRevE.47.2128", "doi:10.1006/jtbi.1996.0237"]
   family: systems-biology
+  archived: pruned
   kind: framework
   constructive: false
   S:

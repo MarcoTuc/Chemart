@@ -4,6 +4,9 @@
 
 `n-economy` · *Straatman, Banzhaf et al.; after Hanel's natural number economy*
 
+!!! warning "Archived: pruned"
+    This entry is not part of the chemistry catalog (set aside from the catalog). It keeps its specification, generator and tests, and `generate_network` still runs it by id, but listings and the LLM tools leave it out. See the [catalog's archive](index.md#archive).
+
 ## Introduction
 
 The N-economy (for "natural number economy") treats the production side of an

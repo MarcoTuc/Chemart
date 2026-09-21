@@ -6,6 +6,9 @@
 
 *Also known as:* *Venus I / Venus II*, *Core evolution*, *VENUS: Virtual Evolution in a Non-deterministic Universe Simulator*
 
+!!! warning "Archived: artificial-life"
+    This entry is not part of the chemistry catalog (artificial life rather than artificial chemistry). It keeps its specification, generator and tests, and `generate_network` still runs it by id, but listings and the LLM tools leave it out. See the [catalog's archive](index.md#archive).
+
 ## Introduction
 
 Coreworld is a computer memory turned into a test tube. Steen Rasmussen,

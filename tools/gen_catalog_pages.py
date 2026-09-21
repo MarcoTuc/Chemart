@@ -19,13 +19,16 @@ actually generated at build time, so parameters, provenance and capabilities
 cannot drift from the library. An entry without an explainer falls back to its
 YAML `intuition`, `notes` and `phenomena`.
 
-Output: docs/catalog/index.md plus docs/catalog/<id>.md for all 98.
+Output: docs/catalog/index.md, which lists the chemistry catalog by family and
+then the archive, plus docs/catalog/<id>.md for every entry, archived ones
+included (with a banner saying so).
 """
 
 from __future__ import annotations
 
 import argparse
 import re
+from collections import Counter
 import sys
 import time
 from pathlib import Path
@@ -35,7 +38,7 @@ OUT = REPO / "docs" / "catalog"
 EXPLAINERS = REPO / "catalog" / "explainers"
 
 import chemart                                    # noqa: E402
-from chemart.catalog import load                   # noqa: E402
+from chemart.catalog import ARCHIVES, active, load  # noqa: E402
 
 FIDELITY_NOTE = {
     "book": "implemented exactly as the book specifies",
@@ -363,6 +366,15 @@ def page(c, net, error, ex=None) -> str:
         L.append("*Also known as:* " + ", ".join(f"*{esc(a)}*" for a in c.aliases))
         L.append("")
 
+    if c.archived:
+        L.append(f'!!! warning "Archived: {c.archived}"')
+        L.append(f"    This entry is not part of the chemistry catalog "
+                 f"({ARCHIVES.get(c.archived, 'archived')}). It keeps its specification, "
+                 "generator and tests, and `generate_network` still runs it by id, but "
+                 "listings and the LLM tools leave it out. See the "
+                 "[catalog's archive](index.md#archive).")
+        L.append("")
+
     # 1. What the chemistry is, before any table or formalism.
     L.append("## Introduction")
     L.append("")
@@ -415,7 +427,7 @@ def page(c, net, error, ex=None) -> str:
 
 
 #: Capabilities worth putting in a table. `topology` and `stoichiometry` are on
-#: all 98 entries and `initial-state` on 84, so listing them in every row costs
+#: every entry and `initial-state` on most, so listing them in every row costs
 #: width and tells you nothing; the full set is on each chemistry's own page.
 TABLE_CAPS = [
     ("rate-constants", "kinetics"),
@@ -446,13 +458,50 @@ def table_caps(c) -> str:
     return ", ".join(labels) if labels else "—"
 
 
+def _index_rows(group, nets) -> list[str]:
+    L = ["| chemistry | origin | grows | fidelity | S/R | beyond topology |",
+         "|---|---|:--:|---|--:|---|"]
+    for c in sorted(group, key=lambda c: c.id):
+        net = nets.get(c.id)
+        size = f"{len(net.species)}/{len(net.reactions)}" if net else "—"
+        L.append(
+            f"| [{c.name}]({c.id}.md) | {short_origin(c.origin)} | "
+            f"{'yes' if c.constructive else '·'} | {c.fidelity} | {size} | "
+            f"{table_caps(c)} |"
+        )
+    return L + [""]
+
+
+def glance_counts(entries) -> list[str]:
+    """What the catalog holds, counted here so no document states it by hand."""
+    def having(*tags):
+        return sum(1 for c in entries if set(tags) & set(c.provides))
+
+    kinds = Counter(c.kind for c in entries)
+    L = ["| | |", "|---|---|"]
+    L.append(f"| constructive (open, growing species set) | {sum(1 for c in entries if c.constructive)} |")
+    L.append(f"| carry their own rate constants or rate law | {having('rate-constants', 'rate-law')} |")
+    L.append(f"| carry energetics or thermodynamic consistency | {having('energies', 'thermodynamic-consistency')} |")
+    L.append(f"| declare a conservation law | {having('mass-conservation')} |")
+    L.append(f"| define space | {having('space')} |")
+    L.append(f"| define compartments | {having('compartments')} |")
+    L.append("")
+    L.append("By kind: " + ", ".join(f"{n} {k}" for k, n in kinds.most_common()) + ".")
+    return L + [""]
+
+
 def index_page(entries, nets) -> str:
+    main = active(entries)
+    archived = [c for c in entries if c.archived is not None]
     L: list[str] = []
     L.append("# Catalog")
     L.append("")
-    L.append(f"All **{len(entries)}** chemistries, one page each, generated from the "
-             "catalog so these pages cannot drift from the library.")
+    L.append(f"**{len(main)}** chemistries, one page each, generated from the "
+             "catalog so these pages cannot drift from the library."
+             + (f" A further {len(archived)} archived entries are listed "
+                "[at the end](#archive)." if archived else ""))
     L.append("")
+    L += glance_counts(main)
     L.append("Columns: **grows** is whether the species set is open and expands at "
              "run time; **S/R** is the species and reaction count at *default* "
              "parameters with `seed=1`, which for most chemistries scales up "
@@ -466,28 +515,29 @@ def index_page(entries, nets) -> str:
     L.append("")
 
     by_family: dict[str, list] = {}
-    for c in entries:
+    for c in main:
         by_family.setdefault(c.family, []).append(c)
-
     for family in sorted(by_family):
-        group = sorted(by_family[family], key=lambda c: c.id)
         L.append(f"## {family}")
         L.append("")
-        L.append("| chemistry | origin | grows | fidelity | S/R | beyond topology |")
-        L.append("|---|---|:--:|---|--:|---|")
-        for c in group:
-            net = nets.get(c.id)
-            size = f"{len(net.species)}/{len(net.reactions)}" if net else "—"
-            L.append(
-                f"| [{c.name}]({c.id}.md) | {short_origin(c.origin)} | "
-                f"{'yes' if c.constructive else '·'} | {c.fidelity} | {size} | "
-                f"{table_caps(c)} |"
-            )
+        L += _index_rows(by_family[family], nets)
+
+    if archived:
+        L.append("## Archive")
         L.append("")
+        L.append("These entries are not part of the chemistry catalog. `list_chemistries()` "
+                 "and the LLM tools leave them out, but each keeps its specification, "
+                 "generator, tests and page, and `generate_network(id)` still runs it.")
+        L.append("")
+        for group in sorted({c.archived for c in archived}):
+            members = [c for c in archived if c.archived == group]
+            L.append(f"### {group}")
+            L.append("")
+            L.append(f"{len(members)} entries: {ARCHIVES.get(group, '')}.")
+            L.append("")
+            L += _index_rows(members, nets)
 
     return "\n".join(L)
-
-
 
 
 def main(argv=None) -> int:

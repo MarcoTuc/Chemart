@@ -12,6 +12,7 @@ chemistries:
   book: "7.2.4; appendix (Logistic.py)"
   refs: ["[621]"]
   family: evolutionary-dynamics
+  archived: pruned
   kind: generator
   constructive: false
   S: {repr: "one species X", definition: explicit}

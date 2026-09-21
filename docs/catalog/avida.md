@@ -6,6 +6,9 @@
 
 *Also known as:* *Avida digital evolution platform*, *digital organisms*
 
+!!! warning "Archived: artificial-life"
+    This entry is not part of the chemistry catalog (artificial life rather than artificial chemistry). It keeps its specification, generator and tests, and `generate_network` still runs it by id, but listings and the LLM tools leave it out. See the [catalog's archive](index.md#archive).
+
 ## Introduction
 
 Avida is a world of self-copying computer programs, built as a laboratory for

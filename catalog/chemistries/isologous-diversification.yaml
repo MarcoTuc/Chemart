@@ -16,6 +16,7 @@ chemistries:
   book: "18.5, 18.6"
   refs: ["[301]", "[302]", "[303]", "[304]", "[840]", "[345]", "[658]"]
   family: systems-biology
+  archived: pruned
   kind: generator
   constructive: false
   S:

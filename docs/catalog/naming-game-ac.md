@@ -4,6 +4,9 @@
 
 `naming-game-ac` · *De Beule, Hovig & Benson (book ref [212]); after Steels' naming games*
 
+!!! warning "Archived: pruned"
+    This entry is not part of the chemistry catalog (set aside from the catalog). It keeps its specification, generator and tests, and `generate_network` still runs it by id, but listings and the LLM tools leave it out. See the [catalog's archive](index.md#archive).
+
 ## Introduction
 
 The *naming game* is a model of how a group comes to share a word for

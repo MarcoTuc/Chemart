@@ -14,6 +14,7 @@ chemistries:
   book: "8.2.3"
   refs: ["[795]", "[796]", "arXiv:nlin/0404011", "arXiv:nlin/0004026", "https://github.com/highperformancecoder/ecolab"]
   family: evolutionary-dynamics
+  archived: pruned
   kind: generator
   constructive: true
   S: {repr: "species S<label> of a generalised Lotka-Volterra ecosystem; each carries a phenotype (r_i, beta_ii, mu_i, its interaction row and column)", definition: explicit}

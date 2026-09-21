@@ -4,6 +4,9 @@
 
 `replication-death` · *textbook evolutionary dynamics*
 
+!!! warning "Archived: pruned"
+    This entry is not part of the chemistry catalog (set aside from the catalog). It keeps its specification, generator and tests, and `generate_network` still runs it by id, but listings and the LLM tools leave it out. See the [catalog's archive](index.md#archive).
+
 ## Introduction
 
 Two reactions - birth and death - and nothing else. Its value is as a floor: exponential growth when births outpace deaths is the minimal precondition for Darwinian evolution, so this is the smallest system in which selection could mean anything at all, and the baseline any richer population model reduces to.

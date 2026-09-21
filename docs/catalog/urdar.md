@@ -4,6 +4,9 @@
 
 `urdar` · *Gerlee & Lundh, 2010*
 
+!!! warning "Archived: pruned"
+    This entry is not part of the chemistry catalog (set aside from the catalog). It keeps its specification, generator and tests, and `generate_network` still runs it by id, but listings and the LLM tools leave it out. See the [catalog's archive](index.md#archive).
+
 ## Introduction
 
 An ecology where order is the currency. Organisms are elementary cellular automaton rules and metabolites are bitstrings; an organism 'eats' a string by applying one CA step to it, and the energy gained is the drop in the string's entropy - the more order the rule extracts, the better it does. Reproduce with mutation to another rule and you get selection on information-processing ability directly. Diversity falls as the flow rate rises, and efficiency trades against uptake.

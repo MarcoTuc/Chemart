@@ -15,6 +15,7 @@ chemistries:
   book: "11.3.4; GRN modelling 18.4.3; morphogenesis 18.6.1"
   refs: ["[67]", "[68]", "[73]", "[478]", "[479]", "[480]", "[504]", "[521]", "[522]", "[172]"]
   family: network
+  archived: pruned
   kind: generator
   constructive: false
   S:

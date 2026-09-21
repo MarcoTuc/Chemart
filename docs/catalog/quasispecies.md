@@ -4,6 +4,9 @@
 
 `quasispecies` · *Eigen, 1971; Eigen & Schuster*
 
+!!! warning "Archived: pruned"
+    This entry is not part of the chemistry catalog (set aside from the catalog). It keeps its specification, generator and tests, and `generate_network` still runs it by id, but listings and the LLM tools leave it out. See the [catalog's archive](index.md#archive).
+
 ## Introduction
 
 Mutation and selection as one reaction network. Each genotype replicates at its own fitness, but replication is error-prone, so producing a neighbour is part of reproducing. What survives is therefore not the fittest sequence but a *cloud* centred on it. Push the mutation rate past a threshold and the cloud stops being held together - the population delocalises over sequence space and the information is lost. That error threshold is the model's central result.

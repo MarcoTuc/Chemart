@@ -13,6 +13,7 @@ chemistries:
   book: "7.2.8"
   refs: ["[621]", "[563]", "[564]", "[792]"]
   family: evolutionary-dynamics
+  archived: pruned
   kind: generator
   constructive: false
   S: {repr: "n strategies X_1..X_n", definition: explicit}

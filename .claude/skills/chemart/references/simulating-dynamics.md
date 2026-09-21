@@ -14,9 +14,9 @@ for quick work, and what to do when you outgrow it.
 
 ## Which networks can be simulated at all
 
-You need rate constants. 43 of 98 entries provide them; the rest are topology
-or structure only, by nature of the model — Tierra has no rate constants
-because Tierra is not that kind of object.
+You need rate constants. Many entries provide them; the rest are topology
+or structure only, by nature of the model — the Chemical Casting Model has no
+rate constants because it is not that kind of object.
 
 ```python
 import chemart
@@ -29,25 +29,22 @@ A network can be partially rated. Reactions with `rate=None` have no
 propensity and the integrator cannot fire them; treat a mixed network as a
 modelling question, not a bug.
 
-**29 entries integrate cleanly** at default parameters (fully rated, fixed
-species set, no structure to lose): `analog-function-crn`, `arn`,
-`bagley-farmer`, `bigan-conservative-crn`, `brusselator`, `chameleon`,
-`dimerization`, `ecolab`, `farmer-immune`, `hill-kinetics`, `jain-krishna`,
-`kappa-calculus`, `logistic-chemistry`, `lotka-volterra`, `matrix-chemistry`,
-`mcs-bl`, `mechanical-self-assembly`, `metabolic-robot-controller`,
-`michaelis-menten`, `naming-game-ac`, `nk-landscape`, `okamoto-switch`,
-`quasispecies`, `random-catalytic-networks`, `replication-death`,
-`replicator-equation`, `repressilator`, `selection-equation`, `synthon`.
+**These integrate cleanly** at default parameters (fully rated, fixed
+species set, no structure to lose): `analog-function-crn`, `bagley-farmer`, `bigan-conservative-crn`, `brusselator`,
+`chameleon`, `farmer-immune`, `hill-kinetics`, `jain-krishna`, `kappa-calculus`,
+`matrix-chemistry`, `mcs-bl`, `mechanical-self-assembly`,
+`metabolic-robot-controller`, `michaelis-menten`, `okamoto-switch`,
+`random-catalytic-networks`, `repressilator`, `synthon`.
 
-Six more are rated but carry structure a well-mixed integrator throws away:
-`chemoton`, `disperser`, `gard`, `isologous-diversification` (compartments) and
-`flow-ac`, `oregonator` (space). They will run; the result is a mean-field
+Some more are rated but carry structure a well-mixed integrator throws away:
+`chemoton`, `disperser`, `gard` (compartments) and `flow-ac`, `oregonator`
+(space). They will run; the result is a mean-field
 approximation you chose, not the published model. Say so if you report it.
 
 Note that `michaelis-menten` and `hill-kinetics` emit **elementary mass
 action** (`E + S ⇌ ES → E + P`), not the abridged laws. No entry emits
 `michaelis-menten`, `hill`, `saturating` or `power` at default parameters —
-only mass-action (39 entries) and arrhenius (2).
+only mass-action and arrhenius.
 
 ## The bundled script
 

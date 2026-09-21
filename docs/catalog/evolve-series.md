@@ -4,6 +4,9 @@
 
 `evolve-series` · *Conrad & Pattee, 1969-1970; Conrad & Strizich, 1985; Rizki & Conrad, 1985; Brewster & Conrad, 1998*
 
+!!! warning "Archived: pruned"
+    This entry is not part of the chemistry catalog (set aside from the catalog). It keeps its specification, generator and tests, and `generate_network` still runs it by id, but listings and the LLM tools leave it out. See the [catalog's archive](index.md#archive).
+
 ## Introduction
 
 EVOLVE is a family of computer ecosystems built by the biologist and computer

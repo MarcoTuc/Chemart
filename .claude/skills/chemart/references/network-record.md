@@ -2,7 +2,7 @@
 
 Every chemistry returns the same object. It is plain JSON data throughout, so
 `Network.from_dict(net.to_dict())` reproduces it exactly — that round trip is
-the format's contract and is tested for all 98 entries.
+the format's contract and is tested for every entry.
 
 ## Contents
 - [Fields](#fields)
@@ -191,7 +191,7 @@ and saturating use uppercase **`K`**; and Hill rates carry extra keys
 (`activation` or `repression`), because the regulator is generally not a
 reactant.
 
-Measured across all 98 default networks, only two of these six laws actually
+Measured across the default networks, only two of these six laws actually
 appear: mass-action (39 entries) and arrhenius (2). Nothing emits
 `michaelis-menten`, `hill`, `saturating` or `power` — `michaelis-menten` and
 `hill-kinetics` give the elementary mechanism instead of the abridged law. The

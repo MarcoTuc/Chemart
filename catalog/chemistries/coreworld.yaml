@@ -16,6 +16,7 @@ chemistries:
   book: "10.6.3"
   refs: ["[696]", "[697]", "doi:10.1016/0167-2789(90)90070-6", "LA-UR-89-2618"]
   family: automata
+  archived: artificial-life
   kind: generator
   constructive: true
   S:

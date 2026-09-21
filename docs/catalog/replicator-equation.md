@@ -4,6 +4,9 @@
 
 `replicator-equation`
 
+!!! warning "Archived: pruned"
+    This entry is not part of the chemistry catalog (set aside from the catalog). It keeps its specification, generator and tests, and `generate_network` still runs it by id, but listings and the LLM tools leave it out. See the [catalog's archive](index.md#archive).
+
 ## Introduction
 
 Evolutionary game theory as reactions. Strategies meet in pairs and the payoff matrix decides what happens: a positive entry means the first strategy replicates in the encounter, a negative one that it is removed, with the opponent surviving either way. Evolutionarily stable strategies are the rest points. Note the shape of the reaction - the opponent appears on both sides as a catalyst, so a net stoichiometric matrix would erase the very interaction the model is about.

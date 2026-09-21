@@ -16,6 +16,7 @@ chemistries:
   book: "18.3.2"
   refs: ["[643]", "doi:10.1162/artl.2009.15.1.15103"]
   family: systems-biology
+  archived: pruned
   kind: generator
   constructive: false
   S:

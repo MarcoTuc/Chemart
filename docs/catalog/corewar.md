@@ -6,6 +6,9 @@
 
 *Also known as:* *Core War*, *Redcode*, *MARS (Memory Array Redcode Simulator)*, *assembler automaton*
 
+!!! warning "Archived: artificial-life"
+    This entry is not part of the chemistry catalog (artificial life rather than artificial chemistry). It keeps its specification, generator and tests, and `generate_network` still runs it by id, but listings and the LLM tools leave it out. See the [catalog's archive](index.md#archive).
+
 ## Introduction
 
 Core War is a game in which two or more computer programs fight inside a

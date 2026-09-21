@@ -1,6 +1,6 @@
 # Comparing and analysing networks
 
-The reason 98 different models share one record is so you can ask questions
+The reason different models share one record is so you can ask questions
 across them. This file covers the analyses that the record supports directly.
 
 ## Contents

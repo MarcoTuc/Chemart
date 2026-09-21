@@ -15,12 +15,11 @@ Banzhaf & Yamamoto define an artificial chemistry as a triple **(S, R, A)**:
 
 The breadth of that definition is the whole problem. In this catalog, a molecule
 can be an integer, a bitstring, a λ-term, a lambda-like combinator, a graph, an
-RNA sequence, a finite-state machine, a self-replicating assembly program, or an
-oil droplet. A reactor can be a well-stirred multiset, a system of differential
-equations, a 2D lattice, a virtual machine with a scheduler, or a laboratory
-bench.
+RNA sequence, a finite-state machine, or an oil droplet. A reactor can be a
+well-stirred multiset, a system of differential equations, a 2D lattice, a
+virtual machine with a scheduler, or a laboratory bench.
 
-So the Brusselator and Tierra are both artificial chemistries, and they have
+So the Brusselator and AlChemy are both artificial chemistries, and they have
 essentially nothing in common as software.
 
 ## Why they can still share an output
@@ -29,18 +28,20 @@ Whatever the internals, a chemistry can be asked: *which species exist, and
 which reactions relate them?* That is a **chemical reaction network** (CRN), and
 it is the thing Chemart standardises.
 
-This is not a lossless projection, and it is not meant to be. Tierra's CRN does
-not contain Tierra's CPU. What it does contain is the replication and death
-events that actually occurred, with counts — which is enough to compare Tierra's
-ecology with a Lotka-Volterra system, or to notice that both conserve something.
+This is not a lossless projection, and it is not meant to be. AlChemy's CRN
+does not contain the λ-calculus machinery that reduces one term applied to
+another. What it does contain is the reactions that actually fired in a run,
+with counts — which is enough to compare AlChemy with any other chemistry by
+the same measures.
 
 Two consequences worth internalising:
 
 - **A network is a view, not the model.** The generator is the model; the
   network is what it hands you.
-- **Some chemistries have no reactions at all.** Swarm chemistry defines motion,
-  not transformation. Its network has species and an empty reaction list, with
-  the law in `extras["interaction_law"]`. That is a correct answer, not a bug.
+- **A network can have no reactions at all.** Swarm Chemistry, kept in the
+  [archive](catalog/index.md#archive), defines motion, not transformation. Its
+  network has species and an empty reaction list, with the law in
+  `extras["interaction_law"]`. That is a correct answer, not a bug.
 
 ## The three moving parts
 
@@ -96,12 +97,12 @@ Network(
 ```
 
 It is plain JSON throughout, so `Network.from_dict(net.to_dict())` round-trips
-exactly — tested for all 98. Full detail in
+exactly — tested for every chemistry. Full detail in
 [The network record](reference/record.md).
 
 `Species.structure` is where the molecule actually lives when it has internal
-structure: the bitstring, the λ-term, the genome, the dot-bracket fold. Half the
-catalog carries it, and it is what makes these chemistries more than graphs.
+structure: the bitstring, the λ-term, the genome, the dot-bracket fold. Much of
+the catalog carries it, and it is what makes these chemistries more than graphs.
 
 ## Three things that surprise people
 
@@ -119,7 +120,7 @@ catalog carries it, and it is what makes these chemistries more than graphs.
 
 ### Constructive chemistries grow their own species set
 
-51 of the 98 are **constructive**: S is open, and new molecules appear as
+Many chemistries are **constructive**: S is open, and new molecules appear as
 reactions produce them. For these the object of interest is a *closure* — apply
 the rule until nothing new appears — and `truncated` is a routine answer rather
 than a failure. `chemart.expand.expand` computes closures; see
@@ -147,14 +148,14 @@ chemistry can do at other settings.
 
 ## Provenance is part of the data
 
-Reproducing 98 published models honestly means admitting where the sources ran
+Reproducing published models honestly means admitting where the sources ran
 out. Every entry carries a `fidelity`:
 
-| | count | meaning |
-|---|---|---|
-| `book` | 4 | implemented exactly as the book specifies |
-| `book+decisions` | 33 | the book left gaps; each filled choice is in `decisions` |
-| `reconstructed` | 61 | built from the original papers, cited in `sources` |
+| | meaning |
+|---|---|
+| `book` | implemented exactly as the book specifies |
+| `book+decisions` | the book left gaps; each filled choice is in `decisions` |
+| `reconstructed` | built from the original papers, cited in `sources` |
 
 `reconstructed` is usually the *stronger* label, because a primary paper is more
 precise than a survey chapter. What matters is the `decisions` list underneath
@@ -176,7 +177,8 @@ chemart/
   expand.py      closure of a constructive rule
   soup.py        well-stirred run that records what fired
   cli.py         the `chemart` command
-  chemistries/   98 modules, one generate(p, rng) each
+  chemistries/   one module per chemistry, each defining generate(p, rng)
 catalog/
-  chemistries/   98 YAML entries — the specification
+  chemistries/   one YAML entry per chemistry — the specification
+  explainers/    the prose of each chemistry's documentation page
 ```

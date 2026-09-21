@@ -6,6 +6,9 @@
 
 *Also known as:* *aevol digital genetics platform*, *in silico experimental evolution*
 
+!!! warning "Archived: pruned"
+    This entry is not part of the chemistry catalog (set aside from the catalog). It keeps its specification, generator and tests, and `generate_network` still runs it by id, but listings and the LLM tools leave it out. See the [catalog's archive](index.md#archive).
+
 ## Introduction
 
 Aevol is a simulation platform for *in silico experimental evolution*: a

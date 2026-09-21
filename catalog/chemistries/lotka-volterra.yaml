@@ -12,6 +12,7 @@ chemistries:
   book: "7.2.8; appendix (Lotka.py); ecology 8.2.3"
   refs: ["[621]", "[792]", "[37]", "[238]", "[593]"]
   family: evolutionary-dynamics
+  archived: pruned
   kind: generator
   constructive: false
   S: {repr: "n interacting species X_1..X_n; classically prey X1 and predator X2", definition: explicit}

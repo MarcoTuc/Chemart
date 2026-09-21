@@ -4,6 +4,9 @@
 
 `swarm-chemistry` · *Sayama, 2009-2011*
 
+!!! warning "Archived: artificial-life"
+    This entry is not part of the chemistry catalog (artificial life rather than artificial chemistry). It keeps its specification, generator and tests, and `generate_network` still runs it by id, but listings and the LLM tools leave it out. See the [catalog's archive](index.md#archive).
+
 ## Introduction
 
 The entry that proves the catalog's output format has to be more than stoichiometry. Particles move in continuous space under Boid-like rules - steer toward the local centre, align with neighbours, avoid collisions, relax toward a preferred speed - and a 'species' is a *parameter recipe*, not a structure. Mixing recipes gives segregation, rotating aggregates and cell-division-like behaviour. Nothing is ever created or destroyed, so the reaction list is empty and the model lives entirely in its interaction law.

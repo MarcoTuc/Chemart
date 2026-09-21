@@ -16,6 +16,7 @@ chemistries:
   book: "10.6.2"
   refs: ["[229]", "[440]", "[432]", "https://corewar.co.uk/standards/icws94.txt"]
   family: automata
+  archived: artificial-life
   kind: generator
   constructive: true
   S:

@@ -6,6 +6,9 @@
 
 *Also known as:* *double contingency model*, *LuSi*, *luhmann3*
 
+!!! warning "Archived: pruned"
+    This entry is not part of the chemistry catalog (set aside from the catalog). It keeps its specification, generator and tests, and `generate_network` still runs it by id, but listings and the LLM tools leave it out. See the [catalog's archive](index.md#archive).
+
 ## Introduction
 
 A social theory taken literally. Following Luhmann, the molecule is not a person but a *communication*: the population is the set of messages currently displayed, and a reaction is one agent observing another's message and choosing its own next one from its memory of what followed what. Agents are the context of a reaction, not its species. What emerges is social order - a shared, stable subset of the available messages - out of mutual expectation alone.

@@ -4,6 +4,9 @@
 
 `organization-computing` · *Matsumaru, Speroni di Fenizio, Centler & Dittrich, 2006-2011*
 
+!!! warning "Archived: pruned"
+    This entry is not part of the chemistry catalog (set aside from the catalog). It keeps its specification, generator and tests, and `generate_network` still runs it by id, but listings and the LLM tools leave it out. See the [catalog's archive](index.md#archive).
+
 ## Introduction
 
 Computing with chemical organizations is a way of designing and checking

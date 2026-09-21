@@ -4,6 +4,9 @@
 
 `energy-gated-collision` · *Banzhaf & Yamamoto, 2015 (sec. 18.3.3), extending the collision algorithm of sec. 2.3.3*
 
+!!! warning "Archived: pruned"
+    This entry is not part of the chemistry catalog (set aside from the catalog). It keeps its specification, generator and tests, and `generate_network` still runs it by id, but listings and the LLM tools leave it out. See the [catalog's archive](index.md#archive).
+
 ## Introduction
 
 This entry is not a chemistry. It is a *reactor algorithm*: a recipe for

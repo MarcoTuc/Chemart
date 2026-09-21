@@ -8,7 +8,7 @@ Reads a JSON mapping of chemistry id -> explanation and writes each one into
 `catalog/chemistries/<id>.yaml` as a folded block scalar, immediately after the
 `name:` line.
 
-The insertion is textual on purpose. Round-tripping 98 hand-curated YAML files
+The insertion is textual on purpose. Round-tripping the hand-curated YAML files
 through a parser would reformat them and drop their comments, so this edits only
 the lines it owns and leaves everything else byte-for-byte. It is idempotent:
 an existing `intuition:` block is replaced, not duplicated.

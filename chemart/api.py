@@ -67,18 +67,27 @@ def _summary(c: catalog.Chemistry, limit: int = 240) -> str:
 
 
 # ----------------------------------------------------------------------------
-def list_chemistries() -> list[dict[str, Any]]:
-    """Every chemistry in the catalog: id, name, one-line summary, status."""
-    return [
-        {
+def list_chemistries(include_archived: bool = False) -> list[dict[str, Any]]:
+    """Every chemistry in the catalog: id, name, one-line summary, status.
+
+    Archived entries (see `catalog.ARCHIVES`) are left out unless
+    `include_archived` is true; they stay available by id either way.
+    """
+    rows = []
+    for c in _entries().values():
+        if c.archived is not None and not include_archived:
+            continue
+        row = {
             "id": c.id,
             "name": c.name,
             "summary": _summary(c),
             "implemented": c.implemented,
             "fidelity": c.fidelity,
         }
-        for c in _entries().values()
-    ]
+        if include_archived:
+            row["archived"] = c.archived
+        rows.append(row)
+    return rows
 
 
 def params_schema(c: catalog.Chemistry) -> dict[str, Any]:
@@ -103,6 +112,7 @@ def describe_chemistry(chemistry: str, revision: str | None = None) -> dict[str,
         "aliases": c.aliases,
         "origin": c.origin,
         "family": c.family,
+        "archived": c.archived,
         "kind": c.kind,
         "constructive": c.constructive,
         "implemented": c.implemented,
@@ -191,7 +201,7 @@ def run_generator(c: catalog.Chemistry, generate, seed: int | None, params: dict
 # ----------------------------------------------------------------------------
 def tool_definitions() -> list[dict[str, Any]]:
     """The three functions as JSON-Schema tool specs (name, description, input_schema)."""
-    implemented = [c.id for c in _entries().values() if c.implemented]
+    implemented = [c.id for c in _entries().values() if c.implemented and c.archived is None]
     chemistry_arg: dict[str, Any] = {"type": "string", "description": "chemistry id from list_chemistries"}
     if implemented:
         chemistry_arg = {**chemistry_arg, "enum": implemented}
@@ -200,7 +210,16 @@ def tool_definitions() -> list[dict[str, Any]]:
             "name": "list_chemistries",
             "description": "List every artificial chemistry in the Chemart catalog with its id, "
                            "name, a one-line summary and whether a generator is implemented.",
-            "input_schema": {"type": "object", "properties": {}},
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "include_archived": {
+                        "type": "boolean",
+                        "description": "also list archived entries, which are not part of the "
+                                       "chemistry catalog (default false)",
+                    },
+                },
+            },
         },
         {
             "name": "describe_chemistry",
@@ -235,7 +254,7 @@ def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
     """Execute a tool call from `tool_definitions` and return JSON-ready data."""
     arguments = arguments or {}
     if name == "list_chemistries":
-        return list_chemistries()
+        return list_chemistries(bool(arguments.get("include_archived", False)))
     if name == "describe_chemistry":
         return describe_chemistry(arguments["chemistry"])
     if name == "generate_network":

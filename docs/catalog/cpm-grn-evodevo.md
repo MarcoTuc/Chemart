@@ -6,6 +6,9 @@
 
 *Also known as:* *Hogeweg evo-devo model*, *differential adhesion + gene regulation morphogenesis*
 
+!!! warning "Archived: pruned"
+    This entry is not part of the chemistry catalog (set aside from the catalog). It keeps its specification, generator and tests, and `generate_network` still runs it by id, but listings and the LLM tools leave it out. See the [catalog's archive](index.md#archive).
+
 ## Introduction
 
 This entry is Paulien Hogeweg's model of the *evolution of development*

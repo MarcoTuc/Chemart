@@ -4,6 +4,9 @@
 
 `dimerization` · *textbook; used as PyCellChemistry's hello-world*
 
+!!! warning "Archived: pruned"
+    This entry is not part of the chemistry catalog (set aside from the catalog). It keeps its specification, generator and tests, and `generate_network` still runs it by id, but listings and the LLM tools leave it out. See the [catalog's archive](index.md#archive).
+
 ## Introduction
 
 Reversible dimerization is the smallest interesting chemical reaction network:

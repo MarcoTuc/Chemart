@@ -2,7 +2,7 @@
 
 Every chemistry returns the same object. It is plain JSON throughout, so
 `Network.from_dict(net.to_dict())` reproduces it exactly — that round trip is
-the format's contract and is tested for all 98 entries.
+the format's contract and is tested for every entry.
 
 ## Fields
 
@@ -141,8 +141,8 @@ propensity — a threshold, a temperature, units.
     regulator is usually not a reactant.
 
 !!! info "Only two of the six laws are currently emitted"
-    Measured across all 98 default networks: **mass-action** (39 entries) and
-    **arrhenius** (2, `toychem` and `energy-gated-collision`). Nothing emits
+    Measured across the default networks: **mass-action**, and **arrhenius**
+    (`toychem`, and the archived `energy-gated-collision`). Nothing emits
     `michaelis-menten`, `hill`, `saturating` or `power` — notably
     `michaelis-menten` and `hill-kinetics` give the *elementary* mechanism
     rather than the abridged law. The four unused laws remain in the vocabulary

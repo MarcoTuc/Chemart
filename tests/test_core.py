@@ -190,7 +190,8 @@ def test_param_json_schema():
 # --- public interface --------------------------------------------------------
 def test_list_and_describe_cover_the_catalog():
     listing = chemart.list_chemistries()
-    assert len(listing) == len(catalog.load())
+    assert len(listing) == len(catalog.active(catalog.load()))
+    assert len(chemart.list_chemistries(include_archived=True)) == len(catalog.load())
     described = chemart.describe_chemistry("matrix-chemistry")
     assert described["params"]["type"] == "object" and "N" in described["params"]["properties"]
     json.dumps(described)
@@ -210,6 +211,8 @@ def test_tool_definitions_match_functions():
 
 def test_cli_list_and_errors(capsys):
     assert cli_main(["list"]) == 0
+    assert len(json.loads(capsys.readouterr().out)) == len(catalog.active(catalog.load()))
+    assert cli_main(["list", "--all"]) == 0
     assert len(json.loads(capsys.readouterr().out)) == len(catalog.load())
     assert cli_main(["describe", "no-such-thing"]) == 2
     assert "unknown chemistry" in capsys.readouterr().err

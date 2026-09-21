@@ -12,6 +12,7 @@ chemistries:
   origin: "textbook; used as PyCellChemistry's hello-world"
   book: "2.2.4, appendix (Dimer.py)"
   family: core
+  archived: pruned
   kind: generator
   constructive: false
   S:

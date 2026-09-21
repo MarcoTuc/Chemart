@@ -4,6 +4,9 @@
 
 `selection-equation`
 
+!!! warning "Archived: pruned"
+    This entry is not part of the chemistry catalog (set aside from the catalog). It keeps its specification, generator and tests, and `generate_network` still runs it by id, but listings and the LLM tools leave it out. See the [catalog's archive](index.md#archive).
+
 ## Introduction
 
 Selection in its barest form: each species replicates at its own fitness while a non-selective outflow removes everyone at the mean fitness, holding the total constant. The result is competitive exclusion - the fittest species takes over and the rest vanish. Changing the exponent on the replication term changes that conclusion, which matters for real template replication of short oligonucleotides, where growth is parabolic rather than exponential and coexistence becomes possible.

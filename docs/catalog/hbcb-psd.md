@@ -6,6 +6,9 @@
 
 *Also known as:* *hierarchical biomolecular covalent bond model*, *programmed self-decomposition model*
 
+!!! warning "Archived: pruned"
+    This entry is not part of the chemistry catalog (set aside from the catalog). It keeps its specification, generator and tests, and `generate_network` still runs it by id, but listings and the LLM tools leave it out. See the [catalog's archive](index.md#archive).
+
 ## Introduction
 
 When an organism dies, its matter has to go somewhere. The usual explanation

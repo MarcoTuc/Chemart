@@ -6,6 +6,9 @@
 
 *Also known as:* *Kaneko-Yomo cell differentiation model*, *intra-inter dynamics*
 
+!!! warning "Archived: pruned"
+    This entry is not part of the chemistry catalog (set aside from the catalog). It keeps its specification, generator and tests, and `generate_network` still runs it by id, but listings and the LLM tools leave it out. See the [catalog's archive](index.md#archive).
+
 ## Introduction
 
 Isologous diversification is a theory of cell differentiation proposed by

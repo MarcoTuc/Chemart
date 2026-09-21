@@ -1,13 +1,16 @@
 # Finding the right chemistry
 
-98 entries. This is how to narrow them down without reading all of them.
+This is how to narrow the catalog down without reading every entry. Counts are
+never written down here: compute them (below), or read `docs/CATALOG.md`,
+which is generated from the catalog.
 
 ## Contents
 - [The four axes](#the-four-axes)
+- [The archive](#the-archive)
 - [Querying from Python](#querying-from-python)
 - [Querying from the CLI](#querying-from-the-cli)
 - [What each capability tag means](#what-each-capability-tag-means)
-- [Families, with counts](#families-with-counts)
+- [Families](#families)
 - [Reading a describe_chemistry result](#reading-a-describe_chemistry-result)
 
 ## The four axes
@@ -16,41 +19,58 @@
 that matters most for analysis: if you need rate constants to simulate, filter
 on `rate-constants`, not on the chemistry's reputation.
 
-**`kind`** — what the thing *is*: `generator` (80), `formalism` (7, e.g. Gamma
-and P systems: a rule language, where you supply the rules), `analysis` (4,
-e.g. RAF: builds a model *and* runs an algorithm on it), `wet` (4: the
-in-silico network of a published laboratory experiment), `framework` (3:
-larger simulation platforms, minimally re-implemented).
+**`kind`** — what the thing *is*: `generator` (most entries), `formalism`
+(e.g. Gamma and P systems: a rule language, where you supply the rules),
+`analysis` (e.g. RAF: builds a model *and* runs an algorithm on it), `wet` (the
+in-silico network of a published laboratory experiment), `framework` (larger
+simulation platforms, minimally re-implemented).
 
 **`family`** — subject area (see below).
 
-**`constructive`** — 51 of 98. True means the species set is open and grows at
-run time, so the interesting object is a *closure* and the network may come
-back `truncated`. False means the species set is fixed and enumerable.
+**`constructive`** — true means the species set is open and grows at run time,
+so the interesting object is a *closure* and the network may come back
+`truncated`. False means the species set is fixed and enumerable.
+
+## The archive
+
+Entries whose YAML has an `archived:` field are not part of the chemistry
+catalog: `archived: artificial-life` for the artificial-life systems (Tierra,
+Avida, Core War, Coreworld, Swarm Chemistry), `archived: pruned` for entries
+set aside on review. `list_chemistries()`, `chemart list` and the LLM tools
+leave them out; `generate_network(id)` still runs them. Don't offer an archived
+entry as "a chemistry" unless the user asks for it by name or asks for the
+archive (`list_chemistries(include_archived=True)`, `chemart list --all`).
 
 ## Querying from Python
 
 ```python
-from chemart.catalog import load
+from collections import Counter
+from chemart.catalog import active, load
 
-# load() parses the YAML once and caches it; each call gets its own list,
-# so it is cheap to call repeatedly.
+catalog = active(load())        # the chemistry catalog; load() alone includes the archive
 
 # everything that supplies kinetics AND a conservation law
-for c in load():
+for c in catalog:
     if "rate-constants" in c.provides and "mass-conservation" in c.provides:
         print(c.id, c.fidelity)
 
 # constructive chemistries, with whatever knob sizes each one
-for c in load():
+for c in catalog:
     if c.constructive:
         knobs = [p.name for p in c.params_by_role("structural")]
         print(f"{c.id:28s} {knobs}")
+
+# counts, computed rather than remembered
+Counter(tag for c in catalog for tag in c.provides)
+Counter(c.family for c in catalog)
 ```
 
-Useful `Chemistry` fields: `id`, `name`, `family`, `kind`, `constructive`,
-`provides`, `fidelity`, `sources`, `decisions`, `phenomena`, `book`, `refs`,
-`params`, and the properties `implemented`, `module`, `tiers`,
+`load()` parses the YAML once and caches it; each call gets its own list, so it
+is cheap to call repeatedly.
+
+Useful `Chemistry` fields: `id`, `name`, `family`, `archived`, `kind`,
+`constructive`, `provides`, `fidelity`, `sources`, `decisions`, `phenomena`,
+`book`, `refs`, `params`, and the properties `implemented`, `module`, `tiers`,
 `params_by_role(role)`.
 
 Parameter objects carry `name`, `type`, `default`, `min`, `max`, `choices`,
@@ -60,7 +80,7 @@ Parameter objects carry `name`, `type`, `default`, `min`, `max`, `choices`,
 
 ```bash
 uv run python -m chemart.catalog query --provides rate-constants
-uv run python -m chemart.catalog query --family origin-of-life
+uv run python -m chemart.catalog query --family origin-of-life   # add --all for the archive
 uv run python -m chemart.catalog show gard          # human-readable entry
 uv run python -m chemart.catalog status             # implementation + fidelity counts
 uv run python -m chemart.catalog validate           # invariants; should print 0 problems
@@ -71,57 +91,33 @@ and prints a table.
 
 ## What each capability tag means
 
-| tag | meaning | count |
-|---|---|---|
-| `topology` | species + who reacts with whom | 98 |
-| `stoichiometry` | separate reactant/product multiplicities | 98 |
-| `catalysts` | some species appears on both sides and must be kept | 74 |
-| `initial-state` | the chemistry prescribes a starting multiset | 84 |
-| `sequence-structure-function` | molecules carry structure the rule reads | 49 |
-| `rate-constants` | the chemistry itself prescribes k's | 43 |
-| `mass-conservation` | an atom/mass vector m with Sᵀm = 0 | 31 |
-| `flow` | inflow/outflow is part of the definition | 23 |
-| `space` | positions, lattice or diffusion | 21 |
-| `compartments` | nested membranes/cells | 10 |
-| `energies` | per-species free or bond energies | 10 |
-| `rate-law` | a non-mass-action propensity is part of the model | 7 |
-| `thermodynamic-consistency` | reverse rates constrained by ΔG | 3 |
+| tag | meaning |
+|---|---|
+| `topology` | species + who reacts with whom (every entry) |
+| `stoichiometry` | separate reactant/product multiplicities (every entry) |
+| `catalysts` | some species appears on both sides and must be kept |
+| `initial-state` | the chemistry prescribes a starting multiset |
+| `sequence-structure-function` | molecules carry structure the rule reads |
+| `rate-constants` | the chemistry itself prescribes k's |
+| `mass-conservation` | an atom/mass vector m with Sᵀm = 0 |
+| `flow` | inflow/outflow is part of the definition |
+| `space` | positions, lattice or diffusion |
+| `compartments` | nested membranes/cells |
+| `energies` | per-species free or bond energies |
+| `rate-law` | a non-mass-action propensity is part of the model |
+| `thermodynamic-consistency` | reverse rates constrained by ΔG |
 
 The three-tag rule of thumb: `topology` alone means you can study structure;
 add `rate-constants` and you can simulate; add `energies` or
 `thermodynamic-consistency` and you can do thermodynamics.
 
-## Families, with counts
+## Families
 
-- **systems-biology** (14) — aevol, bnc-cell, cpm-grn-evodevo,
-  energy-gated-collision, french-flag, hbcb-psd, hill-kinetics,
-  isologous-diversification, michaelis-menten, rna-folding-ac, smn, srsim,
-  synthon, tominaga-stacked-strings
-- **application** (13) — acgp, analog-function-crn, brusselator, ccm,
-  disperser, fraglets, metabolic-robot-controller, molecular-tsp, music-ac,
-  naming-game-ac, okamoto-switch, organization-computing, proof-ac
-- **evolutionary-dynamics** (13) — ecolab, evolve-series, jain-krishna,
-  logistic-chemistry, lotka-volterra, nk-landscape, quasispecies,
-  random-catalytic-networks, rbn, replication-death, replicator-equation,
-  selection-equation, urdar
-- **automata** (12) — automata-reaction, avida, bondable-ca,
-  ca-embedded-particles, corewar, coreworld, ikegami-hashimoto,
-  laing-molecular-machines, mccaskill-polymer-tm, sr-loops, tierra,
-  typogenetics
-- **rewriting** (11) — alchemy, arms, brane-calculi, cham,
-  combinator-chemistry, gamma, kappa-calculus, l-systems, mgs, p-systems,
-  reflexive-ac
-- **origin-of-life** (7) — autopoiesis-vmu, bagley-farmer, chemoton, gard,
-  kauffman-autocatalytic-sets, ono-ikegami-protocell, raf
-- **core** (5) — chameleon, dimerization, high-order-chem, matrix-chemistry,
-  prime-number-chemistry
-- **bio-inspired** (5) — conrad-enzymatic, farmer-immune, mcs-bl, sac, stringmol
-- **non-chemical** (5) — mechanical-self-assembly, n-economy,
-  nuclear-reaction-networks, soas, social-communication-ac
-- **wet** (5) — dna-automaton, dna-hpp, oregonator, repressilator,
-  self-propelled-droplets
-- **network** (4) — arn, bigan-conservative-crn, nac, toychem
-- **spatial** (4) — dorin-korb-ecosystem, flow-ac, squirm3, swarm-chemistry
+`core`, `rewriting`, `automata`, `bio-inspired`, `origin-of-life`,
+`evolutionary-dynamics`, `network`, `spatial`, `application`,
+`systems-biology`, `wet`, `non-chemical`. List a family's members with
+`python -m chemart.catalog query --family <family>`, or see them grouped in
+`docs/CATALOG.md`.
 
 Family is subject area, not capability, and it is the least reliable axis —
 `oregonator` and `repressilator` sit in `wet` because they model real
@@ -141,6 +137,7 @@ d["phenomena"]    # what the model is known to produce — the informal spec
 d["decisions"]    # where the sources were thin and what was chosen
 d["sources"]      # citations actually used
 d["book"], d["refs"]   # section of Banzhaf & Yamamoto, and its bibliography keys
+d["archived"]     # None, or the archive group
 ```
 
 `phenomena` is the most underused field: it is the list of behaviours the

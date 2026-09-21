@@ -15,6 +15,7 @@ chemistries:
   book: "10.6.4"
   refs: ["[701]", "[702]", "[818]", "http://tomray.me/pubs/alife2/Ray1991AnApproachToTheSynthesisOfLife.pdf"]
   family: automata
+  archived: artificial-life
   kind: generator
   constructive: true
   S:

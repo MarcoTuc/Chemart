@@ -30,6 +30,7 @@ as they are implemented.
 | `family` (req) | `core`, `rewriting`, `automata`, `bio-inspired`, `origin-of-life`, `evolutionary-dynamics`, `network`, `spatial`, `application`, `systems-biology`, `wet`, `non-chemical` |
 | `kind` (req) | what the thing *is*: `generator`, `formalism`, `framework`, `analysis`, `wet` |
 | `constructive` (req) | `true` if the species set is open/unbounded and grows at run time; `false` if S is fixed and enumerable up front |
+| `archived` | absent for the chemistry catalog. `artificial-life` for artificial-life systems, which Chemart, being about chemistry, keeps out of the catalog; `pruned` for entries set aside on review. An archived entry keeps its generator, tests and page, and `generate_network(id)` still runs it, but `list_chemistries()`, `chemart list`, the LLM tools and the docs catalog leave it out (the docs list it under *Archive*). Delete the line to restore it. |
 
 ## Plain-language explanation
 | field | meaning |

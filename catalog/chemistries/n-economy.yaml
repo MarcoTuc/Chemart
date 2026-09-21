@@ -14,6 +14,7 @@ chemistries:
   book: "20.3"
   refs: ["[816]", "[377]"]
   family: non-chemical
+  archived: pruned
   kind: generator
   constructive: true
   S: {repr: "natural numbers as commodities; primes are raw materials, composites are manufactured goods; 2 = labour, 3 = money", definition: implicit}

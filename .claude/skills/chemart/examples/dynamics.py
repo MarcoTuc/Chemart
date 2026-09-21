@@ -20,7 +20,7 @@ from simulate import NotIntegrable, integrate     # noqa: E402
 # ------------------------------------------------- which ones can be simulated
 integrable = [row["id"] for row in chemart.list_chemistries()
               if "rate-constants" in chemart.describe_chemistry(row["id"])["provides"]]
-print(f"{len(integrable)} of 98 entries claim rate constants; e.g. {integrable[:6]}\n")
+print(f"{len(integrable)} entries claim rate constants; e.g. {integrable[:6]}\n")
 
 # --------------------------------------------------------- the Brusselator
 net = chemart.generate_network("brusselator", seed=1)
@@ -46,9 +46,9 @@ print(f"  buffered species stayed flat, as the model intends")
 
 # ------------------------------------------- a chemistry that cannot be integrated
 try:
-    integrate(chemart.generate_network("tierra", seed=1), t_end=1.0)
+    integrate(chemart.generate_network("ccm", seed=1), t_end=1.0)
 except NotIntegrable as err:
-    print(f"\ntierra: {err}")
+    print(f"\nccm: {err}")
 
 # ------------------------------------------------- stochastic conversion
 # Mass-action k is a deterministic rate; Gillespie needs a stochastic c.

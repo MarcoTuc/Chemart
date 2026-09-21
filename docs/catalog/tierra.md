@@ -4,6 +4,9 @@
 
 `tierra` · *Ray, 1991*
 
+!!! warning "Archived: artificial-life"
+    This entry is not part of the chemistry catalog (artificial life rather than artificial chemistry). It keeps its specification, generator and tests, and `generate_network` still runs it by id, but listings and the LLM tools leave it out. See the [catalog's archive](index.md#archive).
+
 ## Introduction
 
 Self-replicating machine code in a shared memory, and the experiment that made digital evolution credible. A creature's genome is a program that allocates space and copies itself into it, with mutation from cosmic rays and copy errors, while a reaper kills off the oldest and most error-prone. Its innovations over Core War are what make individuals meaningful: template addressing rather than absolute jumps, plus memory allocation and write protection. Parasites that use a neighbour's copy loop, and hyper-parasites that exploit them, appear on their own.

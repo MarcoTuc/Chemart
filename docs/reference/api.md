@@ -169,5 +169,5 @@ CHEMART_ONLY=brusselator uv run pytest -q tests/test_contract.py
 ```
 
 `CHEMART_ONLY` narrows the parametrized contract tests to one or more
-comma-separated ids. The coverage gate that checks all 98 are implemented
+comma-separated ids. The coverage gate that checks every catalogued chemistry is implemented
 deliberately ignores it.

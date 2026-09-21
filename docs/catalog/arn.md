@@ -4,6 +4,9 @@
 
 `arn` · *Banzhaf, 2003*
 
+!!! warning "Archived: pruned"
+    This entry is not part of the chemistry catalog (set aside from the catalog). It keeps its specification, generator and tests, and `generate_network` still runs it by id, but listings and the LLM tools leave it out. See the [catalog's archive](index.md#archive).
+
 ## Introduction
 
 In a living cell, genes do not simply make proteins at a fixed rate. Some of the
