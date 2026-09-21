@@ -25,3 +25,6 @@ skills-lock.json
 
 # Local Chemart Hub data (chemart-hub serve)
 hub-data/
+
+# Jupyter
+.ipynb_checkpoints/

@@ -39,6 +39,11 @@ docs = [
     "mkdocs>=1.6.1",
     "mkdocs-material>=9.7.7",
 ]
+notebooks = [
+    "jupyterlab>=4.6.4",
+    "matplotlib>=3.11.2",
+    "nbclient>=0.11.0",
+]
 
 [tool.pytest.ini_options]
 markers = ["slow: takes more than ~2 s; excluded by default, run with -m 'slow or not slow'"]
