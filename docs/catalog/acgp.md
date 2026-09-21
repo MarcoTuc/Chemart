@@ -410,4 +410,4 @@ Banzhaf, W. & Yamamoto, L. (2015). *Artificial Chemistries*. MIT Press. Section 
 
 ---
 
-*Specification: `catalog/chemistries/acgp.yaml` · explainer: `catalog/explainers/acgp.md` · generator: `chemart/chemistries/acgp.py` · tests: `tests/chemistries/test_acgp.py`*
+*Specification: `catalog/chemistries/acgp.yaml` · explainer: `catalog/explainers/acgp.md` · generator: `chemart/chemistries/acgp.py` · tests: `tests/chemistries/test_w2_book.py`*

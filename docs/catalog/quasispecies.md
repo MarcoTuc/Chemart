@@ -98,4 +98,4 @@ Banzhaf, W. & Yamamoto, L. (2015). *Artificial Chemistries*. MIT Press. Section 
 
 ---
 
-*Specification: `catalog/chemistries/quasispecies.yaml` · explainer: `catalog/explainers/quasispecies.md` · generator: `chemart/chemistries/quasispecies.py` · tests: `tests/chemistries/test_quasispecies.py`*
+*Specification: `catalog/chemistries/quasispecies.yaml` · explainer: `catalog/explainers/quasispecies.md` · generator: `chemart/chemistries/quasispecies.py` · tests: `tests/chemistries/test_w1_structure.py`*

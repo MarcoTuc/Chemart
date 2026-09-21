@@ -326,7 +326,7 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 | `n_founders` | `int` | `8` | population | organisms seeded at step 0; with the default founder they are all autotrophs, as the book's EVOLVE runs start <br>`1` … `10000` |
 | `diffusion` | `float` | `0.25` | spatial | fraction of each cell's mineral and organic pool shared equally among its four neighbours every step (integer division, so small stocks stay put) <br>`0.0` … `1.0` |
 | `initial_mineral` | `int` | `3` | population | mineral matter units seeded in every cell; with initial_organic and the founders' bodies this fixes the world's total matter, and so how hard matter is to come by <br>`0` … `100000` |
-| `initial_organic` | `int` | `` | population | organic matter units seeded in every cell; 0 means scavengers have nothing to eat until autotrophs have secreted and died <br>`0` … `100000` |
+| `initial_organic` | `int` | `0` | population | organic matter units seeded in every cell; 0 means scavengers have nothing to eat until autotrophs have secreted and died <br>`0` … `100000` |
 | `body` | `int` | `2` | population | organic matter units an organism holds while alive, spends to build each offspring, and returns to the pool when it dies <br>`1` … `100` |
 | `max_age` | `int` | `40` | population | an organism dies after this many steps; 0 removes death of old age, leaving only starvation <br>`0` … `100000` |
 | `alphabet` | `int` | `4` | structural | number of symbols a..z genomes are written in <br>`2` … `26` |
@@ -336,7 +336,7 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 | `critical_weight` | `float` | `3.0` | structural | how much more a matching symbol inside the critical section counts than one outside it; the book's mechanism 'weights the critical section more heavily than the rest of the string' <br>`1.0` … `100.0` |
 | `match_threshold` | `float` | `0.55` | selection | weighted match score (normalised to [0, 1]) a protein must reach before the table gives it a function at all <br>`0.0` … `1.0` |
 | `light_input` | `int` | `4` | thermodynamic | light energy incident on each cell per step; 0 switches the sun off <br>`0` … `10000` |
-| `light_period` | `float` | `` | thermodynamic | period in steps of the sinusoidal environment; 0 is the constant environment <br>`0.0` … `100000.0` · *range:* EVOLVE III contrasts populations cultured in constant and in variable environments |
+| `light_period` | `float` | `0.0` | thermodynamic | period in steps of the sinusoidal environment; 0 is the constant environment <br>`0.0` … `100000.0` · *range:* EVOLVE III contrasts populations cultured in constant and in variable environments |
 | `light_swing` | `float` | `0.5` | thermodynamic | relative amplitude of the sinusoidal environment; ignored when light_period is 0 <br>`0.0` … `1.0` |
 | `fix_cost` | `int` | `3` | thermodynamic | light energy spent to fix one mineral unit into organic matter; exactly this much is banked in the organic pool and can be recovered by respiration <br>`1` … `10000` |
 | `maintenance` | `int` | `1` | thermodynamic | energy every organism must pay each step; one that cannot starves <br>`0` … `10000` |
@@ -346,7 +346,7 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 | `recombination_rate` | `float` | `0.1` | stochastic | probability that a reproduction is conjugative: the parent first crosses over with a neighbouring organism at a gene boundary (Conrad & Pattee's conjugation) <br>`0.0` … `1.0` |
 | `initial_sensitivity` | `int` | `3` | stochastic | mutational sensitivity every founder gene starts with, i.e. the number of protein symbols one mutation changes; must not exceed alphabet <br>`1` … `26` |
 | `founder_noise` | `int` | `2` | stochastic | protein symbols randomised in each founder genome, so the founders' enzymes are imperfect and evolution has somewhere to go <br>`0` … `10000` |
-| `founder_genomes` | `list` | `` | population | explicit founder genomes, cycled over the founders; [] builds the default autotroph (a perfect light gene, a perfect fix gene, functionless filler genes, then founder_noise substitutions) |
+| `founder_genomes` | `list` | `[]` | population | explicit founder genomes, cycled over the founders; [] builds the default autotroph (a perfect light gene, a perfect fix gene, functionless filler genes, then founder_noise substitutions) |
 
 ### Implementation decisions
 

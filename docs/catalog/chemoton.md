@@ -293,7 +293,7 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 | `N` | `int` | `25` | structural | template length: monomers bound per replication round, i.e. the number of stages pV0..pV(N-1) <br>`2` … `1000` |
 | `X` | `float` | `100.0` | population | nutrient concentration outside the cell, held constant <br>≥ `0` · *range:* the paper also uses 10 and 1 |
 | `V_threshold` | `float` | `35.0` | kinetic | polycondensation threshold [V]*; template initiation pV0 + V -&gt; pV1 + R only runs above it <br>≥ `0` |
-| `rates` | `dict` | `` | kinetic | overrides of the paper's rate constants by name (k1..k10 forward, k1r..k6r, k9r reverse); unlisted constants keep the paper's values |
+| `rates` | `dict` | `{}` | kinetic | overrides of the paper's rate constants by name (k1..k10 forward, k1r..k6r, k9r reverse); unlisted constants keep the paper's values |
 
 ### Implementation decisions
 

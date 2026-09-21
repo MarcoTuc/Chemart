@@ -432,4 +432,4 @@ Banzhaf, W. & Yamamoto, L. (2015). *Artificial Chemistries*. MIT Press. Section 
 
 ---
 
-*Specification: `catalog/chemistries/okamoto-switch.yaml` · explainer: `catalog/explainers/okamoto-switch.md` · generator: `chemart/chemistries/okamoto_switch.py` · tests: `tests/chemistries/test_okamoto_switch.py`*
+*Specification: `catalog/chemistries/okamoto-switch.yaml` · explainer: `catalog/explainers/okamoto-switch.md` · generator: `chemart/chemistries/okamoto_switch.py` · tests: `tests/chemistries/test_w1_dynamics.py`*

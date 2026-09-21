@@ -311,7 +311,7 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 | `beta_mu` | `float` | `-4.0` | kinetic | mean of ln(beta_ij); beta is the receptor-affinity-distribution rate enhancement |
 | `beta_sigma` | `float` | `4.0` | kinetic | standard deviation of ln(beta_ij) <br>≥ `0` |
 | `N_max` | `int` | `100` | population | assembly size at which fission occurs; also the crowding capacity of joining <br>≥ `2` |
-| `catalysed_leaving` | `bool` | `` | structural | also accelerate leaving by beta_ij (the book's 'in both directions' reading), adding A_i + A_j -&gt; L_i + A_j at k_b beta_ij |
+| `catalysed_leaving` | `bool` | `False` | structural | also accelerate leaving by beta_ij (the book's 'in both directions' reading), adding A_i + A_j -&gt; L_i + A_j at k_b beta_ij |
 
 ### Implementation decisions
 

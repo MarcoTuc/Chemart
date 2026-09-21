@@ -314,7 +314,7 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 | `energy_model` | `enum` | `bath` | thermodynamic | bath: a thermostat draws the line-of-centres collision energy from Exponential(RT), so the acceptance is exactly exp(-Ea/RT) and the reaction heat comes from the bath. conserved: every molecule carries a kinetic energy, the gate compares Ea with the sum of the two (the book's literal wording), and E = Ek + Ep is conserved exactly (eq. 2.28); the acceptance is then (1 + Ea/RT) exp(-Ea/RT) <br>one of `bath`, `conserved` |
 | `population` | `int` | `400` | population | number of molecules M in the well-stirred vessel, split over the system's initial species <br>`2` … `200000` · *range:* the chapter-2 examples use M = 100 to 100,000 |
 | `steps` | `int` | `4000` | stochastic | collisions to attempt, elastic ones included; M collisions are one generation (sec. 2.6.1) <br>`0` … `10000000` · *range:* 10 generations at the default M; the acceptance estimate tightens as 1/sqrt(attempts) |
-| `system` | `dict` | `` | structural | run the algorithm on a user-supplied system instead of the default one: {'energies': {species: potential energy in kJ/mol}, 'reactions': [{'id', 'reactants' (exactly two), 'products', 'Ea'}], 'initial': {species: proportion}}; empty means X1 + X2 &lt;-&gt; Y1 + Y2 |
+| `system` | `dict` | `{}` | structural | run the algorithm on a user-supplied system instead of the default one: {'energies': {species: potential energy in kJ/mol}, 'reactions': [{'id', 'reactants' (exactly two), 'products', 'Ea'}], 'initial': {species: proportion}}; empty means X1 + X2 &lt;-&gt; Y1 + Y2 |
 
 ### Implementation decisions
 

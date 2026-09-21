@@ -447,4 +447,4 @@ Banzhaf, W. & Yamamoto, L. (2015). *Artificial Chemistries*. MIT Press. Section 
 
 ---
 
-*Specification: `catalog/chemistries/lotka-volterra.yaml` · explainer: `catalog/explainers/lotka-volterra.md` · generator: `chemart/chemistries/lotka_volterra.py` · tests: `tests/chemistries/test_lotka_volterra.py`*
+*Specification: `catalog/chemistries/lotka-volterra.yaml` · explainer: `catalog/explainers/lotka-volterra.md` · generator: `chemart/chemistries/lotka_volterra.py` · tests: `tests/chemistries/test_w1_dynamics.py`*

@@ -314,7 +314,7 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 | `R` | `int` | `16` | structural | maximum recognizon length in symbols (coding length 2R bits) <br>`1` … `64` · *range:* report: R typically 16 |
 | `max_steps` | `int` | `1000` | structural | cutoff on elementary processing steps; a process that has not halted by then releases nothing <br>`1` … `100000` |
 | `max_species` | `int` | `200` | structural | closure only: species budget; status truncated when it cuts the closure off <br>`1` … `100000` |
-| `error_rate` | `float` | `` | stochastic | soup only: probability that an elementary write step writes the wrong symbol (the report's single error rate for all elementary steps; acts as mutation) <br>`0.0` … `1.0` |
+| `error_rate` | `float` | `0.0` | stochastic | soup only: probability that an elementary write step writes the wrong symbol (the report's single error rate for all elementary steps; acts as mutation) <br>`0.0` … `1.0` |
 | `population` | `int` | `200` | population | soup only: number of molecules, kept constant <br>`2` … `1000000` · *range:* report: 1000 strings |
 | `l` | `int` | `19` | population | soup only: length of the random background strings <br>`1` … `256` · *range:* report section 4: random strings of length 19; about 30 on average in section 3 |
 | `inoculum_fraction` | `float` | `0.1` | population | soup only: fraction of the population given to each string in `strings`; the rest is random strings of length l <br>`0.0` … `1.0` · *range:* report section 4: 10% each of replicator and parasite |

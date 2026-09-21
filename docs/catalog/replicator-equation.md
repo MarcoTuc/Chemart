@@ -70,7 +70,7 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
 | `A` | `list` | `[[0.0, -1.0, 1.0], [1.0, 0.0, -1.0], [-1.0, 1.0…` | selection | n x n payoff matrix a_ij; asymmetry a_ij != a_ji encodes the game. Default: rock-paper-scissors |
-| `x0` | `list` | `` | population | initial frequencies; empty means uniform 1/n |
+| `x0` | `list` | `[]` | population | initial frequencies; empty means uniform 1/n |
 
 ### Implementation decisions
 
@@ -94,4 +94,4 @@ Banzhaf, W. & Yamamoto, L. (2015). *Artificial Chemistries*. MIT Press. Section 
 
 ---
 
-*Specification: `catalog/chemistries/replicator-equation.yaml` · explainer: `catalog/explainers/replicator-equation.md` · generator: `chemart/chemistries/replicator_equation.py` · tests: `tests/chemistries/test_replicator_equation.py`*
+*Specification: `catalog/chemistries/replicator-equation.yaml` · explainer: `catalog/explainers/replicator-equation.md` · generator: `chemart/chemistries/replicator_equation.py` · tests: `tests/chemistries/test_w1_dynamics.py`*

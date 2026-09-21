@@ -369,4 +369,4 @@ Banzhaf, W. & Yamamoto, L. (2015). *Artificial Chemistries*. MIT Press. Section 
 
 ---
 
-*Specification: `catalog/chemistries/french-flag.yaml` · explainer: `catalog/explainers/french-flag.md` · generator: `chemart/chemistries/french_flag.py` · tests: `tests/chemistries/test_french_flag.py`*
+*Specification: `catalog/chemistries/french-flag.yaml` · explainer: `catalog/explainers/french-flag.md` · generator: `chemart/chemistries/french_flag.py` · tests: `tests/chemistries/test_w1_structure.py`*

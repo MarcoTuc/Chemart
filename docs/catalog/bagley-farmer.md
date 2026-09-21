@@ -410,7 +410,7 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 | `max_length` | `int` | `5` | structural | longest polymer in the network (at most 512 polymers); the paper has no hard bound and relies on the threshold instead <br>`2` … `8` |
 | `food_set` | `list` | `['a', 'b']` | population | polymers supplied from outside at flux delta each <br>*range:* Figures 5-12 use {a, b}; Figure 3 uses {a, b, ab, ba} |
 | `p` | `float` | `0.01` | structural | probability that a given polymer strongly catalyses a given condensation/cleavage pair (ignored when links is given) <br>`0` … `1` · *range:* Figure 13 varies the number of links from 0 to 200 on a 15-reaction network |
-| `links` | `list` | `` | structural | explicit catalytic links 'A + B &lt;-&gt; C \| E' (e.g. 'a + b &lt;-&gt; ab \| bb'); when non-empty they replace the random draw |
+| `links` | `list` | `[]` | structural | explicit catalytic links 'A + B &lt;-&gt; C \| E' (e.g. 'a + b &lt;-&gt; ab \| bb'); when non-empty they replace the random draw |
 | `nu` | `float` | `897000.0` | kinetic | catalytic efficiency: a catalyst E multiplies both rate constants by (1 + nu E) <br>≥ `0` · *range:* Table 2: 8.97e5 (network a), 5.26e5 (network b); Figure 3: 1e4 |
 | `nu_distribution` | `enum` | `constant` | stochastic | constant: every link has efficiency nu; uniform: each link draws its efficiency from U(0, 2 nu) <br>one of `constant`, `uniform` |
 | `kf` | `float` | `649.0` | kinetic | condensation rate constant, the same for every reaction <br>≥ `0` · *range:* Table 2: 6.49e2 (a), 3.02e4 (b); Figure 3: 1e2 |
@@ -420,7 +420,7 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 | `H` | `float` | `1.0` | population | water concentration, held constant (Figure 3 uses H = 1) <br>≥ `0` |
 | `delta` | `float` | `17.9` | population | inflow flux of each food species (mass flux driving the system from equilibrium) <br>≥ `0` · *range:* Table 2: 1.79e1 (a), 1.41e2 (b); Figure 5 uses 0.01, 1e5 and 10^7.5 |
 | `m0` | `float` | `2.0` | population | total monomer concentration at the chemostat fixed point; sets the outflow rate K and the initial food concentrations <br>≥ `1e-12` · *range:* 2.0 in Figures 5-14; 3 in Figure 3 |
-| `threshold` | `float` | `` | population | metadynamics concentration threshold (one molecule in the reaction vessel); 0 keeps the whole bounded network, &gt; 0 returns the graph at the metadynamical fixed point <br>≥ `0` |
+| `threshold` | `float` | `0.0` | population | metadynamics concentration threshold (one molecule in the reaction vessel); 0 keeps the whole bounded network, &gt; 0 returns the graph at the metadynamical fixed point <br>≥ `0` |
 
 ### Implementation decisions
 

@@ -355,4 +355,4 @@ Banzhaf, W. & Yamamoto, L. (2015). *Artificial Chemistries*. MIT Press. Section 
 
 ---
 
-*Specification: `catalog/chemistries/dimerization.yaml` · explainer: `catalog/explainers/dimerization.md` · generator: `chemart/chemistries/dimerization.py` · tests: `tests/chemistries/test_dimerization.py`*
+*Specification: `catalog/chemistries/dimerization.yaml` · explainer: `catalog/explainers/dimerization.md` · generator: `chemart/chemistries/dimerization.py` · tests: `tests/chemistries/test_kappa_calculus.py`, `tests/chemistries/test_srsim.py`, `tests/chemistries/test_w1_dynamics.py`*

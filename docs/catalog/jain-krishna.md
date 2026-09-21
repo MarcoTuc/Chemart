@@ -343,8 +343,8 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 |---|---|---|---|---|
 | `m` | `int` | `100` | structural | number of nodes (the state-space dimension stays constant) <br>`2` … `300` |
 | `p` | `float` | `0.0025` | structural | link probability, both initially and on rewiring; the phase parameter <br>`0` … `1` |
-| `graph_updates` | `int` | `` | population | slow-timescale steps (least-fit node replaced) applied before the network is returned; 0 returns the initial random graph <br>`0` … `20000` · *range:* the book's run finds the first autocatalytic set at update 2854 (m = 100, p = 0.0025) |
-| `self_loops` | `bool` | `` | structural | allow c_ii = 1 (direct self-replicators); the model sets c_ii = 0 |
+| `graph_updates` | `int` | `0` | population | slow-timescale steps (least-fit node replaced) applied before the network is returned; 0 returns the initial random graph <br>`0` … `20000` · *range:* the book's run finds the first autocatalytic set at update 2854 (m = 100, p = 0.0025) |
+| `self_loops` | `bool` | `False` | structural | allow c_ii = 1 (direct self-replicators); the model sets c_ii = 0 |
 
 ### Implementation decisions
 
@@ -528,4 +528,4 @@ Banzhaf, W. & Yamamoto, L. (2015). *Artificial Chemistries*. MIT Press. Section 
 
 ---
 
-*Specification: `catalog/chemistries/jain-krishna.yaml` · explainer: `catalog/explainers/jain-krishna.md` · generator: `chemart/chemistries/jain_krishna.py` · tests: `tests/chemistries/test_jain_krishna.py`*
+*Specification: `catalog/chemistries/jain-krishna.yaml` · explainer: `catalog/explainers/jain-krishna.md` · generator: `chemart/chemistries/jain_krishna.py` · tests: `tests/chemistries/test_w2_book.py`*

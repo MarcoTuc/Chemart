@@ -352,4 +352,4 @@ Banzhaf, W. & Yamamoto, L. (2015). *Artificial Chemistries*. MIT Press. Section 
 
 ---
 
-*Specification: `catalog/chemistries/analog-function-crn.yaml` · explainer: `catalog/explainers/analog-function-crn.md` · generator: `chemart/chemistries/analog_function_crn.py` · tests: `tests/chemistries/test_analog_function_crn.py`*
+*Specification: `catalog/chemistries/analog-function-crn.yaml` · explainer: `catalog/explainers/analog-function-crn.md` · generator: `chemart/chemistries/analog_function_crn.py` · tests: `tests/chemistries/test_w1_dynamics.py`*

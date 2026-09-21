@@ -326,4 +326,4 @@ Banzhaf, W. & Yamamoto, L. (2015). *Artificial Chemistries*. MIT Press. Section 
 
 ---
 
-*Specification: `catalog/chemistries/nuclear-reaction-networks.yaml` · explainer: `catalog/explainers/nuclear-reaction-networks.md` · generator: `chemart/chemistries/nuclear_reaction_networks.py` · tests: `tests/chemistries/test_nuclear_reaction_networks.py`*
+*Specification: `catalog/chemistries/nuclear-reaction-networks.yaml` · explainer: `catalog/explainers/nuclear-reaction-networks.md` · generator: `chemart/chemistries/nuclear_reaction_networks.py` · tests: `tests/chemistries/test_w1_structure.py`*

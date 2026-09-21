@@ -65,12 +65,12 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
 | `recipe` | `enum` | `turbulent-runner` | structural | which published recipe to run; all but cell-division are Sayama's sample recipes, cell-division is Erskine & Herrmann's two-species swarm (their table 1); 'custom' uses custom_recipe <br>one of `blobs`, `linear-oscillator`, `turbulent-runner`, `playing-catch`, `recombining-blobs`, `wedding-ring`, `rotary`, `swinger` … and 12 more (20 total) |
-| `custom_recipe` | `list` | `` | structural | rows [count, R, V_normal, V_max, c1, c2, c3, c4, c5] in Sayama's recipe order, each parameter within the ranges of book table 11.6; used only when recipe = custom |
+| `custom_recipe` | `list` | `[]` | structural | rows [count, R, V_normal, V_max, c1, c2, c3, c4, c5] in Sayama's recipe order, each parameter within the ranges of book table 11.6; used only when recipe = custom |
 | `particles` | `int` | `120` | population | total number of particles; the recipe's counts are rescaled proportionally, keeping at least one of each type (Sayama's simulator caps a swarm at 300) <br>`2` … `300` |
 | `steps` | `int` | `300` | kinetic | simulated time steps; the order parameters are averaged over the last 10% <br>`0` … `20000` · *range:* Sayama's and Erskine's runs are 2000-10000 steps |
 | `dimensions` | `int` | `2` | spatial | 2D (the 2009 system) or 3D (the 2012 system); the law is identical in both <br>`2` … `3` |
-| `space` | `float` | `` | spatial | edge in pixels of the cube the particles are initially scattered in; 0 means auto, i.e. the box that keeps the density of Sayama's 300 particles in a 300 px box, which is the density his recipes are tuned to <br>≥ `0.0` · *range:* Sayama's simulator always uses 300 px with up to 300 particles |
-| `recipe_transmission` | `bool` | `` | structural | run the evolutionary variant, in which a particle that loses a collision (within 10 px) adopts the nearest other species; the observed adoptions become the reactions A + B -&gt; 2 B |
+| `space` | `float` | `0.0` | spatial | edge in pixels of the cube the particles are initially scattered in; 0 means auto, i.e. the box that keeps the density of Sayama's 300 particles in a 300 px box, which is the density his recipes are tuned to <br>≥ `0.0` · *range:* Sayama's simulator always uses 300 px with up to 300 particles |
+| `recipe_transmission` | `bool` | `False` | structural | run the evolutionary variant, in which a particle that loses a collision (within 10 px) adopts the nearest other species; the observed adoptions become the reactions A + B -&gt; 2 B |
 | `competition` | `enum` | `faster` | selection | which of Sayama's competition functions decides a collision when recipe_transmission is on <br>one of `faster`, `slower`, `behind`, `majority-relative` |
 
 ### Implementation decisions

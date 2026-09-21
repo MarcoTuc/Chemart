@@ -356,8 +356,8 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
 | `method` | `enum` | `dynamics` | structural | dynamics: the papers' population dynamics, observed reactions with firing counts; closure: the noise-free reaction network reachable from the seed machines and tapes (Chemart addition) <br>one of `dynamics`, `closure` |
-| `machines` | `list` | `` | structural | seed machines as 16-bit hex strings (T' column, M' column, head, tail); empty draws n_machines random machines <br>*range:* e.g. the minimal self-replicating loop [1002] with tapes [01] |
-| `tapes` | `list` | `` | structural | seed tapes as 7-bit hex strings read from the source; empty draws n_tapes random tapes <br>*range:* e.g. [01]; the papers' T1 read from another source is 04, 10, ... |
+| `machines` | `list` | `[]` | structural | seed machines as 16-bit hex strings (T' column, M' column, head, tail); empty draws n_machines random machines <br>*range:* e.g. the minimal self-replicating loop [1002] with tapes [01] |
+| `tapes` | `list` | `[]` | structural | seed tapes as 7-bit hex strings read from the source; empty draws n_tapes random tapes <br>*range:* e.g. [01]; the papers' T1 read from another source is 04, 10, ... |
 | `n_machines` | `int` | `10` | population | number of random seed machines when machines is empty <br>`0` … `65536` · *range:* papers: about 10 |
 | `n_tapes` | `int` | `3` | population | number of random seed tapes when tapes is empty <br>`0` … `128` · *range:* papers: 2 or 3 |
 | `N` | `int` | `1000` | population | dynamics only: capacity of each population (machines, tapes); seeds share it equally <br>`1` … `10000000` · *range:* not stated in the papers |

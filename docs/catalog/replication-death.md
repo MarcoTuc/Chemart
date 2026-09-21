@@ -87,4 +87,4 @@ Banzhaf, W. & Yamamoto, L. (2015). *Artificial Chemistries*. MIT Press. Section 
 
 ---
 
-*Specification: `catalog/chemistries/replication-death.yaml` · explainer: `catalog/explainers/replication-death.md` · generator: `chemart/chemistries/replication_death.py` · tests: `tests/chemistries/test_replication_death.py`*
+*Specification: `catalog/chemistries/replication-death.yaml` · explainer: `catalog/explainers/replication-death.md` · generator: `chemart/chemistries/replication_death.py` · tests: `tests/chemistries/test_w1_dynamics.py`*

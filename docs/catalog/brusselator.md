@@ -419,4 +419,4 @@ Belousov–Zhabotinsky reaction and the Repressilator instead.
 
 ---
 
-*Specification: `catalog/chemistries/brusselator.yaml` · explainer: `catalog/explainers/brusselator.md` · generator: `chemart/chemistries/brusselator.py` · tests: `tests/chemistries/test_brusselator.py`*
+*Specification: `catalog/chemistries/brusselator.yaml` · explainer: `catalog/explainers/brusselator.md` · generator: `chemart/chemistries/brusselator.py` · tests: `tests/chemistries/test_arms.py`, `tests/chemistries/test_w1_dynamics.py`*

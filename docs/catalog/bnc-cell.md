@@ -339,7 +339,7 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 | `enzymes` | `int` | `3` | structural | cell mode: number of catalytic proteins, each specific to one reaction drawn uniformly from the ordered cleavage pairs (ignored when proteins is given) <br>`0` … `5000` · *range:* the ancestral genome has 3 catalytic genes; the network of Figure 5 has 534 genes |
 | `importers` | `int` | `1` | structural | cell mode: number of import proteins, each specific to a uniformly drawn precursor (ignored when proteins is given) <br>`0` … `5000` · *range:* the ancestral genome has 1 |
 | `exporters` | `int` | `1` | structural | cell mode: number of export proteins, each specific to a uniformly drawn molecule (ignored when proteins is given) <br>`0` … `5000` · *range:* the ancestral genome has 1 |
-| `proteins` | `list` | `` | structural | cell mode: explicit proteins 'import X', 'export X' or 'enzyme A-head\|A-tail + B-head\|B-tail' (the cut bond written as '\|'); when non-empty they replace the random draw. Expression levels and affinity domains are still drawn at random <br>*range:* Figure 1: ['import 1-2-1', 'import 1-2-2-1', 'enzyme 1-2\|1 + 1\|2-2-1', 'export 1-1'] |
+| `proteins` | `list` | `[]` | structural | cell mode: explicit proteins 'import X', 'export X' or 'enzyme A-head\|A-tail + B-head\|B-tail' (the cut bond written as '\|'); when non-empty they replace the random draw. Expression levels and affinity domains are still drawn at random <br>*range:* Figure 1: ['import 1-2-1', 'import 1-2-2-1', 'enzyme 1-2\|1 + 1\|2-2-1', 'export 1-1'] |
 
 ### Implementation decisions
 

@@ -403,4 +403,4 @@ Banzhaf, W. & Yamamoto, L. (2015). *Artificial Chemistries*. MIT Press. Section 
 
 ---
 
-*Specification: `catalog/chemistries/logistic-chemistry.yaml` · explainer: `catalog/explainers/logistic-chemistry.md` · generator: `chemart/chemistries/logistic_chemistry.py` · tests: `tests/chemistries/test_logistic_chemistry.py`*
+*Specification: `catalog/chemistries/logistic-chemistry.yaml` · explainer: `catalog/explainers/logistic-chemistry.md` · generator: `chemart/chemistries/logistic_chemistry.py` · tests: `tests/chemistries/test_w1_dynamics.py`*

@@ -349,13 +349,13 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
 | `N` | `int` | `10` | structural | number of chemical species (the paper uses 10, and 20 for checks) <br>`2` … `20` |
-| `max_reactions` | `int` | `` | structural | stop after this many direct reactions; 0 builds a maximum-sized network (17-96, mean 42 direct reactions for N = 10 in the paper) <br>≥ `0` |
+| `max_reactions` | `int` | `0` | structural | stop after this many direct reactions; 0 builds a maximum-sized network (17-96, mean 42 direct reactions for N = 10 in the paper) <br>≥ `0` |
 | `kinetics` | `enum` | `mass-action` | kinetic | saturating kinetics f = k prod [A]/(1 + [A]/K) models molecular crowding <br>one of `mass-action`, `saturating` |
 | `k_avg_mono` | `float` | `100.0` | kinetic | geometric mean of monomolecular forward constants (1/s): k = k_avg 10^U(-s/2, s/2) <br>≥ `0` |
 | `k_avg_bi` | `float` | `10000.0` | kinetic | geometric mean of bimolecular forward constants (1/(M s)) <br>≥ `0` |
-| `s` | `float` | `` | kinetic | spread of forward rate constants, in orders of magnitude <br>≥ `0` |
+| `s` | `float` | `0.0` | kinetic | spread of forward rate constants, in orders of magnitude <br>≥ `0` |
 | `K_avg` | `float` | `0.01` | kinetic | geometric mean saturation concentration (M) for saturating kinetics <br>≥ `0` |
-| `p` | `float` | `` | kinetic | spread of saturation concentrations, in orders of magnitude <br>≥ `0` |
+| `p` | `float` | `0.0` | kinetic | spread of saturation concentrations, in orders of magnitude <br>≥ `0` |
 | `G_max` | `float` | `15.0` | thermodynamic | formation free energies are drawn as G_i/RT ~ U(0, G_max) <br>≥ `0` |
 | `nutrient` | `int` | `5` | population | index of the species receiving the external flux (the paper uses A5); -1 for a closed system <br>≥ `-1` |
 | `nutrient_flux` | `float` | `1.0` | population | external nutrient flux f_nu (M/s) <br>≥ `0` |
@@ -458,4 +458,4 @@ Banzhaf, W. & Yamamoto, L. (2015). *Artificial Chemistries*. MIT Press. Section 
 
 ---
 
-*Specification: `catalog/chemistries/bigan-conservative-crn.yaml` · explainer: `catalog/explainers/bigan-conservative-crn.md` · generator: `chemart/chemistries/bigan_conservative_crn.py` · tests: `tests/chemistries/test_bigan_conservative_crn.py`*
+*Specification: `catalog/chemistries/bigan-conservative-crn.yaml` · explainer: `catalog/explainers/bigan-conservative-crn.md` · generator: `chemart/chemistries/bigan_conservative_crn.py` · tests: `tests/chemistries/test_w2_papers.py`*

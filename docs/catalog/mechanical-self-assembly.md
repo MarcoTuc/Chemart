@@ -263,7 +263,7 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 |---|---|---|---|---|
 | `n_monomers` | `int` | `100` | population | initial number of monomers x (book figure 20.3a) <br>≥ `1` |
 | `agitation_rate` | `float` | `1.0` | kinetic | collision frequency; rate = agitation_rate * P_b <br>≥ `0` |
-| `P_b` | `dict` | `` | kinetic | bonding probability per pair, keyed 'x+x2' etc.; pairs not listed use 1.0 |
+| `P_b` | `dict` | `{}` | kinetic | bonding probability per pair, keyed 'x+x2' etc.; pairs not listed use 1.0 |
 
 ### Implementation decisions
 
@@ -351,4 +351,4 @@ Banzhaf, W. & Yamamoto, L. (2015). *Artificial Chemistries*. MIT Press. Section 
 
 ---
 
-*Specification: `catalog/chemistries/mechanical-self-assembly.yaml` · explainer: `catalog/explainers/mechanical-self-assembly.md` · generator: `chemart/chemistries/mechanical_self_assembly.py` · tests: `tests/chemistries/test_mechanical_self_assembly.py`*
+*Specification: `catalog/chemistries/mechanical-self-assembly.yaml` · explainer: `catalog/explainers/mechanical-self-assembly.md` · generator: `chemart/chemistries/mechanical_self_assembly.py` · tests: `tests/chemistries/test_w1_structure.py`*

@@ -440,4 +440,4 @@ Banzhaf, W. & Yamamoto, L. (2015). *Artificial Chemistries*. MIT Press. Section 
 
 ---
 
-*Specification: `catalog/chemistries/michaelis-menten.yaml` · explainer: `catalog/explainers/michaelis-menten.md` · generator: `chemart/chemistries/michaelis_menten.py` · tests: `tests/chemistries/test_michaelis_menten.py`*
+*Specification: `catalog/chemistries/michaelis-menten.yaml` · explainer: `catalog/explainers/michaelis-menten.md` · generator: `chemart/chemistries/michaelis_menten.py` · tests: `tests/chemistries/test_isologous_diversification.py`, `tests/chemistries/test_w1_dynamics.py`*

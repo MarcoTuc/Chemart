@@ -308,7 +308,7 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 |---|---|---|---|---|
 | `graph` | `list` | `[[0, 1], [0, 3], [0, 6], [1, 2], [1, 3], [2, 1]…` | structural | the directed HPP instance as a list of [u, v] edges <br>*range:* default: the 14 edges of Adleman's fig. 1 |
 | `vertices` | `int` | `7` | structural | number of vertices; they are numbered 0..vertices-1 and every endpoint of graph must be one of them <br>`2` … `14` · *range:* Adleman: 7; Hartmanis' 200-city instance would need more than the weight of the Earth in DNA |
-| `v_in` | `int` | `` | structural | the start vertex; its code word O_v_in is one PCR primer and edges leaving it carry the whole code word <br>`0` … `13` |
+| `v_in` | `int` | `0` | structural | the start vertex; its code word O_v_in is one PCR primer and edges leaving it carry the whole code word <br>`0` … `13` |
 | `v_out` | `int` | `6` | structural | the end vertex; its complement Obar_v_out is the other PCR primer and edges entering it carry the whole code word <br>`0` … `13` |
 | `oligo_length` | `int` | `20` | structural | length of each vertex code word, split into two halves, so it must be even; it also fixes the gel band at oligo_length x vertices bp <br>`4` … `60` · *range:* Adleman: 20-mers, chosen so that a splint binds each edge over 10 base pairs and is stable at room temperature |
 | `sequences` | `dict` | `{'2': 'TATCGGATCGGTATATCCGA', '3': 'GCTATTCGAGC…` | structural | vertex code words given explicitly, keyed by vertex id as a string; the default holds the three 20-mers printed in fig. 2 of the paper, and every other vertex gets a random code word drawn from rng, as the paper did |

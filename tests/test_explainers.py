@@ -26,6 +26,14 @@ def test_every_explainer_belongs_to_an_entry():
     assert {p.stem for p in FILES} <= IDS
 
 
+def test_every_catalog_chemistry_has_an_explainer():
+    """Archived entries may go without one; the chemistry catalog may not."""
+    from chemart.catalog import active
+
+    missing = sorted({c.id for c in active(load())} - {p.stem for p in FILES})
+    assert not missing, f"write catalog/explainers/<id>.md for: {', '.join(missing)}"
+
+
 @pytest.mark.parametrize("path", FILES, ids=lambda p: p.stem)
 def test_explainer_has_the_page_sections(path):
     sections = gen.load_explainer(path.stem)

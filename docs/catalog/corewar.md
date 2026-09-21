@@ -332,8 +332,8 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 | `max_length` | `int` | `100` | structural | maximum number of instructions of a warrior <br>≥ `1` · *range:* KOTH and pMARS default 100; ICWS'86 300 |
 | `min_distance` | `int` | `100` | spatial | minimum distance between the load addresses of two warriors; must be &gt;= max_length <br>≥ `1` · *range:* KOTH 100 (pMARS default: max_length); ICWS'86 300; Dewdney 1984 1000 |
 | `rounds` | `int` | `4` | population | rounds of the battle, with new random positions and the starter rotating; P-space persists across rounds <br>≥ `1` · *range:* pMARS default 1; KotH hills 100-250 |
-| `positions` | `list` | `` | spatial | empty: random load addresses each round; else the fixed load addresses of warriors 2..n (warrior 1 is at 0) <br>*range:* e.g. [300] loads warrior 2 at address 300 (pMARS -F 300) |
-| `pspace_size` | `int` | `` | structural | P-space cells per warrior for LDP/STP (cell 0 holds the last round's result); 0 = the pMARS default <br>≥ `0` · *range:* pMARS default: core_size / i for the largest i &lt;= 16 dividing core_size (500 for 8000) |
+| `positions` | `list` | `[]` | spatial | empty: random load addresses each round; else the fixed load addresses of warriors 2..n (warrior 1 is at 0) <br>*range:* e.g. [300] loads warrior 2 at address 300 (pMARS -F 300) |
+| `pspace_size` | `int` | `0` | structural | P-space cells per warrior for LDP/STP (cell 0 holds the last round's result); 0 = the pMARS default <br>≥ `0` · *range:* pMARS default: core_size / i for the largest i &lt;= 16 dividing core_size (500 for 8000) |
 
 ### Implementation decisions
 

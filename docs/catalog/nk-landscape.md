@@ -385,4 +385,4 @@ Banzhaf, W. & Yamamoto, L. (2015). *Artificial Chemistries*. MIT Press. Section 
 
 ---
 
-*Specification: `catalog/chemistries/nk-landscape.yaml` · explainer: `catalog/explainers/nk-landscape.md` · generator: `chemart/chemistries/nk_landscape.py` · tests: `tests/chemistries/test_nk_landscape.py`*
+*Specification: `catalog/chemistries/nk-landscape.yaml` · explainer: `catalog/explainers/nk-landscape.md` · generator: `chemart/chemistries/nk_landscape.py` · tests: `tests/chemistries/test_w2_papers.py`*

@@ -66,7 +66,7 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 |---|---|---|---|---|
 | `f` | `list` | `[1.0, 2.0, 3.0]` | selection | fitness vector; its length sets the number of species |
 | `c` | `float` | `1.0` | kinetic | growth exponent in the generalised form x_i' = f_i x_i^c - phi x_i; c&lt;1 gives survival of everybody, c=1 survival of the fittest, c&gt;1 survival of the first <br>≥ `0` |
-| `x0` | `list` | `` | population | initial concentrations; empty means uniform 1/n |
+| `x0` | `list` | `[]` | population | initial concentrations; empty means uniform 1/n |
 
 ### Implementation decisions
 
@@ -90,4 +90,4 @@ Banzhaf, W. & Yamamoto, L. (2015). *Artificial Chemistries*. MIT Press. Section 
 
 ---
 
-*Specification: `catalog/chemistries/selection-equation.yaml` · explainer: `catalog/explainers/selection-equation.md` · generator: `chemart/chemistries/selection_equation.py` · tests: `tests/chemistries/test_selection_equation.py`*
+*Specification: `catalog/chemistries/selection-equation.yaml` · explainer: `catalog/explainers/selection-equation.md` · generator: `chemart/chemistries/selection_equation.py` · tests: `tests/chemistries/test_w1_dynamics.py`*

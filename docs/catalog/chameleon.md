@@ -309,4 +309,4 @@ Banzhaf, W. & Yamamoto, L. (2015). *Artificial Chemistries*. MIT Press. Section 
 
 ---
 
-*Specification: `catalog/chemistries/chameleon.yaml` · explainer: `catalog/explainers/chameleon.md` · generator: `chemart/chemistries/chameleon.py` · tests: `tests/chemistries/test_chameleon.py`*
+*Specification: `catalog/chemistries/chameleon.yaml` · explainer: `catalog/explainers/chameleon.md` · generator: `chemart/chemistries/chameleon.py` · tests: `tests/chemistries/test_w1_structure.py`*

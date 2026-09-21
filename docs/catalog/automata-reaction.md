@@ -334,10 +334,10 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 | `method` | `enum` | `soup` | structural | soup: the paper's reactor algorithm, observed reactions with firing counts; closure: every reaction reachable from the distinct seed words (Chemart addition, e.g. to check that a published organization is closed) <br>one of `soup`, `closure` |
 | `mechanism` | `enum` | `automata` | structural | automata: the automata reaction (paper 3.2); and: the paper's reference reaction s3 = s1 AND s2 (paper 3.1, fig. 2) <br>one of `automata`, `and` |
 | `code_table` | `enum` | `1` | structural | instruction table (paper fig. 1, right): table 1 maps 1010 to NOT, table 2 maps it to EQ; the other 15 codes are identical <br>one of `1`, `2` · *range:* paper figs. 3-4 use table 1, figs. 5-10 (evolution) use table 2 |
-| `forbid_exact_replication` | `bool` | `` | selection | filter f1 of paper eq. 3: a collision whose product equals one of its reactants is elastic, so exact replication is disabled <br>*range:* paper section 5.4 (evolution): true |
+| `forbid_exact_replication` | `bool` | `False` | selection | filter f1 of paper eq. 3: a collision whose product equals one of its reactants is elastic, so exact replication is disabled <br>*range:* paper section 5.4 (evolution): true |
 | `M` | `int` | `1000` | population | soup size: number of random 32-bit words in the initial soup (ignored when words is given) <br>`2` … `1000000` · *range:* paper: 100 (fig. 3), 10^4 (figs. 2, 4), 10^5 (figs. 5-6), 10^6 (fig. 7) |
 | `generations` | `int` | `10` | population | soup only: run length in generations of M collisions each, elastic collisions included <br>`0` … `100000` · *range:* paper: 10 (fig. 2), 140 (fig. 3), 280 (fig. 4), 1000 and 7000 (figs. 5-6) |
-| `words` | `list` | `` | structural | explicit initial multiset (soup) or seed set (closure) of 32-bit words as hex strings or integers; overrides the random draw of M words <br>*range:* e.g. the fig. 3 organization [7240a7ef, 7240a7ea, 7240a7eb, 7240a7ee] |
+| `words` | `list` | `[]` | structural | explicit initial multiset (soup) or seed set (closure) of 32-bit words as hex strings or integers; overrides the random draw of M words <br>*range:* e.g. the fig. 3 organization [7240a7ef, 7240a7ea, 7240a7eb, 7240a7ee] |
 | `max_species` | `int` | `200` | structural | closure only: species budget; the closure of random words is usually cut off by it (status truncated) <br>≥ `1` |
 
 ### Implementation decisions

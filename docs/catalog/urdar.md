@@ -86,8 +86,8 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 | `p0` | `float` | `0.95` | thermodynamic | order of the inflowing strings: each bit is the majority symbol with probability p0 (majority 1 or 0 equally often) <br>`0.5` … `1.0` · *range:* paper p0 = 0.95 |
 | `updates` | `int` | `20` | population | number of updates simulated; every update each organism metabolises one string <br>`0` … `1000000` · *range:* paper runs: thousands of updates (invasion experiments 2000) |
 | `transform` | `enum` | `on-gain` | structural | on-gain: an organism rewrites a string only when the CA step lowers its energy (strings only gain entropy, as the book describes); always: every picked string is rewritten, the literal reading of implementation step 1 <br>one of `on-gain`, `always` |
-| `rules` | `list` | `` | structural | distinct rule numbers 0..255 present initially; [] means all 256 (the paper's start); [129, 145] with abundances [9, 1] is a pairwise invasion experiment |
-| `abundances` | `list` | `` | population | relative initial abundance of each entry of rules (apportioned to n_organisms); [] means equal (4 of each of the 256 rules at N_A = 1024) |
+| `rules` | `list` | `[]` | structural | distinct rule numbers 0..255 present initially; [] means all 256 (the paper's start); [129, 145] with abundances [9, 1] is a pairwise invasion experiment |
+| `abundances` | `list` | `[]` | population | relative initial abundance of each entry of rules (apportioned to n_organisms); [] means equal (4 of each of the 256 rules at N_A = 1024) |
 
 ### Implementation decisions
 

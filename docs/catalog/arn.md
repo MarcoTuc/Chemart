@@ -366,7 +366,7 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 | `word_bits` | `int` | `32` | structural | length of a regulatory site, of each of the 5 coding segments and of a protein; also the maximum match d_max <br>`1` … `64` |
 | `beta` | `float` | `1.0` | kinetic | positive scaling of the match in the exponential; the RT analogue <br>≥ `0` |
 | `delta` | `float` | `1.0` | kinetic | positive overall rate scaling (time unit) <br>≥ `0` |
-| `link_threshold` | `int` | `` | structural | keep only regulatory interactions with at least this many complementary bits; 0 keeps every interaction, i.e. the full ODE model <br>`0` … `64` · *range:* Kuo & Banzhaf draw graphs at 21 and 22 |
+| `link_threshold` | `int` | `0` | structural | keep only regulatory interactions with at least this many complementary bits; 0 keeps every interaction, i.e. the full ODE model <br>`0` … `64` · *range:* Kuo & Banzhaf draw graphs at 21 and 22 |
 
 ### Implementation decisions
 

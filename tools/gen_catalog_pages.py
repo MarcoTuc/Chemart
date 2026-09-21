@@ -89,13 +89,14 @@ def esc(text, code: bool = False) -> str:
     With `code=True` the text goes inside backticks, where Markdown shows it
     verbatim, so angle brackets must not be escaped.
     """
-    text = " ".join(str(text or "").split()).replace("|", "\\|")
+    # `text or ""` would turn a default of 0, 0.0 or False into an empty cell.
+    text = " ".join(("" if text is None else str(text)).split()).replace("|", "\\|")
     return text if code else angles(text)
 
 
 def block(text) -> str:
     """Collapse whitespace but keep it prose, for paragraphs."""
-    return angles(" ".join(str(text or "").split()))
+    return angles(" ".join(("" if text is None else str(text)).split()))
 
 
 def param_rows(c) -> list[str]:
@@ -351,6 +352,16 @@ def references(c, ex) -> list[str]:
     return L
 
 
+def test_files(cid: str) -> list[str]:
+    """The chemistry's own test file, or else the shared ones that test it by id."""
+    tests = REPO / "tests" / "chemistries"
+    own = tests / f"test_{cid.replace('-', '_')}.py"
+    if own.exists():
+        return [str(own.relative_to(REPO))]
+    return [str(p.relative_to(REPO)) for p in sorted(tests.glob("test_*.py"))
+            if f'"{cid}"' in p.read_text()]
+
+
 def page(c, net, error, ex=None) -> str:
     """One chemistry's page: Introduction > How it works > Results > References."""
     source = f"catalog/chemistries/{c.id}.yaml"
@@ -421,7 +432,7 @@ def page(c, net, error, ex=None) -> str:
     L.append(f"*Specification: `catalog/chemistries/{c.id}.yaml` · "
              f"explainer: `catalog/explainers/{c.id}.md` · "
              f"generator: `chemart/chemistries/{c.id.replace('-', '_')}.py` · "
-             f"tests: `tests/chemistries/test_{c.id.replace('-', '_')}.py`*")
+             f"tests: {', '.join(f'`{t}`' for t in test_files(c.id)) or 'none'}*")
     L.append("")
     return "\n".join(L)
 

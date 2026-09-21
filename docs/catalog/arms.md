@@ -320,11 +320,11 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 | `p` | `float` | `0.5` | stochastic | heating-probability only: probability of selecting a heating rule (a cooling rule is selected with 1 - p) <br>`0.0` … `1.0` · *range:* [831] sweeps 0 to 1 in steps of 0.01 |
 | `input_probability` | `float` | `1.0` | stochastic | probability that each input symbol is injected at an iteration ([831]: 'frequency of inputs'; the published examples input at every iteration) <br>`0.0` … `1.0` |
 | `steps` | `int` | `1000` | population | rewriting steps of the recorded run (count-step n of [831] figs. 2 and 14; one parallel pass in the ordered disciplines); the run stops earlier at a normal form or, for a deterministic ordered run, at the first repeated multiset <br>`0` … `100000` · *range:* [831] runs 1000 steps per initial state (two-symbol) and 10000 (brusselator) |
-| `max_size` | `int` | `` | population | maximal multiset size: 0 keeps the system's published value (none for book-example and custom), -1 removes the limit, a positive value sets it <br>`-1` … `1000000` |
-| `rule_count` | `int` | `` | structural | two-symbol only: 0 uses all 380 rules, otherwise a random subset of this many rules <br>`0` … `380` |
-| `rules` | `list` | `` | structural | custom only: rewriting rules r1, r2, ... in chemart reaction syntax (coefficient, space, symbol; terms joined by ' + '); an empty left side is an input rule <br>*range:* e.g. ['3 a -&gt; c', 'b -&gt; d', 'a -&gt; 2 a + 2 b'] |
-| `initial` | `dict` | `` | population | custom only: initial multiset M0, symbol -&gt; copies <br>*range:* e.g. {a: 3, b: 1} |
-| `inputs` | `list` | `` | structural | custom only: symbols input at every iteration (subject to input_probability and the maximal size) <br>*range:* e.g. [a] |
+| `max_size` | `int` | `0` | population | maximal multiset size: 0 keeps the system's published value (none for book-example and custom), -1 removes the limit, a positive value sets it <br>`-1` … `1000000` |
+| `rule_count` | `int` | `0` | structural | two-symbol only: 0 uses all 380 rules, otherwise a random subset of this many rules <br>`0` … `380` |
+| `rules` | `list` | `[]` | structural | custom only: rewriting rules r1, r2, ... in chemart reaction syntax (coefficient, space, symbol; terms joined by ' + '); an empty left side is an input rule <br>*range:* e.g. ['3 a -&gt; c', 'b -&gt; d', 'a -&gt; 2 a + 2 b'] |
+| `initial` | `dict` | `{}` | population | custom only: initial multiset M0, symbol -&gt; copies <br>*range:* e.g. {a: 3, b: 1} |
+| `inputs` | `list` | `[]` | structural | custom only: symbols input at every iteration (subject to input_probability and the maximal size) <br>*range:* e.g. [a] |
 
 ### Implementation decisions
 

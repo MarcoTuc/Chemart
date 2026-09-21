@@ -87,7 +87,7 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 | `odiag_max` | `float` | `0.0001` | kinetic | upper bound of the uniform off-diagonal values; odiag_max - odiag_min also scales their mutation |
 | `mut_max` | `float` | `0.01` | stochastic | ceiling on the evolving mutation rates mu_i, and their initial value <br>`0` … `1` · *range:* Bedau-statistics runs use 0.0002 to 0.1; panmictic_ecolab.py 0.001; 0 switches evolution off |
 | `sp_sep` | `float` | `0.1` | stochastic | species radius rho: a species makes sp_sep r_i mu_i dt n_i mutants per mutation step <br>≥ `0` |
-| `gen_bias` | `float` | `` | stochastic | generalisation bias g: &gt; 0 favours adding interaction links on mutation, &lt; 0 deleting them <br>`-1` … `1` |
+| `gen_bias` | `float` | `0.0` | stochastic | generalisation bias g: &gt; 0 favours adding interaction links on mutation, &lt; 0 deleting them <br>`-1` … `1` |
 | `cycles` | `int` | `100` | population | generate/mutate/condense cycles run before the ecosystem is returned; 0 returns the initial random ecosystem <br>`0` … `100000` · *range:* published runs last 1e6-1e7 timesteps |
 | `steps_per_cycle` | `int` | `100` | population | Lotka-Volterra timesteps between mutation steps (generate 100 in the Ecolab scripts) <br>`1` … `10000` |
 

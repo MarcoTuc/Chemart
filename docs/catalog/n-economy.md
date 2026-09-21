@@ -288,4 +288,4 @@ Banzhaf, W. & Yamamoto, L. (2015). *Artificial Chemistries*. MIT Press. Section 
 
 ---
 
-*Specification: `catalog/chemistries/n-economy.yaml` · explainer: `catalog/explainers/n-economy.md` · generator: `chemart/chemistries/n_economy.py` · tests: `tests/chemistries/test_n_economy.py`*
+*Specification: `catalog/chemistries/n-economy.yaml` · explainer: `catalog/explainers/n-economy.md` · generator: `chemart/chemistries/n_economy.py` · tests: `tests/chemistries/test_w1_structure.py`*

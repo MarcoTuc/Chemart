@@ -411,4 +411,4 @@ Banzhaf, W. & Yamamoto, L. (2015). *Artificial Chemistries*. MIT Press. Section 
 
 ---
 
-*Specification: `catalog/chemistries/hill-kinetics.yaml` · explainer: `catalog/explainers/hill-kinetics.md` · generator: `chemart/chemistries/hill_kinetics.py` · tests: `tests/chemistries/test_hill_kinetics.py`*
+*Specification: `catalog/chemistries/hill-kinetics.yaml` · explainer: `catalog/explainers/hill-kinetics.md` · generator: `chemart/chemistries/hill_kinetics.py` · tests: `tests/chemistries/test_w1_dynamics.py`*

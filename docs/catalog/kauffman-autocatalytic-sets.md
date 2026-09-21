@@ -425,4 +425,4 @@ Banzhaf, W. & Yamamoto, L. (2015). *Artificial Chemistries*. MIT Press. Section 
 
 ---
 
-*Specification: `catalog/chemistries/kauffman-autocatalytic-sets.yaml` · explainer: `catalog/explainers/kauffman-autocatalytic-sets.md` · generator: `chemart/chemistries/kauffman_autocatalytic_sets.py` · tests: `tests/chemistries/test_kauffman_autocatalytic_sets.py`*
+*Specification: `catalog/chemistries/kauffman-autocatalytic-sets.yaml` · explainer: `catalog/explainers/kauffman-autocatalytic-sets.md` · generator: `chemart/chemistries/kauffman_autocatalytic_sets.py` · tests: `tests/chemistries/test_w2_book.py`*

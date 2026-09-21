@@ -378,4 +378,4 @@ Banzhaf, W. & Yamamoto, L. (2015). *Artificial Chemistries*. MIT Press. Section 
 
 ---
 
-*Specification: `catalog/chemistries/naming-game-ac.yaml` · explainer: `catalog/explainers/naming-game-ac.md` · generator: `chemart/chemistries/naming_game_ac.py` · tests: `tests/chemistries/test_naming_game_ac.py`*
+*Specification: `catalog/chemistries/naming-game-ac.yaml` · explainer: `catalog/explainers/naming-game-ac.md` · generator: `chemart/chemistries/naming_game_ac.py` · tests: none*

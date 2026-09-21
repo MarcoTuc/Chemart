@@ -300,7 +300,7 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 |---|---|---|---|---|
 | `N` | `int` | `10` | structural | number of cities of the generated layout (ignored when cities is given) <br>`3` … `1000` · *range:* PyCellChemistry default 10; paper: 30 (tables 1-3), 20-100 (table 4) |
 | `layout` | `enum` | `ring` | structural | ring: N cities on a circle of radius N centred at (N, N), whose optimum is the regular polygon; random: N integer points on a 2N x 2N grid at least 2 apart (PyCellChemistry TSPgraph) <br>one of `ring`, `random` · *range:* paper simulation 1 and book fig. 17.2: ring; paper simulation 2: random |
-| `cities` | `list` | `` | structural | explicit problem instance as a list of [x, y] coordinates (at least 3); overrides layout and N |
+| `cities` | `list` | `[]` | structural | explicit problem instance as a list of [x, y] coordinates (at least 3); overrides layout and N |
 | `M` | `int` | `9` | population | number of data strings in the soup (at least 2 when the R-machine is active) <br>`1` … `10000` · *range:* paper: 9 (tables 1-2, figs. 3-5), 18-72 (table 3), 100 (fig. 6) |
 | `t_E` | `float` | `1.0` | kinetic | time scale (operation frequency) of the E-machine; 0 removes it (paper table 1a) <br>≥ `0` |
 | `t_C` | `float` | `1.0` | kinetic | time scale of the C-machine; 0 removes it <br>≥ `0` |

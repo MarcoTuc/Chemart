@@ -307,7 +307,7 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
 | `problem` | `enum` | `xor` | structural | which chemical program of the book to generate <br>one of `xor`, `maximal-independent-set` |
-| `a` | `bool` | `` | population | XOR input a; its species a0 or a1 is put in the initial state |
+| `a` | `bool` | `False` | population | XOR input a; its species a0 or a1 is put in the initial state |
 | `b` | `bool` | `True` | population | XOR input b; its species b0 or b1 is put in the initial state |
 | `graph` | `list` | `[[0, 1], [1, 2], [2, 3]]` | structural | undirected edges [u, v] of the maximal-independent-set instance |
 
@@ -439,4 +439,4 @@ Banzhaf, W. & Yamamoto, L. (2015). *Artificial Chemistries*. MIT Press. Section 
 
 ---
 
-*Specification: `catalog/chemistries/organization-computing.yaml` · explainer: `catalog/explainers/organization-computing.md` · generator: `chemart/chemistries/organization_computing.py` · tests: `tests/chemistries/test_organization_computing.py`*
+*Specification: `catalog/chemistries/organization-computing.yaml` · explainer: `catalog/explainers/organization-computing.md` · generator: `chemart/chemistries/organization_computing.py` · tests: `tests/chemistries/test_w1_structure.py`*

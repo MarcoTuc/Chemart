@@ -478,4 +478,4 @@ Banzhaf, W. & Yamamoto, L. (2015). *Artificial Chemistries*. MIT Press. Section 
 
 ---
 
-*Specification: `catalog/chemistries/farmer-immune.yaml` · explainer: `catalog/explainers/farmer-immune.md` · generator: `chemart/chemistries/farmer_immune.py` · tests: `tests/chemistries/test_farmer_immune.py`*
+*Specification: `catalog/chemistries/farmer-immune.yaml` · explainer: `catalog/explainers/farmer-immune.md` · generator: `chemart/chemistries/farmer_immune.py` · tests: `tests/chemistries/test_w2_book.py`*

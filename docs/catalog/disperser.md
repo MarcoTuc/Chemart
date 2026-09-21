@@ -341,4 +341,4 @@ Banzhaf, W. & Yamamoto, L. (2015). *Artificial Chemistries*. MIT Press. Section 
 
 ---
 
-*Specification: `catalog/chemistries/disperser.yaml` · explainer: `catalog/explainers/disperser.md` · generator: `chemart/chemistries/disperser.py` · tests: `tests/chemistries/test_disperser.py`*
+*Specification: `catalog/chemistries/disperser.yaml` · explainer: `catalog/explainers/disperser.md` · generator: `chemart/chemistries/disperser.py` · tests: `tests/chemistries/test_w1_dynamics.py`*
