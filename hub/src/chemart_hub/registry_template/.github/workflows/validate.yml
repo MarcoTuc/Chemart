@@ -1,0 +1,43 @@
+name: validate
+
+# Checks every pull request: the changed repos are valid, chemistries pass
+# `chemart check`, and the author only changes their own namespace.
+#
+# Pull requests from forks run with a read-only token and no secrets, so the
+# contributed code that `chemart check` runs cannot reach anything.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  CHEMART_REPO: {{CHEMART_REPO}}
+  CHEMART_REF: {{CHEMART_REF}}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get Chemart
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.CHEMART_REPO }}
+          ref: ${{ env.CHEMART_REF }}
+          path: .chemart
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Install
+        run: uv sync --project .chemart --package chemart-hub
+
+      - name: Check the pull request
+        run: >
+          uv run --project .chemart chemart-hub validate-pr .
+          --base "origin/${{ github.base_ref }}" --head HEAD
+          --author "${{ github.event.pull_request.user.login }}"

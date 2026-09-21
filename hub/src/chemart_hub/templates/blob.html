@@ -10,7 +10,7 @@
     <div class="file-head">
       <span><a href="/{{ repo.id }}/tree/{{ commit.commit }}">files</a> / <strong class="mono">{{ file_path }}</strong> <span class="faint">· {{ meta.size | size }} · at <span class="sha-pill">{{ commit.commit[:12] }}</span></span></span>
       <span>
-        {% if file_path.endswith(".md") %}<a class="btn btn-sm" href="?plain=1">Source</a>{% endif %}
+        {% if file_path.endswith(".md") and not STATIC %}<a class="btn btn-sm" href="?plain=1">Source</a>{% endif %}
         <a class="btn btn-sm" href="/{{ repo.id }}/resolve/{{ commit.commit }}/{{ file_path }}">Raw</a>
         {% if can_write and commit.commit == repo.head %}
           <a class="btn btn-sm" href="/{{ repo.id }}/edit/file?path={{ file_path | urlencode }}">✎ Edit</a>

@@ -8,13 +8,25 @@
   <div class="quickstart">
     <div class="panel">
       <h2>Share a chemistry</h2>
+      {% if STATIC %}
+      {{ snippet("share-gen", "uv add chemart          # or: pip install chemart\nchemart new my-chem     # a working skeleton\n# edit my-chem/chemart.yaml and generator.py\nchemart check my-chem   # the same checks the registry runs\nchemart push my-chem    # opens a pull request") }}
+      {% else %}
       {{ snippet("share-gen", "uv add chemart          # or: pip install chemart\nchemart login\nchemart new my-chem     # a working skeleton\n# edit my-chem/chemart.yaml and generator.py\nchemart check my-chem   # the same checks the hub runs\nchemart push my-chem") }}
+      {% endif %}
     </div>
     <div class="panel">
       <h2>Share a network</h2>
       {{ snippet("share-net", 'import chemart\n\nnet = chemart.generate_network("chemart/brusselator", seed=1)\nnet.push_to_hub("you/brusselator-snapshot",\n                title="A Brusselator snapshot",\n                tags=["oscillator"])') }}
     </div>
   </div>
+  {% if STATIC %}
+  <div class="panel" style="margin-top:16px">
+    <h2>How sharing works here</h2>
+    <p>This hub is built from a GitHub repository. <code>chemart push</code> and <code>push_to_hub</code> open a pull request that adds your folder under <code>repos/&lt;your GitHub name&gt;/&lt;name&gt;/</code>; they need the <a href="https://cli.github.com/">GitHub CLI</a> (<code>gh auth login</code> once). Without it, they write the folder for you and print the steps to open the pull request by hand.</p>
+    <p>A check runs on every pull request: the files must form a valid repo, a chemistry must pass <code>chemart check</code>, and you may only change your own namespace. Once a maintainer merges it, the site rebuilds and your chemistry is on the shelf.</p>
+    <p><a class="btn btn-sm" href="{{ REGISTRY_URL }}">Open the registry on GitHub</a> <a class="btn btn-sm" href="{{ REGISTRY_URL }}/blob/{{ REGISTRY_BRANCH }}/CONTRIBUTING.md">Contributing guide</a></p>
+  </div>
+  {% else %}
   <div class="panel" style="margin-top:16px">
     <h2>Or create an empty repo now</h2>
     {% if me %}
@@ -30,8 +42,9 @@
       <p class="muted"><a href="/login?next=/new">Log in</a>{% if signup %} or <a href="/signup">sign up</a>{% endif %} to create repos.</p>
     {% endif %}
   </div>
+  {% endif %}
   <div class="notice" style="margin-top:16px">
-    Every push is checked against the same rules as Chemart's own catalog: the entry validates, the defaults run in seconds, the network is plain JSON, and the same seed gives the same network. The hub never runs uploaded code. Whoever loads a chemistry runs it on their own machine, and only after passing <code>trust_remote_code=True</code>.
+    Every {{ 'pull request' if STATIC else 'push' }} is checked against the same rules as Chemart's own catalog: the entry validates, the defaults run in seconds, the network is plain JSON, and the same seed gives the same network. The {{ 'site' if STATIC else 'hub' }} never runs uploaded code. Whoever loads a chemistry runs it on their own machine, and only after passing <code>trust_remote_code=True</code>.
   </div>
 </div>
 {% endblock %}

@@ -6,6 +6,9 @@
       <h1><a href="/{{ repo.namespace }}">{{ repo.namespace }}</a> / <b>{{ repo.name }}</b></h1>
       <button class="btn btn-sm" type="button" data-copy="{{ repo.id }}" title="Copy id">Copy id</button>
       <span class="spacer"></span>
+      {% if STATIC %}
+      <a class="btn btn-sm" href="{{ REGISTRY_URL }}/tree/{{ REGISTRY_BRANCH }}/repos/{{ repo.id }}" title="This repo's folder in the registry">View on GitHub</a>
+      {% else %}
       <div class="likebox">
         <form action="/{{ repo.id }}/like" method="post">
           <input type="hidden" name="csrf" value="{{ csrf }}">
@@ -13,6 +16,7 @@
         </form>
         <span class="badge badge-plain" title="downloads">↓ {{ repo.downloads }}</span>
       </div>
+      {% endif %}
     </div>
     {% if repo.title and repo.title != repo.name %}<p class="repo-sub"><strong style="color:var(--text)">{{ repo.title }}</strong>{% if repo.summary %} — {{ repo.summary[:220] }}{% if repo.summary | length > 220 %}…{% endif %}{% endif %}</p>{% endif %}
     <div class="repo-badges">

@@ -16,6 +16,10 @@ A generator repo's code runs on your machine, so it needs
 ``trust_remote_code=True``; pin ``revision`` to the commit you read. Official
 repos under ``chemart/`` are the built-in catalog and need no trust.
 
+A hub is either a live server (``chemart-hub serve``) or a static site built
+from a GitHub registry (``chemart-hub build-static``). Reading works the same
+on both; on a static hub, sharing opens a pull request on the registry.
+
 Configuration: CHEMART_HUB_URL, CHEMART_HOME, CHEMART_HUB_TOKEN,
 CHEMART_HUB_OFFLINE (see `chemart.hub._config`).
 """
@@ -29,7 +33,7 @@ from typing import Any
 
 import yaml
 
-from chemart.hub import _cache, _config, _format, _http, _remote_code
+from chemart.hub import _cache, _config, _format, _http, _pr, _remote_code, _static
 from chemart.hub._http import (
     HubAuthError, HubConflictError, HubConnectionError, HubError,
     HubValidationError, RepoNotFoundError,
@@ -44,6 +48,7 @@ __all__ = [
     "check", "create_repo", "delete_repo", "load_network", "login", "logout",
     "new", "push_generator", "push_network", "repo_info", "resolve_chemistry",
     "search", "snapshot_download", "upload_files", "whoami",
+    "generator_files", "network_files",
 ]
 
 #: Repos in this namespace may stand for built-in catalog entries.
@@ -55,13 +60,21 @@ OFFICIAL_NAMESPACE = "chemart"
 # --------------------------------------------------------------------------
 
 def whoami(token: str | None = None) -> dict[str, Any]:
-    """Who the hub thinks you are: {name, orgs, scope}."""
+    """Who the hub thinks you are: {name, orgs, scope}.
+
+    On a static hub your identity is your GitHub account (via the GitHub CLI)."""
+    if _static.is_static():
+        return {"name": _pr.github_login(), "orgs": [], "scope": "pull-request"}
     return _http.request("GET", "/api/whoami", token=token).json()
 
 
 def login(token: str | None = None) -> str:
     """Save an API token for the configured hub (create one at /settings/tokens)."""
     url = _config.hub_url()
+    if _static.is_static():
+        raise HubAuthError(f"{url} is a static hub built from a GitHub registry: there is no "
+                           "hub login. Sharing opens a pull request; sign in to GitHub with "
+                           "`gh auth login`.")
     if token is None:
         token = getpass.getpass(f"Paste a token from {url}/settings/tokens: ").strip()
     if not token:
@@ -87,6 +100,8 @@ def _repo(repo_id: str, revision: str | None = None) -> tuple[RepoId, str]:
 def repo_info(repo_id: str) -> dict[str, Any]:
     """The hub's metadata for a repo: type, head commit, title, facets, likes."""
     repo, _ = _repo(repo_id)
+    if _static.is_static():
+        return _static.repo_info(repo)
     return _http.request("GET", f"/api/repos/{repo.namespace}/{repo.name}").json()
 
 
@@ -96,6 +111,9 @@ def search(query: str | None = None, *, repo_type: str | None = None, family: st
     """Find repos. `provides` must all match, e.g. ["rate-constants", "energies"]."""
     from urllib.parse import urlencode
 
+    if _static.is_static():
+        return _static.search(query, repo_type=repo_type, family=family, kind=kind, provides=provides,
+                              tag=tag, author=author, sort=sort, limit=limit)
     params = {"search": query, "repo_type": repo_type, "family": family, "kind": kind,
               "provides": ",".join(provides or []) or None, "tag": tag, "author": author,
               "sort": sort, "limit": limit}
@@ -172,7 +190,9 @@ def upload_files(repo_id: str, files: dict[str, bytes], *, repo_type: str,
     """Make `files` the new content of a repo (created if missing).
 
     The files are checked locally with the server's own rules first. Returns
-    {commit, url, unchanged}; `unchanged` is True if nothing differed.
+    {commit, url, unchanged}; `unchanged` is True if nothing differed. On a
+    static hub this opens a pull request on the registry instead and returns
+    {pull_request, url, branch} (or, without the GitHub CLI, {folder, steps}).
     """
     import hashlib
 
@@ -182,6 +202,8 @@ def upload_files(repo_id: str, files: dict[str, bytes], *, repo_type: str,
     except _format.FormatError as err:
         raise HubValidationError(f"{repo}: these files do not form a valid {repo_type} repo",
                                  problems=err.problems) from None
+    if _static.is_static():
+        return _pr.submit(repo, files, message=message, meta=_static.meta())
     head = create_repo(str(repo), repo_type)["head"]
     operations = []
     for path, data in sorted(files.items()):
@@ -213,21 +235,29 @@ def _network_readme(net: Network, repo: RepoId, title: str | None, description: 
     return "\n".join(lines)
 
 
-def push_network(net: Network, repo_id: str, *, message: str | None = None, readme: str | None = None,
-                 title: str | None = None, description: str | None = None, license: str | None = None,
-                 tags: list[str] | None = None) -> dict[str, Any]:
-    """Share a reaction network as a network repo; also `Network.push_to_hub`."""
+def network_files(net: Network, repo_id: str, *, readme: str | None = None, title: str | None = None,
+                  description: str | None = None, license: str | None = None,
+                  tags: list[str] | None = None) -> dict[str, bytes]:
+    """The files of a network repo holding `net`."""
     repo, _ = _repo(repo_id)
     block: dict[str, Any] = {"repo_type": "network"}
     for key, value in (("title", title), ("description", description), ("license", license), ("tags", tags)):
         if value:
             block[key] = value
-    files = {
+    return {
         "network.json": json.dumps(net.to_dict(), ensure_ascii=False).encode(),
         "chemart.yaml": _hub_yaml(block),
         "README.md": (readme or _network_readme(net, repo, title, description)).encode(),
     }
-    return upload_files(str(repo), files, repo_type="network", message=message)
+
+
+def push_network(net: Network, repo_id: str, *, message: str | None = None, readme: str | None = None,
+                 title: str | None = None, description: str | None = None, license: str | None = None,
+                 tags: list[str] | None = None) -> dict[str, Any]:
+    """Share a reaction network as a network repo; also `Network.push_to_hub`."""
+    files = network_files(net, repo_id, readme=readme, title=title, description=description,
+                          license=license, tags=tags)
+    return upload_files(repo_id, files, repo_type="network", message=message)
 
 
 _SKIP_DIRS = {"__pycache__"}
@@ -288,23 +318,39 @@ def push_generator(folder: str | Path, repo_id: str | None = None, *, message: s
     at default parameters), and uploads. `repo_id` defaults to
     ``<you>/<entry id>``.
     """
-    from chemart import api
-
     folder = Path(folder)
     if check_contract:
         problems = check(folder)
         if problems:
             raise HubValidationError(f"{folder} does not pass the checks", problems=problems)
-    files = _collect(folder)
-    hub, entry = _format.parse_chemart_yaml(files["chemart.yaml"])
     if repo_id is None:
-        repo_id = f"{whoami()['name']}/{entry.id}"
+        _, entry = _format.parse_chemart_yaml((folder / "chemart.yaml").read_bytes())
+        repo_id = f"{_account_name()}/{entry.id}"
+    files = generator_files(folder, repo_id, seed=seed)
+    return upload_files(repo_id, files, repo_type="generator", message=message)
+
+
+def generator_files(folder: str | Path, repo_id: str, *, seed: int = 0) -> dict[str, bytes]:
+    """The files of a generator repo made from `folder`, with a fresh preview.json
+    (the network at default parameters). Runs the folder's own code."""
+    from chemart import api
+
+    folder = Path(folder)
+    files = _collect(folder)
+    _, entry = _format.parse_chemart_yaml(files["chemart.yaml"])
     repo, _ = _repo(repo_id)
     generate = _remote_code.local_generator(folder)
     preview = api.run_generator(entry, generate, seed, {})
     preview.chemistry = str(repo)
     files["preview.json"] = json.dumps(preview.to_dict(), ensure_ascii=False).encode()
-    return upload_files(str(repo), files, repo_type="generator", message=message)
+    return files
+
+
+def _account_name() -> str:
+    """Your name on the configured hub: its account, or your GitHub login for a static hub."""
+    if _static.is_static():
+        return _pr.github_login()
+    return whoami()["name"]
 
 
 def new(folder: str | Path, chemistry_id: str | None = None, name: str | None = None) -> list[Path]:

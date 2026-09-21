@@ -36,6 +36,11 @@ templates.env.filters["ago"] = render.ago
 templates.env.filters["size"] = render.human_size
 templates.env.globals["FAMILIES"] = sorted(catalog.FAMILIES)
 templates.env.globals["PROVIDES"] = sorted(catalog.PROVIDES)
+#: Static mode: the site is pre-rendered from a GitHub registry (chemart_hub.static),
+#: so logins, likes and edit forms give way to "contribute by pull request".
+templates.env.globals["STATIC"] = False
+templates.env.globals["REGISTRY_URL"] = ""
+templates.env.globals["REGISTRY_BRANCH"] = "main"
 
 ANON_CSRF = "chemart_csrf"
 PAGE = 24

@@ -37,7 +37,7 @@ def official_files(chemistry_id: str) -> dict[str, bytes]:
     # says where the chemistry comes from and how to load it.
     lines = [f"# {entry.name}", ""]
     lines += [
-        f"One of the {len(catalog.load())} artificial chemistries of Banzhaf & Yamamoto, "
+        "One of the artificial chemistries of Banzhaf & Yamamoto, "
         f"*Artificial Chemistries* (MIT Press, 2015), §{entry.book}"
         + (f"; first proposed by {entry.origin}." if entry.origin else "."),
         "",

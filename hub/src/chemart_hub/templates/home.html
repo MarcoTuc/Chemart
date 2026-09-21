@@ -7,7 +7,7 @@
     <h1>{{ site.home_title }}</h1>
     <p class="lede">{{ site.home_lede }}</p>
     <form class="hero-search" action="/browse" method="get" role="search">
-      <input type="search" name="q" placeholder="autocatalysis, Brusselator, RNA folding, Tierra…" aria-label="Search the hub" autofocus>
+      <input type="search" name="q" placeholder="autocatalysis, Brusselator, RNA folding, P systems…" aria-label="Search the hub" autofocus>
       <button class="btn-primary" type="submit">Search</button>
     </form>
     <div class="stock">
@@ -26,7 +26,11 @@
     </div>
     <div class="panel">
       <h2 class="sm">Share yours</h2>
+      {% if STATIC %}
+      {{ snippet("qs-share", 'chemart new my-chem      # edit it\nchemart check my-chem\nchemart push my-chem     # opens a pull request') }}
+      {% else %}
       {{ snippet("qs-share", 'chemart login\nchemart new my-chem      # edit it\nchemart push my-chem') }}
+      {% endif %}
     </div>
   </div>
 

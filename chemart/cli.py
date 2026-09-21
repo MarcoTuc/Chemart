@@ -195,6 +195,11 @@ def _hub_command(args) -> int | None:
 
 
 def _report_push(result: dict) -> None:
+    if "commit" not in result:                    # a static hub: a pull request, or the steps for one
+        from chemart.hub import _pr
+
+        print(_pr.describe(result))
+        return
     if result.get("unchanged"):
         print(f"no changes; {result['url']} is at {result['commit'][:12]}")
     else:
