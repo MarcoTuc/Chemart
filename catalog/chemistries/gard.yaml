@@ -40,8 +40,8 @@ chemistries:
   provides: [topology, stoichiometry, catalysts, rate-constants, compartments, initial-state]
   fidelity: reconstructed
   sources:
-    - "Predicting species emergence in simulated complex pre-biotic networks. PLoS ONE 13(2): e0192871 (2018), doi:10.1371/journal.pone.0192871 - GARD rate equation, ln(beta) ~ Normal(-4, 4), k_f = 1e-2, k_b = 1e-4, rho = 1e-2, N_max = N_G = 100"
-    - "Segre, D., Ben-Eli, D. & Lancet, D. (2000). Compositional genomes: prebiotic information transfer in mutually catalytic noncovalent assemblies. PNAS 97:4112-4117 (original model; full text not accessible, parameters taken from the 2018 paper)"
+    - "Markovitch, O. & Krasnogor, N. (2018). Predicting species emergence in simulated complex pre-biotic networks. PLoS ONE 13(2): e0192871, doi:10.1371/journal.pone.0192871 - GARD rate equation, ln(beta) ~ Normal(-4, 4), k_f = 1e-2, k_b = 1e-4, rho = 1e-2, N_max = N_G = 100"
+    - "Segre, D., Ben-Eli, D. & Lancet, D. (2000). Compositional genomes: prebiotic information transfer in mutually catalytic noncovalent assemblies. PNAS 97:4112-4117 (original model; parameters taken from the 2018 paper; this paper itself used k_b = 1e-5 and split at 2 N_min = 80)"
   decisions:
     - "The book gives the reaction scheme but no numbers. The rate equation and all parameter values are from the 2018 PLoS ONE GARD paper; each term becomes one mass-action reaction with outside lipids buffered at rho (checked in tests)."
     - "That equation accelerates only joining, while the book says catalysis acts 'in both directions'. The default follows the paper's equation; catalysed_leaving = true adds the book's reverse catalysis."

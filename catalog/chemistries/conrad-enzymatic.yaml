@@ -45,8 +45,9 @@ chemistries:
     reactor: well-stirred-multiset
     dilution: none
     notes: >
-      A batch spectrophotometric assay (1 cm cuvette, glycine/NaOH pH 10,
-      29 C): the response is the NADH absorbance at 339 nm read at a fixed
+      A batch spectrophotometric assay (1 cm cuvette, 29 C; glycine/NaOH
+      buffer at pH 10 for the response surface, signal solutions in
+      glycine/NaOH at pH 10.5 in the tabletop device): the response is the NADH absorbance at 339 nm read at a fixed
       time (300 s for the response surface, 10 s in the tabletop device) and
       thresholded to a logic output. Conrad's reading of this as computation
       by free-energy minimisation is a description of the binding step, not a

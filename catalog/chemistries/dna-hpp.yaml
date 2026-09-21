@@ -71,7 +71,7 @@ chemistries:
     - "on Adleman's fig. 1 graph the five steps leave exactly one molecule, the published Hamiltonian path 0->1->2->3->4->5->6"
     - "length selection keeps the 140 bp band: 7 vertices x 20-mer code words"
     - "graduated PCR prints a path: a vertex in slot k gives a band at 20 (k+1) bp, so the Hamiltonian path gives 40, 60, 80, 100, 120, 140 bp in successive lanes"
-    - "paths that miss a vertex (0->1->3->4->5->6, 120 bp) or enter one twice (0->3->2->3->4->5->6, 140 bp) survive the earlier steps and are removed by the gel and by affinity purification respectively; both were seen in the paper's fig. 3B"
+    - "paths that miss a vertex (0->1->3->4->5->6, 120 bp) or enter one twice (0->3->2->3->4->5->6, 140 bp) survive the earlier steps; the gel should remove the first and affinity purification removes the second. Both were seen in the graduated PCR of the paper's fig. 3B, where the 120 bp path had leaked through the gel as contamination and was then removed by step 4 (p. 1022)"
     - "removing the edge 2->3 leaves the graph without a Hamiltonian path, and so does moving the designated vertices to v_in = 3, v_out = 5"
     - "the number of oligonucleotides grows linearly with the edges, but the number of copies needed grows exponentially with the vertices (Hartmanis: 200 cities would need more than the weight of the Earth in DNA)"
   notes: >

@@ -28,7 +28,7 @@ chemistries:
       alpha, beta, gamma, delta, eta, mu; species structure is that wall plus
       the published velocity, e.g. "Λ0Λ2 (v=-1.0)". Walls between two patches
       of the same domain are dislocations that the published catalogs leave
-      out; they appear as `wΛiΛi`. The domains themselves (Λ0 = 0+, Λ1 = 1+,
+      out; they appear as species `wL0L0`, `wL1L1`, `wL2L2`. The domains themselves (Λ0 = 0+, Λ1 = 1+,
       Λ2 = (01)+ or (011)+) are the solvent, not molecules.
     definition: implicit
   R:
@@ -90,9 +90,9 @@ chemistries:
     - "Not implemented: the epsilon-machine reconstruction that discovers the domains automatically (the domains of the catalogued rules are given); the ballistic embedded-particle model that predicts P_N from the catalog and the particle distribution at t_c; interaction-result probabilities and three-particle interactions, which the sources list for the synchronisation rules but not for phi_par^a; the synchronisation rules themselves - the look-up tables printed for phi_sync1 and phi_parent (Hordijk, Shalizi & Crutchfield 2001, Table 1) do not synchronise in our implementation (measured 0.00 and 0.28 of ICs), so their catalogs are cited but not offered."
   reference_impl: "The EvCA group's own tools are not distributed; the domain-filtering transducer is described in Crutchfield, Mitchell & Das Appendix A and in Crutchfield & Hanson, Turbulent pattern bases for cellular automata, Physica D 69:279-301 (1993)."
   phenomena:
-    - "a CA's space-time behaviour condenses into regular domains separated by particles; on N = 149 the condensation time of the density rules averages about 12 steps"
+    - "a CA's space-time behaviour condenses into regular domains separated by particles; on N = 149 the condensation time of the density rule phi_dens5 (the phi_100 look-up table, two hexadecimal digits from phi_par^a) averages about 12 steps (Hordijk, Crutchfield & Mitchell 1998)"
     - "the published particle catalog is internally consistent: every interaction composes the walls of its reactants, so beta ~ Λ1Λ0 colliding with gamma ~ Λ0Λ2 gives eta ~ Λ1Λ2, and gamma + delta annihilate into the domain Λ0 that both of them border"
-    - "all six published interactions of phi_par^a fire in real runs, and they are the large majority of the collisions observed between catalogued particles; the rest involve the dislocations that the published catalogs leave out"
+    - "all six published interactions of phi_par^a fire in real runs, and they are the large majority of the collisions observed between catalogued particles; the other observed events are one-sided (a particle vanishing or appearing with its partner assigned to another event) or involve the dislocations that the published catalogs leave out"
     - "particle velocities are fixed by the rule: gamma moves one cell per step to the left, mu one to the right, beta stands still, delta and eta move three cells per step, and alpha is unstable and decays at once into gamma + mu"
     - "particle collisions carry the density computation: the whole lattice ends in one domain, all-0s or all-1s, classifying the initial density correctly on about 78% of unbiased random ICs for phi_par^a and about 82% for GKL at N = 149, and performance falls as N grows"
     - "the density-classification task cannot be solved perfectly by any two-state CA (Land & Belew 1995), and the best known radius-3 rules reach P_149 of about 0.85"

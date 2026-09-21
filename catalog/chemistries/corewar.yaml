@@ -93,12 +93,14 @@ chemistries:
     - "Imp (MOV 0, 1) copies itself one cell ahead every cycle and moves through the whole core, leaving a trail of MOV 0, 1 (Dewdney 1984; book 10.6.2)"
     - "Dwarf drops a DAT bomb on every fourth cell, loops over the core and, in a core size divisible by 4, never hits itself (Karonen's guide; Dewdney 1984 with step 5)"
     - "Imp v. Dwarf: if Imp reaches Dwarf, Dwarf's JMP -2 lands on Imp's MOV 0, 1, Dwarf is subverted into a second Imp and the battle is a draw; otherwise Dwarf may bomb Imp (Dewdney 1984). With KOTH rules in an 800 core, pMARS gives 104 Dwarf wins and 497 ties over the 601 load positions, and Imp never wins"
-    - "the book's SPL 2 / JMP -1 / MOV 0, 1 creates an avalanche of imps, adding a task every other cycle until the task limit"
+    - "the book's SPL 2 / JMP -1 / MOV 0, 1 creates an avalanche of imps: the spawning task adds a task on every second turn it gets, so the queue grows (ever more slowly, as the turns are shared with the imps) until the task limit"
     - "Validate 1.1R loops forever on an ICWS'88-compliant MARS with in-register evaluation and kills itself otherwise (pMARS warriors/validate.red)"
     - "a warrior dies when its last task executes a DAT or divides by zero; a round is a tie when several warriors survive max_cycles cycles (Core War Guidelines; ICWS'94 sec. 5.2)"
   notes: >
-    Ancestor of Coreworld, Tierra and Avida (book 10.6.3-10.6.5). The book
-    notes there are no explicitly defined reactions between molecules in
-    assembler automata; the event reading above is Chemart's. Paper-scale
-    battles (core 8000, 80000 cycles, 100+ rounds) take tens of seconds per
-    round in pure Python.
+    Ancestor of Coreworld, Tierra and Avida (book 10.6.3, 10.6.4, 10.7.1). The
+    book notes, for Coreworld (10.6.3), that there are no explicitly defined
+    reactions between molecules and that executing another molecule's code
+    can be seen as a reaction; the event reading above is Chemart's.
+    Paper-scale battles (core 8000, 80000 cycles, 100+ rounds) take a few
+    seconds per round in pure Python (about 2.5 s for Imp v. Dwarf or Rave v.
+    Dwarf), so minutes per match.

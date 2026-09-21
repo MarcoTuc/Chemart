@@ -7,7 +7,7 @@ chemistries:
     things. Strings come in two forms: passive tapes of bits, and active
     machines - folded chains of instructions where the fold is what brings
     distant instructions together. A machine attaches to a tape, runs as a
-    read-head over it, and leaves the tape cut into pieces. Laing's goal was
+    read-head over it, rewriting, lengthening or cutting the tape. Laing's goal was
     self-reproduction by *self-inspection*: a machine that reads its own
     structure rather than copying a stored description of it.
   aliases: ["Laing molecular tapeworms", "hybrid cellular-kinematic automata"]
@@ -36,7 +36,7 @@ chemistries:
       max_length, gives no reaction.
   A:
     reactor: [sequential-vm, well-stirred-multiset]
-    dilution: "closure: none; soup: a random molecule is removed after each productive event, keeping the population size constant (Chemart addition)"
+    dilution: "closure: none; soup: after each reaction, random molecules (machines or tapes) are removed until the population is back to its initial size (Chemart addition)"
     notes: "Laing gave no dynamics (book 10.5.1); his artificial organisms are compartments of such molecules, which are not modelled. The soup is a Chemart addition."
   params:
     - {name: method, type: enum, default: closure, choices: [closure, soup], role: structural, meaning: "closure: every reaction reachable from the seed machines and tapes (status complete or truncated); soup: random pairs drawn from a population with chemart.soup, returning the reactions that fired with counts (status observed)"}

@@ -136,10 +136,10 @@ chemistries:
   phenomena:
     - "differential adhesion alone sorts a mixed aggregate of two cell types: the heterotypic contact fraction falls and the more cohesive type ends up engulfed by the other (Glazier & Graner; Hogeweg 2000 sec. 3.1: type a engulfs type b when J_ab < J_mb and J_am < J_bm)"
     - "the volume constraint lambda (v - V)^2 holds a cell near its target volume; at Hogeweg's deliberately low lambda = 0.5 a squeezed cell can be reduced to zero volume and die"
-    - "complex morphogenetic patterns evolve under a fitness function as weak as the number (and mutual distance) of cell types: morphogenesis is a side-effect, and is in fact slightly negatively selected"
+    - "complex morphogenetic patterns evolve under a fitness function as weak as the number (and mutual distance) of cell types: morphogenesis is a side-effect, and is in fact negatively selected (Hogeweg 2000, Artificial Life 6(1) sec. 3.3)"
     - "four recurring morphogenetic mechanisms: engulfing (gastrulation-like), budding and elongation, intercalation and elongation, and meristematic growth and differentiation (Hogeweg 2000, Artificial Life 6(1) sec. 3.2)"
     - "growth and death are not encoded in the genome: stretching raises a cell's target volume until it divides, squeezing kills it, so cell movement, growth, division and differentiation are coordinated automatically by surface-energy minimisation"
-    - "about one-third of evolutionary runs lead to extensive cell differentiation and morphogenesis; the rest stay blobs"
+    - "about one-third of evolutionary runs lead to extensive cell differentiation and morphogenesis (Hogeweg 2000, Artificial Life 6(1) sec. 3)"
     - "punctuated equilibria in fitness over a molecular-clock-like linear divergence of the genome, and long neutral paths once the cell-differentiation pattern is established"
     - "the interesting morphologies are 'shapes in the shadow': mutants of the fittest individuals, reinvented repeatedly and combined mosaic-like, although the genotype diverges linearly"
     - "maternally induced asymmetry (one gene flipped for one time step in one daughter of the first two cleavages) is what breaks the symmetry; further differentiation is neighbourhood-based and reversible"

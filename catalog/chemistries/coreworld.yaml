@@ -5,8 +5,9 @@ chemistries:
   intuition: >
     Core War turned into a chemistry by adding a resource. Execution now costs
     computational resources that flow into the core at a set rate, so
-    instructions only run where resource has accumulated, and cooperative
-    structures that concentrate it out-compete lone copiers. With a low influx
+    instructions only run where resource has accumulated; the book says the
+    resources were introduced to encourage cooperation between instructions.
+    With a low influx
     you get simple loops and dead pointers; with a high influx, dense
     self-sustaining regions. It also exposes the problem Tierra later solved:
     without memory protection there is no clean boundary around an 'organism'.
@@ -96,7 +97,7 @@ chemistries:
     - "jungle (high influx, R_res 3, Delta r 0.5): richer structures, loops, pointer-dense 'SPL-fields' kept alive by SPL instructions, never found in the desert"
     - "pointer fixed points: JMP #X, JMZ #X,0, JMN $0,Y and DJN #X,Y (Y != 0) send the pointer back to itself; relaxed or 'silent' cores have most pointers trapped there (e.g. 212 of 220 pointers after 435000 updates)"
     - "instruction copying loops amplify single instructions, giving phase transitions in the instruction distribution (cores flooded with 2859 CMP, 1276 SPL, 1471 MOV or 1323 ADD out of 3584)"
-    - "with R_opr of order 100 or more and a MICE seed the jungle evolves SPL-MOV cooperative 'organisms' (20-100 words, later two huge ones with more than 800 SPL and 800 MOV) that are robust to noise; collapses go with the extinction of MOV"
+    - "with R_opr of order 100 or more and a MICE seed the jungle evolves cooperative 'organisms' (stationary ones of 20-100 words, mostly SPL; in another run two huge SPL-MOV ones with more than 800 SPL and 800 MOV) that are robust to noise; collapses go with the extinction of MOV"
     - "four successive macroscopic epochs (fig. 7): randomized core with self-replicating seed; core populated by copying loops; dense areas of identical instructions; cooperative programs"
     - "engineered programs (MICE, Core War warriors) are too brittle to survive the noise for long"
   notes: "Precursor of Tierra and Avida: memory without protection makes organisms hard to individuate, which Tierra solved with memory allocation (book 10.6.4)."

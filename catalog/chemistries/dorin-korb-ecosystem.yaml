@@ -72,11 +72,10 @@ chemistries:
     - "A free C can only bond where a reaction has just released energy into its contact cluster, so biomass and its decomposition concentrate around the seeded bodies and dense patches. The default therefore seeds both organism bodies (structures: all); with structures: none the soup is lively but builds almost no C-C biomass."
   phenomena:
     - "a trophic structure emerges from atom-level bookkeeping: chlorophyll fixes sunlight into A-B sugar bonds, the sugar enzyme releases that energy again, the released energy pays for C-C biosynthesis, and the decomposers break C-C and A-O/B-O bonds to return atoms to the inorganic pool"
-    - "sugar is made only where energy is available: with the light switched off no A-B bond is ever formed, since only sunlight can pay the high A-B bond energy"
-    - "the figure 5 autotroph runs the whole cycle on its own: with nothing else on the grid, the chlorophyll on one inner wall turns the A-O and B-O trapped in its vacuole into A-B sugar, and the enzyme on the opposite wall respires that sugar again"
+    - "sugar is made only where energy is available: sunlight is the main source that can pay the high A-B bond energy, so with the light switched off no A-B bond forms at the default density; in denser soups the energy released by forming A-O and B-O bonds occasionally pays for one"
+    - "the figure 5 autotroph can make and respire sugar on its own: with nothing else on the grid, the chlorophyll on one inner wall turns the A-O and B-O trapped in its vacuole into A-B sugar, and the enzyme on the opposite wall respires that sugar again (in some runs; with no free C there is no biosynthesis)"
     - "atoms are never created or destroyed, and every joule is either stored in a bond, spent on one, or dissipated in the step it was released"
   notes: >
-    Along with ToyChem and Bigan, one of the three energy-carrying chemistries
-    in the book. The paper is a feasibility argument rather than a results
+    The paper is a feasibility argument rather than a results
     paper: it specifies the chemistry and hand-designs organism bodies, and
     states that a run with all organism types present had not yet been done.

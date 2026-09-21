@@ -40,8 +40,8 @@ chemistries:
       neighbouring classes; plus one programmed self-decomposition per family,
       BP -> units_per_class^d X_t, which cleaves a biopolymer in one
       genetically regulated step down to the class named by psd_target (with
-      psd_target = BM this is the single hydrolysis step the model calls the
-      main PSD process).
+      psd_target = BM this is the single hydrolysis step, BP into BMs, that the
+      paper's abstract calls one of the main processes of PSD).
     notes: >
       The HBCB model orders the hierarchy by covalent bond energy: the BM-BM
       links of a biopolymer are the weakest bonds and the ones hydrolysis

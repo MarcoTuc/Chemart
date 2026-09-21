@@ -36,7 +36,7 @@ chemistries:
   decisions:
     - "The book gives no numerical bonding probabilities ('under reasonable assumptions'); every P_b defaults to 1 and can be overridden per pair."
     - "The book's discrete-time update is represented by mass-action rates k = agitation_rate * P_b. extras.conservation records the monomer count (x=1 ... x6=6)."
-  phenomena: ["yield curves for x4, x5, x6 matching wet-lab experiments"]
+  phenomena: ["simulated from 100 monomers, the intermediates x4 and x5 stabilise together with the final product x6 (book fig. 20.3a)", "model and experiment agree roughly in the x3-x6 plane; the book notes the statistics did not allow a more accurate comparison (fig. 20.3b)"]
   notes: >
     Proof that chemical kinetics is substrate-independent, and the cleanest
     example of a rate coefficient that FACTORISES into an encounter term and
