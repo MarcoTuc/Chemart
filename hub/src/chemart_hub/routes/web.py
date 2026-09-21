@@ -149,13 +149,16 @@ def home(request: Request, c: sqlite3.Connection = Depends(deps.conn),
     featured, _ = service.search(c, featured=True, sort="updated", limit=12)
     recent, _ = service.search(c, sort="updated", limit=6)
     official, n_official = service.search(c, author=settings.official_namespace, sort="name", limit=12)
+    # A chemistry whose network is given (the Brusselator) is a network on the
+    # shelf, like a shared network repo; the rest generate their networks.
     counts = dict(c.execute(
-        "SELECT repo_type, COUNT(*) FROM repos WHERE head IS NOT NULL AND archived_at IS NULL "
-        "AND hidden = 0 GROUP BY repo_type").fetchall())
+        "SELECT CASE WHEN repo_type = 'network' OR network = 'given' THEN 'network' ELSE 'chemistry' END, "
+        "COUNT(*) FROM repos WHERE head IS NOT NULL AND archived_at IS NULL AND hidden = 0 "
+        "GROUP BY 1").fetchall())
     return _page(request, "home.html", p, banner=BANNER, featured=_cards(c, featured, settings),
                  trending=_cards(c, trending, settings), recent=_cards(c, recent, settings),
                  official=_cards(c, official, settings), n_official=n_official,
-                 n_generators=counts.get("generator", 0), n_networks=counts.get("network", 0))
+                 n_chemistries=counts.get("chemistry", 0), n_networks=counts.get("network", 0))
 
 
 @router.get("/browse", response_class=HTMLResponse)

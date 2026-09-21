@@ -11,8 +11,8 @@
       <button class="btn-primary" type="submit">Search</button>
     </form>
     <div class="stock">
-      <span><b>{{ n_generators }}</b> {{ "chemistry" if n_generators == 1 else "chemistries" }} in stock</span>
-      <span><b>{{ n_networks }}</b> network{{ "" if n_networks == 1 else "s" }}</span>
+      <span title="Chemistries that generate their network when run, and shared chemistries"><b>{{ n_chemistries }}</b> {{ "chemistry" if n_chemistries == 1 else "chemistries" }} in stock</span>
+      <span title="Given reaction networks: chemistries that are a network, such as the Brusselator, and shared networks"><b>{{ n_networks }}</b> network{{ "" if n_networks == 1 else "s" }}</span>
       <span class="open-sign">● open 24/7</span>
     </div>
   </div>

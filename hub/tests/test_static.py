@@ -116,6 +116,17 @@ def test_pages_are_static_and_link_under_the_project_path(site):
     assert 'href="/hub/ada/"' in repo                  # folders get their trailing slash
 
 
+def test_the_stock_line_counts_given_networks_as_networks(site):
+    """Under the search bar: gamma and ada/tiny-chem generate their networks; the
+    Brusselator is a given network, and ada/snapshot a shared one."""
+    home = (site["out"] / "index.html").read_text()
+    assert "<b>2</b> chemistries in stock" in home
+    assert "<b>2</b> networks" in home
+    index = {r["id"]: r for r in json.loads((site["out"] / "api/v1/index.json").read_text())["repos"]}
+    assert index["chemart/brusselator"]["network"] == "given"
+    assert index["chemart/gamma"]["network"] == "generated"
+
+
 def test_builds_are_reproducible(registry, site, tmp_path):
     again = tmp_path / "again"
     static.build(registry, again, site_url=site["url"], registry_repo="acme/chemart-hub")
