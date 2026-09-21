@@ -230,7 +230,7 @@ where people publish chemistries and reaction networks, and a client built into
 ```python
 import chemart
 
-chemart.generate_network("chemart/brusselator")        # the official shelf: the 98 built-ins
+chemart.generate_network("chemart/brusselator")        # the official shelf: the built-ins
 chemart.load_network("ada/brusselator-b35")            # a shared network: plain data
 chemart.generate_network("ada/hypercycle-lite",        # a shared chemistry: runs its code,
                          revision="f2634dc6b1d4",      # so read it, pin it,
