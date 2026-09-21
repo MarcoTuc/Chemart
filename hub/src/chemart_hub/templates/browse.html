@@ -6,22 +6,22 @@
   <aside class="filters" aria-label="Filters">
     <h3>Type</h3>
     <div class="chips">
-      <a class="chip {{ 'on' if not filters.type }}" href="{{ link(type='', page=1) }}">all</a>
-      <a class="chip {{ 'on' if filters.type == 'generator' }}" href="{{ link(type='generator', page=1) }}">chemistries</a>
-      <a class="chip {{ 'on' if filters.type == 'network' }}" href="{{ link(type='network', page=1) }}">networks</a>
+      <a class="chip {{ 'on' if not filters.type }}" data-key="type" data-value="" href="{{ link(type='', page=1) }}">all</a>
+      <a class="chip {{ 'on' if filters.type == 'generator' }}" data-key="type" data-value="generator" href="{{ link(type='generator', page=1) }}">chemistries</a>
+      <a class="chip {{ 'on' if filters.type == 'network' }}" data-key="type" data-value="network" href="{{ link(type='network', page=1) }}">networks</a>
     </div>
     <h3>Code</h3>
     <div class="chips">
-      <a class="chip {{ 'on' if not filters.code }}" href="{{ link(code='', page=1) }}">any</a>
-      <a class="chip {{ 'on' if filters.code == 'no' }}" href="{{ link(code='no', page=1) }}">no remote code</a>
-      <a class="chip {{ 'on' if filters.code == 'yes' }}" href="{{ link(code='yes', page=1) }}">runs code</a>
+      <a class="chip {{ 'on' if not filters.code }}" data-key="code" data-value="" href="{{ link(code='', page=1) }}">any</a>
+      <a class="chip {{ 'on' if filters.code == 'no' }}" data-key="code" data-value="no" href="{{ link(code='no', page=1) }}">no remote code</a>
+      <a class="chip {{ 'on' if filters.code == 'yes' }}" data-key="code" data-value="yes" href="{{ link(code='yes', page=1) }}">runs code</a>
     </div>
     {% if facets.provides %}
     <h3>Provides <span class="faint" style="text-transform:none;letter-spacing:0">(all of)</span></h3>
     <div class="chips">
       {% for tag, n in facets.provides %}
         {% set on = tag in filters.provides %}
-        <a class="chip {{ 'on' if on }}" href="{{ link(provides=(filters.provides | reject('equalto', tag) | list) if on else filters.provides + [tag], page=1) }}">{{ tag }} <span class="faint">{{ n }}</span></a>
+        <a class="chip {{ 'on' if on }}" data-key="provides" data-value="{{ tag }}" href="{{ link(provides=(filters.provides | reject('equalto', tag) | list) if on else filters.provides + [tag], page=1) }}">{{ tag }} <span class="faint">{{ n }}</span></a>
       {% endfor %}
     </div>
     {% endif %}
@@ -29,7 +29,7 @@
     <h3>Family</h3>
     <div class="chips">
       {% for fam, n in facets.family %}
-        <a class="chip {{ 'on' if filters.family == fam }}" href="{{ link(family='' if filters.family == fam else fam, page=1) }}">{{ fam }} <span class="faint">{{ n }}</span></a>
+        <a class="chip {{ 'on' if filters.family == fam }}" data-key="family" data-value="{{ fam }}" href="{{ link(family='' if filters.family == fam else fam, page=1) }}">{{ fam }} <span class="faint">{{ n }}</span></a>
       {% endfor %}
     </div>
     {% endif %}
@@ -37,7 +37,7 @@
     <h3>Fidelity</h3>
     <div class="chips">
       {% for fid, n in facets.fidelity %}
-        <a class="chip {{ 'on' if filters.fidelity == fid }}" href="{{ link(fidelity='' if filters.fidelity == fid else fid, page=1) }}">{{ fid }} <span class="faint">{{ n }}</span></a>
+        <a class="chip {{ 'on' if filters.fidelity == fid }}" data-key="fidelity" data-value="{{ fid }}" href="{{ link(fidelity='' if filters.fidelity == fid else fid, page=1) }}">{{ fid }} <span class="faint">{{ n }}</span></a>
       {% endfor %}
     </div>
     {% endif %}
@@ -45,7 +45,7 @@
     <h3>Tags</h3>
     <div class="chips">
       {% for tag, n in facets.tag %}
-        <a class="chip {{ 'on' if filters.tag == tag }}" href="{{ link(tag='' if filters.tag == tag else tag, page=1) }}">{{ tag }} <span class="faint">{{ n }}</span></a>
+        <a class="chip {{ 'on' if filters.tag == tag }}" data-key="tag" data-value="{{ tag }}" href="{{ link(tag='' if filters.tag == tag else tag, page=1) }}">{{ tag }} <span class="faint">{{ n }}</span></a>
       {% endfor %}
     </div>
     {% endif %}
@@ -54,10 +54,11 @@
   <section>
     <div class="results-head">
       <div>
-        <h1 style="font-size:1.35rem;margin:0">{% if filters.q %}“{{ filters.q }}”{% elif filters.author %}{{ filters.author }}{% else %}Browse the shelves{% endif %}</h1>
-        <span class="muted">{{ total }} result{{ '' if total == 1 else 's' }}</span>
+        <h1 id="browse-title" style="font-size:1.35rem;margin:0">{% if filters.q %}“{{ filters.q }}”{% elif filters.author %}{{ filters.author }}{% else %}Browse the shelves{% endif %}</h1>
+        <span class="muted" id="browse-count">{{ total }} result{{ '' if total == 1 else 's' }}</span>
         {% if filters.q or filters.type or filters.family or filters.tag or filters.fidelity or filters.code or filters.author or filters.provides %}
           · <a href="/browse">clear filters</a>
+        {% elif STATIC %}<span id="browse-clear" hidden> · <a href="/browse">clear filters</a></span>
         {% endif %}
       </div>
       <form method="get" action="/browse">
@@ -65,7 +66,7 @@
         {% for v in filters.provides %}<input type="hidden" name="provides" value="{{ v }}">{% endfor %}
         <label for="sort" class="sr-only">Sort</label>
         <select id="sort" name="sort">
-          {% for s in sorts %}<option value="{{ s }}" {{ 'selected' if filters.sort == s }}>{{ s }}</option>{% endfor %}
+          {% for s in sorts if not STATIC or s in ('updated', 'created', 'name') %}<option value="{{ s }}" {{ 'selected' if filters.sort == s }}>{{ s }}</option>{% endfor %}
         </select>
         <button type="submit" class="btn-sm">Sort</button>
       </form>
@@ -80,4 +81,5 @@
     {% endif %}
   </section>
 </div>
+{% if STATIC %}<script src="/static/static-browse.js" defer></script>{% endif %}
 {% endblock %}

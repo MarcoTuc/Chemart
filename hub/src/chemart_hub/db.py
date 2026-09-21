@@ -13,7 +13,7 @@ import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 _SCHEMA_V1 = """
 CREATE TABLE accounts (
@@ -184,6 +184,14 @@ def connect(path: Path) -> sqlite3.Connection:
     return conn
 
 
+#: v4: whether a chemistry's network is given or generated (catalog field
+#: `network`), copied from the head commit's entry like the other facets.
+#: Existing repos get it on their next commit; NULL means not declared.
+_SCHEMA_V4 = """
+ALTER TABLE repos ADD COLUMN network TEXT;
+"""
+
+
 def migrate(path: Path) -> None:
     """Create or upgrade the database at `path`."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -205,6 +213,9 @@ def migrate(path: Path) -> None:
             if problems:
                 raise RuntimeError(f"migration to v3 left dangling references: {problems[:5]}")
             conn.execute("PRAGMA user_version = 3")
+        if version < 4:
+            conn.executescript(_SCHEMA_V4)
+            conn.execute("PRAGMA user_version = 4")
         conn.commit()
     finally:
         conn.close()

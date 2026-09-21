@@ -7,7 +7,7 @@
 {%- endmacro %}
 
 {% macro tile(repo) -%}
-<a class="tile" href="/{{ repo.id }}">
+<a class="tile" href="/{{ repo.id }}" data-id="{{ repo.id }}" data-type="{{ repo.repo_type }}" data-family="{{ repo.family or '' }}" data-fidelity="{{ repo.fidelity or '' }}" data-code="{{ 'yes' if repo.has_code else 'no' }}" data-author="{{ repo.namespace }}" data-tags="{{ repo.tags | join(' ') }}" data-provides="{{ repo.provides | join(' ') }}" data-updated="{{ repo.updated_at }}" data-created="{{ repo.created_at }}">
   <div class="tile-id"><span class="dot dot-{{ repo.repo_type }}"></span><span>{{ repo.namespace }}/</span><span class="name">{{ repo.name }}</span></div>
   <div class="tile-title">{{ repo.title or repo.name }}</div>
   <p class="tile-summary">{{ repo.summary or "" }}</p>
@@ -17,8 +17,8 @@
     {% if repo.hidden %}<span class="badge badge-hidden">hidden</span>{% endif %}
     {% if repo.builtin %}<span class="badge badge-official">official</span>{% elif repo.has_code %}<span class="badge badge-code">runs code</span>{% endif %}
     {% if repo.family %}<span>{{ repo.family }}</span>{% endif %}
-    <span title="likes">♥ {{ repo.likes }}</span>
-    <span title="downloads">↓ {{ repo.downloads }}</span>
+    {% if not STATIC %}<span title="likes">♥ {{ repo.likes }}</span>
+    <span title="downloads">↓ {{ repo.downloads }}</span>{% endif %}
     <span>{{ repo.updated_at | ago }}</span>
   </div>
 </a>

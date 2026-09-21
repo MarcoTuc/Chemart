@@ -134,6 +134,7 @@ def repo_json(conn: sqlite3.Connection, repo: sqlite3.Row, settings: Settings) -
         "family": repo["family"],
         "kind": repo["kind"],
         "constructive": None if repo["constructive"] is None else bool(repo["constructive"]),
+        "network": repo["network"],
         "fidelity": repo["fidelity"],
         "license": repo["license"],
         "has_code": bool(repo["has_code"]),
@@ -275,9 +276,14 @@ def commit(
     parent: str | None,
     operations: list[dict[str, Any]],
     replace: bool = False,
+    created_at: str | None = None,
 ) -> dict[str, Any]:
     """Apply `operations` on top of `parent` (which must be the current head),
-    validate the whole resulting snapshot, and move `main` to the new commit."""
+    validate the whole resulting snapshot, and move `main` to the new commit.
+
+    `created_at` replaces the current time; the static-site builder uses it to
+    give each commit the date of the git commit it comes from, so the commit
+    id is the same on every build."""
     require_write_access(conn, principal, repo)
     rid = RepoId(repo["namespace"], repo["name"])
     if parent != repo["head"]:
@@ -329,11 +335,17 @@ def commit(
     except _format.FormatError as err:
         raise invalid(f"{rid}: the files do not form a valid {repo['repo_type']} repo", err.problems) from None
 
-    stamp = db.now()
+    stamp = created_at or db.now()
     triples = [[p, m["sha256"], m["size"]] for p, m in sorted(files.items())]
     cid = commit_id(repo=str(rid), parent=parent, files=triples, message=message,
                     author=principal.name, created_at=stamp)
     entry = card.entry
+    network = entry.network if entry else None
+    if network is None and card.builtin:
+        # A built-in's truth is the installed catalog (as the client treats it),
+        # including for an official chemart.yaml written before the field existed.
+        installed = next((c for c in catalog.load() if c.id == card.builtin), None)
+        network = installed.network if installed else None
     with conn:
         conn.execute(
             "INSERT INTO commits (id, repo_id, parent, author_id, message, created_at, manifest) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -341,7 +353,7 @@ def commit(
         )
         moved = conn.execute(
             "UPDATE repos SET head = ?, updated_at = ?, title = ?, summary = ?, family = ?, kind = ?, "
-            "constructive = ?, fidelity = ?, license = ?, has_code = ?, builtin = ? "
+            "constructive = ?, fidelity = ?, license = ?, has_code = ?, builtin = ?, network = ? "
             "WHERE id = ? AND head IS ?",
             (
                 cid, stamp, card.title or repo["name"], card.summary,
@@ -349,7 +361,7 @@ def commit(
                 entry.kind if entry else None,
                 None if entry is None else int(entry.constructive),
                 entry.fidelity if entry else None,
-                card.hub.get("license"), int(card.has_code), card.builtin,
+                card.hub.get("license"), int(card.has_code), card.builtin, network,
                 repo["id"], parent,
             ),
         ).rowcount

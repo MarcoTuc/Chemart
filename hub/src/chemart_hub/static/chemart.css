@@ -378,3 +378,6 @@ table.log td { font-size: 0.85rem; }
   .hero-search { flex-direction: column; }
   .hero-search button { padding: 10px; }
 }
+
+/* The hidden attribute always wins (the static site filters tiles by toggling it). */
+[hidden] { display: none !important; }

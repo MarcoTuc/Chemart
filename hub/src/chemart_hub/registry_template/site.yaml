@@ -1,0 +1,9 @@
+# Repos shown under "Curated picks" on the home page, as namespace/name.
+featured: []
+
+# Repos left out of listings and search; they still load by id.
+hidden: []
+
+# The site's texts (see chemart_hub.curation.SITE_TEXT for every key).
+texts:
+  home_title: The one stop shop for artificial chemistry

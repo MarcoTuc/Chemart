@@ -1,0 +1,66 @@
+name: publish
+
+# Builds the site from the registry and deploys it to GitHub Pages.
+# In Settings > Pages, set Source to "GitHub Actions".
+
+on:
+  push:
+    branches: [{{BRANCH}}]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  CHEMART_REPO: {{CHEMART_REPO}}
+  CHEMART_REF: {{CHEMART_REF}}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # the whole history: every commit to a repo is one of its revisions
+
+      - name: Get Chemart
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.CHEMART_REPO }}
+          ref: ${{ env.CHEMART_REF }}
+          path: .chemart
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Install
+        run: uv sync --project .chemart --package chemart-hub
+
+      - id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Build the site
+        run: >
+          uv run --project .chemart chemart-hub build-static . _site
+          --site-url "${{ steps.pages.outputs.base_url }}"
+          --registry-repo "${{ github.repository }}"
+          --branch "${{ github.event.repository.default_branch }}"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

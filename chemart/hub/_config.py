@@ -1,6 +1,6 @@
 """Where the hub is, where the cache lives, and the limits both sides enforce.
 
-    CHEMART_HUB_URL      the hub's base URL (default: a hub on this machine)
+    CHEMART_HUB_URL      the hub's base URL (default: the public hub on GitHub Pages)
     CHEMART_HOME         cache and credentials (default: ~/.cache/chemart)
     CHEMART_HUB_TOKEN    an API token; overrides the one saved by `chemart login`
     CHEMART_HUB_OFFLINE  1 = never touch the network, use the cache only
@@ -12,9 +12,10 @@ import json
 import os
 from pathlib import Path
 
-#: Until there is a public deployment, the default hub is one you run locally
-#: with `chemart-hub serve`.
-DEFAULT_URL = "http://127.0.0.1:8000"
+#: The public hub: a static site built from the MarcoTuc/chemart-hub registry.
+#: Point CHEMART_HUB_URL at http://127.0.0.1:8000 for a hub you run with
+#: `chemart-hub serve`.
+DEFAULT_URL = "https://marcotuc.github.io/chemart-hub"
 
 KB, MB = 1024, 1024 * 1024
 #: Per-file caps by kind, and per-repo caps. The server enforces them; the

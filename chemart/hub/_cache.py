@@ -100,7 +100,7 @@ def revision_info(repo: RepoId, revision: str) -> dict[str, Any]:
     if _config.offline():
         return _from_cache(repo, revision, "CHEMART_HUB_OFFLINE is set")
     try:
-        response = _http.request("GET", f"/api/repos/{repo.namespace}/{repo.name}/revision/{revision}")
+        answer = _remote_revision(repo, revision)
     except _http.HubConnectionError as err:
         try:
             info = _from_cache(repo, revision, "the hub is unreachable")
@@ -109,11 +109,20 @@ def revision_info(repo: RepoId, revision: str) -> dict[str, Any]:
         warnings.warn(f"the Chemart Hub is unreachable; using the cached {repo}@{revision} "
                       f"({info['commit'][:12]})", stacklevel=4)
         return info
-    info = _validated(response.json(), repo)
+    info = _validated(answer, repo)
     _atomic_write(repo_dir(repo) / "manifests" / f"{info['commit']}.json", json.dumps(info).encode())
     if revision == "main":
         _atomic_write(repo_dir(repo) / "refs" / "main", info["commit"].encode())
     return info
+
+
+def _remote_revision(repo: RepoId, revision: str) -> Any:
+    """Ask the hub which commit `revision` is: a live hub's API, or a static hub's files."""
+    from chemart.hub import _static
+
+    if _static.is_static():
+        return _static.revision(repo, revision)
+    return _http.request("GET", f"/api/repos/{repo.namespace}/{repo.name}/revision/{revision}").json()
 
 
 def _from_cache(repo: RepoId, revision: str, why: str) -> dict[str, Any]:

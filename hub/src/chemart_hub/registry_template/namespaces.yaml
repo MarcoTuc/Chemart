@@ -1,0 +1,10 @@
+# Organisations that may own repos, and who may push to them.
+# Members of `chemart` are the registry's maintainers: they may change anything.
+orgs:
+  chemart:
+    fullname: Chemart
+    bio: The chemistries of Banzhaf & Yamamoto's *Artificial Chemistries*, built into the chemart library.
+    members: [{{OWNER}}]
+
+# Optional profile texts for users (a user's namespace is their GitHub login).
+users: {}

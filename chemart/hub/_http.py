@@ -109,9 +109,9 @@ def request(
     except (urllib.error.URLError, OSError) as err:
         reason = getattr(err, "reason", err)
         raise HubConnectionError(
-            f"cannot reach the Chemart Hub at {base} ({reason}). Is it running "
-            "(`chemart-hub serve`)? Set CHEMART_HUB_URL to use another hub, or "
-            "CHEMART_HUB_OFFLINE=1 to work from the cache."
+            f"cannot reach the Chemart Hub at {base} ({reason}). Check your connection "
+            "(or, for a hub you run yourself, that `chemart-hub serve` is running). Set "
+            "CHEMART_HUB_URL to use another hub, or CHEMART_HUB_OFFLINE=1 to work from the cache."
         ) from None
     if response.status < 400:
         return response

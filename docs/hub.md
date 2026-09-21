@@ -30,8 +30,12 @@ namespace is a user or an organisation.
 
 The official `chemart/` organisation holds the book chemistries. Those repos
 are **built-in backed**: they contain the catalog entry but no code, because
-the generator ships with the library. Loading `chemart/tierra` runs your
-installed `tierra` generator and needs no trust flag.
+the generator ships with the library. Loading `chemart/gamma` runs your
+installed `gamma` generator and needs no trust flag.
+
+The public hub is <https://marcotuc.github.io/chemart-hub/>, built from the
+[MarcoTuc/chemart-hub](https://github.com/MarcoTuc/chemart-hub) registry; it
+is `chemart`'s default. See [A hub on GitHub Pages](#a-hub-on-github-pages).
 
 ## Loading
 
@@ -86,7 +90,16 @@ anything itself.
 
 ## Sharing
 
-Create an account on the hub, make a token under **Settings → Tokens**, then:
+On the public hub, sharing opens a **pull request** on its registry. Sign in
+to GitHub once with the [GitHub CLI](https://cli.github.com/) (`gh auth login`)
+and use the commands below as they are: your repos go under your GitHub login,
+and they appear on the site once the pull request is merged. Without the
+GitHub CLI, `chemart push` writes the folder and prints the steps to open the
+pull request by hand. `chemart login` and `whoami` are for a hub you run
+yourself.
+
+On a hub you run yourself, create an account, make a token under
+**Settings → Tokens**, then:
 
 ```bash
 uv run chemart login          # paste the token; stored per hub in ~/.cache/chemart/tokens.json
@@ -164,10 +177,75 @@ be reached, `main` falls back to the last commit you resolved, with a warning.
 
 | variable | meaning |
 |---|---|
-| `CHEMART_HUB_URL` | the hub to talk to (default `http://127.0.0.1:8000`, a local hub) |
+| `CHEMART_HUB_URL` | the hub to talk to (default `https://marcotuc.github.io/chemart-hub`, the public hub; `http://127.0.0.1:8000` for one you run with `chemart-hub serve`) |
 | `CHEMART_HOME` | cache and credentials (default `~/.cache/chemart`) |
 | `CHEMART_HUB_TOKEN` | a token, overriding the one saved by `chemart login` |
 | `CHEMART_HUB_OFFLINE=1` | never touch the network; use the cache only |
+
+## A hub on GitHub Pages
+
+A hub does not need a server. It can be a GitHub repository, the
+**registry**, from which a workflow builds a static site on GitHub Pages:
+the same pages as a live hub, served as plain files, free. Contributions are
+pull requests; when one is merged, the site rebuilds.
+
+| | a live hub (`chemart-hub serve`) | a hub on GitHub Pages |
+|---|---|---|
+| where repos live | the hub's database and file store | `repos/<namespace>/<name>/` folders in the registry |
+| sharing | `chemart push` uploads | `chemart push` opens a pull request |
+| accounts | hub accounts and tokens | GitHub accounts; organisations in `namespaces.yaml` |
+| checks | on upload | on every pull request (`validate.yml`) |
+| revisions | one per push | one per merged commit that changed the folder |
+| likes, downloads, browser editing, admin panel | yes | no |
+
+Loading is the same on both. Point the client at the site and nothing else
+changes; it recognises a static hub by its `hub.json`:
+
+```bash
+export CHEMART_HUB_URL=https://you.github.io/chemart-hub
+```
+
+**Sharing** runs `chemart push` / `push_to_hub` as usual. With the
+[GitHub CLI](https://cli.github.com/) signed in (`gh auth login`), chemart
+forks the registry, commits your folder on a new branch and opens the pull
+request. Without it, it writes the folder into `./chemart-pull-request/` and
+prints the steps. Your namespace is your GitHub login.
+
+**Starting a registry:**
+
+```bash
+uv sync --all-packages
+uv run --package chemart-hub chemart-hub init-registry chemart-hub \
+    --owner <your GitHub login> --site-url https://<you>.github.io/chemart-hub
+cd chemart-hub && git init -b main && git add -A && git commit -m "Start the hub"
+# create the GitHub repository, push, then Settings > Pages > Source: GitHub Actions
+```
+
+That writes a README, a contributing guide, `namespaces.yaml` (you are the
+first maintainer), `site.yaml`, the official shelf under `repos/chemart/`, and
+three workflows:
+
+- **validate**: on every pull request, `chemart-hub validate-pr` checks that the
+  changed repos are valid, that chemistries pass `chemart check` (running the
+  contributed code on a throwaway runner), and that the author changed only
+  their own namespace or an organisation that lists them.
+- **publish**: on every push to the default branch, `chemart-hub build-static`
+  builds the site and deploys it to Pages. It loads the registry's history into
+  a throwaway hub and saves every public page of the real app, so each commit
+  that changed a repo becomes a revision with a stable id, and a pinned
+  `revision=` keeps loading the same files.
+- **sync-official**: weekly, `chemart-hub sync-official` regenerates
+  `repos/chemart/` from the chemart library (archived entries excluded) and
+  opens a pull request if anything changed.
+
+To try a build locally:
+
+```bash
+uv run --package chemart-hub chemart-hub build-static ./chemart-hub ./site \
+    --site-url http://127.0.0.1:8765/chemart-hub --registry-repo you/chemart-hub
+mkdir -p serve && ln -s "$PWD/site" serve/chemart-hub
+python -m http.server 8765 --directory serve       # http://127.0.0.1:8765/chemart-hub/
+```
 
 ## Running a hub
 

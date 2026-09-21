@@ -1,0 +1,5 @@
+# The workflows check Chemart out here and build the site here.
+.chemart/
+_site/
+chemart-pull-request/
+__pycache__/
