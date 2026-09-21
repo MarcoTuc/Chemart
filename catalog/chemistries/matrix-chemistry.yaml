@@ -18,6 +18,7 @@ chemistries:
   family: core
   kind: generator
   constructive: true
+  network: generated
   S:
     repr: "binary strings of length N, N a perfect square, named by the integer they encode (s(5) = (1,0,1,0)); |S| = 2^N - 1 (the all-zero 'destructor' s(0) is excluded from reacting)"
     definition: implicit

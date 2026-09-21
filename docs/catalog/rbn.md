@@ -50,6 +50,7 @@ organization-computing uses the same two-species-per-variable encoding.
 |---|---|
 | **family** | evolutionary-dynamics |
 | **kind** | generator |
+| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
 | **constructive** | no — fixed species set |
 | **fidelity** | `reconstructed` — built from the original papers listed under *References* |
 | **book** | 18.4.2; subsymbolic AC 10.7.3 |

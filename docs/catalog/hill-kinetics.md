@@ -50,6 +50,7 @@ networks](rbn.md) are models of that coarser, purely on/off kind.
 |---|---|
 | **family** | systems-biology |
 | **kind** | generator |
+| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
 | **constructive** | no — fixed species set |
 | **fidelity** | `book+decisions` — the book left gaps; each filled choice is listed under *Implementation decisions* |
 | **book** | 18.2.2; used by the Repressilator 19.3.2 |

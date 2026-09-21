@@ -6,139 +6,140 @@
 Tier column: **T** topology, **K** kinetics (the chemistry itself prescribes rates or a rate law), **H** thermodynamics (energies and/or detailed balance). Status column: the fidelity of the implemented generator, or `todo (<book readiness>)`.
 
 - implemented: **70** of 70 (book: 3, book+decisions: 19, reconstructed: 48)
+- network given (a written, formula-built or sampled network): **29**; generated (the output of the chemistry's algorithm): **41**
 - constructive (open, growing species set): **41**
 - carry their own kinetics: **29**; carry energetics: **6**
 
 
 ## application
 
-| id | name | kind | constructive | tier | status | book |
-|---|---|---|---|---|---|---|
-| `acgp` | Algorithmic Chemistry GP (ACGP) | generator | no | T | book+decisions | 16.6 |
-| `analog-function-crn` | Analog computation of algebraic functions with concentrations | generator | no | TK | book+decisions | 17.4.3 |
-| `brusselator` | Brusselator | generator | no | TK | book | 17.4.2, 19.3 |
-| `ccm` | Chemical Casting Model (CCM) | generator | no | T | reconstructed | 17.2.2 |
-| `disperser` | Chemical disperser (load balancing) | generator | no | TK | book+decisions | 17.3.1 |
-| `fraglets` | Fraglets | generator | yes | T | reconstructed | 16.2.1, 17.3.1 |
-| `metabolic-robot-controller` | Metabolic / artificial biochemical network robot controllers | generator | no | TK | reconstructed | 16.1.3 |
-| `molecular-tsp` | Molecular Traveling Salesman | generator | yes | T | reconstructed | 17.2.1 |
-| `music-ac` | Algorithmic chemistry for music composition | generator | yes | T | reconstructed | 16.4 |
-| `okamoto-switch` | Okamoto's biochemical switch | generator | no | TK | book+decisions | 17.4.1 |
-| `proof-ac` | Artificial chemistry as a proof search system | generator | yes | T | reconstructed | 16.5 |
+| id | name | kind | network | constructive | tier | status | book |
+|---|---|---|---|---|---|---|---|
+| `acgp` | Algorithmic Chemistry GP (ACGP) | generator | given | no | T | book+decisions | 16.6 |
+| `analog-function-crn` | Analog computation of algebraic functions with concentrations | generator | given | no | TK | book+decisions | 17.4.3 |
+| `brusselator` | Brusselator | generator | given | no | TK | book | 17.4.2, 19.3 |
+| `ccm` | Chemical Casting Model (CCM) | generator | generated | no | T | reconstructed | 17.2.2 |
+| `disperser` | Chemical disperser (load balancing) | generator | given | no | TK | book+decisions | 17.3.1 |
+| `fraglets` | Fraglets | generator | generated | yes | T | reconstructed | 16.2.1, 17.3.1 |
+| `metabolic-robot-controller` | Metabolic / artificial biochemical network robot controllers | generator | given | no | TK | reconstructed | 16.1.3 |
+| `molecular-tsp` | Molecular Traveling Salesman | generator | generated | yes | T | reconstructed | 17.2.1 |
+| `music-ac` | Algorithmic chemistry for music composition | generator | generated | yes | T | reconstructed | 16.4 |
+| `okamoto-switch` | Okamoto's biochemical switch | generator | given | no | TK | book+decisions | 17.4.1 |
+| `proof-ac` | Artificial chemistry as a proof search system | generator | generated | yes | T | reconstructed | 16.5 |
 
 ## automata
 
-| id | name | kind | constructive | tier | status | book |
-|---|---|---|---|---|---|---|
-| `automata-reaction` | Automata reaction (32-bit binary string chemistry) | generator | yes | TK | reconstructed | 10.6.1 |
-| `bondable-ca` | Bondable Cellular Automata (BCA) | generator | yes | T | book+decisions | 10.7.3 |
-| `ca-embedded-particles` | Embedded particles in cellular automata | analysis | no | T | reconstructed | 10.7.2 |
-| `ikegami-hashimoto` | Machine-tape chemistry | generator | yes | TK | reconstructed | 10.5.4 |
-| `laing-molecular-machines` | Laing's artificial molecular machines | generator | yes | T | book+decisions | 10.5.1 |
-| `mccaskill-polymer-tm` | Polymers as Turing machines / pattern processing chemistry | generator | yes | T | reconstructed | 10.5.3 |
-| `sr-loops` | Self-replicating loops in cellular automata | generator | yes | T | reconstructed | 10.4, 10.7.2 |
-| `typogenetics` | Typogenetics | generator | yes | T | reconstructed | 10.5.2 |
+| id | name | kind | network | constructive | tier | status | book |
+|---|---|---|---|---|---|---|---|
+| `automata-reaction` | Automata reaction (32-bit binary string chemistry) | generator | generated | yes | TK | reconstructed | 10.6.1 |
+| `bondable-ca` | Bondable Cellular Automata (BCA) | generator | generated | yes | T | book+decisions | 10.7.3 |
+| `ca-embedded-particles` | Embedded particles in cellular automata | analysis | generated | no | T | reconstructed | 10.7.2 |
+| `ikegami-hashimoto` | Machine-tape chemistry | generator | generated | yes | TK | reconstructed | 10.5.4 |
+| `laing-molecular-machines` | Laing's artificial molecular machines | generator | generated | yes | T | book+decisions | 10.5.1 |
+| `mccaskill-polymer-tm` | Polymers as Turing machines / pattern processing chemistry | generator | generated | yes | T | reconstructed | 10.5.3 |
+| `sr-loops` | Self-replicating loops in cellular automata | generator | generated | yes | T | reconstructed | 10.4, 10.7.2 |
+| `typogenetics` | Typogenetics | generator | generated | yes | T | reconstructed | 10.5.2 |
 
 ## bio-inspired
 
-| id | name | kind | constructive | tier | status | book |
-|---|---|---|---|---|---|---|
-| `conrad-enzymatic` | Conrad's lock-and-key enzymatic / self-assembly processor | wet | no | T | reconstructed | 11.2.1 |
-| `farmer-immune` | Bitstring immune system model (idiotypic network) | generator | yes | TK | book+decisions | 11.2.2 |
-| `mcs-bl` | Molecular Classifier System (MCS.bl) | generator | yes | TK | reconstructed | 11.1.1 |
-| `sac` | SAC (string-based artificial chemistry with cells) | generator | yes | T | reconstructed | 11.1.3 |
-| `stringmol` | Stringmol | generator | yes | T | reconstructed | 11.1.2 |
+| id | name | kind | network | constructive | tier | status | book |
+|---|---|---|---|---|---|---|---|
+| `conrad-enzymatic` | Conrad's lock-and-key enzymatic / self-assembly processor | wet | given | no | T | reconstructed | 11.2.1 |
+| `farmer-immune` | Bitstring immune system model (idiotypic network) | generator | given | yes | TK | book+decisions | 11.2.2 |
+| `mcs-bl` | Molecular Classifier System (MCS.bl) | generator | generated | yes | TK | reconstructed | 11.1.1 |
+| `sac` | SAC (string-based artificial chemistry with cells) | generator | generated | yes | T | reconstructed | 11.1.3 |
+| `stringmol` | Stringmol | generator | generated | yes | T | reconstructed | 11.1.2 |
 
 ## core
 
-| id | name | kind | constructive | tier | status | book |
-|---|---|---|---|---|---|---|
-| `chameleon` | Colored chameleon chemistry | generator | no | TK | book | 2.5.1 |
-| `high-order-chem` | High-order chemistry (rules as molecules) | framework | yes | T | book+decisions | appendix: Writing Your Own Artificial Chemistry in Python, 'A High-Order Chemistry' (figure 3, divrule) |
-| `matrix-chemistry` | Matrix chemistry | generator | yes | TK | book+decisions | chapter 3 |
-| `prime-number-chemistry` | Prime number (number-division) chemistry | generator | yes | T | book+decisions | 1 (eqs. 1.4-1.5), 2.5.2, appendix (NumberChem.py, NumberChemHO divrule) |
+| id | name | kind | network | constructive | tier | status | book |
+|---|---|---|---|---|---|---|---|
+| `chameleon` | Colored chameleon chemistry | generator | given | no | TK | book | 2.5.1 |
+| `high-order-chem` | High-order chemistry (rules as molecules) | framework | generated | yes | T | book+decisions | appendix: Writing Your Own Artificial Chemistry in Python, 'A High-Order Chemistry' (figure 3, divrule) |
+| `matrix-chemistry` | Matrix chemistry | generator | generated | yes | TK | book+decisions | chapter 3 |
+| `prime-number-chemistry` | Prime number (number-division) chemistry | generator | generated | yes | T | book+decisions | 1 (eqs. 1.4-1.5), 2.5.2, appendix (NumberChem.py, NumberChemHO divrule) |
 
 ## evolutionary-dynamics
 
-| id | name | kind | constructive | tier | status | book |
-|---|---|---|---|---|---|---|
-| `jain-krishna` | Jain-Krishna autocatalytic set model | generator | yes | TK | book+decisions | 15.2.2, 15.2.3 |
-| `random-catalytic-networks` | Random catalytic reaction networks | generator | no | TK | book+decisions | 7.2.9 |
-| `rbn` | Random Boolean Networks (RBN) and RBN World | generator | no | T | reconstructed | 18.4.2 |
+| id | name | kind | network | constructive | tier | status | book |
+|---|---|---|---|---|---|---|---|
+| `jain-krishna` | Jain-Krishna autocatalytic set model | generator | generated | yes | TK | book+decisions | 15.2.2, 15.2.3 |
+| `random-catalytic-networks` | Random catalytic reaction networks | generator | given | no | TK | book+decisions | 7.2.9 |
+| `rbn` | Random Boolean Networks (RBN) and RBN World | generator | given | no | T | reconstructed | 18.4.2 |
 
 ## network
 
-| id | name | kind | constructive | tier | status | book |
-|---|---|---|---|---|---|---|
-| `bigan-conservative-crn` | Conservative random chemical reaction networks | generator | no | TKH | reconstructed | 11.3.2 |
-| `nac` | Network Artificial Chemistry (NAC) | generator | yes | T | reconstructed | 11.3.3 |
-| `toychem` | ToyChem (graph-based toy model of chemistry) | generator | yes | TKH | reconstructed | 11.3.1 |
+| id | name | kind | network | constructive | tier | status | book |
+|---|---|---|---|---|---|---|---|
+| `bigan-conservative-crn` | Conservative random chemical reaction networks | generator | given | no | TKH | reconstructed | 11.3.2 |
+| `nac` | Network Artificial Chemistry (NAC) | generator | generated | yes | T | reconstructed | 11.3.3 |
+| `toychem` | ToyChem (graph-based toy model of chemistry) | generator | generated | yes | TKH | reconstructed | 11.3.1 |
 
 ## non-chemical
 
-| id | name | kind | constructive | tier | status | book |
-|---|---|---|---|---|---|---|
-| `mechanical-self-assembly` | Mechanical self-assembly (Hosokawa) | generator | no | TK | book+decisions | 20.1 |
-| `nuclear-reaction-networks` | Nuclear reaction networks | generator | no | T | book+decisions | 20.2 |
-| `soas` | Self-Organizing Assembly Systems (SOAS) | generator | yes | T | reconstructed | 20.1 |
+| id | name | kind | network | constructive | tier | status | book |
+|---|---|---|---|---|---|---|---|
+| `mechanical-self-assembly` | Mechanical self-assembly (Hosokawa) | generator | given | no | TK | book+decisions | 20.1 |
+| `nuclear-reaction-networks` | Nuclear reaction networks | generator | given | no | T | book+decisions | 20.2 |
+| `soas` | Self-Organizing Assembly Systems (SOAS) | generator | generated | yes | T | reconstructed | 20.1 |
 
 ## origin-of-life
 
-| id | name | kind | constructive | tier | status | book |
-|---|---|---|---|---|---|---|
-| `autopoiesis-vmu` | Varela-Maturana-Uribe autopoiesis model | generator | no | T | reconstructed | 6.1.5 |
-| `bagley-farmer` | Bagley & Farmer autocatalytic metabolism | generator | yes | TKH | reconstructed | 6.3.1, 7.3.1 |
-| `chemoton` | Chemoton | generator | no | TK | reconstructed | 6.1.4 |
-| `gard` | GARD (Graded Autocatalysis Replication Domain) | generator | no | TK | reconstructed | 6.2.4 |
-| `kauffman-autocatalytic-sets` | Kauffman autocatalytic sets (binary polymer model) | generator | yes | T | book+decisions | 6.3.1 |
-| `ono-ikegami-protocell` | Ono & Ikegami autopoietic protocells | generator | no | TH | reconstructed | 6.3.2 |
-| `raf` | RAF sets (reflexively autocatalytic, F-generated) | analysis | no | T | reconstructed | 6.3.1 |
+| id | name | kind | network | constructive | tier | status | book |
+|---|---|---|---|---|---|---|---|
+| `autopoiesis-vmu` | Varela-Maturana-Uribe autopoiesis model | generator | given | no | T | reconstructed | 6.1.5 |
+| `bagley-farmer` | Bagley & Farmer autocatalytic metabolism | generator | given | yes | TKH | reconstructed | 6.3.1, 7.3.1 |
+| `chemoton` | Chemoton | generator | given | no | TK | reconstructed | 6.1.4 |
+| `gard` | GARD (Graded Autocatalysis Replication Domain) | generator | given | no | TK | reconstructed | 6.2.4 |
+| `kauffman-autocatalytic-sets` | Kauffman autocatalytic sets (binary polymer model) | generator | given | yes | T | book+decisions | 6.3.1 |
+| `ono-ikegami-protocell` | Ono & Ikegami autopoietic protocells | generator | given | no | TH | reconstructed | 6.3.2 |
+| `raf` | RAF sets (reflexively autocatalytic, F-generated) | analysis | given | no | T | reconstructed | 6.3.1 |
 
 ## rewriting
 
-| id | name | kind | constructive | tier | status | book |
-|---|---|---|---|---|---|---|
-| `alchemy` | AlChemy (lambda-calculus chemistry) | generator | yes | TK | reconstructed | 9.1 |
-| `arms` | ARMS (Abstract Rewriting System on Multisets) | generator | no | T | reconstructed | 9.4 |
-| `brane-calculi` | Brane calculi | formalism | yes | T | reconstructed | 9.7 |
-| `cham` | Chemical Abstract Machine (CHAM) | formalism | yes | T | reconstructed | 9.3 |
-| `combinator-chemistry` | Combinator chemistry | generator | yes | T | reconstructed | 9.8 |
-| `gamma` | Gamma / gamma-calculus | formalism | yes | T | reconstructed | 9.2 |
-| `kappa-calculus` | Kappa calculus | formalism | yes | TK | reconstructed | 9.7 |
-| `l-systems` | L-systems | formalism | yes | T | reconstructed | 9.8 |
-| `mgs` | MGS | formalism | yes | T | reconstructed | 9.6 |
-| `p-systems` | P systems (membrane computing) | formalism | no | T | reconstructed | 9.5 |
-| `reflexive-ac` | Reflexive artificial chemistry | generator | yes | T | reconstructed | 9.8 |
+| id | name | kind | network | constructive | tier | status | book |
+|---|---|---|---|---|---|---|---|
+| `alchemy` | AlChemy (lambda-calculus chemistry) | generator | generated | yes | TK | reconstructed | 9.1 |
+| `arms` | ARMS (Abstract Rewriting System on Multisets) | generator | given | no | T | reconstructed | 9.4 |
+| `brane-calculi` | Brane calculi | formalism | generated | yes | T | reconstructed | 9.7 |
+| `cham` | Chemical Abstract Machine (CHAM) | formalism | generated | yes | T | reconstructed | 9.3 |
+| `combinator-chemistry` | Combinator chemistry | generator | generated | yes | T | reconstructed | 9.8 |
+| `gamma` | Gamma / gamma-calculus | formalism | generated | yes | T | reconstructed | 9.2 |
+| `kappa-calculus` | Kappa calculus | formalism | generated | yes | TK | reconstructed | 9.7 |
+| `l-systems` | L-systems | formalism | generated | yes | T | reconstructed | 9.8 |
+| `mgs` | MGS | formalism | generated | yes | T | reconstructed | 9.6 |
+| `p-systems` | P systems (membrane computing) | formalism | given | no | T | reconstructed | 9.5 |
+| `reflexive-ac` | Reflexive artificial chemistry | generator | generated | yes | T | reconstructed | 9.8 |
 
 ## spatial
 
-| id | name | kind | constructive | tier | status | book |
-|---|---|---|---|---|---|---|
-| `dorin-korb-ecosystem` | Dorin & Korb virtual ecosystem chemistry | generator | yes | TH | reconstructed | 8.2.3 |
-| `flow-ac` | Flow artificial chemistry | generator | no | TK | reconstructed | 11.4.3 |
-| `squirm3` | Squirm3 | generator | yes | T | reconstructed | 11.4.1 |
+| id | name | kind | network | constructive | tier | status | book |
+|---|---|---|---|---|---|---|---|
+| `dorin-korb-ecosystem` | Dorin & Korb virtual ecosystem chemistry | generator | generated | yes | TH | reconstructed | 8.2.3 |
+| `flow-ac` | Flow artificial chemistry | generator | given | no | TK | reconstructed | 11.4.3 |
+| `squirm3` | Squirm3 | generator | generated | yes | T | reconstructed | 11.4.1 |
 
 ## systems-biology
 
-| id | name | kind | constructive | tier | status | book |
-|---|---|---|---|---|---|---|
-| `hill-kinetics` | Hill kinetics (cooperative binding) | generator | no | TK | book+decisions | 18.2.2 |
-| `michaelis-menten` | Michaelis-Menten enzyme kinetics | generator | no | TK | book+decisions | 18.2.1 |
-| `rna-folding-ac` | RNA-folding ribozyme artificial chemistry | generator | yes | TH | reconstructed | 18.1.1 |
-| `smn` | String Metabolic Network (SMN) | generator | yes | T | book+decisions | 18.3.1 |
-| `srsim` | SRSim (rule-based spatial simulator) | framework | yes | TK | reconstructed | 18.3.3 |
-| `synthon` | Synthon artificial chemistry | generator | yes | TK | reconstructed | 18.3.2 |
-| `tominaga-stacked-strings` | Tominaga's stackable-string chemistry | generator | yes | T | reconstructed | 18.3.2 |
+| id | name | kind | network | constructive | tier | status | book |
+|---|---|---|---|---|---|---|---|
+| `hill-kinetics` | Hill kinetics (cooperative binding) | generator | given | no | TK | book+decisions | 18.2.2 |
+| `michaelis-menten` | Michaelis-Menten enzyme kinetics | generator | given | no | TK | book+decisions | 18.2.1 |
+| `rna-folding-ac` | RNA-folding ribozyme artificial chemistry | generator | generated | yes | TH | reconstructed | 18.1.1 |
+| `smn` | String Metabolic Network (SMN) | generator | generated | yes | T | book+decisions | 18.3.1 |
+| `srsim` | SRSim (rule-based spatial simulator) | framework | generated | yes | TK | reconstructed | 18.3.3 |
+| `synthon` | Synthon artificial chemistry | generator | generated | yes | TK | reconstructed | 18.3.2 |
+| `tominaga-stacked-strings` | Tominaga's stackable-string chemistry | generator | generated | yes | T | reconstructed | 18.3.2 |
 
 ## wet
 
-| id | name | kind | constructive | tier | status | book |
-|---|---|---|---|---|---|---|
-| `dna-automaton` | DNA automaton (Benenson-Shapiro) | wet | no | TK | reconstructed | 19.3.1 |
-| `dna-hpp` | Adleman's DNA Hamiltonian Path computation | wet | yes | T | reconstructed | 19.3.1 |
-| `oregonator` | Oregonator (Belousov-Zhabotinsky) | generator | no | TK | book+decisions | 19.3.3 |
-| `repressilator` | Repressilator | generator | no | TK | book | 19.3.2 |
-| `self-propelled-droplets` | Self-propelled oil droplets | wet | no | T | reconstructed | 19.2.5 |
+| id | name | kind | network | constructive | tier | status | book |
+|---|---|---|---|---|---|---|---|
+| `dna-automaton` | DNA automaton (Benenson-Shapiro) | wet | generated | no | TK | reconstructed | 19.3.1 |
+| `dna-hpp` | Adleman's DNA Hamiltonian Path computation | wet | generated | yes | T | reconstructed | 19.3.1 |
+| `oregonator` | Oregonator (Belousov-Zhabotinsky) | generator | given | no | TK | book+decisions | 19.3.3 |
+| `repressilator` | Repressilator | generator | given | no | TK | book | 19.3.2 |
+| `self-propelled-droplets` | Self-propelled oil droplets | wet | given | no | T | reconstructed | 19.2.5 |
 
 ## Archive
 
@@ -147,38 +148,38 @@ Not part of the chemistry catalog: left out of listings and of the LLM tools, bu
 
 ### artificial-life (5): artificial life rather than artificial chemistry
 
-| id | name | kind | constructive | tier | status | book |
-|---|---|---|---|---|---|---|
-| `avida` | Avida | generator | yes | T | reconstructed | 10.7.1 |
-| `corewar` | Core War / Redcode | generator | yes | T | reconstructed | 10.6.2 |
-| `coreworld` | Coreworld (VENUS) | generator | yes | T | reconstructed | 10.6.3 |
-| `swarm-chemistry` | Swarm Chemistry | generator | no | TK | reconstructed | 11.4.2 |
-| `tierra` | Tierra | generator | yes | T | reconstructed | 10.6.4 |
+| id | name | kind | network | constructive | tier | status | book |
+|---|---|---|---|---|---|---|---|
+| `avida` | Avida | generator | generated | yes | T | reconstructed | 10.7.1 |
+| `corewar` | Core War / Redcode | generator | generated | yes | T | reconstructed | 10.6.2 |
+| `coreworld` | Coreworld (VENUS) | generator | generated | yes | T | reconstructed | 10.6.3 |
+| `swarm-chemistry` | Swarm Chemistry | generator | given | no | TK | reconstructed | 11.4.2 |
+| `tierra` | Tierra | generator | generated | yes | T | reconstructed | 10.6.4 |
 
 ### pruned (23): set aside from the catalog
 
-| id | name | kind | constructive | tier | status | book |
-|---|---|---|---|---|---|---|
-| `aevol` | Aevol | generator | yes | T | reconstructed | 18.1.2 |
-| `arn` | Artificial Regulatory Network (ARN) | generator | no | TK | reconstructed | 11.3.4 |
-| `bnc-cell` | BNC (bond-number chemistry) cell model | generator | no | TK | reconstructed | 18.3.1 |
-| `cpm-grn-evodevo` | Cellular Potts + GRN evo-devo models | framework | no | TH | reconstructed | 18.6.1 |
-| `dimerization` | Reversible dimerization | generator | no | TK | book | 2.2.4, appendix (Dimer.py) |
-| `ecolab` | Ecolab | generator | yes | TK | reconstructed | 8.2.3 |
-| `energy-gated-collision` | Arrhenius-gated collision algorithm | analysis | yes | TKH | book+decisions | 18.3.3 |
-| `evolve-series` | EVOLVE virtual ecosystems | generator | yes | TH | book+decisions | 8.2.3 |
-| `french-flag` | French flag model (positional information) | generator | no | T | book+decisions | 18.6 |
-| `hbcb-psd` | HBCB / PSD degradation-and-reuse chemistry | generator | no | TH | book+decisions | 18.3.2 |
-| `isologous-diversification` | Isologous diversification | generator | no | TK | reconstructed | 18.5, 18.6 |
-| `logistic-chemistry` | Logistic growth ('replicate and fight') | generator | no | TK | book+decisions | 7.2.4 |
-| `lotka-volterra` | Lotka-Volterra | generator | no | TK | book+decisions | 7.2.8 |
-| `n-economy` | N-economy (natural number economy) | generator | yes | T | book+decisions | 20.3 |
-| `naming-game-ac` | Naming game as an artificial chemistry | generator | no | TK | book+decisions | 16.3.3 |
-| `nk-landscape` | Kauffman NK model | analysis | no | TK | book+decisions | 18.4.1 |
-| `organization-computing` | Computing with chemical organizations | generator | no | T | book+decisions | 17.3.3 |
-| `quasispecies` | Quasispecies equation | generator | no | TK | book+decisions | 7.2.7 |
-| `replication-death` | Replication and death | generator | no | TK | book+decisions | 7.2.1 |
-| `replicator-equation` | Replicator equation (evolutionary game dynamics) | generator | no | TK | book+decisions | 7.2.8 |
-| `selection-equation` | Selection equation under a dilution flow | generator | no | TK | book+decisions | 7.2.5 |
-| `social-communication-ac` | Artificial chemistry of social communication | generator | no | T | reconstructed | 20.4 |
-| `urdar` | Urdar | generator | yes | TH | reconstructed | 8.2.3 |
+| id | name | kind | network | constructive | tier | status | book |
+|---|---|---|---|---|---|---|---|
+| `aevol` | Aevol | generator | generated | yes | T | reconstructed | 18.1.2 |
+| `arn` | Artificial Regulatory Network (ARN) | generator | given | no | TK | reconstructed | 11.3.4 |
+| `bnc-cell` | BNC (bond-number chemistry) cell model | generator | given | no | TK | reconstructed | 18.3.1 |
+| `cpm-grn-evodevo` | Cellular Potts + GRN evo-devo models | framework | generated | no | TH | reconstructed | 18.6.1 |
+| `dimerization` | Reversible dimerization | generator | given | no | TK | book | 2.2.4, appendix (Dimer.py) |
+| `ecolab` | Ecolab | generator | generated | yes | TK | reconstructed | 8.2.3 |
+| `energy-gated-collision` | Arrhenius-gated collision algorithm | analysis | given | yes | TKH | book+decisions | 18.3.3 |
+| `evolve-series` | EVOLVE virtual ecosystems | generator | generated | yes | TH | book+decisions | 8.2.3 |
+| `french-flag` | French flag model (positional information) | generator | given | no | T | book+decisions | 18.6 |
+| `hbcb-psd` | HBCB / PSD degradation-and-reuse chemistry | generator | given | no | TH | book+decisions | 18.3.2 |
+| `isologous-diversification` | Isologous diversification | generator | given | no | TK | reconstructed | 18.5, 18.6 |
+| `logistic-chemistry` | Logistic growth ('replicate and fight') | generator | given | no | TK | book+decisions | 7.2.4 |
+| `lotka-volterra` | Lotka-Volterra | generator | given | no | TK | book+decisions | 7.2.8 |
+| `n-economy` | N-economy (natural number economy) | generator | given | yes | T | book+decisions | 20.3 |
+| `naming-game-ac` | Naming game as an artificial chemistry | generator | given | no | TK | book+decisions | 16.3.3 |
+| `nk-landscape` | Kauffman NK model | analysis | given | no | TK | book+decisions | 18.4.1 |
+| `organization-computing` | Computing with chemical organizations | generator | given | no | T | book+decisions | 17.3.3 |
+| `quasispecies` | Quasispecies equation | generator | given | no | TK | book+decisions | 7.2.7 |
+| `replication-death` | Replication and death | generator | given | no | TK | book+decisions | 7.2.1 |
+| `replicator-equation` | Replicator equation (evolutionary game dynamics) | generator | given | no | TK | book+decisions | 7.2.8 |
+| `selection-equation` | Selection equation under a dilution flow | generator | given | no | TK | book+decisions | 7.2.5 |
+| `social-communication-ac` | Artificial chemistry of social communication | generator | generated | no | T | reconstructed | 20.4 |
+| `urdar` | Urdar | generator | generated | yes | TH | reconstructed | 8.2.3 |

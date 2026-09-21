@@ -51,6 +51,7 @@ without that cooperativity.
 |---|---|
 | **family** | wet |
 | **kind** | generator |
+| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
 | **constructive** | no — fixed species set |
 | **fidelity** | `book` — implemented exactly as the book specifies |
 | **book** | 19.3.2; appendix (Repressilator.py) |

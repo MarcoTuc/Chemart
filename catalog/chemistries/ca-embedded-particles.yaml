@@ -18,6 +18,7 @@ chemistries:
   family: automata
   kind: analysis
   constructive: false
+  network: generated
   S:
     repr: >
       A molecule is a *particle*: a spatially localised, temporally periodic

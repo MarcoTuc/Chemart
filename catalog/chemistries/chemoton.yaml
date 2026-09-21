@@ -17,6 +17,7 @@ chemistries:
   family: origin-of-life
   kind: generator
   constructive: false
+  network: given
   S:
     repr: "A1..A5 (metabolic cycle), X (nutrient), Y (waste), V (template monomer), pV0..pV(N-1) (double-stranded templates by replication stage), T0 (membrane precursor), T* (activated precursor), T (membrane molecule), R (polycondensation by-product), S (membrane surface)"
     definition: explicit

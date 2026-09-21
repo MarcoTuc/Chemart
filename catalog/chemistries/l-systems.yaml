@@ -18,6 +18,7 @@ chemistries:
   family: rewriting
   kind: formalism
   constructive: true
+  network: generated
   S:
     repr: >
       words over an alphabet whose symbols are one character plus an optional _subscript

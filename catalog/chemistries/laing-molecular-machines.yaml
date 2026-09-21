@@ -17,6 +17,7 @@ chemistries:
   family: automata
   kind: generator
   constructive: true
+  network: generated
   S:
     repr: "strings of constituents in two forms: passive binary tapes 't:0110' and active machines 'm:CT1.W1.H.TT1' (a folded chain of instructions; the fold joining CT<k> to TT<k> is the shared label). Species structure is 'passive' or 'active: ' followed by the instructions with the index each CT jumps to"
     definition: implicit

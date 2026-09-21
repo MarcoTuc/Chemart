@@ -49,6 +49,7 @@ yet large, so every reaction can be listed and every result checked.
 |---|---|
 | **family** | core |
 | **kind** | generator |
+| **network** | generated — the network is the output of the chemistry's algorithm |
 | **constructive** | yes — the species set grows at run time |
 | **fidelity** | `book+decisions` — the book left gaps; each filled choice is listed under *Implementation decisions* |
 | **book** | chapter 3; revisited in 12.5.2, 13.2 |

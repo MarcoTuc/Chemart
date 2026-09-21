@@ -50,6 +50,7 @@ worked application of the [CHAM](cham.md), much as the
 |---|---|
 | **family** | non-chemical |
 | **kind** | generator |
+| **network** | generated — the network is the output of the chemistry's algorithm |
 | **constructive** | yes — the species set grows at run time |
 | **fidelity** | `reconstructed` — built from the original papers listed under *References* |
 | **book** | 20.1 |

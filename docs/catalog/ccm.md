@@ -42,6 +42,7 @@ applications, under "Search and Optimization Algorithms Inspired by Chemistry"
 |---|---|
 | **family** | application |
 | **kind** | generator |
+| **network** | generated — the network is the output of the chemistry's algorithm |
 | **constructive** | no — fixed species set |
 | **fidelity** | `reconstructed` — built from the original papers listed under *References* |
 | **book** | 17.2.2 |

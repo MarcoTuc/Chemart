@@ -17,6 +17,7 @@ chemistries:
   family: core
   kind: framework
   constructive: true
+  network: generated
   S:
     repr: "two multisets: data molecules (JSON integers or lists; species n<k> or compact JSON text such as [0,3,1,2]) and rule molecules (species rule:<name>, structure the rule text, e.g. divrule(m1, m2))"
     definition: implicit

@@ -17,6 +17,7 @@ chemistries:
   archived: pruned
   kind: generator
   constructive: false
+  network: given
   S: {repr: "one meaning molecule M, word molecules S_j and adaptor/code molecules C_j for j = 1..N_s", definition: explicit}
   R:
     definition: explicit

@@ -52,6 +52,7 @@ the book defines, is delivered next to the network.
 |---|---|
 | **family** | evolutionary-dynamics |
 | **kind** | analysis |
+| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
 | **constructive** | no — fixed species set |
 | **fidelity** | `book+decisions` — the book left gaps; each filled choice is listed under *Implementation decisions* |
 | **book** | 18.4.1; appendix (NKlandscape.py) |

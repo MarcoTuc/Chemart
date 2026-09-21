@@ -17,6 +17,7 @@ chemistries:
   family: wet
   kind: wet
   constructive: true
+  network: generated
   S:
     repr: >
       single-stranded DNA oligonucleotides, Species.structure carrying the

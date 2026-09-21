@@ -18,6 +18,7 @@ chemistries:
   family: automata
   kind: generator
   constructive: true
+  network: generated
   S:
     repr: >
       An atom is a 1-d binary CA of width w with periodic (closed) boundaries;

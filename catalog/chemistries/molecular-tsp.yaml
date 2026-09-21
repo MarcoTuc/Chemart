@@ -17,6 +17,7 @@ chemistries:
   family: application
   kind: generator
   constructive: true
+  network: generated
   S:
     repr: "data strings s = (s0, s1..sN): s0 = l(s) the tour length, s1..sN a permutation of the N cities; species id t<cities joined by dots> of the canonical cycle (starting at city 0, towards the smaller neighbour), structure '(l, s1, ..., sN)'; plus the machine molecules E-machine, C-machine, I-machine, R-machine"
     definition: implicit

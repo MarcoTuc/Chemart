@@ -15,6 +15,7 @@ Two reactions - birth and death - and nothing else. Its value is as a floor: exp
 |---|---|
 | **family** | evolutionary-dynamics |
 | **kind** | generator |
+| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
 | **constructive** | no — fixed species set |
 | **fidelity** | `book+decisions` — the book left gaps; each filled choice is listed under *Implementation decisions* |
 | **book** | 7.2.1 |

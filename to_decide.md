@@ -3,6 +3,15 @@
 Open questions parked for later. Each one blocks a small part of the
 catalog, never the library core.
 
+## 0. Settled: is the network given or generated?
+
+Not to be confused with section 1. Every entry now records `network: given`
+(the chemistry is a reaction network, instantiated from its parameters) or
+`network: generated` (the network is the output of the chemistry's
+algorithm). `catalog/NETWORKS.md` gives the reasoning for all of them and
+marks the borderline calls. Section 1 asks a different question, whether
+the rule is encoded in the molecules themselves, and stays open.
+
 ## 1. Generative vs algorithmic: hybrid rulings
 
 **Criterion (agreed 2026-09-06).** Is the chemistry a *fixed reaction rule*

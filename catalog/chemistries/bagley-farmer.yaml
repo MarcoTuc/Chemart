@@ -17,6 +17,7 @@ chemistries:
   family: origin-of-life
   kind: generator
   constructive: true
+  network: given
   S:
     repr: "polymers = strings over an alphabet of 1-4 letters (a, b for the paper's binary chemistry) up to max_length; water H; with saturation, one bound pool x_bound per polymer (sum of the enzyme complexes x is part of, eq. 26)"
     definition: implicit

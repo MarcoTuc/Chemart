@@ -48,6 +48,7 @@ with molecules that carry no information at all.
 |---|---|
 | **family** | application |
 | **kind** | generator |
+| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
 | **constructive** | no — fixed species set |
 | **fidelity** | `book+decisions` — the book left gaps; each filled choice is listed under *Implementation decisions* |
 | **book** | 17.3.1; appendix (Disperser.py) |

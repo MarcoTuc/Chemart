@@ -15,6 +15,7 @@ chemistries:
   archived: pruned
   kind: generator
   constructive: false
+  network: given
   S: {repr: "one species X", definition: explicit}
   R:
     definition: explicit

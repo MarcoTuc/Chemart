@@ -17,6 +17,7 @@ chemistries:
   family: evolutionary-dynamics
   kind: generator
   constructive: false
+  network: given
   S:
     repr: "RBN: two species per node, x{i}_0 and x{i}_1 (node i off / on). RBN World: an atom is a bonding RBN (bRBN: an RBN plus 2 bonding sites); a molecule is a tree of bRBNs joined at bonding sites, and each tree level carries its own node states"
     definition: implicit
