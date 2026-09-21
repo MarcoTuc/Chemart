@@ -26,6 +26,11 @@ packages = ["chemart"]
 [tool.hatch.build.targets.wheel.force-include]
 "catalog/chemistries" = "chemart/_catalog"
 
+[tool.uv]
+# `uv sync` / `uv run` include the test and docs tools, so `uv run mkdocs serve`
+# works out of the box. The notebooks group stays opt-in: --group notebooks.
+default-groups = ["dev", "docs"]
+
 [tool.uv.workspace]
 # hub/ is the Chemart Hub server; the library above never depends on it.
 members = ["hub"]

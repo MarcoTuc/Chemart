@@ -1,7 +1,8 @@
 # Comparing and analysing
 
 The reason unrelated models share one record is so you can ask questions
-across them.
+across them. For the full list of measures you can compare chemistries by,
+see [Measures for comparison](measures.md).
 
 ## Structural profiles
 

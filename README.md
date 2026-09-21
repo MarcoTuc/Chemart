@@ -49,9 +49,10 @@ print(net.to_text())
 by name: `chemart.generate_network("ada/my-chem", trust_remote_code=True)`.
 See [Chemart Hub](#chemart-hub).
 
-📖 **Full documentation:** a browsable site with a page for every chemistry.
-Run `uv run mkdocs serve` and open <http://127.0.0.1:8000> — see
-[Documentation](#documentation) for publishing it.
+📖 **Full documentation:** <https://marcotuc.github.io/Chemart/>, a browsable
+site with a page for every chemistry. To browse it locally, run
+`uv run mkdocs serve` and open <http://127.0.0.1:8000>; see
+[Documentation](#documentation).
 
 ---
 
@@ -289,21 +290,11 @@ uv run mkdocs build                          # static site into site/
 
 ### Publishing to GitHub Pages
 
-This repository has no remote yet. Once it has one:
-
-```bash
-git remote add origin git@github.com:<you>/<repo>.git
-git push -u origin HEAD
-```
-
-Then in the repository's **Settings → Pages**, set *Source* to **GitHub
-Actions**. The bundled [workflow](.github/workflows/docs.yml) regenerates the
-catalog pages, builds with `--strict` and publishes on every push to `main` or
-`chemart-library`; the site lands at `https://<you>.github.io/<repo>/`.
-
-`uv run mkdocs gh-deploy` also works and pushes a built site to a `gh-pages`
-branch, but the workflow is preferable — it regenerates the per-chemistry pages
-from the catalog first, so the site cannot fall behind the library.
+The site is published at <https://marcotuc.github.io/Chemart/>. The
+[workflow](.github/workflows/docs.yml) regenerates the catalog pages, builds
+with `--strict` and deploys on every push to `main` or `chemart-library`, so
+merging is publishing. `uv sync` installs `mkdocs` by default (the `docs`
+dependency group is in `default-groups`).
 
 ## Repository layout
 
