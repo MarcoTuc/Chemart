@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ owner.name }} · Chemart Hub{% endblock %}
+{% block body %}
+<div class="wrap" style="max-width:720px;margin:34px auto 60px">
+  <h1>Edit {{ 'organisation' if owner.is_org else 'profile' }}: <a class="mono" href="/{{ owner.name }}">{{ owner.name }}</a></h1>
+  <form class="panel" action="/settings/profile/{{ owner.name }}" method="post">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label for="fullname">Display name</label>
+    <input id="fullname" name="fullname" type="text" value="{{ owner.fullname or '' }}" maxlength="100" style="width:100%">
+    {% if not owner.is_org %}
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" value="{{ owner.email or '' }}" style="width:100%">
+    {% endif %}
+    <label for="bio">Bio <span class="faint" style="font-weight:400">(markdown)</span></label>
+    <textarea id="bio" name="bio" rows="6" maxlength="2000" style="width:100%">{{ owner.bio or '' }}</textarea>
+    <button class="btn-primary" type="submit" style="margin-top:16px">Save</button>
+  </form>
+  {% if owner.is_org %}
+  <div class="panel">
+    <h2>Members</h2>
+    <p class="muted small" style="margin-top:0">Members can push to every repo of <code>{{ owner.name }}</code>.</p>
+    <table>
+      <tbody>
+      {% for m in members %}
+        <tr><td><a href="/{{ m }}">{{ m }}</a></td><td style="text-align:right">
+          <form class="inline" action="/settings/profile/{{ owner.name }}/members" method="post">
+            <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="user" value="{{ m }}"><input type="hidden" name="action" value="remove">
+            <button class="btn btn-sm" type="submit">Remove</button>
+          </form></td></tr>
+      {% else %}<tr><td class="muted">No members.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+    <form class="inline-form" action="/settings/profile/{{ owner.name }}/members" method="post" style="margin-top:12px">
+      <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="action" value="add">
+      <div><label for="user">Add a member</label><input id="user" name="user" type="text" placeholder="username" required></div>
+      <button class="btn btn-sm" type="submit">Add</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

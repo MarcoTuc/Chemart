@@ -21,7 +21,7 @@ as they are implemented.
 | `name` (req) | canonical name |
 | `aliases` | other names used in the literature |
 | `origin` | `author, year` of the original proposal |
-| `book` (req) | section(s) of Banzhaf & Yamamoto (2015) describing it |
+| `book` (req) | section(s) of Banzhaf & Yamamoto (2015) describing it; optional for chemistries shared on the Chemart Hub |
 | `refs` | bracketed citation numbers as they appear in the book's bibliography, plus DOIs/URLs where known |
 
 ## Classification
@@ -66,6 +66,8 @@ v2 rules:
   in seconds. Paper-scale values go in `range`.
 - **No `seed` parameter.** The seed is an argument of `generate_network`.
 - v1 types `matrix`, `callable`, `seed` are not allowed.
+- **Reserved names.** `seed`, `revision` and `trust_remote_code` are keyword
+  arguments of `generate_network`, so no parameter may take them.
 
 `role` is what a knob *does*, and is what lets Chemart offer coherent
 scaling across chemistries (e.g. "scale every structural knob down until
@@ -95,9 +97,19 @@ content must be a subset of `provides` (checked by `tests/test_contract.py`).
 | field | meaning |
 |---|---|
 | `generator_ready` | v1 only: `yes` (fully specified in the book), `partial` (needs a design decision), `no` (concept only / wet only) |
-| `fidelity` | v2, required: `book` (implemented exactly as specified in the book), `book+decisions` (gaps filled; each listed in `decisions`), `reconstructed` (built from the original papers listed in `sources`) |
+| `fidelity` | v2, required: `book` (implemented exactly as specified in the book), `book+decisions` (gaps filled; each listed in `decisions`), `reconstructed` (built from the original papers listed in `sources`); on the Chemart Hub also `original` (a new chemistry, from no publication) |
 | `sources` | citations/DOIs actually used for the implementation (required for `reconstructed`) |
 | `decisions` | every gap, ambiguity or erratum in the book or papers, and how Chemart resolved it (required for `book+decisions`) |
 | `reference_impl` | existing code we can port or check against (e.g. PyCellChemistry module) |
 | `phenomena` | what the chemistry is known to produce — used for regression tests |
 | `notes` | anything else |
+
+## Chemistries on the Chemart Hub
+
+A generator repo on the hub carries its entry in `chemart.yaml`: a catalog file
+with exactly one entry, plus a top-level `hub:` block (`repo_type`, `license`,
+`tags`, `requires`, `requires_chemart`; `builtin` for the official `chemart/`
+repos). `chemart.catalog.entry_problems(entry, hub=True)` applies the rules
+above with two relaxations: `book` is optional and `fidelity` may be
+`original`. The v2 rules always apply there, since every hub chemistry has a
+generator. See `docs/hub.md`.

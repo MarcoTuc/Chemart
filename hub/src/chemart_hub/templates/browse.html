@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% from "_macros.html" import tiles %}
+{% block title %}Browse · Chemart Hub{% endblock %}
+{% block body %}
+<div class="wrap browse">
+  <aside class="filters" aria-label="Filters">
+    <h3>Type</h3>
+    <div class="chips">
+      <a class="chip {{ 'on' if not filters.type }}" href="{{ link(type='', page=1) }}">all</a>
+      <a class="chip {{ 'on' if filters.type == 'generator' }}" href="{{ link(type='generator', page=1) }}">chemistries</a>
+      <a class="chip {{ 'on' if filters.type == 'network' }}" href="{{ link(type='network', page=1) }}">networks</a>
+    </div>
+    <h3>Code</h3>
+    <div class="chips">
+      <a class="chip {{ 'on' if not filters.code }}" href="{{ link(code='', page=1) }}">any</a>
+      <a class="chip {{ 'on' if filters.code == 'no' }}" href="{{ link(code='no', page=1) }}">no remote code</a>
+      <a class="chip {{ 'on' if filters.code == 'yes' }}" href="{{ link(code='yes', page=1) }}">runs code</a>
+    </div>
+    {% if facets.provides %}
+    <h3>Provides <span class="faint" style="text-transform:none;letter-spacing:0">(all of)</span></h3>
+    <div class="chips">
+      {% for tag, n in facets.provides %}
+        {% set on = tag in filters.provides %}
+        <a class="chip {{ 'on' if on }}" href="{{ link(provides=(filters.provides | reject('equalto', tag) | list) if on else filters.provides + [tag], page=1) }}">{{ tag }} <span class="faint">{{ n }}</span></a>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if facets.family %}
+    <h3>Family</h3>
+    <div class="chips">
+      {% for fam, n in facets.family %}
+        <a class="chip {{ 'on' if filters.family == fam }}" href="{{ link(family='' if filters.family == fam else fam, page=1) }}">{{ fam }} <span class="faint">{{ n }}</span></a>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if facets.fidelity %}
+    <h3>Fidelity</h3>
+    <div class="chips">
+      {% for fid, n in facets.fidelity %}
+        <a class="chip {{ 'on' if filters.fidelity == fid }}" href="{{ link(fidelity='' if filters.fidelity == fid else fid, page=1) }}">{{ fid }} <span class="faint">{{ n }}</span></a>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if facets.tag %}
+    <h3>Tags</h3>
+    <div class="chips">
+      {% for tag, n in facets.tag %}
+        <a class="chip {{ 'on' if filters.tag == tag }}" href="{{ link(tag='' if filters.tag == tag else tag, page=1) }}">{{ tag }} <span class="faint">{{ n }}</span></a>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </aside>
+
+  <section>
+    <div class="results-head">
+      <div>
+        <h1 style="font-size:1.35rem;margin:0">{% if filters.q %}“{{ filters.q }}”{% elif filters.author %}{{ filters.author }}{% else %}Browse the shelves{% endif %}</h1>
+        <span class="muted">{{ total }} result{{ '' if total == 1 else 's' }}</span>
+        {% if filters.q or filters.type or filters.family or filters.tag or filters.fidelity or filters.code or filters.author or filters.provides %}
+          · <a href="/browse">clear filters</a>
+        {% endif %}
+      </div>
+      <form method="get" action="/browse">
+        {% for key in ["q", "type", "family", "tag", "fidelity", "code", "author"] %}{% if filters[key] %}<input type="hidden" name="{{ key }}" value="{{ filters[key] }}">{% endif %}{% endfor %}
+        {% for v in filters.provides %}<input type="hidden" name="provides" value="{{ v }}">{% endfor %}
+        <label for="sort" class="sr-only">Sort</label>
+        <select id="sort" name="sort">
+          {% for s in sorts %}<option value="{{ s }}" {{ 'selected' if filters.sort == s }}>{{ s }}</option>{% endfor %}
+        </select>
+        <button type="submit" class="btn-sm">Sort</button>
+      </form>
+    </div>
+    {{ tiles(repos, "No repos match these filters.") }}
+    {% if pages > 1 %}
+    <nav class="pager">
+      {% if page > 1 %}<a class="btn btn-sm" href="{{ link(page=page - 1) }}">← Previous</a>{% endif %}
+      <span class="muted">page {{ page }} of {{ pages }}</span>
+      {% if page < pages %}<a class="btn btn-sm" href="{{ link(page=page + 1) }}">Next →</a>{% endif %}
+    </nav>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

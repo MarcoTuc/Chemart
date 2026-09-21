@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Archive · Admin · Chemart Hub{% endblock %}
+{% block body %}
+{% include "_admin_tabs.html" %}
+<div class="wrap" style="margin:22px auto 60px">
+  {% if done.purged %}<div class="notice ok"><strong>Purged {{ done.purged }}.</strong> {{ done.files }} file{{ '' if done.files == '1' else 's' }} deleted from disk, {{ (done.freed | int) | size }} freed, database compacted.</div>{% endif %}
+  {% if done.restored %}<div class="notice ok"><strong>Restored {{ done.restored }}.</strong>{% if done.skipped %} Not restored, because the name is in use again: {{ done.skipped }}.{% endif %}</div>{% endif %}
+  {% if done.archived %}<div class="notice ok"><strong>{{ done.archived }}</strong> was deleted and moved here, with its repos.</div>{% endif %}
+
+  <div class="stat-grid">
+    <div class="stat"><div class="stat-value">{{ archive.repos | length }}</div><div class="stat-label">archived repos</div></div>
+    <div class="stat"><div class="stat-value">{{ archive.accounts | length }}</div><div class="stat-label">archived accounts</div></div>
+    <div class="stat"><div class="stat-value">{{ archive.disk | size }}</div><div class="stat-label">files on disk ({{ archive.blob_count }})</div></div>
+    <div class="stat"><div class="stat-value">{{ archive.freed_by_all | size }}</div><div class="stat-label">a full purge would free</div></div>
+  </div>
+
+  <div class="notice">Deleting a repo or an account puts it here. It is gone from the site and cannot be loaded, but nothing is erased: <strong>Restore</strong> brings it back exactly as it was. <strong>Purge</strong> removes it for good: its database rows, the stored files no other repo uses, and every trace in the database file. Copies people already downloaded are out of the hub's reach.</div>
+
+  <div class="panel">
+    <h2>Archived repos</h2>
+    {% if archive.repos %}
+    <div class="table-scroll">
+    <table class="admin-table">
+      <thead><tr><th>repo</th><th>deleted</th><th>versions</th><th>purge frees</th><th></th></tr></thead>
+      <tbody>
+      {% for r in archive.repos %}
+        <tr>
+          <td><span class="mono">{{ r.id_text }}</span>
+            <div class="faint small">{{ r.title if r.title and r.title != r.name else "" }} {{ "· " ~ r.repo_type }}</div></td>
+          <td class="nowrap"><span title="{{ r.archived_at }}">{{ r.archived_at | ago }}</span>
+            <div class="faint small">by {{ r.archived_by }}{% if r.archived_reason == "account" %}, with the account{% endif %}</div></td>
+          <td class="faint">{{ r.n_commits }}</td>
+          <td class="faint nowrap">{{ r.freed | size }}</td>
+          <td class="nowrap" style="text-align:right">
+            {% if r.owner_archived %}
+              <span class="faint small">restore {{ r.namespace }} to restore it</span>
+            {% elif r.name_taken %}
+              <span class="faint small" title="A new repo with this name exists">name in use again</span>
+            {% else %}
+            <form class="inline" action="/admin/archive/repos/{{ r.id }}/restore" method="post">
+              <input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn btn-sm" type="submit">↺ Restore</button>
+            </form>
+            {% endif %}
+            {% if not r.owner_archived %}<a class="btn btn-sm btn-danger-outline" href="/admin/archive/purge?kind=repo&amp;id={{ r.id }}">Purge…</a>{% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}<p class="muted" style="margin:0">No archived repos.</p>{% endif %}
+  </div>
+
+  <div class="panel">
+    <h2>Archived accounts</h2>
+    {% if archive.accounts %}
+    <div class="table-scroll">
+    <table class="admin-table">
+      <thead><tr><th>account</th><th>deleted</th><th>repos</th><th>purge frees</th><th></th></tr></thead>
+      <tbody>
+      {% for a in archive.accounts %}
+        <tr>
+          <td><span class="mono">{{ a.name }}</span> {% if a.is_org %}<span class="badge badge-network">organisation</span>{% endif %}
+            <div class="faint small">{{ a.fullname or "" }} {{ a.email or "" }}</div></td>
+          <td class="nowrap"><span title="{{ a.archived_at }}">{{ a.archived_at | ago }}</span><div class="faint small">by {{ a.archived_by }}</div></td>
+          <td class="faint">{{ a.n_repos }}</td>
+          <td class="faint nowrap">{{ a.freed | size }}</td>
+          <td class="nowrap" style="text-align:right">
+            <form class="inline" action="/admin/archive/accounts/{{ a.id }}/restore" method="post">
+              <input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn btn-sm" type="submit">↺ Restore</button>
+            </form>
+            <a class="btn btn-sm btn-danger-outline" href="/admin/archive/purge?kind=account&amp;id={{ a.id }}">Purge…</a>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    <p class="faint small" style="margin-bottom:0">An archived account's name stays reserved, so nobody can take over its namespace, until it is purged.</p>
+    {% else %}<p class="muted" style="margin:0">No archived accounts.</p>{% endif %}
+  </div>
+
+  <div class="panel danger-zone">
+    <h2>{{ "Purge everything" if archive.repos or archive.accounts else "Storage" }}</h2>
+    <div class="action-row">
+      {% if archive.repos or archive.accounts %}
+        <a class="btn btn-sm btn-danger" href="/admin/archive/purge?kind=all">Purge the whole archive…</a>
+      {% endif %}
+      <form class="inline" action="/admin/archive/gc" method="post">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button class="btn btn-sm" type="submit" title="Deletes stored files no repo uses (left by interrupted uploads). Touches nothing in the archive.">Clean up orphaned files{% if archive.orphans %} ({{ archive.orphans }}){% endif %}</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

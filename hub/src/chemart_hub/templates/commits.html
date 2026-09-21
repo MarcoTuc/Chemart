@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Commits · {{ repo.id }} · Chemart Hub{% endblock %}
+{% block body %}
+{% include "_repo_head.html" %}
+<div class="wrap" style="margin:26px auto 60px">
+  <div class="panel">
+    <ul class="commit-list">
+    {% for c in history %}
+      <li>
+        <span class="msg">{{ c.message }}</span>
+        <span class="faint">{{ c.author or "?" }} · {{ c.created_at | ago }}</span>
+        <a class="sha-pill" href="/{{ repo.id }}/tree/{{ c.commit }}" title="{{ c.commit }}">{{ c.commit[:12] }}</a>
+        {% if can_write and c.commit != repo.head %}
+        <form action="/{{ repo.id }}/edit/restore" method="post" style="margin:0">
+          <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="commit" value="{{ c.commit }}">
+          <button class="btn btn-sm" type="submit" title="Make this version the current one (as a new commit)">Restore</button>
+        </form>
+        {% elif c.commit == repo.head %}<span class="badge badge-plain">current</span>{% endif %}
+      </li>
+    {% else %}
+      <li class="muted">No commits yet.</li>
+    {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}

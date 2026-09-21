@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "_macros.html" import snippet %}
+{% block title %}Tokens · Chemart Hub{% endblock %}
+{% block body %}
+<div class="wrap" style="max-width:820px">
+  <h1 style="margin-top:34px">API tokens</h1>
+  <p class="muted">The <code>chemart</code> library and CLI use a token to push on your behalf. Treat it like a password.</p>
+  {% if welcome %}<div class="notice ok"><strong>Welcome to Chemart Hub, {{ me.name }}!</strong> Create a token below, then run <code>chemart login</code> and paste it.</div>{% endif %}
+  {% if new_token %}
+  <div class="notice ok">
+    <strong>Your new token</strong> — copy it now, it will not be shown again.
+    <div class="token-box"><input id="new-token" type="text" readonly value="{{ new_token }}"><button class="btn btn-sm" type="button" data-copy="new-token">Copy</button></div>
+    {{ snippet("login-cmd", "chemart login --token " ~ new_token, "Then, in your terminal") }}
+  </div>
+  {% endif %}
+  <div class="panel">
+    <h2>Create a token</h2>
+    <form class="inline-form" action="/settings/tokens" method="post">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <div><label for="name">Name</label><input id="name" name="name" type="text" value="laptop" maxlength="64"></div>
+      <div><label for="scope">Scope</label><select id="scope" name="scope"><option value="write">write: push repos</option><option value="read">read only</option></select></div>
+      <button class="btn-primary" type="submit">Create token</button>
+    </form>
+  </div>
+  <div class="panel">
+    <h2>Your tokens</h2>
+    {% if tokens %}
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>name</th><th>scope</th><th>created</th><th>last used</th><th></th></tr></thead>
+      <tbody>
+      {% for t in tokens %}
+        <tr class="{{ 'revoked' if t.revoked }}">
+          <td>{{ t.name }}</td><td>{{ t.scope }}</td><td>{{ t.created_at | ago }}</td><td>{{ (t.last_used_at | ago) or "never" }}</td>
+          <td style="text-align:right">{% if not t.revoked %}
+            <form action="/settings/tokens/{{ t.id }}/revoke" method="post" style="margin:0"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn btn-sm" type="submit">Revoke</button></form>
+          {% else %}revoked{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}<p class="muted">No tokens yet.</p>{% endif %}
+  </div>
+</div>
+{% endblock %}

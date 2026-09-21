@@ -1,0 +1,39 @@
+{% from "_macros.html" import type_badge %}
+<div class="repo-head">
+  <div class="wrap">
+    <div class="repo-title">
+      <span class="dot dot-{{ repo.repo_type }}"></span>
+      <h1><a href="/{{ repo.namespace }}">{{ repo.namespace }}</a> / <b>{{ repo.name }}</b></h1>
+      <button class="btn btn-sm" type="button" data-copy="{{ repo.id }}" title="Copy id">Copy id</button>
+      <span class="spacer"></span>
+      <div class="likebox">
+        <form action="/{{ repo.id }}/like" method="post">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <button class="btn btn-sm {{ 'liked' if liked }}" type="submit" title="{{ 'Unlike' if liked else 'Like' }}">{{ '♥' if liked else '♡' }} {{ repo.likes }}</button>
+        </form>
+        <span class="badge badge-plain" title="downloads">↓ {{ repo.downloads }}</span>
+      </div>
+    </div>
+    {% if repo.title and repo.title != repo.name %}<p class="repo-sub"><strong style="color:var(--text)">{{ repo.title }}</strong>{% if repo.summary %} — {{ repo.summary[:220] }}{% if repo.summary | length > 220 %}…{% endif %}{% endif %}</p>{% endif %}
+    <div class="repo-badges">
+      {{ type_badge(repo) }}
+      {% if repo.featured %}<span class="badge badge-featured">★ featured</span>{% endif %}
+      {% if repo.hidden %}<span class="badge badge-hidden" title="Left out of listings and search; still loads by id">hidden</span>{% endif %}
+      {% if repo.builtin %}<span class="badge badge-official" title="The generator ships with Chemart">official · built in</span>
+      {% elif repo.has_code %}<span class="badge badge-code" title="Loading it runs this repo's Python code">runs code</span>{% endif %}
+      {% if repo.family %}<a class="chip" href="/browse?family={{ repo.family }}">{{ repo.family }}</a>{% endif %}
+      {% if repo.fidelity %}<a class="chip" href="/browse?fidelity={{ repo.fidelity }}">fidelity: {{ repo.fidelity }}</a>{% endif %}
+      {% if repo.constructive %}<span class="chip">constructive</span>{% endif %}
+      {% if repo.license %}<span class="chip">license: {{ repo.license }}</span>{% endif %}
+      {% for t in repo.tags %}<a class="chip" href="/browse?tag={{ t }}">#{{ t }}</a>{% endfor %}
+    </div>
+    <nav class="tabs">
+      <a class="{{ 'on' if tab == 'card' }}" href="/{{ repo.id }}">{{ 'Chemistry' if repo.repo_type == 'generator' else 'Network' }}</a>
+      {% if repo.head %}
+      <a class="{{ 'on' if tab == 'files' }}" href="/{{ repo.id }}/tree/main">Files</a>
+      <a class="{{ 'on' if tab == 'commits' }}" href="/{{ repo.id }}/commits">Commits</a>
+      {% endif %}
+      {% if can_write %}<a class="{{ 'on' if tab == 'edit' }} tab-edit" href="/{{ repo.id }}/edit">✎ Edit</a>{% endif %}
+    </nav>
+  </div>
+</div>

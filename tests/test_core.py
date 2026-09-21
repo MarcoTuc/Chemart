@@ -213,3 +213,28 @@ def test_cli_list_and_errors(capsys):
     assert len(json.loads(capsys.readouterr().out)) == len(catalog.load())
     assert cli_main(["describe", "no-such-thing"]) == 2
     assert "unknown chemistry" in capsys.readouterr().err
+
+
+def test_from_dict_reports_malformed_data_as_value_error():
+    good = chemart.generate_network("brusselator", seed=1).to_dict()
+    for bad in (
+        [],
+        {**good, "species": None},
+        {**good, "reactions": [{"reactants": ["X"], "products": {}}]},
+        {**good, "reactions": [{"reactants": {}, "products": {}, "colour": 1}]},
+        {k: v for k, v in good.items() if k != "species"},
+        {**good, "species": [{"id": ["X"]}]},
+    ):
+        with pytest.raises(ValueError):
+            Network.from_dict(bad)
+
+
+def test_revision_only_applies_to_hub_ids():
+    with pytest.raises(ValueError, match="only applies to hub ids"):
+        chemart.generate_network("brusselator", revision="main")
+
+
+def test_call_tool_cannot_switch_on_remote_code():
+    with pytest.raises(ValueError, match="trust_remote_code cannot be passed"):
+        chemart.call_tool("generate_network",
+                          {"chemistry": "brusselator", "params": {"trust_remote_code": True}})

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit " ~ original if original else "New file" }} · {{ repo.id }} · Chemart Hub{% endblock %}
+{% block body %}
+{% include "_repo_head.html" %}
+<div class="wrap" style="margin:26px auto 60px">
+  {% if error %}
+    <div class="notice error"><strong>{{ error }}</strong>{% if problems %}<ul>{% for pr in problems %}<li>{{ pr }}</li>{% endfor %}</ul>{% endif %}<div class="small" style="margin-top:6px">Nothing was saved; your text is below.</div></div>
+  {% endif %}
+  {% if original.endswith(".py") and repo.has_code %}
+    <div class="notice warn"><strong>This is code people run.</strong> The hub cannot re-run it, so <code>preview.json</code> will not reflect this change until someone pushes it with <code>chemart push</code>.</div>
+  {% endif %}
+  <form class="panel file-form" action="/{{ repo.id }}/edit/file" method="post">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="original" value="{{ original }}">
+    <label for="path">File</label>
+    <input id="path" name="path" type="text" value="{{ path }}" required class="mono" style="width:100%" placeholder="README.md">
+    <label for="content">Content</label>
+    <textarea id="content" name="content" rows="28" spellcheck="{{ 'true' if path.endswith('.md') else 'false' }}" class="code-area">{{ content }}</textarea>
+    <label for="message">Commit message</label>
+    <input id="message" name="message" type="text" value="{{ message }}" maxlength="200" style="width:100%" placeholder="{{ ('Edit ' ~ original) if original else 'Create a file' }}">
+    <div class="action-row" style="margin-top:16px">
+      <button class="btn-primary" type="submit">Save as a new commit</button>
+      <a class="btn" href="/{{ repo.id }}/edit">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

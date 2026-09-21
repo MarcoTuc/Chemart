@@ -22,3 +22,6 @@ skills-lock.json
 !.claude/skills/
 .claude/skills/*
 !.claude/skills/chemart/
+
+# Local Chemart Hub data (chemart-hub serve)
+hub-data/

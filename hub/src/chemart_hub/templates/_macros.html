@@ -1,0 +1,38 @@
+{% macro type_badge(repo) -%}
+  {%- if repo.repo_type == "generator" -%}
+    <span class="badge badge-generator">chemistry</span>
+  {%- else -%}
+    <span class="badge badge-network">network</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro tile(repo) -%}
+<a class="tile" href="/{{ repo.id }}">
+  <div class="tile-id"><span class="dot dot-{{ repo.repo_type }}"></span><span>{{ repo.namespace }}/</span><span class="name">{{ repo.name }}</span></div>
+  <div class="tile-title">{{ repo.title or repo.name }}</div>
+  <p class="tile-summary">{{ repo.summary or "" }}</p>
+  <div class="tile-meta">
+    {{ type_badge(repo) }}
+    {% if repo.featured %}<span class="badge badge-featured" title="Featured">★</span>{% endif %}
+    {% if repo.hidden %}<span class="badge badge-hidden">hidden</span>{% endif %}
+    {% if repo.builtin %}<span class="badge badge-official">official</span>{% elif repo.has_code %}<span class="badge badge-code">runs code</span>{% endif %}
+    {% if repo.family %}<span>{{ repo.family }}</span>{% endif %}
+    <span title="likes">♥ {{ repo.likes }}</span>
+    <span title="downloads">↓ {{ repo.downloads }}</span>
+    <span>{{ repo.updated_at | ago }}</span>
+  </div>
+</a>
+{%- endmacro %}
+
+{% macro tiles(repos, empty="Nothing on this shelf yet.") -%}
+{% if repos %}
+<div class="tiles">{% for r in repos %}{{ tile(r) }}{% endfor %}</div>
+{% else %}
+<div class="empty">{{ empty }}</div>
+{% endif %}
+{%- endmacro %}
+
+{% macro snippet(id, text, label=None) -%}
+{% if label %}<div class="snippet-label">{{ label }}</div>{% endif %}
+<div class="snippet"><pre id="{{ id }}">{{ text }}</pre><button class="copy btn btn-sm" type="button" data-copy="{{ id }}">Copy</button></div>
+{%- endmacro %}

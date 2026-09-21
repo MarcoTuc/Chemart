@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "_macros.html" import tiles, snippet %}
+{% block body %}
+<section class="hero">
+  <div class="wrap">
+    <div class="banner-box"><pre class="banner" aria-label="CHEMART">{{ banner }}</pre></div>
+    <h1>{{ site.home_title }}</h1>
+    <p class="lede">{{ site.home_lede }}</p>
+    <form class="hero-search" action="/browse" method="get" role="search">
+      <input type="search" name="q" placeholder="autocatalysis, Brusselator, RNA folding, Tierra…" aria-label="Search the hub" autofocus>
+      <button class="btn-primary" type="submit">Search</button>
+    </form>
+    <div class="stock">
+      <span><b>{{ n_generators }}</b> {{ "chemistry" if n_generators == 1 else "chemistries" }} in stock</span>
+      <span><b>{{ n_networks }}</b> network{{ "" if n_networks == 1 else "s" }}</span>
+      <span class="open-sign">● open 24/7</span>
+    </div>
+  </div>
+</section>
+
+<div class="wrap">
+  <div class="quickstart">
+    <div class="panel">
+      <h2 class="sm">Load a chemistry</h2>
+      {{ snippet("qs-load", 'import chemart\n\nnet = chemart.generate_network("chemart/brusselator", seed=0)\nprint(net.to_text())') }}
+    </div>
+    <div class="panel">
+      <h2 class="sm">Share yours</h2>
+      {{ snippet("qs-share", 'chemart login\nchemart new my-chem      # edit it\nchemart push my-chem') }}
+    </div>
+  </div>
+
+  {% if featured %}
+  <div class="section-head"><h2>★ {{ site.featured_title }}</h2></div>
+  {{ tiles(featured) }}
+  {% endif %}
+
+  {% if trending %}
+  <div class="section-head"><h2>Trending</h2><a href="/browse?sort=trending">See all →</a></div>
+  {{ tiles(trending) }}
+  {% endif %}
+
+  <div class="section-head"><h2>Fresh on the shelf</h2><a href="/browse?sort=updated">See all →</a></div>
+  {{ tiles(recent, "No repos yet.") }}
+
+  {% if official %}
+  <div class="section-head"><h2>{{ site.official_title }} <span class="faint" style="font-weight:400">· {{ n_official }} {{ site.official_note }}</span></h2><a href="/browse?author={{ settings.official_namespace }}&amp;sort=name">All {{ n_official }} →</a></div>
+  {{ tiles(official) }}
+  {% endif %}
+</div>
+{% endblock %}

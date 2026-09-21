@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Users · Admin · Chemart Hub{% endblock %}
+{% block body %}
+{% include "_admin_tabs.html" %}
+<div class="wrap" style="margin:22px auto 60px">
+  <form class="toolbar" method="get" action="/admin/users">
+    <input type="search" name="q" value="{{ q }}" placeholder="Filter by name, email…" aria-label="Filter">
+    <button type="submit">Filter</button>
+    <span class="muted">{{ accounts | length }} account{{ '' if accounts | length == 1 else 's' }}</span>
+  </form>
+  {% for a in accounts %}
+  <details class="panel account-row {{ 'row-hidden' if a.disabled }}" {{ 'open' if q and accounts | length == 1 }}>
+    <summary>
+      <span class="avatar-sm {{ 'org' if a.is_org }}">{{ a.name[:1] | upper }}</span>
+      <a class="mono" href="/{{ a.name }}">{{ a.name }}</a>
+      {% if a.fullname %}<span class="muted">{{ a.fullname }}</span>{% endif %}
+      {% if a.is_org %}<span class="badge badge-network">organisation</span>{% endif %}
+      {% if a.is_admin %}<span class="badge badge-official">superadmin</span>{% endif %}
+      {% if a.disabled %}<span class="badge badge-hidden">suspended</span>{% endif %}
+      <span class="spacer"></span>
+      <span class="faint small">{{ a.n_repos }} repo{{ '' if a.n_repos == 1 else 's' }}{% if not a.is_org %} · {{ a.n_tokens }} token{{ '' if a.n_tokens == 1 else 's' }}{% endif %} · joined {{ a.created_at[:10] }}</span>
+    </summary>
+    <div class="account-actions">
+      {% if a.email %}<p class="muted small" style="margin:0 0 10px">{{ a.email }}</p>{% endif %}
+      {% if a.is_org %}<p class="muted small" style="margin:0 0 10px">members: {{ a.members or "none" }}</p>{% endif %}
+      <div class="action-row">
+        <a class="btn btn-sm" href="/settings/profile/{{ a.name }}">✎ Edit profile{{ ' & members' if a.is_org }}</a>
+        {% if not a.is_org %}
+        <form class="inline" action="/admin/users/{{ a.name }}/superadmin" method="post">
+          <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="next" value="{{ back }}">
+          <input type="hidden" name="flag" value="{{ '0' if a.is_admin else '1' }}">
+          <button class="btn btn-sm" type="submit">{{ 'Revoke superadmin' if a.is_admin else 'Make superadmin' }}</button>
+        </form>
+        {% if a.id != me.id %}
+        <form class="inline" action="/admin/users/{{ a.name }}/suspend" method="post">
+          <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="next" value="{{ back }}">
+          <input type="hidden" name="flag" value="{{ '0' if a.disabled else '1' }}">
+          <button class="btn btn-sm" type="submit">{{ 'Unsuspend' if a.disabled else 'Suspend' }}</button>
+        </form>
+        {% endif %}
+        {% endif %}
+      </div>
+      {% if not a.is_org %}
+      <form class="inline-form" action="/admin/users/{{ a.name }}/password" method="post" style="margin-top:12px">
+        <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="next" value="{{ back }}">
+        <div><label for="pw-{{ a.id }}">New password</label><input id="pw-{{ a.id }}" name="password" type="password" minlength="8" autocomplete="new-password" required></div>
+        <button class="btn btn-sm" type="submit">Reset password</button>
+      </form>
+      {% endif %}
+      {% if a.id != me.id %}
+      <form class="inline-form danger-form" action="/admin/users/{{ a.name }}/delete" method="post" style="margin-top:12px">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <div><label for="del-{{ a.id }}">Type <code>{{ a.name }}</code> to delete it{% if a.n_repos %} and its {{ a.n_repos }} repo{{ '' if a.n_repos == 1 else 's' }}{% endif %} (moves to the archive)</label>
+          <input id="del-{{ a.id }}" name="confirm" type="text" autocomplete="off" required></div>
+        <button class="btn btn-sm btn-danger" type="submit">Delete {{ 'organisation' if a.is_org else 'account' }}</button>
+      </form>
+      {% endif %}
+    </div>
+  </details>
+  {% else %}
+    <p class="muted">No accounts match.</p>
+  {% endfor %}
+
+  <div class="panel" style="margin-top:24px">
+    <h2>Create an organisation</h2>
+    <form class="inline-form" action="/admin/orgs" method="post">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <div><label for="org-name">Name</label><input id="org-name" name="name" type="text" required pattern="[a-z0-9][a-z0-9\-]{0,37}[a-z0-9]?"></div>
+      <div><label for="org-owner">First member</label><input id="org-owner" name="owner" type="text" value="{{ me.name }}" required></div>
+      <button class="btn-primary" type="submit">Create</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Edit · {{ repo.id }} · Chemart Hub{% endblock %}
+{% block body %}
+{% include "_repo_head.html" %}
+<div class="wrap" style="margin:26px auto 60px;max-width:960px">
+  {% if saved == "card" %}<div class="notice ok">Card saved as a new commit.</div>
+  {% elif saved == "deleted" %}<div class="notice ok">File deleted (a new commit; restore it from Commits).</div>
+  {% elif saved == "nothing" %}<div class="notice">Nothing changed.</div>{% endif %}
+  {% if error %}
+    <div class="notice error"><strong>{{ error }}</strong>{% if problems %}<ul>{% for pr in problems %}<li>{{ pr }}</li>{% endfor %}</ul>{% endif %}</div>
+  {% endif %}
+
+  {% if repo.head %}
+  <div class="panel">
+    <h2>Card</h2>
+    <p class="muted small" style="margin-top:0">Stored in the <code>hub:</code> block of <code>chemart.yaml</code>. Saving makes a new commit (the file's comments and layout are rewritten; use the file editor for full control).</p>
+    <form action="/{{ repo.id }}/edit/metadata" method="post">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label for="title">Title</label>
+      <input id="title" name="title" type="text" value="{{ meta.title }}" maxlength="120" style="width:100%" placeholder="{{ repo.title or repo.name }}">
+      <label for="description">Description</label>
+      <textarea id="description" name="description" rows="3" maxlength="1000" style="width:100%" placeholder="One or two sentences shown on tiles and at the top of the page">{{ meta.description }}</textarea>
+      <div class="two-col">
+        <div><label for="tags">Tags <span class="faint" style="font-weight:400">(comma-separated, lowercase)</span></label>
+          <input id="tags" name="tags" type="text" value="{{ meta.tags }}" style="width:100%"></div>
+        <div><label for="license">License</label>
+          <input id="license" name="license" type="text" value="{{ meta.license }}" maxlength="64" style="width:100%" placeholder="MIT, CC-BY-4.0, …"></div>
+      </div>
+      <button class="btn-primary" type="submit" style="margin-top:16px">Save card</button>
+    </form>
+  </div>
+
+  <div class="panel">
+    <h2>Files</h2>
+    <table class="files">
+      <tbody>
+      {% for path, size in files %}
+        <tr>
+          <td><a class="file" href="/{{ repo.id }}/blob/main/{{ path }}">{{ path }}</a></td>
+          <td class="size">{{ size | size }}</td>
+          <td style="text-align:right" class="nowrap">
+            <a class="btn btn-sm" href="/{{ repo.id }}/edit/file?path={{ path | urlencode }}">✎ Edit</a>
+            <form class="inline" action="/{{ repo.id }}/edit/file/delete" method="post">
+              <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="path" value="{{ path }}">
+              <button class="btn btn-sm" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <p style="margin-bottom:0"><a class="btn btn-sm" href="/{{ repo.id }}/edit/file">+ Add a file</a>
+      <span class="faint small">Every save is checked by the same rules as a push; a change that breaks the repo is refused, with the reasons.</span></p>
+  </div>
+  {% else %}
+  <div class="panel"><p class="muted" style="margin:0">This repo is empty: <a href="/{{ repo.id }}/edit/file">add a file</a>, or push one with <code>chemart</code>.</p></div>
+  {% endif %}
+
+  {% if is_admin %}
+  <div class="panel">
+    <h2>Curation <span class="badge badge-official" style="vertical-align:middle">superadmin</span></h2>
+    <div class="action-row">
+      <form class="inline" action="/admin/repos/{{ repo.id }}/flags" method="post">
+        <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="featured" value="{{ '0' if repo.featured else '1' }}">
+        <button class="btn btn-sm" type="submit">★ {{ 'Remove from featured' if repo.featured else 'Feature on the home page' }}</button>
+      </form>
+      <form class="inline" action="/admin/repos/{{ repo.id }}/flags" method="post">
+        <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="hidden" value="{{ '0' if repo.hidden else '1' }}">
+        <button class="btn btn-sm" type="submit">{{ 'Show in listings again' if repo.hidden else 'Hide from listings' }}</button>
+      </form>
+    </div>
+    <p class="faint small">Hidden repos disappear from the home page, browse, search and profiles, but still load by id, so code that uses them keeps working.</p>
+    <form class="inline-form" action="/admin/repos/{{ repo.id }}/transfer" method="post">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <div><label for="owner">Transfer to user or organisation</label><input id="owner" name="owner" type="text" placeholder="chemart" required></div>
+      <button class="btn btn-sm" type="submit">Transfer</button>
+    </form>
+  </div>
+  {% endif %}
+
+  <div class="panel danger-zone">
+    <h2>Delete this repo</h2>
+    <p class="muted small" style="margin-top:0">It disappears from the site and can no longer be loaded, straight away. Nothing is erased yet: it moves to the hub's archive, where {{ "you" if is_admin else "a superadmin" }} can restore it exactly as it was, or purge it for good.</p>
+    <form class="inline-form" action="/{{ repo.id }}/edit/delete" method="post">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <div><label for="confirm">Type <code>{{ repo.id }}</code> to confirm</label><input id="confirm" name="confirm" type="text" autocomplete="off" required></div>
+      <button class="btn btn-sm btn-danger" type="submit">Delete repo</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

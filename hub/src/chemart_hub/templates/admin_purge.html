@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Purge · Admin · Chemart Hub{% endblock %}
+{% block body %}
+{% include "_admin_tabs.html" %}
+<div class="wrap" style="margin:22px auto 60px;max-width:760px">
+  <div class="panel danger-zone">
+    <h2>Purge {{ target.label }} for good?</h2>
+    <p>This cannot be undone. It deletes:</p>
+    <ul>
+      {% if target.accounts %}<li>the account{{ '' if target.accounts | length == 1 else 's' }} {% for a in target.accounts %}<code>{{ a }}</code>{{ ", " if not loop.last }}{% endfor %}, its tokens, memberships and likes;</li>{% endif %}
+      {% if target.repos %}<li>{{ target.repos | length }} repo{{ '' if target.repos | length == 1 else 's' }}{% if target.repos | length <= 12 %} ({% for r in target.repos %}<code>{{ r }}</code>{{ ", " if not loop.last }}{% endfor %}){% endif %} with every version, like and download count;</li>{% endif %}
+      <li>the stored files no other repo uses: <strong>{{ target.freed | size }}</strong> on disk;</li>
+      <li>their traces in the database file, which is compacted afterwards.</li>
+    </ul>
+    <p class="muted small">Files shared with other repos stay, since those repos still need them. The admin log keeps a line saying what was purged, and when.</p>
+    <form action="/admin/archive/purge" method="post">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="kind" value="{{ target.kind }}"><input type="hidden" name="id" value="{{ target.id }}">
+      {% set phrase = "purge everything" if target.kind == "all" else target.label %}
+      <label for="confirm">Type <code>{{ phrase }}</code> to confirm</label>
+      <input id="confirm" name="confirm" type="text" autocomplete="off" required style="width:100%">
+      <div class="action-row" style="margin-top:16px">
+        <button class="btn-danger" type="submit">Purge permanently</button>
+        <a class="btn" href="/admin/archive">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

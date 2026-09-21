@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Sign up · Chemart Hub{% endblock %}
+{% block body %}
+<div class="wrap">
+  <form class="form-card" action="/signup" method="post">
+    <h1>Open a stall</h1>
+    <p class="muted" style="margin-top:0">Your username is your namespace: your repos live at <code>username/name</code>.</p>
+    {% if error %}<div class="notice error">{{ error }}</div>{% endif %}
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label for="username">Username</label>
+    <input id="username" name="username" type="text" autocomplete="username" required pattern="[a-z0-9][a-z0-9\-]{0,37}[a-z0-9]?" title="lowercase letters, digits and hyphens" value="{{ username or '' }}" autofocus>
+    <label for="email">Email <span class="faint" style="font-weight:400">(optional)</span></label>
+    <input id="email" name="email" type="email" autocomplete="email" value="{{ email or '' }}">
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="new-password" required minlength="8">
+    <button class="btn-primary" type="submit">Create account</button>
+    <p class="form-foot">Already have one? <a href="/login">Log in</a></p>
+  </form>
+</div>
+{% endblock %}

@@ -69,6 +69,7 @@ nav:
       - API and CLI: reference/api.md
       - Catalog index (table): CATALOG.md
   - Catalog: catalog/index.md
+  - Chemart Hub: hub.md
   - Fidelity and trust: trust.md
   - Contributing a chemistry: contributing.md
   - Project:

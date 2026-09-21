@@ -34,3 +34,61 @@ def test_catalog_index_is_current():
     generated = render_index(load())
     on_disk = Path(ROOT / "docs" / "CATALOG.md").read_text()
     assert generated == on_disk, "run `python -m chemart.catalog index`"
+
+
+# --- single entries (the hub validates uploads with the same functions) ----
+import copy
+
+import pytest
+import yaml
+
+from chemart.catalog import CATALOG_DIR, entry_problems, parse_entry
+
+
+def _raw(cid="brusselator"):
+    return copy.deepcopy(yaml.safe_load((CATALOG_DIR / f"{cid}.yaml").read_text())["chemistries"][0])
+
+
+def test_parse_entry_round_trips_a_catalog_file():
+    c = parse_entry(_raw(), "brusselator.yaml")
+    assert c.id == "brusselator" and c.params[0].name == "a"
+    assert entry_problems(c) == []
+
+
+@pytest.mark.parametrize(
+    "mutate, message",
+    [
+        (lambda r: r.update(colour="teal"), "unknown field.*colour"),
+        (lambda r: r.pop("family"), "missing required field.*family"),
+        (lambda r: r["params"][0].update(unit="mM"), r"params\[0\].*unknown field.*unit"),
+        (lambda r: r["params"][0].pop("role"), r"params\[0\].*missing.*role"),
+        (lambda r: r.update(params="N=4"), "params must be a list"),
+    ],
+)
+def test_parse_entry_errors_are_readable(mutate, message):
+    raw = _raw()
+    mutate(raw)
+    with pytest.raises(ValueError, match=message):
+        parse_entry(raw)
+
+
+def test_hub_rules_differ_from_the_builtin_catalog():
+    raw = _raw()
+    raw.pop("book")
+    raw["fidelity"] = "original"
+    c = parse_entry(raw)
+    assert "missing book section" in entry_problems(c)
+    assert any("fidelity" in p for p in entry_problems(c))
+    assert entry_problems(c, hub=True) == []
+
+
+def test_reserved_parameter_names():
+    raw = _raw()
+    raw["params"][0]["name"] = "seed"
+    problems = entry_problems(parse_entry(raw), hub=True)
+    assert any("'seed' is reserved" in p for p in problems)
+
+
+def test_load_refuses_an_empty_catalog(tmp_path):
+    with pytest.raises(RuntimeError, match="no catalog entries"):
+        load(tmp_path)

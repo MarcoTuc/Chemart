@@ -22,8 +22,17 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["chemart"]
 
+# The catalog is edited in catalog/chemistries/ but must ship with the package.
+[tool.hatch.build.targets.wheel.force-include]
+"catalog/chemistries" = "chemart/_catalog"
+
+[tool.uv.workspace]
+# hub/ is the Chemart Hub server; the library above never depends on it.
+members = ["hub"]
+
 [dependency-groups]
 dev = [
+    "httpx2>=2.13.0",
     "pytest>=9.1.1",
 ]
 docs = [
@@ -34,3 +43,4 @@ docs = [
 [tool.pytest.ini_options]
 markers = ["slow: takes more than ~2 s; excluded by default, run with -m 'slow or not slow'"]
 addopts = "-m 'not slow'"
+testpaths = ["tests"]

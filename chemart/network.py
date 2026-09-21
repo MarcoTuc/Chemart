@@ -117,6 +117,8 @@ class Network:
         if self.status not in STATUSES:
             out.append(f"status {self.status!r} not in {STATUSES}")
         ids = [s.id for s in self.species]
+        if not all(isinstance(i, str) for i in ids):
+            return ["species ids must be strings"]
         known = set(ids)
         if len(known) != len(ids):
             dup = next(i for i, n in Counter(ids).items() if n > 1)
@@ -220,9 +222,29 @@ class Network:
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
+    def push_to_hub(self, repo_id: str, **kwargs: Any) -> dict[str, Any]:
+        """Share this network on the Chemart Hub as ``namespace/name``.
+
+        Keyword arguments (message, title, description, license, tags, readme)
+        go to `chemart.hub.push_network`. Returns {commit, url, unchanged}.
+        """
+        from chemart.hub import push_network
+
+        return push_network(self, repo_id, **kwargs)
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Network:
+        """Rebuild a network from `to_dict` output; raise ValueError if malformed.
+
+        The data may come from a file or the hub, so any shape error (a list
+        where a dict belongs, a missing key) is reported as a ValueError.
+        """
+        if not isinstance(data, dict):
+            raise ValueError(f"a network must be a JSON object, got {type(data).__name__}")
         data = dict(data)
-        data["species"] = [Species(**s) for s in data["species"]]
-        data["reactions"] = [Reaction(**r) for r in data["reactions"]]
-        return cls(**data)
+        try:
+            data["species"] = [Species(**s) for s in data["species"]]
+            data["reactions"] = [Reaction(**r) for r in data["reactions"]]
+            return cls(**data)
+        except (TypeError, KeyError, AttributeError) as err:
+            raise ValueError(f"malformed network: {err}") from None

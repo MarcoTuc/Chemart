@@ -43,6 +43,10 @@ print(net.to_text())
 # X -> E  [mass-action k=1.0]
 ```
 
+🏪 **Chemart Hub:** share your own chemistries and networks, and load anyone's
+by name: `chemart.generate_network("ada/my-chem", trust_remote_code=True)`.
+See [Chemart Hub](#chemart-hub).
+
 📖 **Full documentation:** a browsable site with a page for every chemistry.
 Run `uv run mkdocs serve` and open <http://127.0.0.1:8000> — see
 [Documentation](#documentation) for publishing it.
@@ -213,6 +217,53 @@ chemart.call_tool("generate_network", {"chemistry": "brusselator", "seed": 1})
 There is also a bundled Claude Code skill at `.claude/skills/chemart/` with
 task-oriented references and runnable examples.
 
+## Chemart Hub
+
+The catalog is the book. The **Chemart Hub** is the rest of the shop: a website
+where people publish chemistries and reaction networks, and a client built into
+`chemart` that loads them by name, the way `transformers` loads models.
+
+```python
+import chemart
+
+chemart.generate_network("chemart/brusselator")        # the official shelf: the 98 built-ins
+chemart.load_network("ada/brusselator-b35")            # a shared network: plain data
+chemart.generate_network("ada/hypercycle-lite",        # a shared chemistry: runs its code,
+                         revision="f2634dc6b1d4",      # so read it, pin it,
+                         trust_remote_code=True)       # and say so
+
+net.push_to_hub("you/my-network")                      # share a network
+```
+
+```bash
+uv run chemart login                 # paste a token from the hub's Settings → Tokens
+uv run chemart new my-chem           # a working generator skeleton
+uv run chemart check my-chem         # the contract, run locally
+uv run chemart push my-chem          # -> you/my-chem
+uv run chemart search autocatalysis --provides rate-constants
+```
+
+There are two kinds of repo. A **chemistry** holds a catalog entry plus the
+`generate(p, rng)` that builds it, so anyone can run it with their own
+parameters. A **network** holds one reaction network as JSON. Every push is a
+content-addressed commit, so `revision=` pins exactly what runs, and every
+generated network records `namespace/name@commit` as its provenance. Pushes are
+held to the same contract as the built-in catalog: the entry validates, defaults
+run in seconds, and the same seed gives the same network. The hub never runs
+uploaded code. You run it, on your own machine, and only with
+`trust_remote_code=True`.
+
+The server is in this repository (`hub/`, the `chemart-hub` package):
+
+```bash
+uv sync --all-packages
+uv run --package chemart-hub chemart-hub init
+uv run --package chemart-hub chemart-hub create-user you --admin
+uv run --package chemart-hub chemart-hub serve           # http://127.0.0.1:8000
+```
+
+Full guide: [`docs/hub.md`](docs/hub.md).
+
 ## Documentation
 
 The docs site is [MkDocs](https://www.mkdocs.org/) + Material, with a page for
@@ -253,9 +304,14 @@ chemart/
   kinetics.py      the rate-law vocabulary, and k -> c conversion
   expand.py        closure of a constructive rule (the generating operator)
   soup.py          well-stirred run that records which reactions fired
+  contract.py      the checks every generator must pass (tests, `chemart check`, push)
   cli.py           the `chemart` command
   chemistries/     98 modules, one `generate(p, rng)` each
   helpers/         explicit reaction syntax, parameter validation
+  hub/             Chemart Hub client: ids, cache, trust gate, push/load (stdlib only)
+hub/               the Chemart Hub server (package `chemart-hub`)
+  src/chemart_hub/ FastAPI app, SQLite + blob store, web UI, `chemart-hub` CLI
+  tests/           API, web, and end-to-end client <-> server tests
 catalog/
   SCHEMA.md        field definitions
   chemistries/     98 YAML entries - the specification
@@ -271,9 +327,10 @@ tests/
 uv run pytest                              # fast tests
 uv run pytest -q -m "slow or not slow"     # everything, including slow
 uv run python -m chemart.catalog validate  # catalog invariants
+uv sync --all-packages && uv run --package chemart-hub pytest hub/tests   # the hub
 ```
 
-The contract in `tests/test_contract.py` checks, for **every** chemistry, that a
+The contract (`chemart/contract.py`, run by `tests/test_contract.py`) checks, for **every** chemistry, that a
 zero-argument call finishes in under five seconds, that the record round-trips
 through JSON, that the same seed reproduces the same network, that the
 capabilities it computes are covered by what the catalog claims, and that bad

@@ -33,12 +33,35 @@ Everything known about one chemistry, JSON-ready.
 literature reports, which is usually what someone actually wants when they ask
 for "a chemistry that does X".
 
-### `chemart.generate_network(chemistry, seed=None, **params)`
+### `chemart.generate_network(chemistry, seed=None, *, revision=None, trust_remote_code=False, **params)`
 
 Runs the generator and returns a [`Network`](record.md). Raises `ValueError`
 for an unknown chemistry (suggesting close ids), an unknown parameter (listing
 the valid ones) or an out-of-range value (naming the parameter and its
 meaning).
+
+`chemistry` may also be a [Chemart Hub](../hub.md) id, `namespace/name`,
+optionally pinned as `namespace/name@<commit>`. `revision` selects the commit
+(`"main"`, a full id or a unique prefix of at least 7 hex digits). A hub
+chemistry that ships its own code raises `ValueError` unless
+`trust_remote_code=True`; the official `chemart/` repos run the built-in
+generators and need no trust.
+
+### `chemart.load_network(repo_id, revision=None)`
+
+Loads a network shared on the hub (a network repo). It is plain data, so no
+trust is needed. `Network.push_to_hub(repo_id, title=, description=, tags=,
+license=, message=)` publishes one.
+
+### `chemart.hub`
+
+`search(query, repo_type=, family=, provides=[...], tag=, author=, sort=)`,
+`repo_info(id)`, `snapshot_download(id, revision=)`, `push_generator(folder,
+id=None)`, `push_network(net, id)`, `check(folder)`, `new(folder)`,
+`login(token=None)`, `logout()`, `whoami()`. Errors are `HubError` subclasses:
+`HubConnectionError`, `HubAuthError`, `RepoNotFoundError`,
+`HubConflictError`, `HubValidationError` (whose `problems` lists every
+reason a push was refused). See [Chemart Hub](../hub.md).
 
 ### `chemart.tool_definitions()` and `chemart.call_tool(name, arguments)`
 
@@ -55,7 +78,9 @@ chemart.call_tool("generate_network", {"chemistry": "brusselator", "seed": 1})
 ```
 
 The `chemistry` argument of `generate_network` is an **enum** of every
-implemented id, so a model cannot ask for one that does not exist.
+implemented id, so a model cannot ask for one that does not exist. A tool
+call never runs code from the hub: `call_tool` refuses `trust_remote_code`
+among the parameters.
 
 !!! tip "Keep records small when feeding them back to a model"
     Chemistries that carry genomes or sequences in `Species.structure` can
@@ -71,13 +96,28 @@ implemented id, so a model cannot ask for one that does not exist.
 
 ```bash
 uv run chemart list
-uv run chemart describe <chemistry>
+uv run chemart describe <chemistry> [--revision REV]
 uv run chemart generate <chemistry> [-p NAME=VALUE ...] [--seed N]
                                     [--format summary|text|json]
+                                    [--revision REV] [--trust-remote-code]
 ```
 
 `-p` may be repeated; values are parsed as JSON when possible and taken as
-strings otherwise. Errors go to stderr and exit with status 2.
+strings otherwise. Errors go to stderr and exit with status 2 (status 3 for
+errors talking to the hub).
+
+Chemart Hub commands:
+
+```bash
+uv run chemart login [--token T]      # save a token for $CHEMART_HUB_URL
+uv run chemart whoami | logout
+uv run chemart search [QUERY] [--type generator|network] [--provides TAG ...] [--tag T] [--author A]
+uv run chemart download <ns/name> [--revision REV]     # prints the local folder
+uv run chemart new <folder> [--id ID] [--name NAME]    # a generator skeleton
+uv run chemart check <folder>                          # the contract, locally
+uv run chemart push <folder> [ns/name] [-m MESSAGE]
+uv run chemart push-network <file.json> <ns/name> [--title --description --license --tag]
+```
 
 ## Catalog tooling
 

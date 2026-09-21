@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% from "_macros.html" import snippet %}
+{% block title %}Share · Chemart Hub{% endblock %}
+{% block body %}
+<div class="wrap" style="max-width:900px">
+  <h1 style="margin-top:34px">Put something on the shelf</h1>
+  <div class="markdown muted">{{ site.share_intro_html }}</div>
+  <div class="quickstart">
+    <div class="panel">
+      <h2>Share a chemistry</h2>
+      {{ snippet("share-gen", "uv add chemart          # or: pip install chemart\nchemart login\nchemart new my-chem     # a working skeleton\n# edit my-chem/chemart.yaml and generator.py\nchemart check my-chem   # the same checks the hub runs\nchemart push my-chem") }}
+    </div>
+    <div class="panel">
+      <h2>Share a network</h2>
+      {{ snippet("share-net", 'import chemart\n\nnet = chemart.generate_network("chemart/brusselator", seed=1)\nnet.push_to_hub("you/brusselator-snapshot",\n                title="A Brusselator snapshot",\n                tags=["oscillator"])') }}
+    </div>
+  </div>
+  <div class="panel" style="margin-top:16px">
+    <h2>Or create an empty repo now</h2>
+    {% if me %}
+      {% if error %}<div class="notice error">{{ error }}</div>{% endif %}
+      <form class="inline-form" action="/new" method="post">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <div><label for="namespace">Owner</label><select id="namespace" name="namespace">{% for ns in namespaces %}<option>{{ ns }}</option>{% endfor %}</select></div>
+        <div><label for="name">Name</label><input id="name" name="name" type="text" placeholder="my-chem" required pattern="[a-z0-9]+(-[a-z0-9]+)*"></div>
+        <div><label for="repo_type">Type</label><select id="repo_type" name="repo_type"><option value="generator">chemistry</option><option value="network">network</option></select></div>
+        <button class="btn-primary" type="submit">Create</button>
+      </form>
+    {% else %}
+      <p class="muted"><a href="/login?next=/new">Log in</a>{% if signup %} or <a href="/signup">sign up</a>{% endif %} to create repos.</p>
+    {% endif %}
+  </div>
+  <div class="notice" style="margin-top:16px">
+    Every push is checked against the same rules as Chemart's own catalog: the entry validates, the defaults run in seconds, the network is plain JSON, and the same seed gives the same network. The hub never runs uploaded code. Whoever loads a chemistry runs it on their own machine, and only after passing <code>trust_remote_code=True</code>.
+  </div>
+</div>
+{% endblock %}

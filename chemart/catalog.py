@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import sys
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import MISSING, dataclass, field, fields
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Iterable
@@ -30,8 +30,11 @@ from typing import Any, Iterable
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
-CATALOG_DIR = ROOT / "catalog" / "chemistries"
-MODULES_DIR = ROOT / "chemart" / "chemistries"
+#: A built wheel carries the catalog inside the package (hatch force-include);
+#: a source checkout reads it from catalog/chemistries/.
+_PACKAGED_CATALOG = Path(__file__).resolve().parent / "_catalog"
+CATALOG_DIR = _PACKAGED_CATALOG if _PACKAGED_CATALOG.is_dir() else ROOT / "catalog" / "chemistries"
+MODULES_DIR = Path(__file__).resolve().parent / "chemistries"
 
 FAMILIES = {
     "core", "rewriting", "automata", "bio-inspired", "origin-of-life",
@@ -50,6 +53,11 @@ PROVIDES = {
 }
 READINESS = {"yes", "partial", "no"}
 FIDELITY = {"book", "book+decisions", "reconstructed"}
+#: Hub entries may also be new chemistries that come from no publication.
+HUB_FIDELITY = FIDELITY | {"original"}
+
+#: Keyword arguments of generate_network; a parameter may not shadow them.
+RESERVED_PARAMS = {"seed", "revision", "trust_remote_code"}
 
 #: v2 parameter types: JSON values only.
 PARAM_TYPES = {"int", "float", "bool", "str", "enum", "list", "dict"}
@@ -144,10 +152,12 @@ class Chemistry:
     family: str
     kind: str
     constructive: bool
-    book: str
     S: dict
     R: dict
     A: dict
+    #: Section(s) of Banzhaf & Yamamoto; required in the built-in catalog,
+    #: optional for chemistries shared on the hub.
+    book: str | None = None
     params: list[Param] = field(default_factory=list)
     provides: list[str] = field(default_factory=list)
     generator_ready: str | None = None
@@ -184,21 +194,56 @@ class Chemistry:
         return [p for p in self.params if p.role == role]
 
 
+_PARAM_FIELDS = {f.name for f in fields(Param)}
+_ENTRY_FIELDS = {f.name for f in fields(Chemistry)} - {"source_file"}
+
+
+def _required(cls) -> list[str]:
+    return [f.name for f in fields(cls) if f.default is MISSING and f.default_factory is MISSING]
+
+
+def _check_keys(raw: Any, cls, allowed: set[str], what: str) -> None:
+    if not isinstance(raw, dict):
+        raise ValueError(f"{what} must be a mapping, got {type(raw).__name__}")
+    unknown = sorted(set(raw) - allowed)
+    if unknown:
+        raise ValueError(f"{what}: unknown field(s) {', '.join(map(str, unknown))}; "
+                         f"valid fields: {', '.join(sorted(allowed))}")
+    missing = [name for name in _required(cls) if name not in raw]
+    if missing:
+        raise ValueError(f"{what}: missing required field(s) {', '.join(missing)}")
+
+
+def parse_entry(raw: Any, source_file: str = "") -> Chemistry:
+    """Build one `Chemistry` from its YAML mapping; raise ValueError if malformed."""
+    _check_keys(raw, Chemistry, _ENTRY_FIELDS, "catalog entry")
+    raw = dict(raw)
+    # YAML 1.1 turns bare yes/no into booleans; generator_ready is a
+    # three-valued string, so put it back.
+    ready = raw.get("generator_ready")
+    if isinstance(ready, bool):
+        raw["generator_ready"] = "yes" if ready else "no"
+    params = raw.get("params") or []
+    if not isinstance(params, list):
+        raise ValueError(f"{raw['id']}: params must be a list")
+    parsed = []
+    for i, p in enumerate(params):
+        _check_keys(p, Param, _PARAM_FIELDS, f"{raw['id']}: params[{i}]")
+        parsed.append(Param(**p))
+    raw["params"] = parsed
+    raw["source_file"] = source_file
+    return Chemistry(**raw)
+
+
 @lru_cache(maxsize=None)
 def _parse(catalog_dir: Path) -> tuple[Chemistry, ...]:
     entries: list[Chemistry] = []
     for path in sorted(catalog_dir.glob("*.yaml")):
         doc = yaml.safe_load(path.read_text())
         for raw in doc["chemistries"]:
-            raw = dict(raw)
-            # YAML 1.1 turns bare yes/no into booleans; generator_ready is a
-            # three-valued string, so put it back.
-            ready = raw.get("generator_ready")
-            if isinstance(ready, bool):
-                raw["generator_ready"] = "yes" if ready else "no"
-            raw["params"] = [Param(**p) for p in raw.get("params", [])]
-            raw["source_file"] = path.name
-            entries.append(Chemistry(**raw))
+            entries.append(parse_entry(raw, path.name))
+    if not entries:
+        raise RuntimeError(f"no catalog entries found in {catalog_dir}")
     return tuple(entries)
 
 
@@ -229,42 +274,7 @@ def validate(entries: Iterable[Chemistry]) -> list[str]:
         if c.id in seen:
             problems.append(f"{where}: duplicate id, also in {seen[c.id]}")
         seen[c.id] = c.source_file
-
-        if c.family not in FAMILIES:
-            problems.append(f"{where}: unknown family {c.family!r}")
-        if c.kind not in KINDS:
-            problems.append(f"{where}: unknown kind {c.kind!r}")
-        for p in c.provides:
-            if p not in PROVIDES:
-                problems.append(f"{where}: unknown capability {p!r}")
-        for name, n in Counter(p.name for p in c.params).items():
-            if n > 1:
-                problems.append(f"{where}: duplicate param {name!r}")
-        for p in c.params:
-            if p.role not in ROLES:
-                problems.append(f"{where}: param {p.name!r} has unknown role {p.role!r}")
-
-        # Semantic invariants.
-        if "stoichiometry" in c.provides and "topology" not in c.provides:
-            problems.append(f"{where}: stoichiometry implies topology")
-        if "thermodynamic-consistency" in c.provides and "rate-constants" not in c.provides:
-            problems.append(
-                f"{where}: thermodynamic consistency constrains reverse rates, "
-                "so rate-constants must also be provided"
-            )
-        for section in ("S", "R", "A"):
-            if not getattr(c, section):
-                problems.append(f"{where}: missing {section} section")
-
-        if c.implemented:
-            problems += [f"{where}: {m}" for m in _v2_problems(c)]
-        else:
-            if c.generator_ready not in READINESS:
-                problems.append(f"{where}: generator_ready must be one of {sorted(READINESS)}")
-            if c.fidelity is not None:
-                problems.append(f"{where}: fidelity is set but {c.module} does not exist")
-            if c.kind == "generator" and c.generator_ready == "yes" and not c.provides:
-                problems.append(f"{where}: a ready generator must provide something")
+        problems += [f"{where}: {m}" for m in entry_problems(c)]
 
     for path in sorted(MODULES_DIR.glob("*.py")):
         if path.stem != "__init__" and path.stem.replace("_", "-") not in seen:
@@ -272,13 +282,61 @@ def validate(entries: Iterable[Chemistry]) -> list[str]:
     return problems
 
 
-def _v2_problems(c: Chemistry) -> list[str]:
+def entry_problems(c: Chemistry, *, hub: bool = False) -> list[str]:
+    """Problems with one entry on its own. `hub=True` applies the rules for
+    chemistries shared on the hub: every entry there has a generator (so the
+    v2 rules always apply), `book` is optional and fidelity may be `original`."""
+    problems: list[str] = []
+    if c.family not in FAMILIES:
+        problems.append(f"unknown family {c.family!r}")
+    if c.kind not in KINDS:
+        problems.append(f"unknown kind {c.kind!r}")
+    if not hub and not c.book:
+        problems.append("missing book section")
+    for p in c.provides:
+        if p not in PROVIDES:
+            problems.append(f"unknown capability {p!r}")
+    for name, n in Counter(p.name for p in c.params).items():
+        if n > 1:
+            problems.append(f"duplicate param {name!r}")
+    for p in c.params:
+        if p.role not in ROLES:
+            problems.append(f"param {p.name!r} has unknown role {p.role!r}")
+        if p.name in RESERVED_PARAMS:
+            problems.append(f"param {p.name!r} is reserved: it is an argument of generate_network")
+
+    # Semantic invariants.
+    if "stoichiometry" in c.provides and "topology" not in c.provides:
+        problems.append("stoichiometry implies topology")
+    if "thermodynamic-consistency" in c.provides and "rate-constants" not in c.provides:
+        problems.append(
+            "thermodynamic consistency constrains reverse rates, "
+            "so rate-constants must also be provided"
+        )
+    for section in ("S", "R", "A"):
+        if not getattr(c, section):
+            problems.append(f"missing {section} section")
+
+    if hub or c.implemented:
+        problems += _v2_problems(c, hub=hub)
+    else:
+        if c.generator_ready not in READINESS:
+            problems.append(f"generator_ready must be one of {sorted(READINESS)}")
+        if c.fidelity is not None:
+            problems.append(f"fidelity is set but {c.module} does not exist")
+        if c.kind == "generator" and c.generator_ready == "yes" and not c.provides:
+            problems.append("a ready generator must provide something")
+    return problems
+
+
+def _v2_problems(c: Chemistry, *, hub: bool = False) -> list[str]:
     """Schema v2 invariants, enforced for entries that have a generator module."""
     out: list[str] = []
     if c.generator_ready is not None:
         out.append("implemented entries replace generator_ready with fidelity")
-    if c.fidelity not in FIDELITY:
-        out.append(f"fidelity must be one of {sorted(FIDELITY)}")
+    allowed = HUB_FIDELITY if hub else FIDELITY
+    if c.fidelity not in allowed:
+        out.append(f"fidelity must be one of {sorted(allowed)}")
     if c.fidelity == "reconstructed" and not c.sources:
         out.append("reconstructed entries must list their sources")
     if c.fidelity == "book+decisions" and not c.decisions:
@@ -361,7 +419,7 @@ def render_index(entries: list[Chemistry]) -> str:
             out.append(
                 f"| `{c.id}` | {c.name} | {c.kind} | "
                 f"{'yes' if c.constructive else 'no'} | {tier} | "
-                f"{_status(c)} | {c.book.split(';')[0]} |"
+                f"{_status(c)} | {(c.book or '-').split(';')[0]} |"
             )
     return "\n".join(out) + "\n"
 
@@ -388,8 +446,9 @@ def _show(c: Chemistry) -> str:
         lines.append(f"aliases: {', '.join(c.aliases)}")
     if c.origin:
         lines.append(f"origin: {c.origin}")
+    if c.book:
+        lines.append(f"book: {c.book}")
     lines += [
-        f"book: {c.book}",
         f"family/kind: {c.family} / {c.kind}"
         f"{'  (constructive)' if c.constructive else ''}",
         f"provides: {', '.join(c.provides) or '-'}",

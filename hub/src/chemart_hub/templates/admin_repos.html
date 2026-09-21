@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% from "_macros.html" import type_badge %}
+{% block title %}Repos · Admin · Chemart Hub{% endblock %}
+{% block body %}
+{% include "_admin_tabs.html" %}
+<div class="wrap" style="margin:22px auto 60px">
+  <form class="toolbar" method="get" action="/admin/repos">
+    <input type="search" name="q" value="{{ q }}" placeholder="Filter by id or title…" aria-label="Filter">
+    <select name="show" aria-label="Show">
+      {% for key, label in [("all", "all repos"), ("featured", "featured"), ("hidden", "hidden"), ("empty", "empty"), ("code", "runs code"), ("generator", "chemistries"), ("network", "networks")] %}
+        <option value="{{ key }}" {{ 'selected' if show == key }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit">Filter</button>
+    <span class="muted">{{ total }} repo{{ '' if total == 1 else 's' }}</span>
+  </form>
+  <div class="panel" style="padding:0">
+    <div class="table-scroll">
+    <table class="admin-table">
+      <thead><tr><th>repo</th><th>type</th><th>updated</th><th>♥ / ↓</th><th>curation</th><th></th></tr></thead>
+      <tbody>
+      {% for r in repos %}
+        <tr class="{{ 'row-hidden' if r.hidden }}">
+          <td><a class="mono" href="/{{ r.id }}">{{ r.id }}</a><div class="faint small">{{ r.title if r.title != r.name else "" }}</div></td>
+          <td>{{ type_badge(r) }}{% if not r.head %} <span class="badge badge-plain">empty</span>{% endif %}</td>
+          <td class="nowrap faint">{{ r.updated_at | ago }}</td>
+          <td class="nowrap faint">{{ r.likes }} / {{ r.downloads }}</td>
+          <td class="nowrap">
+            <form class="inline" action="/admin/repos/{{ r.id }}/flags" method="post">
+              <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="next" value="{{ back }}">
+              <input type="hidden" name="featured" value="{{ '0' if r.featured else '1' }}">
+              <button class="btn btn-sm {{ 'on' if r.featured }}" type="submit" title="{{ 'Remove from' if r.featured else 'Add to' }} the home page's featured shelf">★ {{ 'Featured' if r.featured else 'Feature' }}</button>
+            </form>
+            <form class="inline" action="/admin/repos/{{ r.id }}/flags" method="post">
+              <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="next" value="{{ back }}">
+              <input type="hidden" name="hidden" value="{{ '0' if r.hidden else '1' }}">
+              <button class="btn btn-sm" type="submit">{{ 'Unhide' if r.hidden else 'Hide' }}</button>
+            </form>
+          </td>
+          <td class="nowrap"><a class="btn btn-sm" href="/{{ r.id }}/edit">✎ Edit</a></td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6" class="muted">No repos match.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+  {% if pages > 1 %}
+  <nav class="pager">
+    {% if page > 1 %}<a class="btn btn-sm" href="?q={{ q | urlencode }}&amp;show={{ show }}&amp;page={{ page - 1 }}">← Previous</a>{% endif %}
+    <span class="muted">page {{ page }} of {{ pages }}</span>
+    {% if page < pages %}<a class="btn btn-sm" href="?q={{ q | urlencode }}&amp;show={{ show }}&amp;page={{ page + 1 }}">Next →</a>{% endif %}
+  </nav>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Admin · Chemart Hub{% endblock %}
+{% block body %}
+{% include "_admin_tabs.html" %}
+<div class="wrap" style="margin:26px auto 60px">
+  <div class="stat-grid">
+    {% for label, value in stats.items() %}
+      <div class="stat"><div class="stat-value">{{ value }}</div><div class="stat-label">{{ label }}</div></div>
+    {% endfor %}
+  </div>
+  <div class="quickstart">
+    <div class="panel">
+      <h2>What you can do here</h2>
+      <ul class="plain-list">
+        <li><a href="/admin/repos">Repos</a>: feature on the home page, hide from listings, edit anything, delete.</li>
+        <li><a href="/admin/users">Users &amp; orgs</a>: grant superadmin, suspend, reset passwords, edit profiles, delete.</li>
+        <li><a href="/admin/site">Site text</a>: headlines, footer, the announcement banner, the About page.</li>
+        <li><a href="/admin/archive">Archive</a>: everything deleted waits here. Restore it, or purge it to remove it from disk for good.</li>
+        <li>Every repo page has an <strong>✎ Edit</strong> tab: change the card, edit or add files in the browser, delete files, restore old versions.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h2>Recent admin actions <a href="/admin/log" style="font-weight:400;font-size:.85rem">all →</a></h2>
+      {% include "_log_table.html" %}
+    </div>
+  </div>
+</div>
+{% endblock %}

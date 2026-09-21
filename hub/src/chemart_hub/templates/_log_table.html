@@ -1,0 +1,13 @@
+{% if log %}
+<div class="table-scroll">
+<table class="log">
+  <thead><tr><th>when</th><th>who</th><th>what</th><th>target</th><th>detail</th></tr></thead>
+  <tbody>
+  {% for e in log %}
+    <tr><td class="nowrap" title="{{ e.at }}">{{ e.at | ago }}</td><td><a href="/{{ e.actor }}">{{ e.actor }}</a></td>
+      <td>{{ e.action }}</td><td class="mono">{{ e.target }}</td><td class="faint">{{ e.detail or "" }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}<p class="muted">Nothing yet.</p>{% endif %}

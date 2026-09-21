@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}{{ file_path }} · {{ repo.id }} · Chemart Hub{% endblock %}
+{% block body %}
+{% include "_repo_head.html" %}
+<div class="wrap" style="margin:26px auto 60px">
+  {% if is_code and repo.has_code %}
+  <div class="notice warn"><strong>This is code that runs on the machine of whoever loads this chemistry</strong> with <code>trust_remote_code=True</code>. Read it before you trust it, then pin <code>revision="{{ commit.commit[:12] }}"</code>.</div>
+  {% endif %}
+  <div class="panel file-view">
+    <div class="file-head">
+      <span><a href="/{{ repo.id }}/tree/{{ commit.commit }}">files</a> / <strong class="mono">{{ file_path }}</strong> <span class="faint">· {{ meta.size | size }} · at <span class="sha-pill">{{ commit.commit[:12] }}</span></span></span>
+      <span>
+        {% if file_path.endswith(".md") %}<a class="btn btn-sm" href="?plain=1">Source</a>{% endif %}
+        <a class="btn btn-sm" href="/{{ repo.id }}/resolve/{{ commit.commit }}/{{ file_path }}">Raw</a>
+        {% if can_write and commit.commit == repo.head %}
+          <a class="btn btn-sm" href="/{{ repo.id }}/edit/file?path={{ file_path | urlencode }}">✎ Edit</a>
+        {% endif %}
+      </span>
+    </div>
+    {% if too_big %}
+      <p class="muted" style="padding:16px">This file is too large to show here. <a href="/{{ repo.id }}/resolve/{{ commit.commit }}/{{ file_path }}">Download it</a>.</p>
+    {% elif file_path.endswith(".md") and request.query_params.get("plain") != "1" %}
+      <div class="markdown">{{ rendered }}</div>
+    {% else %}
+      <div class="code">{{ rendered }}</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

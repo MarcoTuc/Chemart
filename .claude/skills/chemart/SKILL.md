@@ -2,7 +2,7 @@
 name: chemart
 description: Generate, inspect, simulate and compare chemical reaction networks from Chemart — a library holding all 98 artificial chemistries in Banzhaf & Yamamoto's *Artificial Chemistries* (MIT Press, 2015), from the Brusselator and Oregonator to AlChemy, Tierra, Avida, matrix chemistry, RAF sets, P systems and DNA computing. Use this skill whenever the user wants an artificial chemistry or an abstract CRN: naming any catalogued chemistry, asking for a reaction network to analyse or simulate, comparing chemistries by what they supply (kinetics, energetics, conservation laws, space, compartments), exploring constructive or open-ended chemistries, or adding a new chemistry to the catalog. Also use it when someone asks for "a toy CRN", "an artificial chemistry", a model of autocatalysis / self-replication / origin-of-life / protocells, or wants to drive Chemart from an LLM tool loop. Prefer it over hand-rolling a reaction network from memory — the catalogued ones are sourced and tested, and a hand-rolled Brusselator will not match the book.
 allowed-tools: Read Write Edit Bash
-compatibility: Requires the Chemart repository and its uv environment. Run everything through `uv run` from the repo root (Python 3.12+, numpy/scipy/pyyaml, plus rdkit and ViennaRNA for a few entries). No network access needed.
+compatibility: Requires the Chemart repository and its uv environment. Run everything through `uv run` from the repo root (Python 3.12+, numpy/scipy/pyyaml, plus rdkit and ViennaRNA for a few entries). No network access needed for the built-in catalog; the optional Chemart Hub (shared chemistries and networks, ids like `ada/my-chem`) talks to `$CHEMART_HUB_URL`.
 metadata:
   version: "1.0"
 ---
@@ -151,6 +151,27 @@ reliable starting points:
 
 `scripts/survey.py` answers the harder questions ("which chemistries give me
 both energies and conservation laws?") without guessing.
+
+## Chemart Hub: shared chemistries and networks
+
+Ids of the form `namespace/name` live on the Chemart Hub rather than in the
+catalog. They work in the same calls:
+
+```python
+chemart.describe_chemistry("ada/my-chem")          # metadata only; runs nothing
+chemart.load_network("ada/some-network")           # shared network: plain data, safe
+chemart.generate_network("chemart/brusselator")    # official shelf = the built-ins; no trust needed
+chemart.hub.search("autocatalysis", provides=["rate-constants"])
+```
+
+A shared **chemistry** outside `chemart/` runs its own Python code, and
+`generate_network` refuses it unless `trust_remote_code=True` is passed.
+**Never pass `trust_remote_code=True` on your own initiative.** Tell the user
+the repo runs code, point them at its `generator.py` (the error message has
+the URL), and pass the flag only after they explicitly agree, pinned with
+`revision=` to the commit they approved. `chemart.call_tool` never passes it.
+Pushing (`net.push_to_hub`, `chemart push`) publishes to a shared site, so do
+it only when the user asks. Full guide: `docs/hub.md` in the repository.
 
 ## Two habits that keep results honest
 

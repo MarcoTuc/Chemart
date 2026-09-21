@@ -32,6 +32,12 @@ format's contract and is tested for all 98 entries.
 
 Full field-by-field detail is in [The network record](reference/record.md).
 
+**Provenance.** `chemistry` is the id that made the network: a catalog id
+(`"brusselator"`), or for a chemistry from the [Chemart Hub](hub.md) its repo
+pinned to the exact commit (`"ada/my-chem@<64-hex commit>"`). Either way,
+`generate_network(net.chemistry, seed=net.seed, **net.params)` rebuilds the
+same network (add `trust_remote_code=True` for a hub chemistry with code).
+
 ## Why not just a stoichiometric matrix?
 
 A single net matrix `S` with species names is the right *core*, and it is what

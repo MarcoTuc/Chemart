@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Site text · Admin · Chemart Hub{% endblock %}
+{% block body %}
+{% include "_admin_tabs.html" %}
+<div class="wrap" style="margin:22px auto 60px;max-width:900px">
+  {% if saved is not none %}<div class="notice ok">Saved{% if saved == "0" %}: nothing had changed{% else %} {{ saved }} text{{ '' if saved == '1' else 's' }}{% endif %}.</div>{% endif %}
+  <p class="muted">Leave a field empty to restore its default. Markdown fields accept links, lists, emphasis and code; everything is sanitised.</p>
+  <form action="/admin/site" method="post">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    {% for f in fields %}
+    <div class="panel site-field">
+      <label for="f-{{ f.key }}">{{ f.label }} <span class="faint" style="font-weight:400">· {{ f.kind }}</span>
+        {% if f.edited %}<span class="badge badge-plain" title="{{ f.edited.updated_at }}">edited by {{ f.edited.updated_by }} {{ f.edited.updated_at | ago }}</span>{% endif %}</label>
+      {% if f.help %}<p class="faint small" style="margin:0 0 6px">{{ f.help }}</p>{% endif %}
+      {% if f.kind == "line" %}
+        <input id="f-{{ f.key }}" name="{{ f.key }}" type="text" value="{{ f.value }}" style="width:100%">
+      {% else %}
+        <textarea id="f-{{ f.key }}" name="{{ f.key }}" rows="{{ 10 if f.key == 'about' else 4 }}" style="width:100%">{{ f.value }}</textarea>
+      {% endif %}
+    </div>
+    {% endfor %}
+    <button class="btn-primary" type="submit">Save site text</button>
+  </form>
+</div>
+{% endblock %}

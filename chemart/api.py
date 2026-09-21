@@ -8,6 +8,10 @@ The catalog YAML is the only parameter specification. A chemistry module
 `chemart.chemistries.<id with underscores>` defines ``generate(p, rng)``,
 receives the validated parameters as attributes of `p`, and returns a
 `Network`; this module fills in the provenance.
+
+An id of the form ``namespace/name`` (optionally ``@revision``) names a
+chemistry shared on the Chemart Hub instead; see `chemart.hub`. Code from
+the hub runs only when the caller passes ``trust_remote_code=True``.
 """
 
 from __future__ import annotations
@@ -30,7 +34,21 @@ def _entries() -> dict[str, catalog.Chemistry]:
     return {c.id: c for c in catalog.load()}
 
 
-def _entry(chemistry_id: str) -> catalog.Chemistry:
+def is_hub_id(chemistry_id: str) -> bool:
+    """Built-in ids are bare slugs; hub ids are ``namespace/name[@revision]``."""
+    return isinstance(chemistry_id, str) and ("/" in chemistry_id or "@" in chemistry_id)
+
+
+def _entry(chemistry_id: str, revision: str | None = None) -> catalog.Chemistry:
+    if is_hub_id(chemistry_id):
+        from chemart import hub
+
+        return hub.resolve_chemistry(chemistry_id, revision)
+    if revision is not None:
+        raise ValueError(
+            f"revision={revision!r} only applies to hub ids (namespace/name); "
+            f"{chemistry_id!r} is a built-in chemistry"
+        )
     entries = _entries()
     if chemistry_id in entries:
         return entries[chemistry_id]
@@ -71,10 +89,14 @@ def params_schema(c: catalog.Chemistry) -> dict[str, Any]:
     }
 
 
-def describe_chemistry(chemistry: str) -> dict[str, Any]:
-    """Everything known about one chemistry, including its parameter schema."""
-    c = _entry(chemistry)
-    return {
+def describe_chemistry(chemistry: str, revision: str | None = None) -> dict[str, Any]:
+    """Everything known about one chemistry, including its parameter schema.
+
+    For a hub id this reads the repo's metadata only; no code is downloaded
+    or run, so it needs no ``trust_remote_code``.
+    """
+    c = _entry(chemistry, revision)
+    info = {
         "id": c.id,
         "name": c.name,
         "intuition": _oneline(c.intuition) or None,
@@ -97,6 +119,10 @@ def describe_chemistry(chemistry: str) -> dict[str, Any]:
         "notes": _oneline(c.notes) or None,
         "params": params_schema(c),
     }
+    hub_info = getattr(c, "hub_info", None)
+    if hub_info is not None:
+        info["hub"] = hub_info()
+    return info
 
 
 def resolve_params(c: catalog.Chemistry, given: dict[str, Any]) -> dict[str, Any]:
@@ -120,19 +146,45 @@ def resolve_params(c: catalog.Chemistry, given: dict[str, Any]) -> dict[str, Any
     return values
 
 
-def generate_network(chemistry: str, seed: int | None = None, **params: Any) -> Network:
-    """Generate a reaction network. Omitted parameters take their defaults."""
-    c = _entry(chemistry)
-    if seed is not None and (isinstance(seed, bool) or not isinstance(seed, int)):
-        raise ValueError(f"seed must be an integer or None, got {seed!r}")
+def generate_network(
+    chemistry: str,
+    seed: int | None = None,
+    *,
+    revision: str | None = None,
+    trust_remote_code: bool = False,
+    **params: Any,
+) -> Network:
+    """Generate a reaction network. Omitted parameters take their defaults.
+
+    `chemistry` is a catalog id (``"brusselator"``) or a hub id
+    (``"alice/my-chem"``, ``"alice/my-chem@3f2a9c1"``). A hub chemistry that
+    ships its own code runs only with ``trust_remote_code=True``; pin
+    `revision` to the commit you reviewed.
+    """
+    c = _entry(chemistry, revision)
     if not c.implemented:
         raise NotImplementedError(f"{c.id!r} is catalogued but has no generator yet.")
+    return run_generator(c, generator_for(c, trust_remote_code), seed, params)
+
+
+def generator_for(c: catalog.Chemistry, trust_remote_code: bool = False):
+    """The ``generate(p, rng)`` function of an entry, built-in or from the hub."""
+    load = getattr(c, "load_generator", None)
+    if load is not None:
+        return load(trust_remote_code)
+    return import_module(c.module).generate
+
+
+def run_generator(c: catalog.Chemistry, generate, seed: int | None, params: dict[str, Any]) -> Network:
+    """Validate `params` against `c`, call `generate(p, rng)`, record provenance."""
+    if seed is not None and (isinstance(seed, bool) or not isinstance(seed, int)):
+        raise ValueError(f"seed must be an integer or None, got {seed!r}")
     values = resolve_params(c, params)
     rng = np.random.default_rng(seed)
-    net = import_module(c.module).generate(SimpleNamespace(**copy.deepcopy(values)), rng)
+    net = generate(SimpleNamespace(**copy.deepcopy(values)), rng)
     if not isinstance(net, Network):
-        raise TypeError(f"{c.module}.generate returned {type(net).__name__}, expected Network")
-    net.chemistry, net.params, net.seed = c.id, values, seed
+        raise TypeError(f"{c.id}: generate returned {type(net).__name__}, expected Network")
+    net.chemistry, net.params, net.seed = getattr(c, "ref", c.id), values, seed
     return net
 
 
@@ -187,8 +239,12 @@ def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
     if name == "describe_chemistry":
         return describe_chemistry(arguments["chemistry"])
     if name == "generate_network":
-        net = generate_network(
-            arguments["chemistry"], arguments.get("seed"), **arguments.get("params", {})
-        )
+        # A tool call never runs code from the hub: a model that was talked
+        # into it must not be able to switch the trust gate on via params.
+        params = dict(arguments.get("params") or {})
+        reserved = sorted(set(params) & catalog.RESERVED_PARAMS)
+        if reserved:
+            raise ValueError(f"{', '.join(reserved)} cannot be passed as chemistry parameters")
+        net = generate_network(arguments["chemistry"], arguments.get("seed"), **params)
         return net.to_dict()
     raise ValueError(f"unknown tool {name!r}")

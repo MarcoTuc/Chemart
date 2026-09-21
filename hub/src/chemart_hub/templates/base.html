@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Chemart Hub{% endblock %}</title>
+  <meta name="description" content="{% block description %}The one stop shop for artificial chemistry and artificial life: share chemistries and reaction networks, load them in one line of Python.{% endblock %}">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/chemart.css">
+  <link rel="stylesheet" href="/static/pygments.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="Chemart Hub home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3 27.3 9.5v13L16 29 4.7 22.5v-13z" fill="currentColor"/><circle cx="16" cy="16" r="6" fill="none" stroke="var(--bg)" stroke-width="2.4"/></svg>
+      <span><span class="che">che</span><span class="mart">mart</span></span>
+      <span class="pill">hub</span>
+    </a>
+    <form class="header-search" action="/browse" method="get" role="search">
+      <input type="search" name="q" placeholder="Search chemistries and networks…" aria-label="Search" value="{{ filters.q if filters is defined else '' }}">
+    </form>
+    <nav class="site-nav">
+      <a href="/browse">Browse</a>
+      <a href="/new" class="hide-sm">Share</a>
+      {% if me %}
+        {% if me.is_admin %}<a class="admin-link" href="/admin" title="Superadmin panel">Admin</a>{% endif %}
+        <a class="me" href="/{{ me.name }}">{{ me.name }}</a>
+        <a href="/settings/account" class="hide-sm">Settings</a>
+        <form action="/logout" method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="linkish" type="submit">Log out</button></form>
+      {% else %}
+        <a href="/login?next={{ path | urlencode }}">Log in</a>
+        {% if signup %}<a class="btn btn-primary btn-sm" href="/signup">Sign up</a>{% endif %}
+      {% endif %}
+    </nav>
+  </div>
+</header>
+{% if site and site.announcement_html %}
+<div class="announcement"><div class="wrap markdown">{{ site.announcement_html }}</div></div>
+{% endif %}
+<main>
+{% block body %}{% endblock %}
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <span>{{ site.footer if site else "Chemart Hub" }}</span>
+    <span><a href="/about">About</a> · <a href="/browse?author=chemart">The book chemistries</a> · <a href="/api/docs">API</a> · <a href="/new">Share yours</a></span>
+  </div>
+</footer>
+</body>
+</html>

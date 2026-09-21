@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Files · {{ repo.id }} · Chemart Hub{% endblock %}
+{% block body %}
+{% include "_repo_head.html" %}
+<div class="wrap" style="margin:26px auto 60px">
+  <div class="panel file-view">
+    <div class="file-head">
+      <span><span class="sha-pill">{{ commit.commit[:12] }}</span> <strong>{{ commit.message }}</strong> <span class="faint">· {{ commit.author or "?" }} · {{ commit.created_at | ago }}</span></span>
+      {% if revision != commit.commit %}<a class="btn btn-sm" href="/{{ repo.id }}/tree/{{ commit.commit }}">Permalink</a>{% endif %}
+    </div>
+    <table class="files">
+      <tbody>
+      {% for path, meta in files %}
+        <tr>
+          <td><a class="file" href="/{{ repo.id }}/blob/{{ commit.commit }}/{{ path }}">{{ path }}</a></td>
+          <td class="size">{{ meta.size | size }}</td>
+          <td class="sha" title="sha256 {{ meta.sha256 }}">{{ meta.sha256[:10] }}</td>
+          <td style="text-align:right"><a href="/{{ repo.id }}/resolve/{{ commit.commit }}/{{ path }}">raw</a></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

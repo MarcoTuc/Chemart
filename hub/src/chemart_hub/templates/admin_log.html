@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Log · Admin · Chemart Hub{% endblock %}
+{% block body %}
+{% include "_admin_tabs.html" %}
+<div class="wrap" style="margin:22px auto 60px">
+  <div class="panel">{% include "_log_table.html" %}</div>
+</div>
+{% endblock %}

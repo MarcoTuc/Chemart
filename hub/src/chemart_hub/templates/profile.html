@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "_macros.html" import tiles %}
+{% block title %}{{ owner.name }} · Chemart Hub{% endblock %}
+{% block body %}
+<div class="wrap">
+  <div class="profile-head">
+    <div class="avatar {{ 'org' if owner.is_org }}">{{ owner.name[:1] | upper }}</div>
+    <div style="flex:1">
+      <h1 style="margin:0">{{ owner.fullname or owner.name }}{% if owner.fullname %} <span class="faint mono" style="font-size:1rem;font-weight:400">{{ owner.name }}</span>{% endif %}
+        {% if owner.is_admin %}<span class="badge badge-official" style="vertical-align:middle">superadmin</span>{% endif %}
+        {% if owner.disabled %}<span class="badge badge-hidden" style="vertical-align:middle">suspended</span>{% endif %}</h1>
+      <div class="muted">
+        {% if owner.is_org %}organisation{% if members %} · members: {% for m in members %}<a href="/{{ m }}">{{ m }}</a>{{ ", " if not loop.last }}{% endfor %}{% endif %}
+        {% else %}member since {{ owner.created_at[:10] }}{% if orgs %} · in {% for o in orgs %}<a href="/{{ o }}">{{ o }}</a>{{ ", " if not loop.last }}{% endfor %}{% endif %}{% endif %}
+      </div>
+    </div>
+    {% if can_edit %}<a class="btn btn-sm" href="/settings/profile/{{ owner.name }}">✎ Edit profile</a>{% endif %}
+    {% if me and me.is_admin %}<a class="btn btn-sm" href="/admin/users?q={{ owner.name }}">Manage</a>{% endif %}
+  </div>
+  {% if deleted %}<div class="notice ok"><strong>{{ deleted }}</strong> was deleted. It is no longer on the site; the hub keeps it in an archive until a superadmin purges it.</div>{% endif %}
+  {% if bio_html %}<div class="markdown profile-bio">{{ bio_html }}</div>{% endif %}
+  <div class="section-head"><h2>Repos <span class="faint" style="font-weight:400">· {{ total }}</span></h2></div>
+  {{ tiles(repos, "No repos yet.") }}
+  {% if liked %}
+  <div class="section-head"><h2>Liked</h2></div>
+  {{ tiles(liked) }}
+  {% endif %}
+</div>
+{% endblock %}

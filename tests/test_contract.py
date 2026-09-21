@@ -4,16 +4,14 @@ Parametrized over the catalog: a chemistry enters these tests as soon as its
 module `chemart/chemistries/<id>.py` exists.
 """
 
-import json
 import os
-import time
 
 import pytest
 
 import chemart
-from chemart import catalog
+import chemart.api
+from chemart import catalog, contract
 from chemart.kinetics import RATE_LAWS
-from chemart.network import Network
 
 ENTRIES = {c.id: c for c in catalog.load()}
 ALL_IMPLEMENTED = sorted(i for i, c in ENTRIES.items() if c.implemented)
@@ -27,32 +25,20 @@ if os.environ.get("CHEMART_ONLY"):
 
 
 @pytest.mark.parametrize("cid", IMPLEMENTED)
-def test_zero_argument_generation(cid):
-    start = time.perf_counter()
+def test_contract(cid):
+    """Defaults run in seconds, the network is plain JSON, same seed gives the
+    same network, and the catalog claims everything the network contains."""
+    entry = ENTRIES[cid]
+    assert contract.problems(entry, chemart.api.generator_for(entry)) == []
+
+
+@pytest.mark.parametrize("cid", IMPLEMENTED)
+def test_network_record_is_well_formed(cid):
     net = chemart.generate_network(cid, seed=1)
-    assert time.perf_counter() - start < 5, "default parameters must run in seconds"
     assert net.chemistry == cid
-
-    restored = Network.from_dict(json.loads(json.dumps(net.to_dict())))
-    assert restored == net, "network must be plain JSON data and round-trip exactly"
-
     ids, R, P = net.matrices()
     assert R.shape == P.shape == (len(net.species), len(net.reactions))
     assert all(r.rate is None or r.rate["law"] in RATE_LAWS for r in net.reactions)
-
-
-@pytest.mark.parametrize("cid", IMPLEMENTED)
-def test_same_seed_same_network(cid):
-    a = chemart.generate_network(cid, seed=7)
-    b = chemart.generate_network(cid, seed=7)
-    assert a.to_dict() == b.to_dict()
-
-
-@pytest.mark.parametrize("cid", IMPLEMENTED)
-def test_catalog_claims_cover_content(cid):
-    net = chemart.generate_network(cid, seed=1)
-    unclaimed = set(net.provides) - set(ENTRIES[cid].provides)
-    assert not unclaimed, f"network contains {unclaimed} but the catalog does not claim it"
 
 
 @pytest.mark.parametrize("cid", IMPLEMENTED)

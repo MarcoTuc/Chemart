@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Settings · Chemart Hub{% endblock %}
+{% block body %}
+<div class="wrap" style="max-width:720px;margin:34px auto 60px">
+  <h1>Settings</h1>
+  {% if done == "password" %}<div class="notice ok">Password changed.</div>{% endif %}
+  {% if error %}<div class="notice error">{{ error }}</div>{% endif %}
+  <div class="panel">
+    <h2>Profile</h2>
+    <p class="muted" style="margin-top:0">Your display name and bio, shown on <a href="/{{ me.name }}">/{{ me.name }}</a>.</p>
+    <a class="btn btn-sm" href="/settings/profile/{{ me.name }}">✎ Edit profile</a>
+    <a class="btn btn-sm" href="/settings/tokens">API tokens</a>
+    {% if me.is_admin %}<a class="btn btn-sm" href="/admin">Admin panel</a>{% endif %}
+  </div>
+  <div class="panel">
+    <h2>Change password</h2>
+    <form action="/settings/account/password" method="post">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label for="current">Current password</label>
+      <input id="current" name="current" type="password" autocomplete="current-password" required style="width:100%">
+      <label for="password">New password</label>
+      <input id="password" name="password" type="password" autocomplete="new-password" minlength="8" required style="width:100%">
+      <label for="confirm">New password, again</label>
+      <input id="confirm" name="confirm" type="password" autocomplete="new-password" minlength="8" required style="width:100%">
+      <button class="btn-primary" type="submit" style="margin-top:16px">Change password</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
