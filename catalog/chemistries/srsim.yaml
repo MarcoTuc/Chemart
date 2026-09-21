@@ -106,7 +106,7 @@ chemistries:
     - "v1 parameters agent_rules (callable) and geometry (matrix) became the model choice plus the custom molecule_types/rules/init, in JSON and in the rule mini-language. The reactor, the tolerances and the force constants are exposed with the values the published input files use."
     - "The network has status 'observed': it is the set of complex-level reactions that fired, with counts. Nothing is enumerated in advance - that is the point of rule-based modelling - so the network is a sample of an unbounded species set, and the rule set itself is kept in extras.rules and extras.bngl."
   phenomena:
-    - "geometry decides the reachable species: with a 180-degree monomer only rods form, with 60 degrees triangles close, and with 120 degrees no small ring can close at all (paper fig. 3)"
+    - "geometry decides the reachable species: paper fig. 3 shows rods from a 180-degree monomer and closed squares from a 90-degree one; Chemart's tests add that with 60 degrees triangles close and with 120 degrees no small ring can close at all"
     - "scaffold proteins co-localise their ligands: binding A to the scaffold roughly doubles the phosphorylated A in the spatial simulation while the well-mixed simulation of the same rules shows no increase (paper figs. 5-6)"
     - "in the fast-diffusion limit the spatial simulation reproduces well-stirred mass-action kinetics, with the equilibrium constant k2_mic V_react / k_off of the paper's supplement"
     - "a refractory time suppresses geminate recombination; the molecules waiting it out are t_ref k_off [C] per species, as the supplement predicts"

@@ -7,9 +7,9 @@ chemistries:
     alphabet, joined and cut, or recombined by swapping tails between two of
     them - and every reaction has its own enzyme, so an organism's genome is
     simply the set of enzymes it owns. Letter counts are conserved by all
-    three operations, which means the total amount of substance is fixed and
-    makes the trade-off explicit: hold the amount constant and more letters
-    means longer, fewer compounds.
+    three operations, but ligation and cleavage change the number of
+    molecules; a regulated flow holds the total amount of substance fixed,
+    so an organism holding more letters holds longer compounds.
   aliases: ["artificial metabolic system"]
   origin: "Ono, Fujiwara & Yuta, 2005"
   book: "18.3.1"
