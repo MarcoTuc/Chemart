@@ -18,6 +18,7 @@ chemistries:
   family: origin-of-life
   kind: generator
   constructive: false
+  network: given
   S:
     repr: "five species A (autocatalyst, hydrophilic), M (membrane, hydrophobic, isotropic M_i or anisotropic M_a carrying one of the six lattice orientations), X (food, neutral), Y (waste, neutral), W (water, hydrophilic), one particle per cell of a hexagonal torus"
     definition: explicit

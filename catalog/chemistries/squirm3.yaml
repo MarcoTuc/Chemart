@@ -17,6 +17,7 @@ chemistries:
   family: spatial
   kind: generator
   constructive: true
+  network: generated
   S:
     repr: >
       Atoms have a fixed type in {a..f} and a mutable integer state; a bonded

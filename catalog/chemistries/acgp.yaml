@@ -20,6 +20,7 @@ chemistries:
   family: application
   kind: generator
   constructive: false
+  network: given
   S: {repr: "registers r0..r(n-1) of a virtual machine (species); their contents are real numbers, and the multiplicity of each instruction plays the role of a concentration", definition: explicit}
   R:
     definition: explicit

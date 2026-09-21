@@ -54,6 +54,7 @@ measurements, and does not simulate the swimming (see below for why).
 |---|---|
 | **family** | wet |
 | **kind** | wet |
+| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
 | **constructive** | no — fixed species set |
 | **fidelity** | `reconstructed` — built from the original papers listed under *References* |
 | **book** | 19.2.5 |

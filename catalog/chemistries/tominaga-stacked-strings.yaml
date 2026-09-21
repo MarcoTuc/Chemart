@@ -17,6 +17,7 @@ chemistries:
   family: systems-biology
   kind: generator
   constructive: true
+  network: generated
   S:
     repr: >
       a molecule (object, v-molecule) is a stack of lines of elements, each line with an integer

@@ -18,6 +18,7 @@ chemistries:
   archived: pruned
   kind: generator
   constructive: false
+  network: generated
   S:
     repr: >
       the N possible activities (messages) 1..N, one species a_i per activity;

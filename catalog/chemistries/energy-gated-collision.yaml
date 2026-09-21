@@ -17,6 +17,7 @@ chemistries:
   archived: pruned
   kind: analysis
   constructive: true
+  network: given
   S:
     repr: "any molecules for which a potential energy can be given and a kinetic energy computed; here a small explicit set of species, each with a potential energy in kJ/mol"
     definition: explicit

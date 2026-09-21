@@ -17,6 +17,7 @@ chemistries:
   family: automata
   kind: generator
   constructive: true
+  network: generated
   S:
     repr: "32-bit words; species id w<8 hex digits>, structure the 32-character bitstring (most significant bit first)"
     definition: implicit

@@ -17,6 +17,7 @@ chemistries:
   archived: pruned
   kind: generator
   constructive: true
+  network: generated
   S: {repr: "species S<label> of a generalised Lotka-Volterra ecosystem; each carries a phenotype (r_i, beta_ii, mu_i, its interaction row and column)", definition: explicit}
   R:
     definition: explicit

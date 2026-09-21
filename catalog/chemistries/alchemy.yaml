@@ -18,6 +18,7 @@ chemistries:
   family: rewriting
   kind: generator
   constructive: true
+  network: generated
   S:
     repr: "closed normal forms of untyped lambda-expressions modulo renaming of bound variables; species id is the de Bruijn string (^ abstraction, (M)N application, 1-based indices, e.g. ^^2 for λx1.λx2.x1), structure the paper's standardized form λx1.λx2.x1"
     definition: implicit

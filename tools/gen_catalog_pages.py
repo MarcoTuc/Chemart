@@ -46,6 +46,11 @@ FIDELITY_NOTE = {
     "reconstructed": "built from the original papers listed under *References*",
 }
 
+NETWORK_NOTE = {
+    "given": "given — the chemistry is a reaction network, instantiated from its parameters",
+    "generated": "generated — the network is the output of the chemistry's algorithm",
+}
+
 #: A reader meets these reactor names in the formal specification; each gets a
 #: plain-language gloss so the term is never left unexplained.
 REACTOR_NOTE = {
@@ -198,6 +203,8 @@ def glance(c) -> list[str]:
     L = ["| at a glance | |", "|---|---|"]
     L.append(f"| **family** | {c.family} |")
     L.append(f"| **kind** | {c.kind} |")
+    if c.network:
+        L.append(f"| **network** | {NETWORK_NOTE.get(c.network, c.network)} |")
     L.append(f"| **constructive** | {'yes — the species set grows at run time' if c.constructive else 'no — fixed species set'} |")
     L.append(f"| **fidelity** | `{c.fidelity}` — {FIDELITY_NOTE.get(c.fidelity, '')} |")
     L.append(f"| **book** | {esc(c.book)} |")
@@ -470,13 +477,13 @@ def table_caps(c) -> str:
 
 
 def _index_rows(group, nets) -> list[str]:
-    L = ["| chemistry | origin | grows | fidelity | S/R | beyond topology |",
-         "|---|---|:--:|---|--:|---|"]
+    L = ["| chemistry | origin | network | grows | fidelity | S/R | beyond topology |",
+         "|---|---|---|:--:|---|--:|---|"]
     for c in sorted(group, key=lambda c: c.id):
         net = nets.get(c.id)
         size = f"{len(net.species)}/{len(net.reactions)}" if net else "—"
         L.append(
-            f"| [{c.name}]({c.id}.md) | {short_origin(c.origin)} | "
+            f"| [{c.name}]({c.id}.md) | {short_origin(c.origin)} | {c.network or '—'} | "
             f"{'yes' if c.constructive else '·'} | {c.fidelity} | {size} | "
             f"{table_caps(c)} |"
         )
@@ -490,6 +497,8 @@ def glance_counts(entries) -> list[str]:
 
     kinds = Counter(c.kind for c in entries)
     L = ["| | |", "|---|---|"]
+    L.append(f"| network given (written down, built by a formula, or drawn at random) | {sum(1 for c in entries if c.network == 'given')} |")
+    L.append(f"| network generated (the output of the chemistry's algorithm) | {sum(1 for c in entries if c.network == 'generated')} |")
     L.append(f"| constructive (open, growing species set) | {sum(1 for c in entries if c.constructive)} |")
     L.append(f"| carry their own rate constants or rate law | {having('rate-constants', 'rate-law')} |")
     L.append(f"| carry energetics or thermodynamic consistency | {having('energies', 'thermodynamic-consistency')} |")
@@ -513,7 +522,10 @@ def index_page(entries, nets) -> str:
                 "[at the end](#archive)." if archived else ""))
     L.append("")
     L += glance_counts(main)
-    L.append("Columns: **grows** is whether the species set is open and expands at "
+    L.append("Columns: **network** is *given* when the chemistry is a reaction network "
+             "Chemart instantiates from its parameters, and *generated* when the network "
+             "is the output of the chemistry's algorithm (see `catalog/NETWORKS.md`); "
+             "**grows** is whether the species set is open and expands at "
              "run time; **S/R** is the species and reaction count at *default* "
              "parameters with `seed=1`, which for most chemistries scales up "
              "considerably; **beyond topology** lists only the capabilities that "

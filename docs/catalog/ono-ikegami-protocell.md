@@ -59,6 +59,7 @@ that are the model's main published result.
 |---|---|
 | **family** | origin-of-life |
 | **kind** | generator |
+| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
 | **constructive** | no — fixed species set |
 | **fidelity** | `reconstructed` — built from the original papers listed under *References* |
 | **book** | 6.3.2 |

@@ -19,6 +19,7 @@ chemistries:
   archived: artificial-life
   kind: generator
   constructive: true
+  network: generated
   S:
     repr: >
       A cyclic one-dimensional core of Redcode words: one of the ten

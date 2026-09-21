@@ -15,6 +15,7 @@ chemistries:
   family: systems-biology
   kind: generator
   constructive: false
+  network: given
   S: {repr: "E, S, ES, P (elementary) or S, P (abridged)", definition: explicit}
   R:
     definition: explicit

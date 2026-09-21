@@ -18,6 +18,7 @@ chemistries:
   family: systems-biology
   kind: framework
   constructive: true
+  network: generated
   S:
     repr: >
       elementary molecules (EM): spheres with a mass, a radius and a diffusion coefficient,

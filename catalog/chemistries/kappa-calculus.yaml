@@ -18,6 +18,7 @@ chemistries:
   family: rewriting
   kind: formalism
   constructive: true
+  network: generated
   S:
     repr: >
       agents (proteins) with named sites; a site may carry an internal state (e.g. u/p) and a link to

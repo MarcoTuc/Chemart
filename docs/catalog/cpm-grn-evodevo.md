@@ -62,6 +62,7 @@ push each other around.
 |---|---|
 | **family** | systems-biology |
 | **kind** | framework |
+| **network** | generated — the network is the output of the chemistry's algorithm |
 | **constructive** | no — fixed species set |
 | **fidelity** | `reconstructed` — built from the original papers listed under *References* |
 | **book** | 18.6.1 |

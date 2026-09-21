@@ -16,6 +16,7 @@ chemistries:
   family: application
   kind: generator
   constructive: false
+  network: given
   S: {repr: "inputs I1, I2; substrates X1..X4; enzyme cofactors A and B (the outputs)", definition: explicit}
   R:
     definition: explicit

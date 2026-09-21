@@ -17,6 +17,7 @@ chemistries:
   family: bio-inspired
   kind: generator
   constructive: true
+  network: given
   S:
     repr: "antibodies X_i as binary strings with two binding sites (epitope e, paratope p); antigens Y_j with an epitope"
     definition: implicit

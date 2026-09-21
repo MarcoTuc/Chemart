@@ -17,6 +17,7 @@ chemistries:
   family: systems-biology
   kind: generator
   constructive: true
+  network: generated
   S:
     repr: "metabolites = strings over an alphabet of up to 8 letters {a..h}, arbitrary length (bounded here by max_length)"
     definition: implicit

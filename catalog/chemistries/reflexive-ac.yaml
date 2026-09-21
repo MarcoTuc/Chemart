@@ -17,6 +17,7 @@ chemistries:
   family: rewriting
   kind: generator
   constructive: true
+  network: generated
   S:
     repr: >
       finite state machines (Mealy machines) drawn as labelled directed graphs: every node has at most one

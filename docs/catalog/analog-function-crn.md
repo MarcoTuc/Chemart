@@ -47,6 +47,7 @@ real number, a function of the inputs, read once the network has settled.
 |---|---|
 | **family** | application |
 | **kind** | generator |
+| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
 | **constructive** | no — fixed species set |
 | **fidelity** | `book+decisions` — the book left gaps; each filled choice is listed under *Implementation decisions* |
 | **book** | 17.4.3 |

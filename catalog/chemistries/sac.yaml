@@ -17,6 +17,7 @@ chemistries:
   family: bio-inspired
   kind: generator
   constructive: true
+  network: generated
   S:
     repr: >
       strings over the 19 symbols . 0 1 2 3 ' " ! ? % * / \ & $ M E L R

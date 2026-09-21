@@ -67,6 +67,7 @@ simulation turns them into rates.
 |---|---|
 | **family** | systems-biology |
 | **kind** | analysis |
+| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
 | **constructive** | yes — the species set grows at run time |
 | **fidelity** | `book+decisions` — the book left gaps; each filled choice is listed under *Implementation decisions* |
 | **book** | 18.3.3; algorithm from 2.3.3, energetics from 2.2.6 (eqs. 2.28-2.33) |

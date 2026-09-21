@@ -53,6 +53,7 @@ only the production system, as a fixed list of reactions.
 |---|---|
 | **family** | non-chemical |
 | **kind** | generator |
+| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
 | **constructive** | yes — the species set grows at run time |
 | **fidelity** | `book+decisions` — the book left gaps; each filled choice is listed under *Implementation decisions* |
 | **book** | 20.3 |

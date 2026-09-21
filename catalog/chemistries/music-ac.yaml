@@ -20,6 +20,7 @@ chemistries:
   family: application
   kind: generator
   constructive: true
+  network: generated
   S:
     repr: >
       objects (molecules) are stacks of lines of elements written disp#elements/ per line, the

@@ -17,6 +17,7 @@ chemistries:
   archived: pruned
   kind: generator
   constructive: true
+  network: given
   S: {repr: "natural numbers as commodities; primes are raw materials, composites are manufactured goods; 2 = labour, 3 = money", definition: implicit}
   R:
     definition: explicit

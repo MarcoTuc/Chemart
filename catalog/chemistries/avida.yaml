@@ -19,6 +19,7 @@ chemistries:
   archived: artificial-life
   kind: generator
   constructive: true
+  network: generated
   S:
     repr: >
       Genotypes: circular genomes over the 26 instructions of the heads_default
