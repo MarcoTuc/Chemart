@@ -1,4 +1,18 @@
-# Chemart — a mart of artificial chemistries
+```text
+
+   ○      ██████╗██╗  ██╗███████╗███╗   ███╗ █████╗ ██████╗ ████████╗     ○
+    ╲    ██╔════╝██║  ██║██╔════╝████╗ ████║██╔══██╗██╔══██╗╚══██╔══╝    ╱
+  ○─●─○  ██║     ███████║█████╗  ██╔████╔██║███████║██████╔╝   ██║     ○─●─○
+    ╱    ██║     ██╔══██║██╔══╝  ██║╚██╔╝██║██╔══██║██╔══██╗   ██║       ╲
+   ○     ╚██████╗██║  ██║███████╗██║ ╚═╝ ██║██║  ██║██║  ██║   ██║        ○
+          ╚═════╝╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝
+
+            A ──→ X    B + X ──→ Y + D    2X + Y ──→ 3X    X ──→ E
+    ──────────────────────────────────────────────────────────────────────
+    artificial chemistry · artificial life · 98 chemistries, one interface
+```
+
+# Chemart — the one stop shop for artificial chemistry and artificial life
 
 Chemart makes every artificial chemistry in the literature available behind one
 interface, so you can generate its reaction network, look at it, simulate it,
