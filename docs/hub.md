@@ -30,8 +30,12 @@ namespace is a user or an organisation.
 
 The official `chemart/` organisation holds the book chemistries. Those repos
 are **built-in backed**: they contain the catalog entry but no code, because
-the generator ships with the library. Loading `chemart/tierra` runs your
-installed `tierra` generator and needs no trust flag.
+the generator ships with the library. Loading `chemart/gamma` runs your
+installed `gamma` generator and needs no trust flag.
+
+The public hub is <https://marcotuc.github.io/chemart-hub/>, built from the
+[MarcoTuc/chemart-hub](https://github.com/MarcoTuc/chemart-hub) registry; it
+is `chemart`'s default. See [A hub on GitHub Pages](#a-hub-on-github-pages).
 
 ## Loading
 
@@ -86,7 +90,16 @@ anything itself.
 
 ## Sharing
 
-Create an account on the hub, make a token under **Settings → Tokens**, then:
+On the public hub, sharing opens a **pull request** on its registry. Sign in
+to GitHub once with the [GitHub CLI](https://cli.github.com/) (`gh auth login`)
+and use the commands below as they are: your repos go under your GitHub login,
+and they appear on the site once the pull request is merged. Without the
+GitHub CLI, `chemart push` writes the folder and prints the steps to open the
+pull request by hand. `chemart login` and `whoami` are for a hub you run
+yourself.
+
+On a hub you run yourself, create an account, make a token under
+**Settings → Tokens**, then:
 
 ```bash
 uv run chemart login          # paste the token; stored per hub in ~/.cache/chemart/tokens.json
@@ -164,7 +177,7 @@ be reached, `main` falls back to the last commit you resolved, with a warning.
 
 | variable | meaning |
 |---|---|
-| `CHEMART_HUB_URL` | the hub to talk to (default `http://127.0.0.1:8000`, a local hub) |
+| `CHEMART_HUB_URL` | the hub to talk to (default `https://marcotuc.github.io/chemart-hub`, the public hub; `http://127.0.0.1:8000` for one you run with `chemart-hub serve`) |
 | `CHEMART_HOME` | cache and credentials (default `~/.cache/chemart`) |
 | `CHEMART_HUB_TOKEN` | a token, overriding the one saved by `chemart login` |
 | `CHEMART_HUB_OFFLINE=1` | never touch the network; use the cache only |
