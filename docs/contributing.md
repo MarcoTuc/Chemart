@@ -116,7 +116,20 @@ CHEMART_ONLY=<id> uv run pytest -q -m "slow or not slow" \
 uv run chemart generate <id> --format summary
 ```
 
-Then regenerate the index and the docs pages:
+Then write the chemistry's documentation page. Its prose lives in
+`catalog/explainers/<id>.md`: what the chemistry is and why it exists, how it
+works, how to use it, and what has been done with it. The generator weaves it
+around the parts it builds from the catalog: the formal specification, the
+default network, the parameters, the decisions and the sources.
+`catalog/explainers/README.md` gives the format and the rules, and
+`catalog/explainers/ccm.md` is a worked example.
+
+```bash
+uv run python tools/gen_catalog_pages.py --only <id>       # rebuild just this page
+uv run pytest -q tests/test_explainers.py
+```
+
+Finally regenerate the index and all the docs pages:
 
 ```bash
 uv run python -m chemart.catalog index

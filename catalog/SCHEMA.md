@@ -34,7 +34,7 @@ as they are implemented.
 ## Plain-language explanation
 | field | meaning |
 |---|---|
-| `intuition` | how the chemistry works and what the idea behind it is, in prose a newcomer can follow: what the molecules stand for, what a reaction does to them, and why anyone built it. The (S, R, A) fields below say precisely *what* the model is; this says what it is *for*. Required for implemented entries; surfaced by `describe_chemistry` and at the top of the chemistry's documentation page. |
+| `intuition` | how the chemistry works and what the idea behind it is, in prose a newcomer can follow: what the molecules stand for, what a reaction does to them, and why anyone built it. The (S, R, A) fields below say precisely *what* the model is; this says what it is *for*. Required for implemented entries; surfaced by `describe_chemistry`. The documentation page uses it only when the chemistry has no explainer (`catalog/explainers/<id>.md`, the page's full prose; see the README there). |
 
 ## The (S, R, A) triple — Banzhaf & Yamamoto §2.3
 | field | meaning |

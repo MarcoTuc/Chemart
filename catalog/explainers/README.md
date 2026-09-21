@@ -72,9 +72,12 @@ prose.
 
 What the chemistry is, in plain words, and why it exists. Who proposed it,
 when, and what question or problem it was built for. The central idea, made
-concrete with an image or a small example. Where it sits: the book chapter, and
-its relation to other chemistries in the catalog where that helps. No parameter
-names and no implementation details. Two to five paragraphs.
+concrete with an image or a small example. What kind of thing it is: a
+simulation model, a formalism, a framework, an analysis method, or a wet-lab
+experiment. Where it sits: the book chapter, and what sets it apart from its
+nearest neighbours in the catalog (link them). A reader should finish the
+introduction knowing what the chemistry is about and what it contributes. No
+parameter names and no implementation details. Two to five paragraphs.
 
 ### How it works
 
