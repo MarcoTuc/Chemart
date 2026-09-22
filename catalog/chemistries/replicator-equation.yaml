@@ -16,7 +16,7 @@ chemistries:
   archived: pruned
   kind: generator
   constructive: false
-  network: given
+  type: given
   S: {repr: "n strategies X_1..X_n", definition: explicit}
   R:
     definition: explicit

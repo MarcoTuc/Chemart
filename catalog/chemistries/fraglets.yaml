@@ -16,7 +16,7 @@ chemistries:
   family: application
   kind: generator
   constructive: true
-  network: generated
+  type: gas
   S:
     repr: >
       Fraglets: strings of symbols [s1 s2 ... sn] located in a network node;

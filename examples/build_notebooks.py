@@ -27,16 +27,18 @@ SIMULATING = [
     md("""
 # Simulating a given network and a generator
 
-Every chemistry in Chemart gets its reaction network in one of two ways
-(`describe_chemistry(id)["network"]`):
+Every chemistry in Chemart is one of three types
+(`describe_chemistry(id)["type"]`):
 
-- **given**: the chemistry *is* a reaction network. Chemart writes it down
-  from the parameters, and simulating it means integrating its dynamics.
-- **generated**: the network is the *output* of the chemistry's algorithm.
-  Chemart runs that algorithm, and the network is the record of what happened.
+- **given**: the chemistry *is* a reaction network, written down. Simulating
+  it means integrating its dynamics.
+- **generator**: an algorithm computes the network from its arguments; the
+  network is then simulated like a given one.
+- **gas**: a Turing gas. Running it evolves a soup of structured molecules,
+  and the network is the record of what happened.
 
-This notebook simulates one of each: the Brusselator (given) and the
-prime-number chemistry (generated).
+This notebook simulates a given network (the Brusselator) and runs a gas
+(the prime-number chemistry).
 """),
     code("""
 import chemart
@@ -51,7 +53,7 @@ Four reactions and six species. `A` and `B` are held constant (buffered),
 `X` and `Y` are the dynamic species, and `D` and `E` collect waste.
 """),
     code("""
-print(chemart.describe_chemistry("brusselator")["network"])
+print(chemart.describe_chemistry("brusselator")["type"])
 
 net = chemart.generate_network("brusselator", seed=1)
 print(net.to_text())
@@ -109,7 +111,7 @@ written down in advance: Chemart fills a well-stirred soup with random
 numbers, lets them collide, and records every reaction that fired.
 """),
     code("""
-print(chemart.describe_chemistry("prime-number-chemistry")["network"])
+print(chemart.describe_chemistry("prime-number-chemistry")["type"])
 
 net = chemart.generate_network("prime-number-chemistry", seed=1)
 print(net.summary())
@@ -155,11 +157,11 @@ print(f"{len(remaining)} distinct numbers left, {len(composites)} of them compos
 
 - For a **given** network, Chemart hands you the network and you simulate its
   dynamics (here with `solve_ivp`). The network is the same every time.
-- For a **generated** network, simulating *is* running the chemistry. The
-  network comes out of the run (`status == "observed"`), with firing counts,
-  and a different seed or starting soup generates a different one.
+- For a **gas**, simulating *is* running the chemistry. The network comes
+  out of the run (`status == "observed"`), with firing counts, and a
+  different seed or starting soup generates a different one.
 
-`chemart.list_chemistries()` lists every chemistry with its `network` value.
+`chemart.list_chemistries()` lists every chemistry with its `type`.
 """),
 ]
 

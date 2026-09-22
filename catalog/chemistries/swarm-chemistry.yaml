@@ -18,7 +18,7 @@ chemistries:
   archived: artificial-life
   kind: generator
   constructive: false
-  network: given
+  type: given
   S:
     repr: "self-propelled particles in continuous 2D or 3D; a 'species' is a parameter tuple (a kinetic recipe) (R, V_normal, V_max, c1..c5), not a structure"
     definition: explicit

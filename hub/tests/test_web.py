@@ -59,6 +59,8 @@ def test_pages_render(stocked):
     browse = c.get("/browse", params={"provides": "initial-state"}, headers=HTML)
     assert browse.status_code == 200 and "bruss-snapshot" in browse.text and "tiny-chem" not in browse.text
     assert c.get("/browse", params={"q": "brusselator"}, headers=HTML).text.count("bruss-snapshot") >= 1
+    assert "tiny-chem" in c.get("/browse", params={"ctype": "generator"}, headers=HTML).text
+    assert "tiny-chem" not in c.get("/browse", params={"ctype": "gas"}, headers=HTML).text
     assert c.get("/new", headers=HTML).status_code == 200
     assert c.get("/static/pygments.css").headers["content-type"].startswith("text/css")
 

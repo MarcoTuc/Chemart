@@ -17,7 +17,7 @@ chemistries:
   family: bio-inspired
   kind: generator
   constructive: true
-  network: generated
+  type: gas
   S:
     repr: >
       Strings over 33 symbols: 26 template codes A..Z and 7 function codes

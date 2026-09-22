@@ -63,7 +63,7 @@ the front.
 |---|---|
 | **family** | wet |
 | **kind** | wet |
-| **network** | generated — the network is the output of the chemistry's algorithm |
+| **type** | generator — an algorithm computes the network from the chemistry's arguments |
 | **constructive** | no — fixed species set |
 | **fidelity** | `reconstructed` — built from the original papers listed under *References* |
 | **book** | 19.3.1 |

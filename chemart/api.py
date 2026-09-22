@@ -83,7 +83,7 @@ def list_chemistries(include_archived: bool = False) -> list[dict[str, Any]]:
             "summary": _summary(c),
             "implemented": c.implemented,
             "fidelity": c.fidelity,
-            "network": c.network,
+            "type": c.type,
         }
         if include_archived:
             row["archived"] = c.archived
@@ -115,7 +115,8 @@ def describe_chemistry(chemistry: str, revision: str | None = None) -> dict[str,
         "family": c.family,
         "archived": c.archived,
         "kind": c.kind,
-        "network": c.network,
+        "type": c.type,
+        "clock": c.clock,
         "constructive": c.constructive,
         "implemented": c.implemented,
         "fidelity": c.fidelity,

@@ -17,7 +17,7 @@ chemistries:
   family: core
   kind: generator
   constructive: false
-  network: given
+  type: given
   S:
     repr: "three colors r, g, b"
     definition: explicit

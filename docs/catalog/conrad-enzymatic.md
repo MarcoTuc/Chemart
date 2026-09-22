@@ -61,7 +61,7 @@ efficiency, described under Results.
 |---|---|
 | **family** | bio-inspired |
 | **kind** | wet |
-| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
+| **type** | given — a reaction network written down; you choose its rates and initial state |
 | **constructive** | no — fixed species set |
 | **fidelity** | `reconstructed` — built from the original papers listed under *References* |
 | **book** | 11.2.1; also 17.1.2 (emergence vs. programmability tradeoff) |

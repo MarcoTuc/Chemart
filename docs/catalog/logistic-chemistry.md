@@ -59,7 +59,7 @@ up correctly.
 |---|---|
 | **family** | evolutionary-dynamics |
 | **kind** | generator |
-| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
+| **type** | given — a reaction network written down; you choose its rates and initial state |
 | **constructive** | no — fixed species set |
 | **fidelity** | `book+decisions` — the book left gaps; each filled choice is listed under *Implementation decisions* |
 | **book** | 7.2.4; appendix (Logistic.py) |

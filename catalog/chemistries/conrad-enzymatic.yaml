@@ -23,7 +23,7 @@ chemistries:
   family: bio-inspired
   kind: wet
   constructive: false
-  network: given
+  type: given
   S:
     repr: >
       Molecules are 6-bit shapes: ligands (Mg2+, Ca2+ signal carriers, NAD+,

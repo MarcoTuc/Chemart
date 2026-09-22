@@ -64,7 +64,7 @@ actually sees, with their counts.
 |---|---|
 | **family** | automata |
 | **kind** | analysis |
-| **network** | generated — the network is the output of the chemistry's algorithm |
+| **type** | gas — a Turing gas: structured molecules react by a procedure and the soup evolves |
 | **constructive** | no — fixed species set |
 | **fidelity** | `reconstructed` — built from the original papers listed under *References* |
 | **book** | 10.7.2 |

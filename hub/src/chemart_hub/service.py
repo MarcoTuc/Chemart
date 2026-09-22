@@ -134,7 +134,7 @@ def repo_json(conn: sqlite3.Connection, repo: sqlite3.Row, settings: Settings) -
         "family": repo["family"],
         "kind": repo["kind"],
         "constructive": None if repo["constructive"] is None else bool(repo["constructive"]),
-        "network": repo["network"],
+        "type": repo["chem_type"],
         "fidelity": repo["fidelity"],
         "license": repo["license"],
         "has_code": bool(repo["has_code"]),
@@ -340,12 +340,14 @@ def commit(
     cid = commit_id(repo=str(rid), parent=parent, files=triples, message=message,
                     author=principal.name, created_at=stamp)
     entry = card.entry
-    network = entry.network if entry else None
-    if network is None and card.builtin:
+    chem_type = entry.type if entry else None
+    if chem_type is None and card.builtin:
         # A built-in's truth is the installed catalog (as the client treats it),
         # including for an official chemart.yaml written before the field existed.
         installed = next((c for c in catalog.load() if c.id == card.builtin), None)
-        network = installed.network if installed else None
+        chem_type = installed.type if installed else None
+    if chem_type is None and entry is not None:
+        chem_type = "generator"          # a hub chemistry that does not say is run as a generator
     with conn:
         conn.execute(
             "INSERT INTO commits (id, repo_id, parent, author_id, message, created_at, manifest) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -353,7 +355,7 @@ def commit(
         )
         moved = conn.execute(
             "UPDATE repos SET head = ?, updated_at = ?, title = ?, summary = ?, family = ?, kind = ?, "
-            "constructive = ?, fidelity = ?, license = ?, has_code = ?, builtin = ?, network = ? "
+            "constructive = ?, fidelity = ?, license = ?, has_code = ?, builtin = ?, chem_type = ? "
             "WHERE id = ? AND head IS ?",
             (
                 cid, stamp, card.title or repo["name"], card.summary,
@@ -361,7 +363,7 @@ def commit(
                 entry.kind if entry else None,
                 None if entry is None else int(entry.constructive),
                 entry.fidelity if entry else None,
-                card.hub.get("license"), int(card.has_code), card.builtin, network,
+                card.hub.get("license"), int(card.has_code), card.builtin, chem_type,
                 repo["id"], parent,
             ),
         ).rowcount
@@ -407,6 +409,7 @@ def search(
     *,
     q: str | None = None,
     repo_type: str | None = None,
+    chem_type: str | None = None,
     family: str | None = None,
     kind: str | None = None,
     provides: list[str] | None = None,
@@ -437,7 +440,7 @@ def search(
     if featured is not None:
         where.append("r.featured = ?")
         args.append(int(featured))
-    for column, value in (("r.repo_type", repo_type), ("r.family", family), ("r.kind", kind),
+    for column, value in (("r.repo_type", repo_type), ("r.chem_type", chem_type), ("r.family", family), ("r.kind", kind),
                           ("r.fidelity", fidelity)):
         if value:
             where.append(f"{column} = ?")

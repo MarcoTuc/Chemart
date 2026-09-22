@@ -15,7 +15,7 @@ Population dynamics with an open species set. A generalised Lotka-Volterra syste
 |---|---|
 | **family** | evolutionary-dynamics |
 | **kind** | generator |
-| **network** | generated — the network is the output of the chemistry's algorithm |
+| **type** | generator — an algorithm computes the network from the chemistry's arguments |
 | **constructive** | yes — the species set grows at run time |
 | **fidelity** | `reconstructed` — built from the original papers listed under *References* |
 | **book** | 8.2.3 |

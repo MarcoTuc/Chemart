@@ -17,7 +17,7 @@ chemistries:
   archived: pruned
   kind: generator
   constructive: true
-  network: generated
+  type: gas
   S:
     repr: >
       Organisms R<k>: the 256 elementary cellular automaton rules (Wolfram

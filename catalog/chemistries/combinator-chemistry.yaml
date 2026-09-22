@@ -17,7 +17,7 @@ chemistries:
   family: rewriting
   kind: generator
   constructive: true
-  network: generated
+  type: gas
   S:
     repr: "combinators in normal form: strings of the atoms B, C, I, K, R, S, W with balanced parentheses, written with as few parentheses as possible; species id the canonical string (SI(KK)), structure the fully bracketed application tree ((SI)(KK)); in reactive mode also one species free:X per atom type (the pool of free atoms)"
     definition: implicit

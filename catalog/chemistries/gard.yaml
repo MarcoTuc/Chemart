@@ -17,7 +17,7 @@ chemistries:
   family: origin-of-life
   kind: generator
   constructive: false
-  network: given
+  type: generator
   S:
     repr: "lipid types L_1..L_N outside (buffered) and A_1..A_N inside one assembly; the assembly's COMPOSITION (a 'compositional genome' / composome) carries the information"
     definition: explicit

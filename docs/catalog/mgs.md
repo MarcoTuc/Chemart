@@ -56,7 +56,7 @@ cutting DNA) and says a full account of the language is outside its scope.
 |---|---|
 | **family** | rewriting |
 | **kind** | formalism |
-| **network** | generated — the network is the output of the chemistry's algorithm |
+| **type** | generator — an algorithm computes the network from the chemistry's arguments |
 | **constructive** | yes — the species set grows at run time |
 | **fidelity** | `reconstructed` — built from the original papers listed under *References* |
 | **book** | 9.6; biology 18.3.2 |

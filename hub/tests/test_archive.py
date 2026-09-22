@@ -207,6 +207,30 @@ def test_upgrade_from_a_v2_database(tmp_path):
     c.close()
 
 
+def test_upgrade_from_a_v4_database_renames_network_to_type(tmp_path):
+    """v5: the old given/generated facet is cleared, to be refilled as a type."""
+    from chemart_hub.config import Settings
+
+    path = tmp_path / "data" / "hub.sqlite3"
+    path.parent.mkdir(parents=True)
+    conn = sqlite3.connect(path)
+    for script in (db._SCHEMA_V1, db._SCHEMA_V2, db._SCHEMA_V3, db._SCHEMA_V4):
+        conn.executescript(script)
+    conn.execute("PRAGMA user_version = 4")
+    conn.execute("INSERT INTO accounts (id, name, created_at) VALUES (1, 'old', 'x')")
+    conn.execute("INSERT INTO repos (id, owner_id, name, repo_type, created_at, updated_at, network) "
+                 "VALUES (7, 1, 'kept', 'generator', 'x', 'x', 'generated')")
+    conn.commit()
+    conn.close()
+
+    db.migrate(Settings(tmp_path / "data").db_path)
+    c = db.connect(path)
+    assert c.execute("PRAGMA user_version").fetchone()[0] == db.SCHEMA_VERSION
+    row = c.execute("SELECT * FROM repos WHERE id = 7").fetchone()
+    assert row["name"] == "kept" and row["chem_type"] is None and "network" not in row.keys()
+    c.close()
+
+
 def test_cli_gc(site, capsys):
     from chemart_hub.cli import main
 

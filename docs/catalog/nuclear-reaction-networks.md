@@ -56,7 +56,7 @@ organisation concept it illustrates, see
 |---|---|
 | **family** | non-chemical |
 | **kind** | generator |
-| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
+| **type** | given — a reaction network written down; you choose its rates and initial state |
 | **constructive** | no — fixed species set |
 | **fidelity** | `book+decisions` — the book left gaps; each filled choice is listed under *Implementation decisions* |
 | **book** | 20.2 |

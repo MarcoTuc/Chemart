@@ -17,7 +17,7 @@ chemistries:
   family: automata
   kind: generator
   constructive: true
-  network: generated
+  type: gas
   S:
     repr: >
       Two separate populations. Tapes: circular 7-bit strings, species

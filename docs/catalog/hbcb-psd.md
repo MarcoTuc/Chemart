@@ -60,7 +60,7 @@ through decay.
 |---|---|
 | **family** | systems-biology |
 | **kind** | generator |
-| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
+| **type** | generator — an algorithm computes the network from the chemistry's arguments |
 | **constructive** | no — fixed species set |
 | **fidelity** | `book+decisions` — the book left gaps; each filled choice is listed under *Implementation decisions* |
 | **book** | 18.3.2 |

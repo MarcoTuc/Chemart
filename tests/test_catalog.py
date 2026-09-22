@@ -51,41 +51,55 @@ def test_archived_entries_leave_the_listings_but_still_run():
     assert chemart.generate_network("lotka-volterra", seed=0).reactions   # archived, still runnable
 
 
-def test_every_implemented_entry_says_how_it_gets_its_network():
-    from chemart.catalog import NETWORKS
+def test_every_implemented_entry_says_what_it_is():
+    from chemart.catalog import TYPES
 
-    missing = [c.id for c in load() if c.implemented and c.network not in NETWORKS]
-    assert not missing, f"set network: given | generated for {missing}"
+    missing = [c.id for c in load() if c.implemented and c.type not in TYPES]
+    assert not missing, f"set type: given | generator | gas for {missing}"
 
 
-def test_the_network_table_matches_the_catalog():
-    """catalog/NETWORKS.md gives the reasoning; it must agree with the YAML."""
+def test_the_type_table_matches_the_catalog():
+    """catalog/TYPES.md gives the reasoning; it must agree with the YAML."""
     import re
 
     from chemart.catalog import ROOT
 
     rows = {}
-    for line in (ROOT / "catalog" / "NETWORKS.md").read_text().splitlines():
-        m = re.match(r"\| `([a-z0-9-]+)`[^|]* \| (given|generated)\b", line)
+    for line in (ROOT / "catalog" / "TYPES.md").read_text().splitlines():
+        m = re.match(r"\| `([a-z0-9-]+)`[^|]* \| (given|generator|gas)\b", line)
         if m:
             rows[m.group(1)] = m.group(2)
-    assert rows == {c.id: c.network for c in load()}
+    assert rows == {c.id: c.type for c in load()}
 
 
-def test_describe_reports_the_network():
+def test_describe_reports_the_type():
     import chemart
 
-    assert chemart.describe_chemistry("brusselator")["network"] == "given"
-    assert chemart.describe_chemistry("matrix-chemistry")["network"] == "generated"
+    assert chemart.describe_chemistry("brusselator")["type"] == "given"
+    assert chemart.describe_chemistry("kauffman-autocatalytic-sets")["type"] == "generator"
+    assert chemart.describe_chemistry("alchemy")["type"] == "gas"
+    assert {row["type"] for row in chemart.list_chemistries()} == {"given", "generator", "gas"}
 
 
 def test_a_given_network_needs_no_closure():
-    """A given network is instantiated whole; only a generated one can be cut short."""
+    """A given network is written down whole; only a computed one can be cut short."""
     import chemart
 
     for c in load():
-        if c.network == "given" and c.implemented:
+        if c.type == "given" and c.implemented:
             assert chemart.generate_network(c.id, seed=1).status != "truncated", c.id
+
+
+def test_face_and_every_are_checked():
+    from dataclasses import replace
+
+    from chemart.catalog import entry_problems
+
+    c = next(c for c in load() if c.id == "brusselator")
+    p = c.params[0]
+    assert any("unknown face" in m for m in entry_problems(replace(c, params=[replace(p, face="closure")])))
+    assert any("reserved" in m for m in entry_problems(replace(c, params=[replace(p, name="every")])))
+    assert any("unknown type" in m for m in entry_problems(replace(c, type="given-ish")))
 
 
 def test_catalog_index_is_current():

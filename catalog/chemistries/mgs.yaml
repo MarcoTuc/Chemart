@@ -17,7 +17,7 @@ chemistries:
   family: rewriting
   kind: formalism
   constructive: true
-  network: generated
+  type: generator
   S:
     repr: >
       a topological collection: values organised by a neighbourhood relation. Monoidal collections

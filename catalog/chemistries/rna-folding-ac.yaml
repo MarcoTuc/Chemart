@@ -18,7 +18,7 @@ chemistries:
   family: systems-biology
   kind: generator
   constructive: true
-  network: generated
+  type: gas
   S:
     repr: "RNA sequences over AUGC, each folded by free-energy minimisation (Vienna RNA) into a secondary structure in dot-bracket notation; Species.structure holds 'sequence dot-bracket'"
     definition: implicit

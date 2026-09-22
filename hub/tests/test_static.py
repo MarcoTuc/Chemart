@@ -126,8 +126,9 @@ def test_the_stock_line_splits_the_chemistries(site):
     assert "<b>1</b> given network<" in home
     assert "<b>1</b> shared network<" in home
     index = {r["id"]: r for r in json.loads((site["out"] / "api/v1/index.json").read_text())["repos"]}
-    assert index["chemart/brusselator"]["network"] == "given"
-    assert index["chemart/gamma"]["network"] == "generated"
+    assert index["chemart/brusselator"]["type"] == "given"
+    assert index["chemart/gamma"]["type"] == "generator"
+    assert "<b>0</b> gases" in home
 
 
 def test_builds_are_reproducible(registry, site, tmp_path):

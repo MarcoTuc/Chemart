@@ -17,7 +17,7 @@ chemistries:
   archived: pruned
   kind: generator
   constructive: false
-  network: given
+  type: given
   S:
     repr: "two species per Boolean variable: x0 for x=0 and x1 for x=1; information is encoded by PRESENCE/ABSENCE, not concentration"
     definition: explicit

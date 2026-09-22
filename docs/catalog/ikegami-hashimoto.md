@@ -65,7 +65,7 @@ levels of organisation to Fontana's [AlChemy](alchemy.md).
 |---|---|
 | **family** | automata |
 | **kind** | generator |
-| **network** | generated — the network is the output of the chemistry's algorithm |
+| **type** | gas — a Turing gas: structured molecules react by a procedure and the soup evolves |
 | **constructive** | yes — the species set grows at run time |
 | **fidelity** | `reconstructed` — built from the original papers listed under *References* |
 | **book** | 10.5.4 |

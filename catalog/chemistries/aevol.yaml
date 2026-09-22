@@ -20,7 +20,7 @@ chemistries:
   archived: pruned
   kind: generator
   constructive: true
-  network: generated
+  type: gas
   S:
     repr: >
       Two kinds of molecule. Genotypes: a circular double-stranded binary

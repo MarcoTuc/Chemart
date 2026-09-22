@@ -47,7 +47,7 @@ same four rules.
 |---|---|
 | **family** | application |
 | **kind** | generator |
-| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
+| **type** | given — a reaction network written down; you choose its rates and initial state |
 | **constructive** | no — fixed species set |
 | **fidelity** | `book` — implemented exactly as the book specifies |
 | **book** | 17.4.2, 19.3; ARMS 9.4 |

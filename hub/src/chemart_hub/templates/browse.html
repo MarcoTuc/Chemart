@@ -10,6 +10,13 @@
       <a class="chip {{ 'on' if filters.type == 'generator' }}" data-key="type" data-value="generator" href="{{ link(type='generator', page=1) }}">chemistries</a>
       <a class="chip {{ 'on' if filters.type == 'network' }}" data-key="type" data-value="network" href="{{ link(type='network', page=1) }}">networks</a>
     </div>
+    <h3>What it is</h3>
+    <div class="chips">
+      <a class="chip {{ 'on' if not filters.ctype }}" data-key="ctype" data-value="" href="{{ link(ctype='', page=1) }}">any</a>
+      {% for t, label in [("given", "given networks"), ("generator", "generators"), ("gas", "Turing gases")] %}
+      <a class="chip {{ 'on' if filters.ctype == t }}" data-key="ctype" data-value="{{ t }}" href="{{ link(ctype=t, page=1) }}">{{ label }}</a>
+      {% endfor %}
+    </div>
     <h3>Code</h3>
     <div class="chips">
       <a class="chip {{ 'on' if not filters.code }}" data-key="code" data-value="" href="{{ link(code='', page=1) }}">any</a>

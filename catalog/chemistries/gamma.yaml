@@ -17,7 +17,7 @@ chemistries:
   family: rewriting
   kind: formalism
   constructive: true
-  network: generated
+  type: generator
   S:
     repr: >
       elements of a multiset: integers, or tuples of elements such as (index, value) pairs or

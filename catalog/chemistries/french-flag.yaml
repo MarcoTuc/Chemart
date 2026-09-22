@@ -17,7 +17,7 @@ chemistries:
   archived: pruned
   kind: generator
   constructive: false
-  network: given
+  type: given
   S: {repr: "undifferentiated cells U at positions along a morphogen gradient, and their fates (blue, white, red)", definition: explicit}
   R:
     definition: explicit

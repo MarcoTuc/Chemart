@@ -17,7 +17,7 @@ chemistries:
   family: origin-of-life
   kind: generator
   constructive: true
-  network: given
+  type: generator
   S:
     repr: "polymers = strings over an alphabet of size B (a, b for B = 2), up to a maximum length"
     definition: implicit

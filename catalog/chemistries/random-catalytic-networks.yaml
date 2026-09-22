@@ -18,7 +18,7 @@ chemistries:
   family: evolutionary-dynamics
   kind: generator
   constructive: false
-  network: given
+  type: generator
   S: {repr: "n abstract species X_1..X_n with no internal structure", definition: explicit}
   R:
     definition: explicit

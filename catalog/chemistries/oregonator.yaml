@@ -16,7 +16,7 @@ chemistries:
   family: wet
   kind: generator
   constructive: false
-  network: given
+  type: given
   S: {repr: "A, B (buffered reactants), X (autocatalyst, HBrO2), Y (inhibitor, Br-), Z (oxidised metal ion, e.g. Ce(IV)), P, Q (products)", definition: explicit}
   R:
     definition: explicit

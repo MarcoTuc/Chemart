@@ -53,7 +53,7 @@ network of Lones et al. (2014) is a model of its own.
 |---|---|
 | **family** | application |
 | **kind** | generator |
-| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
+| **type** | generator — an algorithm computes the network from the chemistry's arguments |
 | **constructive** | no — fixed species set |
 | **fidelity** | `reconstructed` — built from the original papers listed under *References* |
 | **book** | 16.1.3 |

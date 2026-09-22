@@ -18,7 +18,7 @@ chemistries:
   archived: artificial-life
   kind: generator
   constructive: true
-  network: generated
+  type: gas
   S:
     repr: >
       Genotypes of self-replicating machine-code creatures: sequences over the

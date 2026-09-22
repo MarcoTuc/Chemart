@@ -51,14 +51,21 @@ ARCHIVES = {
     "pruned": "set aside from the catalog",
     "artificial-life": "artificial life rather than artificial chemistry",
 }
-#: How a chemistry gets its reaction network (catalog/NETWORKS.md has the
-#: reasoning for every entry).
-NETWORKS = {
-    "given": "the chemistry is a reaction network, instantiated from its parameters "
-             "(written down, built by a formula, or drawn once at random)",
-    "generated": "the network is the output of the chemistry's algorithm (rules applied "
-                 "to molecules until closure, or the record of a simulation)",
+#: What a chemistry is (catalog/TYPES.md has the reasoning for every entry).
+#: How it can be run - its faces, `generate` and/or `evolve` - follows from
+#: its module, not from the catalog.
+TYPES = {
+    "given": "a reaction network written down, possibly as a menu of named variants "
+             "or from user-supplied rules; you choose its rates and initial state",
+    "generator": "an algorithm computes the network from its arguments (random draws "
+                 "or a closure); once built, it is treated as a given network",
+    "gas": "a Turing gas: molecules carry structure and a procedure makes them react, "
+           "so the soup and its network evolve in chemical-evolutionary time",
 }
+#: The two ways to run a chemistry: `generate(p, rng) -> Network` and
+#: `evolve(p, rng)`, a generator of frames. A parameter used by only one of
+#: them says which with `face`.
+FACES = {"generate", "evolve"}
 ROLES = {
     "structural", "kinetic", "thermodynamic", "population", "spatial",
     "stochastic", "selection",
@@ -74,7 +81,7 @@ FIDELITY = {"book", "book+decisions", "reconstructed"}
 HUB_FIDELITY = FIDELITY | {"original"}
 
 #: Keyword arguments of generate_network; a parameter may not shadow them.
-RESERVED_PARAMS = {"seed", "revision", "trust_remote_code"}
+RESERVED_PARAMS = {"seed", "revision", "trust_remote_code", "every"}
 
 #: v2 parameter types: JSON values only.
 PARAM_TYPES = {"int", "float", "bool", "str", "enum", "list", "dict"}
@@ -102,6 +109,8 @@ class Param:
     min: float | None = None
     max: float | None = None
     choices: list | None = None
+    #: "generate" or "evolve" when only that face uses the parameter; None if both do.
+    face: str | None = None
 
     def coerce(self, value: Any) -> Any:
         """Return `value` checked (and int->float widened); raise ValueError otherwise."""
@@ -193,9 +202,10 @@ class Chemistry:
     notes: str | None = None
     #: None for the chemistry catalog; otherwise the archive group (ARCHIVES).
     archived: str | None = None
-    #: "given" or "generated" (NETWORKS): is the chemistry a reaction network,
-    #: or an algorithm whose output is one?
-    network: str | None = None
+    #: What the chemistry is: given, generator or gas (TYPES).
+    type: str | None = None
+    #: The unit of time of the evolve face ("collisions", "epochs", ...).
+    clock: str | None = None
     source_file: str = ""
 
     @property
@@ -320,8 +330,8 @@ def entry_problems(c: Chemistry, *, hub: bool = False) -> list[str]:
         problems.append(f"unknown kind {c.kind!r}")
     if c.archived is not None and c.archived not in ARCHIVES:
         problems.append(f"unknown archive group {c.archived!r}; expected one of {sorted(ARCHIVES)}")
-    if c.network is not None and c.network not in NETWORKS:
-        problems.append(f"unknown network {c.network!r}; expected one of {sorted(NETWORKS)}")
+    if c.type is not None and c.type not in TYPES:
+        problems.append(f"unknown type {c.type!r}; expected one of {sorted(TYPES)}")
     if not hub and not c.book:
         problems.append("missing book section")
     for p in c.provides:
@@ -335,6 +345,8 @@ def entry_problems(c: Chemistry, *, hub: bool = False) -> list[str]:
             problems.append(f"param {p.name!r} has unknown role {p.role!r}")
         if p.name in RESERVED_PARAMS:
             problems.append(f"param {p.name!r} is reserved: it is an argument of generate_network")
+        if p.face is not None and p.face not in FACES:
+            problems.append(f"param {p.name!r} has unknown face {p.face!r}; expected one of {sorted(FACES)}")
 
     # Semantic invariants.
     if "stoichiometry" in c.provides and "topology" not in c.provides:
@@ -377,9 +389,9 @@ def _v2_problems(c: Chemistry, *, hub: bool = False) -> list[str]:
     if not (c.intuition or "").strip():
         out.append("missing intuition: implemented entries need a plain-language "
                    "explanation of how the chemistry works and why")
-    if not hub and c.network is None:
-        out.append("missing network: say whether the network is given or generated "
-                   "(see catalog/NETWORKS.md)")
+    if not hub and c.type is None:
+        out.append("missing type: say whether the chemistry is given, a generator or a gas "
+                   "(see catalog/TYPES.md)")
     for p in c.params:
         if p.type not in PARAM_TYPES:
             hint = " (seed is an argument of generate_network, not a param)" if p.type == "seed" else ""
@@ -413,12 +425,12 @@ def _status(c: Chemistry) -> str:
 
 
 def _index_table(entries: list[Chemistry]) -> list[str]:
-    out = ["| id | name | kind | network | constructive | tier | status | book |",
+    out = ["| id | name | family | kind | constructive | tier | status | book |",
            "|---|---|---|---|---|---|---|---|"]
     for c in sorted(entries, key=lambda c: c.id):
         tier = "".join(_TIER_MARK[t] for t in ("topology", "kinetics", "thermodynamics") if t in c.tiers) or "-"
         out.append(
-            f"| `{c.id}` | {c.name} | {c.kind} | {c.network or '-'} | "
+            f"| `{c.id}` | {c.name} | {c.family} | {c.kind} | "
             f"{'yes' if c.constructive else 'no'} | {tier} | "
             f"{_status(c)} | {(c.book or '-').split(';')[0]} |"
         )
@@ -426,21 +438,21 @@ def _index_table(entries: list[Chemistry]) -> list[str]:
 
 
 def render_index(entries: list[Chemistry]) -> str:
-    """The catalog index: the chemistry catalog by family, then the archive.
+    """The catalog index: the chemistry catalog by type, then the archive.
 
     Every count is computed here, so no document has to state one by hand.
     """
     main = active(entries)
-    by_family: dict[str, list[Chemistry]] = {}
+    by_type: dict[str, list[Chemistry]] = {}
     for c in main:
-        by_family.setdefault(c.family, []).append(c)
+        by_type.setdefault(c.type or "-", []).append(c)
 
     out: list[str] = []
     out.append("<!-- generated by `python -m chemart.catalog index` - do not edit -->")
     out.append("# Chemart catalog index\n")
     out.append(
-        f"{len(main)} chemistries collected from Banzhaf & Yamamoto, "
-        "*Artificial Chemistries* (MIT Press, 2015)"
+        f"{len(main)} chemistries, collected from Banzhaf & Yamamoto, "
+        "*Artificial Chemistries* (MIT Press, 2015), and from papers published after it"
         + (f", plus {len(entries) - len(main)} archived entries listed at the end" if len(main) < len(entries) else "")
         + ".\n"
     )
@@ -460,15 +472,15 @@ def render_index(entries: list[Chemistry]) -> str:
         f"- implemented: **{len(done)}** of {len(main)}"
         + (" (" + ", ".join(f"{k}: {v}" for k, v in sorted(fidelity.items())) + ")" if done else "")
         + "\n"
-        f"- network given (a written, formula-built or sampled network): **{sum(1 for c in main if c.network == 'given')}**; "
-        f"generated (the output of the chemistry's algorithm): **{sum(1 for c in main if c.network == 'generated')}**\n"
-        f"- constructive (open, growing species set): **{constructive}**\n"
+        + "".join(f"- {t}: **{len(by_type.get(t, []))}**, {TYPES[t]}\n" for t in TYPES)
+        + f"- constructive (open, growing species set): **{constructive}**\n"
         f"- carry their own kinetics: **{kin}**; carry energetics: **{thermo}**\n"
     )
 
-    for family in sorted(by_family):
-        out.append(f"\n## {family}\n")
-        out += _index_table(by_family[family])
+    for t in [*TYPES, *sorted(set(by_type) - set(TYPES))]:
+        if t in by_type:
+            out.append(f"\n## {t}\n")
+            out += _index_table(by_type[t])
 
     archived = [c for c in entries if c.archived is not None]
     if archived:
@@ -510,7 +522,7 @@ def _show(c: Chemistry) -> str:
     if c.book:
         lines.append(f"book: {c.book}")
     lines += [
-        f"family/kind: {c.family} / {c.kind}"
+        f"type: {c.type or '-'}   family/kind: {c.family} / {c.kind}"
         f"{'  (constructive)' if c.constructive else ''}",
         f"provides: {', '.join(c.provides) or '-'}",
         f"status: {_status(c)}",

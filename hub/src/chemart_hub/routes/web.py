@@ -149,23 +149,24 @@ def home(request: Request, c: sqlite3.Connection = Depends(deps.conn),
     featured, _ = service.search(c, featured=True, sort="updated", limit=12)
     recent, _ = service.search(c, sort="updated", limit=6)
     official, n_official = service.search(c, author=settings.official_namespace, sort="name", limit=12)
-    # Every chemistry (generator repo) is in stock; it either generates its
-    # network or is a given network such as the Brusselator. Shared network
-    # snapshots (network repos) are counted on their own.
+    # Every chemistry (generator repo) is in stock as what it is: a given
+    # network, a generator of networks, or a Turing gas (catalog `type`).
+    # Shared network snapshots (network repos) are counted on their own.
     counts = dict(c.execute(
-        "SELECT CASE WHEN repo_type = 'network' THEN 'shared' WHEN network = 'given' THEN 'given' "
-        "ELSE 'generator' END, COUNT(*) FROM repos WHERE head IS NOT NULL AND archived_at IS NULL "
+        "SELECT CASE WHEN repo_type = 'network' THEN 'shared' ELSE COALESCE(chem_type, 'generator') END, "
+        "COUNT(*) FROM repos WHERE head IS NOT NULL AND archived_at IS NULL "
         "AND hidden = 0 GROUP BY 1").fetchall())
-    n_generators, n_given = counts.get("generator", 0), counts.get("given", 0)
+    n_given, n_generators, n_gases = (counts.get(t, 0) for t in ("given", "generator", "gas"))
     return _page(request, "home.html", p, banner=BANNER, featured=_cards(c, featured, settings),
                  trending=_cards(c, trending, settings), recent=_cards(c, recent, settings),
                  official=_cards(c, official, settings), n_official=n_official,
-                 n_chemistries=n_generators + n_given, n_generators=n_generators, n_given=n_given,
+                 n_chemistries=n_generators + n_given + n_gases, n_generators=n_generators,
+                 n_given=n_given, n_gases=n_gases,
                  n_shared=counts.get("shared", 0))
 
 
 @router.get("/browse", response_class=HTMLResponse)
-def browse(request: Request, q: str = "", type: str = "", family: str = "", tag: str = "",
+def browse(request: Request, q: str = "", type: str = "", ctype: str = "", family: str = "", tag: str = "",
            fidelity: str = "", code: str = "", author: str = "", sort: str = "trending", page: int = 1,
            c: sqlite3.Connection = Depends(deps.conn),
            p: auth.Principal | None = Depends(deps.principal),
@@ -173,12 +174,12 @@ def browse(request: Request, q: str = "", type: str = "", family: str = "", tag:
     provides = [v for v in request.query_params.getlist("provides") if v]
     page = max(1, page)
     rows, total = service.search(
-        c, q=q or None, repo_type=type or None, family=family or None, tag=tag or None,
+        c, q=q or None, repo_type=type or None, chem_type=ctype or None, family=family or None, tag=tag or None,
         fidelity=fidelity or None, author=author or None, provides=provides,
         has_code={"yes": True, "no": False}.get(code), sort=sort if sort in service.SORTS else "trending",
         limit=PAGE, offset=(page - 1) * PAGE, include_hidden=bool(p and p.is_admin),
     )
-    filters = {"q": q, "type": type, "family": family, "tag": tag, "fidelity": fidelity,
+    filters = {"q": q, "type": type, "ctype": ctype, "family": family, "tag": tag, "fidelity": fidelity,
                "code": code, "author": author, "sort": sort, "provides": provides}
 
     def link(**change: Any) -> str:

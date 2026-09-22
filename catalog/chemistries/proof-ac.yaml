@@ -17,7 +17,7 @@ chemistries:
   family: application
   kind: generator
   constructive: true
-  network: generated
+  type: gas
   S:
     repr: "clauses of first-order predicate logic; species id is the canonical clause text (literals sorted, variables renamed X1, X2, ... so alphabetic variants coincide, ~ for negation, [] for the empty clause), structure the clause as 'lit | lit'"
     definition: implicit

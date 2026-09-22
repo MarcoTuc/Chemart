@@ -61,7 +61,7 @@ a Chemoton-like protocell copy long RNA-like templates without enzymes?
 |---|---|
 | **family** | origin-of-life |
 | **kind** | generator |
-| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
+| **type** | given — a reaction network written down; you choose its rates and initial state |
 | **constructive** | no — fixed species set |
 | **fidelity** | `reconstructed` — built from the original papers listed under *References* |
 | **book** | 6.1.4; wet computing 17.4.1 |

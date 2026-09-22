@@ -7,6 +7,7 @@
   const f = {
     q: (params.get("q") || "").trim(),
     type: params.get("type") || "",
+    ctype: params.get("ctype") || "",
     family: params.get("family") || "",
     tag: params.get("tag") || "",
     fidelity: params.get("fidelity") || "",
@@ -25,7 +26,7 @@
   function link(change) {
     const m = Object.assign({}, f, change);
     const qs = new URLSearchParams();
-    for (const key of ["q", "type", "family", "tag", "fidelity", "code", "author"]) {
+    for (const key of ["q", "type", "ctype", "family", "tag", "fidelity", "code", "author"]) {
       if (m[key]) qs.append(key, m[key]);
     }
     if (m.sort && m.sort !== "updated") qs.append("sort", m.sort);
@@ -40,7 +41,7 @@
     if (key === "provides") {
       on = f.provides.includes(value);
       next = { provides: on ? f.provides.filter((v) => v !== value) : f.provides.concat([value]) };
-    } else if (key === "type" || key === "code") {
+    } else if (key === "type" || key === "ctype" || key === "code") {
       on = f[key] === value;
       next = { [key]: value };
     } else {
@@ -62,7 +63,7 @@
 
   const title = document.getElementById("browse-title");
   if (title) title.textContent = f.q ? "“" + f.q + "”" : (f.author || "Browse the shelves");
-  const filtered = f.q || f.type || f.family || f.tag || f.fidelity || f.code || f.author || f.provides.length;
+  const filtered = f.q || f.type || f.ctype || f.family || f.tag || f.fidelity || f.code || f.author || f.provides.length;
   const clear = document.getElementById("browse-clear");
   if (clear) clear.hidden = !filtered;
 
@@ -74,6 +75,7 @@
     const shown = tiles.filter((t) => {
       const d = t.dataset;
       if (f.type && d.type !== f.type) return false;
+      if (f.ctype && d.ctype !== f.ctype) return false;
       if (f.family && d.family !== f.family) return false;
       if (f.fidelity && d.fidelity !== f.fidelity) return false;
       if (f.code && d.code !== f.code) return false;

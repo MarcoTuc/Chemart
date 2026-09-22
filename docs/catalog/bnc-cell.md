@@ -60,7 +60,7 @@ chemistry of this kind underneath.
 |---|---|
 | **family** | systems-biology |
 | **kind** | generator |
-| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
+| **type** | generator — an algorithm computes the network from the chemistry's arguments |
 | **constructive** | no — fixed species set |
 | **fidelity** | `reconstructed` — built from the original papers listed under *References* |
 | **book** | 18.3.1 |

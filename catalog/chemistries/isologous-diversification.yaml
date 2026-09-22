@@ -19,7 +19,7 @@ chemistries:
   archived: pruned
   kind: generator
   constructive: false
-  network: given
+  type: generator
   S:
     repr: "k + 1 chemicals inside every cell: a source (nutrient) X0 and X1..Xk, plus the division factor DF that the consumed chemicals are turned into; the same chemicals also exist in the shared medium"
     definition: explicit

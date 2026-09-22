@@ -19,7 +19,7 @@ chemistries:
   family: network
   kind: generator
   constructive: true
-  network: generated
+  type: generator
   S:
     repr: >
       a molecule is its structural formula: a vertex- and edge-labelled graph of atoms and bonds.

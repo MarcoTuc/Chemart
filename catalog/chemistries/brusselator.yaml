@@ -16,7 +16,7 @@ chemistries:
   family: application
   kind: generator
   constructive: false
-  network: given
+  type: given
   S: {repr: "A, B (buffered), X, Y (dynamic), D, E (waste)", definition: explicit}
   R:
     definition: explicit

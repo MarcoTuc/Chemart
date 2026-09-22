@@ -16,7 +16,7 @@ chemistries:
   family: application
   kind: generator
   constructive: false
-  network: given
+  type: given
   S: {repr: "one species per input (X1, X2) and the output Y; values are concentrations", definition: explicit}
   R:
     definition: explicit

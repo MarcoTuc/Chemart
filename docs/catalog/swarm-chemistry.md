@@ -15,7 +15,7 @@ The entry that proves the catalog's output format has to be more than stoichiome
 |---|---|
 | **family** | spatial |
 | **kind** | generator |
-| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
+| **type** | given — a reaction network written down; you choose its rates and initial state |
 | **constructive** | no — fixed species set |
 | **fidelity** | `reconstructed` — built from the original papers listed under *References* |
 | **book** | 11.4.2 |

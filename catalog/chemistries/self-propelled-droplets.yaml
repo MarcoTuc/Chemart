@@ -16,7 +16,7 @@ chemistries:
   family: wet
   kind: wet
   constructive: false
-  network: given
+  type: given
   S:
     repr: "an oil droplet carrying a precursor, in an aqueous surfactant phase; the species are the five or six chemicals of the published experiment (precursor, water, surfactant acid and anion, proton, inert oil solvent)"
     definition: explicit

@@ -65,7 +65,7 @@ equilibrium, a flow reactor, and catalysts that are tied up while they work.
 |---|---|
 | **family** | origin-of-life |
 | **kind** | generator |
-| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
+| **type** | generator — an algorithm computes the network from the chemistry's arguments |
 | **constructive** | yes — the species set grows at run time |
 | **fidelity** | `reconstructed` — built from the original papers listed under *References* |
 | **book** | 6.3.1, 7.3.1 |

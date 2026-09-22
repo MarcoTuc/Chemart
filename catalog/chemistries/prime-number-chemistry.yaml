@@ -16,7 +16,7 @@ chemistries:
   family: core
   kind: generator
   constructive: true
-  network: generated
+  type: gas
   S:
     repr: "natural numbers >= 2; species id n<k>, structure the decimal integer k"
     definition: implicit

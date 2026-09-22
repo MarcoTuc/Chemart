@@ -38,7 +38,7 @@ OUT = REPO / "docs" / "catalog"
 EXPLAINERS = REPO / "catalog" / "explainers"
 
 import chemart                                    # noqa: E402
-from chemart.catalog import ARCHIVES, active, load  # noqa: E402
+from chemart.catalog import ARCHIVES, TYPES, active, load  # noqa: E402
 
 FIDELITY_NOTE = {
     "book": "implemented exactly as the book specifies",
@@ -46,9 +46,11 @@ FIDELITY_NOTE = {
     "reconstructed": "built from the original papers listed under *References*",
 }
 
-NETWORK_NOTE = {
-    "given": "given — the chemistry is a reaction network, instantiated from its parameters",
-    "generated": "generated — the network is the output of the chemistry's algorithm",
+#: One line per type for the "at a glance" table (catalog.TYPES has the definitions).
+TYPE_NOTE = {
+    "given": "given — a reaction network written down; you choose its rates and initial state",
+    "generator": "generator — an algorithm computes the network from the chemistry's arguments",
+    "gas": "gas — a Turing gas: structured molecules react by a procedure and the soup evolves",
 }
 
 #: A reader meets these reactor names in the formal specification; each gets a
@@ -203,8 +205,8 @@ def glance(c) -> list[str]:
     L = ["| at a glance | |", "|---|---|"]
     L.append(f"| **family** | {c.family} |")
     L.append(f"| **kind** | {c.kind} |")
-    if c.network:
-        L.append(f"| **network** | {NETWORK_NOTE.get(c.network, c.network)} |")
+    if c.type:
+        L.append(f"| **type** | {TYPE_NOTE.get(c.type, c.type)} |")
     L.append(f"| **constructive** | {'yes — the species set grows at run time' if c.constructive else 'no — fixed species set'} |")
     L.append(f"| **fidelity** | `{c.fidelity}` — {FIDELITY_NOTE.get(c.fidelity, '')} |")
     L.append(f"| **book** | {esc(c.book) if in_book(c) else NOT_IN_BOOK} |")
@@ -486,13 +488,13 @@ def table_caps(c) -> str:
 
 
 def _index_rows(group, nets) -> list[str]:
-    L = ["| chemistry | origin | network | grows | fidelity | S/R | beyond topology |",
+    L = ["| chemistry | origin | family | grows | fidelity | S/R | beyond topology |",
          "|---|---|---|:--:|---|--:|---|"]
     for c in sorted(group, key=lambda c: c.id):
         net = nets.get(c.id)
         size = f"{len(net.species)}/{len(net.reactions)}" if net else "—"
         L.append(
-            f"| [{c.name}]({c.id}.md) | {short_origin(c.origin)} | {c.network or '—'} | "
+            f"| [{c.name}]({c.id}.md) | {short_origin(c.origin)} | {c.family} | "
             f"{'yes' if c.constructive else '·'} | {c.fidelity} | {size} | "
             f"{table_caps(c)} |"
         )
@@ -506,8 +508,8 @@ def glance_counts(entries) -> list[str]:
 
     kinds = Counter(c.kind for c in entries)
     L = ["| | |", "|---|---|"]
-    L.append(f"| network given (written down, built by a formula, or drawn at random) | {sum(1 for c in entries if c.network == 'given')} |")
-    L.append(f"| network generated (the output of the chemistry's algorithm) | {sum(1 for c in entries if c.network == 'generated')} |")
+    for t, note in TYPE_NOTE.items():
+        L.append(f"| {note} | {sum(1 for c in entries if c.type == t)} |")
     L.append(f"| constructive (open, growing species set) | {sum(1 for c in entries if c.constructive)} |")
     L.append(f"| carry their own rate constants or rate law | {having('rate-constants', 'rate-law')} |")
     L.append(f"| carry energetics or thermodynamic consistency | {having('energies', 'thermodynamic-consistency')} |")
@@ -531,9 +533,9 @@ def index_page(entries, nets) -> str:
                 "[at the end](#archive)." if archived else ""))
     L.append("")
     L += glance_counts(main)
-    L.append("Columns: **network** is *given* when the chemistry is a reaction network "
-             "Chemart instantiates from its parameters, and *generated* when the network "
-             "is the output of the chemistry's algorithm (see `catalog/NETWORKS.md`); "
+    L.append("The catalog is grouped by what each chemistry is: a **given** network, a "
+             "**generator** of networks, or a Turing **gas** (the reasoning for every entry "
+             "is in `catalog/TYPES.md`). Columns: "
              "**grows** is whether the species set is open and expands at "
              "run time; **S/R** is the species and reaction count at *default* "
              "parameters with `seed=1`, which for most chemistries scales up "
@@ -546,13 +548,16 @@ def index_page(entries, nets) -> str:
              "attribution, its parameters and its provenance.")
     L.append("")
 
-    by_family: dict[str, list] = {}
+    by_type: dict[str, list] = {}
     for c in main:
-        by_family.setdefault(c.family, []).append(c)
-    for family in sorted(by_family):
-        L.append(f"## {family}")
-        L.append("")
-        L += _index_rows(by_family[family], nets)
+        by_type.setdefault(c.type, []).append(c)
+    for t in TYPE_NOTE:
+        if t in by_type:
+            L.append(f"## {t}")
+            L.append("")
+            L.append(f"{len(by_type[t])} chemistries: {TYPES[t]}.")
+            L.append("")
+            L += _index_rows(by_type[t], nets)
 
     if archived:
         L.append("## Archive")

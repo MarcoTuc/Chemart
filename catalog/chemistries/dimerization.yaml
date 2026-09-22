@@ -15,7 +15,7 @@ chemistries:
   archived: pruned
   kind: generator
   constructive: false
-  network: given
+  type: given
   S:
     repr: "three named species A, B and the dimer C = A.B"
     definition: explicit

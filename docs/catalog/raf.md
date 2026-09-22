@@ -57,7 +57,7 @@ and lets it evolve.
 |---|---|
 | **family** | origin-of-life |
 | **kind** | analysis |
-| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
+| **type** | generator — an algorithm computes the network from the chemistry's arguments |
 | **constructive** | no — fixed species set |
 | **fidelity** | `reconstructed` — built from the original papers listed under *References* |
 | **book** | 6.3.1 |

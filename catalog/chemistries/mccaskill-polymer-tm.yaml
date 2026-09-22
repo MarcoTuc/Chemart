@@ -18,7 +18,7 @@ chemistries:
   family: automata
   kind: generator
   constructive: true
-  network: generated
+  type: gas
   S:
     repr: "binary heteropolymers; species id p<bitstring>, structure the bitstring (first character = first monomer)"
     definition: implicit

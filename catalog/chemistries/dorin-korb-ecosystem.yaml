@@ -17,7 +17,7 @@ chemistries:
   family: spatial
   kind: generator
   constructive: true
-  network: generated
+  type: gas
   S:
     repr: "molecules = covalently bonded clusters of square virtual atoms from {A, B, C, O} plus the four catalyst atoms {K, EAB, ECC, EO}, identified by the canonical (isomorphism-invariant) bond graph"
     definition: implicit

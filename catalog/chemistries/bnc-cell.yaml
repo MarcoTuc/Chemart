@@ -17,7 +17,7 @@ chemistries:
   archived: pruned
   kind: generator
   constructive: false
-  network: given
+  type: generator
   S:
     repr: "directed linear molecules over atoms 1, 2, 3 in which every atom carries exactly as many bonds as its numeral; bonds '-', '=', '#' (single, double, triple) follow from the atoms. 608 molecules up to 12 atoms, numbered M0 = 1-1, M1 = 2=2, M2 = 3#3, M3 = 1-2-1, ... M607 = 2=3-3=3-3=3-3=3-3=3-3=2; the smallest 53 (all molecules of up to 7 atoms) are precursors. In cell mode also external copies X_out and protein species (import_k, export_k, enzyme_k)"
     definition: implicit

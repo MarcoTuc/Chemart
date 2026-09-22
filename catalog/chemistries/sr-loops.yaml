@@ -18,7 +18,7 @@ chemistries:
   family: automata
   kind: generator
   constructive: true
-  network: generated
+  type: gas
   S:
     repr: >
       Two readings (book 10.7.2), chosen with `mode`. (a) macro: an emergent

@@ -13,7 +13,7 @@ import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 _SCHEMA_V1 = """
 CREATE TABLE accounts (
@@ -192,6 +192,16 @@ ALTER TABLE repos ADD COLUMN network TEXT;
 """
 
 
+#: v5: the catalog replaced `network: given|generated` with `type:
+#: given|generator|gas`. The old values do not map one to one, so they are
+#: cleared; each repo gets its type again on its next commit (built-ins on
+#: the next seed or sync).
+_SCHEMA_V5 = """
+ALTER TABLE repos RENAME COLUMN network TO chem_type;
+UPDATE repos SET chem_type = NULL;
+"""
+
+
 def migrate(path: Path) -> None:
     """Create or upgrade the database at `path`."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -216,6 +226,9 @@ def migrate(path: Path) -> None:
         if version < 4:
             conn.executescript(_SCHEMA_V4)
             conn.execute("PRAGMA user_version = 4")
+        if version < 5:
+            conn.executescript(_SCHEMA_V5)
+            conn.execute("PRAGMA user_version = 5")
         conn.commit()
     finally:
         conn.close()

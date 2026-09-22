@@ -17,7 +17,7 @@ chemistries:
   family: systems-biology
   kind: generator
   constructive: true
-  network: generated
+  type: generator
   S:
     repr: >
       A synthon S(A) = <W, A, R, E>: atoms A (virtual atoms W are not used), explicitly modelled

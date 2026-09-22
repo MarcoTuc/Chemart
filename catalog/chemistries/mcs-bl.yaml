@@ -17,7 +17,7 @@ chemistries:
   family: bio-inspired
   kind: generator
   constructive: true
-  network: generated
+  type: gas
   S:
     repr: >
       Broadcast devices: strings over {0, 1, *, :, #, $, %, '} (thesis glyphs

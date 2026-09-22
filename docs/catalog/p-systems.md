@@ -57,7 +57,7 @@ maximally parallel execution.
 |---|---|
 | **family** | rewriting |
 | **kind** | formalism |
-| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
+| **type** | given — a reaction network written down; you choose its rates and initial state |
 | **constructive** | no — fixed species set |
 | **fidelity** | `reconstructed` — built from the original papers listed under *References* |
 | **book** | 9.5; multicompartment SSA 4.3; biology 18.3.2 |

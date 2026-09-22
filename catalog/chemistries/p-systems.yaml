@@ -17,7 +17,7 @@ chemistries:
   family: rewriting
   kind: formalism
   constructive: false
-  network: given
+  type: given
   S:
     repr: >
       symbol objects over an alphabet O, located in the regions of a tree of nested membranes

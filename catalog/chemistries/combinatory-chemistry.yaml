@@ -22,7 +22,7 @@ chemistries:
   family: rewriting
   kind: generator
   constructive: true
-  network: generated
+  type: gas
   S:
     repr: "expressions of combinatory logic over S, K, I, application left-associative, written with as few parentheses as possible (SII(SII)); species id the canonical string, structure the fully bracketed application tree (((SI)I)((SI)I))"
     definition: implicit

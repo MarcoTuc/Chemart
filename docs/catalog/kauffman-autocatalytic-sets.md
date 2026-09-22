@@ -59,7 +59,7 @@ start.
 |---|---|
 | **family** | origin-of-life |
 | **kind** | generator |
-| **network** | given — the chemistry is a reaction network, instantiated from its parameters |
+| **type** | generator — an algorithm computes the network from the chemistry's arguments |
 | **constructive** | yes — the species set grows at run time |
 | **fidelity** | `book+decisions` — the book left gaps; each filled choice is listed under *Implementation decisions* |
 | **book** | 6.3.1 |

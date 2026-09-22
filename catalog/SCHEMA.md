@@ -30,7 +30,8 @@ as they are implemented.
 | `family` (req) | `core`, `rewriting`, `automata`, `bio-inspired`, `origin-of-life`, `evolutionary-dynamics`, `network`, `spatial`, `application`, `systems-biology`, `wet`, `non-chemical` |
 | `kind` (req) | what the thing *is*: `generator`, `formalism`, `framework`, `analysis`, `wet` |
 | `constructive` (req) | `true` if the species set is open/unbounded and grows at run time; `false` if S is fixed and enumerable up front |
-| `network` (req for implemented entries) | how the chemistry gets its reaction network. `given`: the chemistry *is* a network, which Chemart instantiates straight from the parameters (written down, built by a formula, or drawn once at random); running it means dynamics on that network. `generated`: the network is the *output* of the chemistry's algorithm, rules applied to the molecules' own structure until closure, or the record of what a simulation did. `kind: generator` only says that Chemart has a generator module for the entry, so a written-down network such as the Brusselator is `kind: generator` and `network: given`. The reasoning for every entry is in `catalog/NETWORKS.md`. Independent of `constructive`: CCM's species set is fixed, but its network is the trace of a search, so it is generated. |
+| `type` (req for implemented entries) | what the chemistry *is*. `given`: a reaction network written down, possibly as a menu of named variants or from rules the user supplies; you choose its rates and initial state, then simulate it. `generator`: an algorithm computes the network from the chemistry's arguments, by random draws or by closing rules over molecules; once built it is treated as given, and its measures change with the arguments. `gas`: a Turing gas, where molecules carry structure and a procedure makes them react, so the soup and its network evolve in chemical-evolutionary time. How a chemistry can be *run* is separate and follows from its module: `generate(p, rng)` returns one network, `evolve(p, rng)` yields frames of a process. The reasoning for every entry is in `catalog/TYPES.md`. `kind: generator` only says that Chemart has a generator module for the entry. |
+| `clock` | the unit of time of the evolve face (`collisions`, `epochs`, `iterations`, `generations`, `s`, ...); required when the module defines `evolve` |
 | `archived` | absent for the chemistry catalog. `artificial-life` for artificial-life systems, which Chemart, being about chemistry, keeps out of the catalog; `pruned` for entries set aside on review. An archived entry keeps its generator, tests and page, and `generate_network(id)` still runs it, but `list_chemistries()`, `chemart list`, the LLM tools and the docs catalog leave it out (the docs list it under *Archive*). Delete the line to restore it. |
 
 ## Plain-language explanation
@@ -57,6 +58,7 @@ as they are implemented.
   choices: [1, 2]    # required for enum
   range: "perfect square; the book also uses 9, 16, 25"   # optional prose
   role: structural   # structural | kinetic | thermodynamic | population | spatial | stochastic | selection
+  face: evolve       # optional: generate | evolve, when only that face uses the parameter
   meaning: "string length; also fixes |S| = 2^N - 1"      # v2: required
 ```
 
@@ -68,8 +70,8 @@ v2 rules:
   in seconds. Paper-scale values go in `range`.
 - **No `seed` parameter.** The seed is an argument of `generate_network`.
 - v1 types `matrix`, `callable`, `seed` are not allowed.
-- **Reserved names.** `seed`, `revision` and `trust_remote_code` are keyword
-  arguments of `generate_network`, so no parameter may take them.
+- **Reserved names.** `seed`, `revision`, `trust_remote_code` and `every` are
+  keyword arguments of `generate_network` or `evolve`, so no parameter may take them.
 
 `role` is what a knob *does*, and is what lets Chemart offer coherent
 scaling across chemistries (e.g. "scale every structural knob down until

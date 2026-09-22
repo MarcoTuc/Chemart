@@ -16,7 +16,7 @@ chemistries:
   family: non-chemical
   kind: generator
   constructive: false
-  network: given
+  type: given
   S: {repr: "nuclides and elementary particles (n, 1H, 2H, ..., e+, e-, nu_e, gamma)", definition: explicit}
   R:
     definition: explicit

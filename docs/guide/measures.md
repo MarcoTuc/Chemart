@@ -17,7 +17,7 @@ too: kinds of chemistry nobody has built.
 There are two morphospaces worth building, and comparing them is the point:
 
 - a **design morphospace**, whose axes are how a chemistry is built. They are
-  read from the catalog: `family`, `kind`, `constructive`, `network`,
+  read from the catalog: `type`, `family`, `kind`, `constructive`,
   `provides`, the molecule type in `S`;
 - a **behavioural morphospace**, whose axes are the measures on this page,
   computed on generated networks.

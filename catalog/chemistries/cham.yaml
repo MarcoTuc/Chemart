@@ -16,7 +16,7 @@ chemistries:
   family: rewriting
   kind: formalism
   constructive: true
-  network: generated
+  type: generator
   S:
     repr: >
       molecules are terms of an algebra; for the process-calculus chams of Berry & Boudol:

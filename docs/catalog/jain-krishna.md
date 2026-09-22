@@ -55,7 +55,7 @@ in which the network itself evolves under selection.
 |---|---|
 | **family** | evolutionary-dynamics |
 | **kind** | generator |
-| **network** | generated — the network is the output of the chemistry's algorithm |
+| **type** | generator — an algorithm computes the network from the chemistry's arguments |
 | **constructive** | yes — the species set grows at run time |
 | **fidelity** | `book+decisions` — the book left gaps; each filled choice is listed under *Implementation decisions* |
 | **book** | 15.2.2, 15.2.3 |

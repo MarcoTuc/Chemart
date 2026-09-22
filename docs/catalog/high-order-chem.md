@@ -53,7 +53,7 @@ and a collision applies one molecule to another.
 |---|---|
 | **family** | core |
 | **kind** | framework |
-| **network** | generated — the network is the output of the chemistry's algorithm |
+| **type** | gas — a Turing gas: structured molecules react by a procedure and the soup evolves |
 | **constructive** | yes — the species set grows at run time |
 | **fidelity** | `book+decisions` — the book left gaps; each filled choice is listed under *Implementation decisions* |
 | **book** | appendix: Writing Your Own Artificial Chemistry in Python, 'A High-Order Chemistry' (figure 3, divrule); module list (HighOrderChem.py) |

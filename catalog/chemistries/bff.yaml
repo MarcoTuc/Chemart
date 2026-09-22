@@ -21,7 +21,7 @@ chemistries:
   family: automata
   kind: generator
   constructive: true
-  network: generated
+  type: gas
   S:
     repr: "64-byte programs; species id one character per byte: BFF commands <>{}-+.,[] as themselves, the zero byte as 0, any other byte b as the character U+0100+b (after cubff)"
     definition: implicit

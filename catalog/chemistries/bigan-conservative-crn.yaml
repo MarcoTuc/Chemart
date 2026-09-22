@@ -17,7 +17,7 @@ chemistries:
   family: network
   kind: generator
   constructive: false
-  network: given
+  type: generator
   S:
     repr: "N abstract chemicals A_0..A_(N-1), each with a random Gibbs free energy of formation"
     definition: explicit
