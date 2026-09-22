@@ -35,89 +35,11 @@ MAX_SPECIES = 40000
 MAX_REACTIONS = 200000
 
 
-# --------------------------------------------------------------------------
-# The RAF algorithm, on reactions given as
-# {"id", "reactants": [...], "products": [...], "catalysts": [...], "reversible": bool}
-# --------------------------------------------------------------------------
-def _directions(r: dict) -> list[tuple[list[str], list[str]]]:
-    out = [(r["reactants"], r["products"])]
-    if r["reversible"]:
-        out.append((r["products"], r["reactants"]))
-    return out
-
-
-def molecules_of(r: dict) -> set[str]:
-    """rho(r): the molecules that must be constructible for r to be usable."""
-    return set(r["reactants"]) | (set(r["products"]) if r["reversible"] else set())
-
-
-def closure(food, reactions) -> set[str]:
-    """cl_R(F): F plus everything R can build from it, catalysts ignored."""
-    needs: dict[str, list[int]] = {}
-    missing: list[int] = []
-    makes: list[list[str]] = []
-    for r in reactions:
-        for lhs, rhs in _directions(r):
-            k = len(makes)
-            makes.append(rhs)
-            missing.append(0)
-            for x in set(lhs):
-                needs.setdefault(x, []).append(k)
-                missing[k] += 1
-    cl = set()
-    queue = []
-    for x in food:
-        if x not in cl:
-            cl.add(x)
-            queue.append(x)
-    while queue:
-        x = queue.pop()
-        for k in needs.get(x, ()):
-            missing[k] -= 1
-            if missing[k] == 0:
-                for y in makes[k]:
-                    if y not in cl:
-                        cl.add(y)
-                        queue.append(y)
-    return cl
-
-
-def max_raf(reactions, food) -> list[dict]:
-    """The RAF algorithm: the unique maximal RAF within `reactions`, or []."""
-    current = list(reactions)
-    while current:
-        cl = closure(food, current)
-        keep = [r for r in current
-                if molecules_of(r) <= cl and any(c in cl for c in r["catalysts"])]
-        if len(keep) == len(current):
-            return keep
-        current = keep
-    return []
-
-
-def is_raf(reactions, food) -> bool:
-    """Is this exact set of reactions an RAF (RA and F-generated)?"""
-    if not reactions:
-        return False
-    cl = closure(food, reactions)
-    return all(molecules_of(r) <= cl and any(c in cl for c in r["catalysts"])
-               for r in reactions)
-
-
-def irreducible_raf(reactions, food, rng) -> list[dict]:
-    """One irrRAF: delete reactions of the maxRAF in random order, keeping every
-    deletion whose remaining maxRAF is non-empty (Hordijk & Steel 2004)."""
-    current = max_raf(reactions, food)
-    if not current:
-        return []
-    order = [current[i] for i in rng.permutation(len(current))]
-    for r in order:
-        if r["id"] not in {x["id"] for x in current}:
-            continue
-        smaller = max_raf([x for x in current if x["id"] != r["id"]], food)
-        if smaller:
-            current = smaller
-    return current
+# The RAF algorithm lives with the other measures of organisation; it works on
+# reactions given as {"id", "reactants", "products", "catalysts", "reversible"}.
+from chemart.measures.organisation import (  # noqa: E402,F401
+    _directions, closure, irreducible_raf, is_raf, max_raf, molecules_of,
+)
 
 
 # --------------------------------------------------------------------------

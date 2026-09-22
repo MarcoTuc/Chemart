@@ -202,7 +202,7 @@ def as_raf_system(net):
     reactions = [{"id": f"{'+'.join(l)}={c}", "reactants": list(l), "products": [c],
                   "catalysts": sorted(cs), "reversible": True}
                  for (l, c), cs in pairs.items()]
-    return {"food": net.extras["food_set"], "reactions": reactions}
+    return {"food": net.extras["food"], "reactions": reactions}
 
 for P in [0.001, 0.002, 0.005, 0.01, 0.02]:
     found, sizes = 0, []

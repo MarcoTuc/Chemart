@@ -37,7 +37,7 @@ CONSTANT_TOTAL = "constant-total"
 #: `extras` keys with a fixed meaning; any other key is free-form.
 RESERVED_EXTRAS = (
     "space", "compartments", "energies", "conservation", "analysis",
-    "interaction_law",
+    "interaction_law", "food",
 )
 
 _EXTRAS_PROVIDE = {

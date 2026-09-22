@@ -181,7 +181,7 @@ print(net.summary())
 kauffman-autocatalytic-sets: 62 species, 1608 reactions, status=complete
 provides: catalysts, mass-conservation, stoichiometry, topology
 seed: 1
-extras: conservation, food_set
+extras: conservation, food
 ```
 
 Its first reactions (`net.reactions`):
@@ -261,7 +261,7 @@ def as_raf_system(net):
     reactions = [{"id": f"{'+'.join(l)}={c}", "reactants": list(l), "products": [c],
                   "catalysts": sorted(cs), "reversible": True}
                  for (l, c), cs in pairs.items()]
-    return {"food": net.extras["food_set"], "reactions": reactions}
+    return {"food": net.extras["food"], "reactions": reactions}
 
 for P in [0.001, 0.002, 0.005, 0.01, 0.02]:
     found, sizes = 0, []
@@ -310,7 +310,7 @@ The sources leave gaps, and sometimes contradict each other or the book. Each su
 ??? note "3 decisions"
 
     - Built as the binary polymer model: all polymers up to max_length, every split of every polymer as a reversible condensation/cleavage pair, and each polymer catalysing each pair (both directions) with probability P.
-    - Water (H in eq. 6.2) is left out, as in the usual formulation of the polymer model. No rates: the book's analysis is static. The food set is recorded in extras.food_set, and monomer counts per letter are exact conservation laws (extras.conservation).
+    - Water (H in eq. 6.2) is left out, as in the usual formulation of the polymer model. No rates: the book's analysis is static. The food set is recorded in extras.food, and monomer counts per letter are exact conservation laws (extras.conservation).
     - The earlier parameter L (maximum food-set length) is replaced by an explicit food_set; the book's default food set is {a, b, aa, bb}.
 
 ## Results

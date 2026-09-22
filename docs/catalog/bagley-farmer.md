@@ -252,7 +252,7 @@ print(net.summary())
 bagley-farmer: 125 species, 696 reactions, status=complete
 provides: flow, initial-state, mass-conservation, rate-constants, stoichiometry, topology
 seed: 1
-extras: buffered, catalytic_links, conservation, flow_law, food_set
+extras: buffered, catalytic_links, conservation, flow_law, food
 ```
 
 Its first reactions (`net.reactions`):

@@ -6,6 +6,7 @@
     net = chemart.generate_network("matrix-chemistry", seed=0, N=4)
     traj = chemart.simulate.ode(chemart.generate_network("brusselator"), t_end=40)
     traj = chemart.evolve("alchemy", seed=0)          # a Turing gas, frame by frame
+    chemart.measure(net)                              # every cheap measure that applies
 
 Chemistries shared on the Chemart Hub load the same way, by ``namespace/name``:
 
@@ -31,6 +32,7 @@ _EXPORTS = {
     "list_chemistries": "chemart.api",
     "tool_definitions": "chemart.api",
     "load_network": "chemart.hub",
+    "measure": "chemart.measures",
     "Network": "chemart.network",
     "Reaction": "chemart.network",
     "Species": "chemart.network",
@@ -45,6 +47,6 @@ def __getattr__(name: str):
     # Lazy, so `python -m chemart.catalog` does not import the catalog twice.
     if name in _EXPORTS:
         return getattr(import_module(_EXPORTS[name]), name)
-    if name in ("hub", "simulate"):
+    if name in ("hub", "simulate", "measures"):
         return import_module(f"chemart.{name}")
     raise AttributeError(f"module 'chemart' has no attribute {name!r}")

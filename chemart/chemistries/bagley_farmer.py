@@ -122,7 +122,7 @@ def generate(p, rng):
     ids += [bound(s) for s in polymers if bound(s) in present]
 
     extras = {
-        "food_set": food,
+        "food": food,
         "buffered": [WATER] if WATER in present else [],
         "flow_law": "every food species enters at constant flux delta = inflow[s]; every species leaves at first-order rate K = outflow (eqs. 10-12)",
         "catalytic_links": [

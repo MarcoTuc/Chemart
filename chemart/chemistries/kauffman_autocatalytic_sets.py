@@ -43,7 +43,7 @@ def generate(p, rng):
         reactions,
         species=species,
         extras={
-            "food_set": list(p.food_set),
+            "food": list(p.food_set),
             "conservation": [
                 {"name": f"monomer {x}", "vector": {s: s.count(x) for s in species if x in s}}
                 for x in letters

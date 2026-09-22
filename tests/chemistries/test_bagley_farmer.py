@@ -115,7 +115,7 @@ def test_total_mass_obeys_eq_12(saturation):
     length = {s.id: len(s.id.replace("_bound", "")) for s in net.species if s.id != "H"}
     m = sum(length[s] * x[s] for s in length)
     dm = sum(length[s] * dx[s] for s in length)
-    food_mass = sum(len(f) for f in net.extras["food_set"])
+    food_mass = sum(len(f) for f in net.extras["food"])
     assert dm == pytest.approx(food_mass * SMALL["delta"] - net.outflow * m, rel=1e-10)
     assert sum(length[s] * v for s, v in net.initial_state.items() if s != "H") == pytest.approx(3.0)
     assert food_mass * SMALL["delta"] / net.outflow == pytest.approx(3.0)             # fixed point m0
@@ -227,8 +227,8 @@ def test_metadynamics_reaches_a_fixed_graph_above_threshold():
     for s, v in point.items():
         total[s.replace("_bound", "")] = total.get(s.replace("_bound", ""), 0.0) + v
     active = set(analysis["active_species"])
-    assert set(net.extras["food_set"]) <= active
-    assert {s for s, v in total.items() if v >= params["threshold"]} | set(net.extras["food_set"]) == active
+    assert set(net.extras["food"]) <= active
+    assert {s for s, v in total.items() if v >= params["threshold"]} | set(net.extras["food"]) == active
     for r in net.reactions:                                 # only above-threshold species react
         assert all(s in active or s == "H" or s.endswith("_bound") for s in r.reactants)
     # the returned graph is at its dynamical fixed point

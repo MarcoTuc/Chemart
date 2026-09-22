@@ -34,6 +34,33 @@ metabolism, it is too coarse to judge two artificial chemistries.
 
 ## How to use this page
 
+Every measure on this page is a function of `chemart.measures`, listed in the
+tables below by the name you call it with. The tables are generated from the
+code, so they cannot drift from it.
+
+```python
+import chemart
+from chemart import measures
+
+net = chemart.generate_network("kauffman-autocatalytic-sets", seed=1)
+chemart.measure(net)                                  # every cheap measure that applies
+chemart.measure(net, ["deficiency", "max_raf_fraction"])
+measures.applicable(net)                              # {name: None, or why it does not apply}
+measures.zscores(net, ["nodf", "clustering"])         # against the null model of rule 2
+
+traj = chemart.evolve("alchemy", seed=1)
+measures.over(traj, ["richness", "shannon", "n_reactions"], window=5)   # over time
+
+rows = measures.sweep("random-catalytic-networks", {"n": [10, 20, 40]}, seeds=range(5))
+measures.scaling(rows, "n_reactions")                 # section J
+```
+
+A measure takes a network, the population state of one frame (a dict of
+amounts), or a whole trajectory: the **input** column. Its **cost** is
+*cheap* (run by default), *moderate* or *exponential*; pass `cost=` to include
+the dearer ones. Measures with a node limit do not run above it unless you pass
+`force=True`.
+
 ### What each measure needs
 
 Every measure needs some part of the [network record](../reference/record.md).
@@ -44,9 +71,9 @@ The **needs** column of each table uses these codes:
 | **T** | topology: which species take part in which reactions | `net.reactions` |
 | **S** | stoichiometry, S = P − R | `ids, R, P = net.matrices()` |
 | **C** | catalysts | `reaction.catalysts` |
-| **F** | a food set: what is supplied from outside | `net.inflow`, or `net.initial_state` |
+| **F** | a food set: what is supplied from outside | `net.extras["food"]`, else `net.inflow`, the buffered species or `net.initial_state` (`measures.food_set(net)`) |
 | **K** | rate constants | `reaction.rate` |
-| **D** | a trajectory | see [Simulating dynamics](simulating.md), or the observed runs of soup chemistries |
+| **D** | a trajectory | `chemart.simulate.ode`/`ssa` (see [Simulating dynamics](simulating.md)) or `chemart.evolve` |
 | **str** | the molecules' internal structure | `species.structure` |
 
 `net.summary()` lists what a network `provides`. Many artificial chemistries
@@ -80,13 +107,18 @@ missing rather than imputing it.
 These are for normalising and sanity checks. On their own they say how big a
 network is, not what kind it is, so they are reference values rather than axes.
 
-| measure | meaning | how to compute | needs |
-|---|---|---|---|
-| species *n*, reactions *r* | size | counts | T |
-| *r / n* | reaction density | ratio | T |
-| reaction arity distribution | how many molecules go in and come out: 1→1, 2→1, 2→2, … | histogram of reactant and product counts per reaction | S |
-| fraction of reversible pairs | how much of the network runs both ways | match each reaction with its reverse | S |
-| fraction of catalysed reactions | how central catalysis is | reactions with a catalyst, or with a species on both sides | C |
+<!-- measures A -->
+| measure | meaning | needs | input | cost |
+|---|---|---|---|---|
+| `n_species` | Number of species. | T | network | cheap |
+| `n_reactions` | Number of reactions. | T | network | cheap |
+| `reaction_density` | Reactions per species, r / n. | T | network | cheap |
+| `arity` | Share of reactions by molecularity, "reactants->products" (e.g. "2->1": 0.4), counting molecules with their multiplicity. | S | network | cheap |
+| `mean_reactants` | Mean number of reactant molecules per reaction. | S | network | cheap |
+| `mean_products` | Mean number of product molecules per reaction. | S | network | cheap |
+| `reversible_fraction` | Share of reactions whose exact reverse is also in the network. | S | network | cheap |
+| `catalysed_fraction` | Share of reactions with a catalyst: a species on both sides. | T | network | cheap |
+<!-- /measures -->
 
 ## B. Stoichiometric structure
 
@@ -94,39 +126,46 @@ These come from linear algebra on the stoichiometric matrix S = P − R. They ar
 standard in the theory of real reaction networks, which makes them the most
 reliable bridge between artificial and real chemistry.
 
-| measure | meaning | how to compute | needs |
-|---|---|---|---|
-| rank(S) / *n* | how many independent directions the concentrations can move in | `numpy.linalg.matrix_rank`; exact rank with sympy for small integer matrices | S |
-| number of conservation laws, *n* − rank(S) | quantities that never change: mass, atoms, moieties | dimension of the left null space of S | S |
-| conservative network (yes/no) | whether some strictly positive "mass" is conserved | LP: find *m* > 0 with *mᵀS* = 0 (`scipy.optimize.linprog`) | S |
-| semi-positive conservation laws (P-invariants) | the actual conserved moieties | extreme rays of {*m* ≥ 0, *mᵀS* = 0}, e.g. with `pycddlib` | S |
-| deficiency δ = *n_c* − ℓ − rank(S) | Feinberg's measure from chemical reaction network theory (CRNT). δ = 0 together with weak reversibility guarantees a unique, stable steady state under mass-action kinetics, whatever the rates | *n_c* is the number of distinct complexes (the reactant and product sides of reactions), ℓ the number of connected components of the complex graph | S |
-| weak reversibility | every reaction lies on a cycle of the complex graph | the strongly connected components of the complex graph equal its connected components | S |
-| flux cone dimension | how many independent steady-state flux patterns exist | nullity of S with boundary reactions for the food set added | S, F |
-| number and length of elementary flux modes (EFMs) | how many minimal pathways run through the network; a direct measure of redundancy | `efmtool`, or cobrapy for small models. The count explodes combinatorially: small networks only | S, F |
-| fraction of blocked reactions | reactions that can never carry flux at steady state | flux variability analysis in cobrapy, with bounded fluxes | S, F |
+<!-- measures B -->
+| measure | meaning | needs | input | cost |
+|---|---|---|---|---|
+| `stoichiometric_rank` | Rank of the stoichiometric matrix: the dimension of the space the concentrations can move in. | S | network | cheap |
+| `rank_ratio` | rank(S) / n: the share of independent directions of change. | S | network | cheap |
+| `conservation_laws` | n - rank(S): the number of independent conserved linear combinations of amounts (dimension of the left null space of S). | S | network | cheap |
+| `conservative` | Whether a strictly positive mass is conserved: some m > 0 with mᵀS = 0 (a linear programme). | S | network | cheap |
+| `deficiency` | Feinberg's deficiency δ = n_c - ℓ - rank(S): complexes minus linkage classes minus the rank. With δ = 0 and weak reversibility, mass action has exactly one positive steady state in each stoichiometric compatibility class, and it is stable, whatever the rates. | S | network | cheap |
+| `weakly_reversible` | Whether every reaction lies on a cycle of the complex graph (each linkage class is strongly connected). | S | network | cheap |
+| `flux_dimension` | r - rank(S): the number of independent steady-state flux patterns of the closed network (dimension of the right null space of S). | S | network | cheap |
+| *p_invariants* (planned) | the semi-positive conservation laws (conserved moieties): extreme rays of {m ≥ 0, mᵀS = 0} | S | network | exponential |
+| *elementary_flux_modes* (planned) | number and mean length of the minimal pathways through the network with its food boundary | S F | network | exponential |
+| *blocked_fraction* (planned) | share of reactions that can never carry flux at steady state (flux variability analysis) | S F | network | moderate |
+<!-- /measures -->
 
 ## C. Graph topology
 
 These treat the network as a graph (rule 1). Most of them only mean something
 relative to a null model (rule 2).
 
-| measure | meaning | how to compute | needs |
-|---|---|---|---|
-| degree distributions (in/out, per species and per reaction) | how unevenly species take part | histograms, summarised by the coefficient of variation or the Gini coefficient. Avoid power-law exponents: small networks cannot support a fit | T |
-| degree assortativity | whether hubs connect to hubs | `nx.degree_assortativity_coefficient` | T |
-| clustering | local redundancy of connections | `networkx.algorithms.bipartite` clustering | T |
-| mean shortest path, global efficiency | how many reaction steps separate species | `nx.global_efficiency` on the largest component | T |
-| bow-tie fractions | shares of species upstream of (IN), inside (core) and downstream of (OUT) the largest strongly connected component; the classic shape of metabolism | strongly connected components plus reachability in networkx | T |
-| flow hierarchy | fraction of edges on no cycle: 1 is purely feed-forward, 0 means everything feeds back | edges between different strongly connected components ÷ all edges | T |
-| cycle rank, *m* − *n* + *c* | number of independent loops | on the undirected graph: edges − nodes + components | T |
-| reciprocity | share of direct back-and-forth links | `nx.reciprocity` | T |
-| modularity Q | whether the network splits into semi-independent subsystems | `nx.community.louvain_communities`, then `nx.community.modularity`; report Q relative to the null model | T |
-| motif significance profile | which small subgraphs are over- or under-represented: a structural fingerprint | `nx.triadic_census`, as z-scores against randomised graphs, normalised into a vector | T |
-| spectral radius λ₁ of the catalytic graph | λ₁ ≥ 1 exactly when the catalysis graph contains a cycle, i.e. an autocatalytic set | largest eigenvalue of the catalyst → product adjacency matrix | C |
-| Laplacian spectral gap, spectral entropy | connectivity and how fast things spread; spectra compare across representations more easily than most measures | `scipy.sparse.linalg.eigsh` | T |
-| nestedness (NODF) | whether rare species' partners are a subset of common species' partners | NODF on the species × reaction incidence matrix | T |
-| hyperedge size distribution | reactions as hyperedges, without the information lost by projecting to a graph | XGI or HyperNetX | S |
+<!-- measures C -->
+| measure | meaning | needs | input | cost |
+|---|---|---|---|---|
+| `degree_cv` | Coefficient of variation (sd / mean) of species degrees: how unevenly species take part in reactions. | T | network | cheap |
+| `degree_gini` | Gini coefficient of species degrees. | T | network | cheap |
+| `assortativity` | Degree assortativity of the undirected bipartite graph: whether high-degree species meet high-degree reactions. None when undefined (all degrees equal). | T | network | cheap |
+| `clustering` | Mean bipartite clustering of the species (Latapy et al. 2008): how much the reaction neighbourhoods of species that share a reaction overlap. | T | network | cheap |
+| `reciprocity` | Share of substrate -> product links between species that also run back. None when there are no such links. | T | network | cheap |
+| `cycle_rank` | Independent loops of the undirected bipartite graph: edges - nodes + components. | T | network | cheap |
+| `flow_hierarchy` | Share of edges on no cycle (Luo & Magee 2011): 1 is purely feed-forward, 0 means everything feeds back. | T | network | cheap |
+| `bow_tie` | Shares of species in the core (the largest strongly connected set of the substrate -> product graph), upstream of it (in), downstream of it (out), and elsewhere (other). | T | network | cheap |
+| `efficiency` | Global efficiency of the undirected bipartite graph: the mean inverse shortest-path length over all pairs of nodes. | T | network | moderate, up to 5000 nodes |
+| `spectral_gap` | Second-smallest eigenvalue of the normalised Laplacian of the undirected bipartite graph (its algebraic connectivity): 0 when it falls apart, larger when it is well connected. | T | network | cheap, up to 20000 nodes |
+| `spectral_entropy` | Shannon entropy (nats) of the normalised Laplacian eigenvalues, read as a distribution. | T | network | moderate, up to 3000 nodes |
+| `catalytic_spectral_radius` | Largest eigenvalue modulus of the catalytic graph, an arrow from each catalyst to each net product of the reactions it catalyses. At least 1 exactly when the graph has a cycle: an autocatalytic set (Jain & Krishna 1998). | C | network | cheap, up to 3000 nodes |
+| `nodf` | Nestedness (NODF, Almeida-Neto et al. 2008) of the species x reaction incidence matrix, 0 to 100: whether rarer species take part only in reactions that commoner species also take part in. | T | network | cheap |
+| `mean_hyperedge_size` | Mean number of distinct species per reaction, reactions read as hyperedges. | S | network | cheap |
+| *modularity* (planned) | Louvain modularity Q of the bipartite graph, relative to the null model | T | network | moderate |
+| *motif_profile* (planned) | significance profile of the triads of the substrate -> product graph (Milo et al. 2004) | T | network | moderate |
+<!-- /measures -->
 
 ## D. Catalysis, autocatalysis and organisation
 
@@ -135,42 +174,46 @@ make each other and so sustain themselves. They are where artificial
 chemistries should differ most, and where comparing them with origin-of-life
 chemistry means most.
 
-| measure | meaning | how to compute | needs |
-|---|---|---|---|
-| maxRAF size / *n* | the share of the network that forms a RAF set: reactions that are all catalysed from within the set and fed from the food set | Hordijk–Steel algorithm, polynomial time, about 50 lines | C, F |
-| number of irreducible RAFs | how many *different* ways the network can sustain itself | sampling or enumeration; exponential in the worst case | C, F |
-| stoichiometric autocatalysis (exists / number of minimal cores) | autocatalysis defined by stoichiometry, without labelled catalysts | existence: LP for a flux *v* ≥ 0 with S_M·*v* > 0 on a subset M of species. Enumerating the minimal cores is expensive | S |
-| scope size from the food set | everything reachable from the food set (network expansion) | `from chemart.expand import expand` | S, F |
-| expansion depth | how many generations the expansion takes to close | number of expansion steps | S, F |
-| number of chemical organisations, height of their lattice | sets of species that are closed and self-maintaining; many organisations means many alternative stable states | closure plus an LP for self-maintenance per candidate set. Exponential: small or reduced networks only | S |
-| size of the largest organisation / *n* | how much of the network can persist | as above | S |
+<!-- measures D -->
+| measure | meaning | needs | input | cost |
+|---|---|---|---|---|
+| `max_raf_fraction` | Share of the reactions that belong to the maximal RAF set. | C F | network | cheap |
+| `scope_fraction` | Share of species the network can make from its food set (its scope), catalysts not required. | F S | network | cheap |
+| `expansion_depth` | Generations network expansion takes to reach the scope of the food set. | F S | network | cheap |
+| *irreducible_rafs* (planned) | a lower bound on the number of irreducible RAFs, by sampling | C F | network | exponential |
+| *autocatalytic_cores* (planned) | minimal stoichiometric autocatalytic cores (Blokhuis, Lacoste & Nghe 2020) | S | network | exponential |
+| *organisations* (planned) | number of chemical organisations and the size of the largest (Dittrich & Speroni di Fenizio 2007) | S | network | exponential |
+<!-- /measures -->
 
 ## E. Constructiveness and growth
 
 A constructive chemistry keeps producing species that did not exist before. A
 single static network cannot show this; a sweep or a trajectory can.
 
-| measure | meaning | how to compute | needs |
-|---|---|---|---|
-| growth exponent of species count | *n* ~ size^α or *n* ~ time^α | line fit on log–log axes over a sweep of the chemistry's size parameter or run length | T, over a sweep |
-| novelty rate | new species per step or per collision | from a trajectory | D |
-| structural complexity of molecules | how elaborate molecules get: string length, Lempel–Ziv complexity, λ-term depth, assembly index | computed in each representation's own terms, then rank-normalised so representations compare | str |
-| complexity drift | whether molecules become more complex over time | slope of mean complexity along the trajectory | D, str |
+<!-- measures E -->
+| measure | meaning | needs | input | cost |
+|---|---|---|---|---|
+| `mean_structure_length` | Mean length of the species' structure strings (a λ-term, a sequence, a fold): a crude size of the molecules in their own representation. | str | network | cheap |
+| `novelty_rate` | Species never seen before, per unit of the trajectory's clock. | D | trajectory | cheap |
+| `complexity_drift` | Slope over time of the abundance-weighted mean length of species ids: do molecules get bigger as the run goes on? | D | trajectory | cheap |
+<!-- /measures -->
 
 ## F. Kinetic measures
 
 Only for chemistries with rate constants.
 
-| measure | meaning | how to compute | needs |
-|---|---|---|---|
-| spread of rate constants | how heterogeneous the kinetics are | range of log₁₀ *k*, or entropy of the *k* distribution | K |
-| thermodynamic consistency | whether the rates allow detailed balance (Wegscheider conditions) | for each cycle of reversible reactions, the product of *k⁺/k⁻* around it must be 1 | K, S |
-| number of steady states | multistability | multi-start root finding; δ = 0 gives uniqueness (section B) | K |
-| stability, stiffness | largest real part of the Jacobian's eigenvalues at steady state; ratio of fastest to slowest timescale | Jacobian eigenvalues | K |
-| oscillation (yes/no, period) | dynamical complexity | eigenvalues crossing into instability (a Hopf bifurcation), or peaks in a simulation | K, D |
-| flux concentration | whether a few reactions carry most of the flux | Gini coefficient of the steady-state fluxes | K |
-| sloppiness | how many parameter combinations actually matter | eigenvalue spread of the Fisher information matrix | K, D |
-| entropy production at steady state | how far from equilibrium the system runs | Σ (*J⁺* − *J⁻*) ln(*J⁺*/*J⁻*) over reversible pairs | K |
+<!-- measures F -->
+| measure | meaning | needs | input | cost |
+|---|---|---|---|---|
+| `rate_spread` | Orders of magnitude spanned by the mass-action rate constants, log10(max k / min k). None without mass-action rates. | K | network | cheap |
+| `wegscheider_residual` | How far the reversible mass-action pairs are from allowing detailed balance (Wegscheider's conditions): the least-squares residual of ln(k+/k-) against the reactions' stoichiometry, 0 when some chemical potentials make every pair balance. None without reversible mass-action pairs. | K S | network | cheap |
+| *steady_states* (planned) | number of steady states found by multi-start root finding | K | network | moderate |
+| *stability* (planned) | largest real part of the Jacobian's eigenvalues at steady state, and the stiffness ratio | K | network | moderate |
+| *oscillation* (planned) | whether a simulation settles into sustained oscillation, and its period | K | network | moderate |
+| *flux_concentration* (planned) | Gini coefficient of the steady-state fluxes | K | network | moderate |
+| *sloppiness* (planned) | eigenvalue spread of the Fisher information of the rate constants | K | network | moderate |
+| *entropy_production* (planned) | entropy production at steady state over the reversible pairs | K | network | moderate |
+<!-- /measures -->
 
 ## G. Dynamics and trajectories
 
@@ -178,35 +221,43 @@ For algorithmic chemistries such as AlChemy or Tierra the network is only a
 record of what happened, and the interesting part is how the population
 changed. These measures capture that.
 
-| measure | meaning | how to compute | needs |
-|---|---|---|---|
-| diversity over time | Shannon entropy and richness of the population | per time window | D |
-| turnover | how fast the population's composition changes | Jaccard distance between successive windows | D |
-| dominance | whether a few species take over | Berger–Parker index: the largest species' share | D |
-| time to collapse or fixation | how long diversity survives | first time diversity drops below a threshold | D |
-| attractor type | fixed point, cycle or chaos | recurrence analysis, largest Lyapunov exponent | D |
-| variance across seeds | how reproducible the chemistry is | spread of any measure on this page across seeds | D |
+<!-- measures G -->
+| measure | meaning | needs | input | cost |
+|---|---|---|---|---|
+| `richness` | Number of species present. | T | state | cheap |
+| `shannon` | Shannon diversity (nats) of the population's composition. | T | state | cheap |
+| `dominance` | Share of the most abundant species (Berger-Parker index). | T | state | cheap |
+| `population` | Total amount of all species. | T | state | cheap |
+| `turnover` | Mean Jaccard distance between the species sets of consecutive frames: how fast the population's composition changes. None with one frame. | D | trajectory | cheap |
+| `collapse_time` | First time, after its peak, at which richness falls to `fraction` (10%) of the peak. None if it never does. | D | trajectory | cheap |
+| `final_richness_ratio` | Richness at the end over the peak richness of the run. | D | trajectory | cheap |
+| *attractor_type* (planned) | fixed point, cycle or chaos, from the recurrence of the trajectory | D | trajectory | moderate |
+<!-- /measures -->
 
 ## H. Robustness and redundancy
 
 These measure redundancy *inside* a network: how many ways it has of doing the
 same thing. They are the measures closest to the redundancy question.
 
-| measure | meaning | how to compute | needs |
-|---|---|---|---|
-| production multiplicity | average number of reactions producing each species | column sums of P (as a 0/1 matrix) | S |
-| degeneracy | structurally different pathways doing the same job | EFMs per target species, or node-disjoint paths from the food set to each species | S, F |
-| single-knockout tolerance | share of reactions whose removal leaves the scope, maxRAF or organisation unchanged | remove each reaction in turn and recompute | S, C, F |
-| synthetic-lethal pairs | pairs of reactions that back each other up | pairwise knockouts; quadratic cost, so sample on large networks | S, F |
-| random vs targeted percolation | how the network falls apart when nodes are removed at random vs hubs first | size of the giant component against the fraction removed; report the area under each curve | T |
+<!-- measures H -->
+| measure | meaning | needs | input | cost |
+|---|---|---|---|---|
+| `production_multiplicity` | Mean number of reactions with a net production of each species. | S | network | cheap |
+| `percolation` | Area under the curve of the share of species in the largest connected piece as species are removed, at random and highest-degree first (Albert, Jeong & Barabási 2000). A robust network keeps a large area under both. | T | network | moderate, up to 3000 nodes |
+| *degeneracy* (planned) | structurally different pathways to each species from the food set | S F | network | moderate |
+| *knockout_tolerance* (planned) | share of reactions whose removal leaves the scope and the maxRAF unchanged | S F | network | moderate |
+| *synthetic_lethal_pairs* (planned) | pairs of reactions that back each other up (sampled on large networks) | S F | network | moderate |
+<!-- /measures -->
 
 ## I. Information and algorithmic complexity
 
-| measure | meaning | how to compute | needs |
-|---|---|---|---|
-| compressibility of the reaction list | how regular the network is | compressed size (zlib, LZMA) of a canonical encoding ÷ raw size. Relabel species canonically first, or the naming will bias it | T |
-| graph entropies | disorder of the degree distribution or of the spectrum | Shannon entropy of the degree or eigenvalue distribution | T |
-| structure–function mutual information | whether a reaction's outcome is predictable from its reactants' structure | mutual information between reactant and product features | str |
+<!-- measures I -->
+| measure | meaning | needs | input | cost |
+|---|---|---|---|---|
+| `compressibility` | Compressed size over raw size of the canonical reaction list (zlib, level 9): lower means more regular. | T | network | cheap |
+| `degree_entropy` | Shannon entropy (nats) of the species degree distribution. | T | network | cheap |
+| *structure_function_mi* (planned) | mutual information between reactant and product structure features | str | network | moderate |
+<!-- /measures -->
 
 ## J. Scaling relationships
 
@@ -217,19 +268,24 @@ and it is how real biochemistry has been compared across levels of biological
 organisation, which makes these the best features for placing artificial
 chemistries next to real ones.
 
+`measures.sweep(chemistry, grid, seeds=...)` measures a chemistry's networks
+over a grid of its arguments and seeds, one row each;
+`measures.scaling(rows, y, x="n_species")` fits the exponent of `y ~ x^a` on
+log-log axes and reports it with its R².
+
 ## Where to start
 
 About a dozen measures are cheap, apply to real networks as well, and cover
 most sections:
 
-- rank(S) / *n*, number of conservation laws, deficiency, arity distribution (A–B);
-- bow-tie fractions, flow hierarchy, null-normalised modularity, motif profile (C);
-- maxRAF fraction where catalysts exist, scope size and expansion depth (D);
-- production multiplicity and single-knockout tolerance (H);
-- the growth exponent (E).
+- `rank_ratio`, `conservation_laws`, `deficiency`, `arity` (A–B);
+- `bow_tie`, `flow_hierarchy`, `clustering`, `nodf`, each against its null model with `zscores` (C);
+- `max_raf_fraction` where catalysts exist, `scope_fraction` and `expansion_depth` (D);
+- `production_multiplicity` (H);
+- the growth exponent: `scaling` over a `sweep` of the chemistry's size argument (E, J).
 
-Add EFMs, organisations and the kinetic measures afterwards, and only for
-chemistries small enough to compute them on.
+Add the moderate and exponential measures afterwards, and only for chemistries
+small enough to compute them on.
 
 ## References
 
