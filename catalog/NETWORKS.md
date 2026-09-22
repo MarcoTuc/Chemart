@@ -19,6 +19,7 @@ Every catalog entry records `network: given` or `network: generated` (see `catal
 | `autopoiesis-vmu` | given *(borderline)* | Three reaction types over a fixed set of species (substrate, catalyst, link states); the lattice is the reactor, and Chemart reports the reactions that fired. |
 | `avida` (archived: artificial-life) | generated | Self-replicating programs run on a grid; the network records the births of one run. |
 | `bagley-farmer` | given *(borderline)* | Every polymer up to max_length with all splits, and catalytic links drawn at random: a constructed network (the optional threshold prunes it by dynamics). |
+| `bff` | generated | Pairs of self-modifying programs run as one tape and rewrite each other; the network records the executions and mutations of one run. |
 | `bigan-conservative-crn` | given | A random network drawn once: species, reactions and free energies sampled from stated distributions. |
 | `bnc-cell` (archived: pruned) | given | All molecules allowed by the bond rule up to max_length, and every recombination between them: a combinatorial construction. |
 | `bondable-ca` | generated | Whether atoms bond is measured from their CA dynamics; molecules and bonds are produced by running them. |
@@ -30,6 +31,7 @@ Every catalog entry records `network: given` or `network: generated` (see `catal
 | `chameleon` | given | Three reactions over three colours, written down. |
 | `chemoton` | given | Gánti's hand-designed network of metabolism, template and membrane; division is part of the reactor. |
 | `combinator-chemistry` | generated | Applying one combinator to another and reducing computes the products; closure generates the network. |
+| `combinatory-chemistry` | generated | Reducing an S, K, I expression computes the product and consumes a reactant; the network records what one run of Algorithm 1 did. |
 | `conrad-enzymatic` | given *(borderline)* | The binding network of one wet experiment; shape complementarity fixes it once from the ligand and enzyme set. |
 | `corewar` (archived: artificial-life) | generated | Programs execute in a shared core; the network records the instructions executed and written. |
 | `coreworld` (archived: artificial-life) | generated | Redcode runs with resources; the network records executions and writes. |

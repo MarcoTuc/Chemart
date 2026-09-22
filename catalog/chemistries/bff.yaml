@@ -1,0 +1,86 @@
+chemistries:
+
+- id: bff
+  name: BFF (self-modifying Brainfuck soup)
+  intuition: >
+    A soup of tiny programs that rewrite each other. Each molecule is a
+    64-byte program in BFF, a variant of the esoteric language Brainfuck in
+    which code and data live on the same tape and two heads read and write
+    it. A reaction concatenates two random programs and runs the result, so
+    each program can overwrite itself and its partner; then the tape is cut
+    back into two programs. Nothing rewards any behaviour, yet in a sizeable
+    fraction of runs a program appears that copies itself into its partner
+    whatever the partner was. It then spreads through the soup: the soup's
+    complexity jumps and a few programs dominate. The paper's point is that
+    these self-replicators arise mostly from the programs' interactions and
+    self-modification, not from random initialisation or mutation.
+  aliases: ["Computational Life", "BFF primordial soup", "cubff"]
+  origin: "Agüera y Arcas, Alakuijala, Evans, Laurie, Mordvintsev, Niklasson, Randazzo & Versari, 2024"
+  book: "-"
+  refs: ["https://arxiv.org/abs/2406.19108", "https://github.com/paradigms-of-intelligence/cubff"]
+  family: automata
+  kind: generator
+  constructive: true
+  network: generated
+  S:
+    repr: "64-byte programs; species id one character per byte: BFF commands <>{}-+.,[] as themselves, the zero byte as 0, any other byte b as the character U+0100+b (after cubff)"
+    definition: implicit
+    notes: "Ten of the 256 byte values are instructions and the zero byte ends loops; every other value is a no-op that can hold data."
+  R:
+    definition: implicit
+    arity: [1, 2]
+    scheme: "execution A + B -> split(exec(AB)) = A' + B' (the order of A and B matters); a self-replicator S reacts as S + F -> S + S; mutation A -> A'"
+    notes: >
+      BFF instruction set (paper section 2): < and > move head0, { and } move
+      head1, - and + decrement and increment the byte under head0, . copies
+      the byte under head0 to head1, , copies it back, [ jumps forward to the
+      matching ] if the byte under head0 is zero, ] jumps back to the
+      matching [ if it is not. Both heads start at 0 and wrap around the
+      128-byte tape. A jump without a match ends the program, as does the
+      instruction pointer leaving the tape or 8192 bytes read.
+  A:
+    reactor: [well-stirred-multiset, lattice-2d]
+    dilution: "none: no program is created or removed; each epoch pairs every program once, and background mutation replaces bytes"
+    notes: >
+      Each epoch: every byte of every program is replaced by a random byte
+      with probability mutation_rate; the programs are shuffled and paired,
+      and each pair is concatenated, run and split. On the grid (paper
+      section 2.2) programs are visited in random order, each picks a
+      random neighbour at most two cells away along each axis, and the pair
+      runs if neither is taken yet. Paper runs: 2^17 programs for 16,000
+      epochs; the grid is 240 x 135.
+  params:
+    - {name: tapes, type: int, default: 128, min: 2, max: 10000000, range: "paper: 2^17 = 131,072 (soup); 32,400 on the 240 x 135 grid", role: population, meaning: "number of 64-byte programs in the soup"}
+    - {name: epochs, type: int, default: 16, min: 0, max: 10000000, range: "paper: 16,000 ('long'), 128 ('short' and 'seeded')", role: population, meaning: "epochs; every program takes part in one reaction per epoch"}
+    - {name: mutation_rate, type: float, default: 0.000244140625, min: 0.0, max: 1.0, range: "paper default 0.024% (cubff: 2^-12 per byte per epoch); ablation 0 to 1% (Fig. 6)", role: stochastic, meaning: "probability that a byte is replaced by a uniformly random byte, per byte per epoch, before execution"}
+    - {name: max_steps, type: int, default: 8192, min: 1, max: 1000000, range: "paper and cubff: 2^13", role: structural, meaning: "bytes read before an execution is stopped"}
+    - {name: replicators, type: int, default: 0, min: 0, range: "paper 'seeded' runs: 1", role: structural, meaning: "copies of the hand-written self-replicator of the paper's Fig. 4 placed in the initial soup at random positions"}
+    - {name: space, type: enum, default: soup, choices: [soup, grid], range: "paper section 2.1: soup; section 2.2: grid", role: spatial, meaning: "soup: any two programs can react; grid: programs on a width x (tapes / width) grid react with neighbours at most two cells away along each axis"}
+    - {name: width, type: int, default: 16, min: 1, range: "paper: 240 (height 135)", role: spatial, meaning: "grid only: grid width; tapes must be a multiple of it"}
+    - {name: record_every, type: int, default: 1, min: 1, role: structural, meaning: "epochs between two entries of extras['analysis'] (the last epoch is always recorded)"}
+  provides: [topology, stoichiometry, catalysts, initial-state, space, sequence-structure-function]
+  fidelity: reconstructed
+  sources:
+    - "Agüera y Arcas, B., Alakuijala, J., Evans, J., Laurie, B., Mordvintsev, A., Niklasson, E., Randazzo, E. & Versari, L. (2024). Computational Life: How Well-formed, Self-replicating Programs Emerge from Simple Interaction. arXiv:2406.19108v2. Section 2 (BFF, soup, high-order entropy, Figs. 1-8). https://arxiv.org/abs/2406.19108"
+    - "cubff, the authors' code (C++/CUDA), https://github.com/paradigms-of-intelligence/cubff: bff.inc.h (interpreter, --lang bff_noheads), common_language.h (epoch loop, mutation, pairing, Brotli entropy), common.h (mutation probability 2^18 / 2^30), make_2d_pattern.py (grid neighbourhood)."
+  decisions:
+    - "Not in the book: the paper is from 2024, nine years after it. It frames the soup as a chemistry itself (eqs. 3-5: A + B -> A' + B'); unlike Tierra or Avida (kept in the archive) there is no ancestor, no fitness and no allocation, which is why it is catalogued."
+    - "The interpreter follows cubff's bff_noheads: heads start at 0 and wrap modulo 128; every byte read, no-ops included, counts toward max_steps; a jump scan that finds no match ends the program; arithmetic wraps modulo 256."
+    - "Mutation follows cubff: each byte is replaced by a uniformly random byte with probability mutation_rate (0.024% = 2^-12 by default) before the pair runs, including programs left unpaired on the grid. Chemart records the mutations as separate reactions A -> A' and the execution as A + B -> A' + B'; cubff applies both in one kernel."
+    - "Pairing: the soup is shuffled and consecutive programs are paired, the first being run first (cubff permute_programs). The paper's 'long-no-noise' fixed shuffle pattern is not exposed."
+    - "Grid: cells at most two apart along each axis, no wrap-around at the edges (cubff make_2d_pattern.py); programs are visited in random order and each draws one neighbour."
+    - "High-order entropy (section 2.1) is computed as cubff does: Shannon entropy of the soup's bytes minus Brotli (quality 2, window 2^24) bits per byte. Chemart's soups are far smaller than the paper's, so the absolute values differ; the jump at a state transition does not."
+    - "Species names use cubff's convention for non-coding bytes (U+0100 + byte) for every such byte; cubff substitutes the letters A-L for twelve of them."
+    - "No rates: reactions are drawn by pairing, not by rate constants, so rates are None."
+  reference_impl: "https://github.com/paradigms-of-intelligence/cubff (C++/CUDA)"
+  phenomena:
+    - "the hand-written replicator of Fig. 4, run on itself followed by 64 zero bytes, copies itself into the second half in reverse, one byte per loop; being a palindrome, the copy is exact"
+    - "a self-replicator S reacts as S + F -> 2S with any food F (eq. 5)"
+    - "a seeded replicator takes over the soup in about log n epochs when it survives (paper: 22% of 'seeded' runs of 2^17 programs reach a state transition in 128 epochs)"
+    - "a state transition shows as a jump in high-order entropy and a drop in the number of distinct tapes (Fig. 1)"
+    - "from random programs, self-replicators arise in about 40% of runs within 16,000 epochs (2^17 programs), with or without background mutation (Figs. 5-7); in 128-epoch runs only 3 of 1000"
+    - "on a 2D grid, replicators spread as a wave whose speed is proportional to the grid side, and variants coexist and compete (Fig. 8)"
+  notes: >
+    Pure Python runs a replicating pair (8192 steps) in about 2 ms, so a soup
+    of 1024 replicators needs about a second per epoch; paper-scale runs
+    (2^17 programs, 16,000 epochs) are out of reach and belong to cubff.

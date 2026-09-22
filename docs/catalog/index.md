@@ -1,19 +1,19 @@
 # Catalog
 
-**70** chemistries, one page each, generated from the catalog so these pages cannot drift from the library. A further 28 archived entries are listed [at the end](#archive).
+**72** chemistries, one page each, generated from the catalog so these pages cannot drift from the library. A further 28 archived entries are listed [at the end](#archive).
 
 | | |
 |---|---|
 | network given (written down, built by a formula, or drawn at random) | 29 |
-| network generated (the output of the chemistry's algorithm) | 41 |
-| constructive (open, growing species set) | 41 |
+| network generated (the output of the chemistry's algorithm) | 43 |
+| constructive (open, growing species set) | 43 |
 | carry their own rate constants or rate law | 29 |
 | carry energetics or thermodynamic consistency | 6 |
-| declare a conservation law | 26 |
-| define space | 12 |
+| declare a conservation law | 27 |
+| define space | 13 |
 | define compartments | 7 |
 
-By kind: 55 generator, 7 formalism, 4 wet, 2 analysis, 2 framework.
+By kind: 57 generator, 7 formalism, 4 wet, 2 analysis, 2 framework.
 
 Columns: **network** is *given* when the chemistry is a reaction network Chemart instantiates from its parameters, and *generated* when the network is the output of the chemistry's algorithm (see `catalog/NETWORKS.md`); **grows** is whether the species set is open and expands at run time; **S/R** is the species and reaction count at *default* parameters with `seed=1`, which for most chemistries scales up considerably; **beyond topology** lists only the capabilities that distinguish entries, since every one of them supplies topology and stoichiometry. **fidelity** says how close the implementation is to a published specification — see [Fidelity and trust](../trust.md).
 
@@ -40,6 +40,7 @@ Each chemistry's own page has the full capability list, the complete attribution
 | chemistry | origin | network | grows | fidelity | S/R | beyond topology |
 |---|---|---|:--:|---|--:|---|
 | [Automata reaction (32-bit binary string chemistry)](automata-reaction.md) | Dittrich & Banzhaf, 1998 | generated | yes | reconstructed | 4818/9872 | kinetics, flow |
+| [BFF (self-modifying Brainfuck soup)](bff.md) | Agüera y Arcas, Alakuijal… | generated | yes | reconstructed | 837/646 | space |
 | [Bondable Cellular Automata (BCA)](bondable-ca.md) | Hatcher, Banzhaf & Yu, 20… | generated | yes | book+decisions | 23/11 | conservation |
 | [Embedded particles in cellular automata](ca-embedded-particles.md) | Hanson & Crutchfield 1992 | generated | · | reconstructed | 9/7 | space |
 | [Machine-tape chemistry](ikegami-hashimoto.md) | Ikegami & Hashimoto, 1995 | generated | yes | reconstructed | 164/1482 | kinetics, flow |
@@ -112,6 +113,7 @@ Each chemistry's own page has the full capability list, the complete attribution
 | [Brane calculi](brane-calculi.md) | Cardelli, 2004 | generated | yes | reconstructed | 4/3 | compartments |
 | [Chemical Abstract Machine (CHAM)](cham.md) | Berry & Boudol, 1990 | generated | yes | reconstructed | 18/30 | compartments |
 | [Combinator chemistry](combinator-chemistry.md) | Speroni di Fenizio, 2000 | generated | yes | reconstructed | 107/3268 | conservation, flow |
+| [Combinatory Chemistry](combinatory-chemistry.md) | Kruszewski & Mikolov, 2020 | generated | yes | reconstructed | 591/1001 | conservation |
 | [Gamma / gamma-calculus](gamma.md) | Banatre & Le Metayer, 198… | generated | yes | reconstructed | 4/10 | — |
 | [Kappa calculus](kappa-calculus.md) | Danos & Laneve, 2004 | generated | yes | reconstructed | 10/11 | kinetics, conservation |
 | [L-systems](l-systems.md) | Lindenmayer, 1968 | generated | yes | reconstructed | 6/5 | — |

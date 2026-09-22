@@ -6,7 +6,10 @@ network, inspect it, simulate it, compare it with any other.
 
 The chemistries come from Wolfgang Banzhaf & Lidia Yamamoto, *Artificial
 Chemistries* (MIT Press, 2015). Every one is catalogued **and implemented**,
-with tests reproducing published results wherever any exist.
+with tests reproducing published results wherever any exist. Chemistries
+published after the book are added from their papers, such as
+[Combinatory Chemistry](catalog/combinatory-chemistry.md) (2020) and
+[BFF](catalog/bff.md) (2024).
 
 ```python
 import chemart

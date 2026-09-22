@@ -30,8 +30,11 @@ simulate it, and compare it with any other — without reimplementing the papers
 The chemistries come from the field's reference survey — Wolfgang Banzhaf &
 Lidia Yamamoto, *Artificial Chemistries* (MIT Press, 2015) — and every one is
 catalogued **and implemented**, with tests reproducing published results
-wherever any exist. Entries that are not chemistry, such as the artificial-life
-systems, are kept in an [archive](#the-archive).
+wherever any exist. Chemistries published after the book are added the same
+way, from their papers: Combinatory Chemistry (Kruszewski & Mikolov, 2020) and
+BFF, the self-modifying Brainfuck soup (Agüera y Arcas et al., 2024). Entries
+that are not chemistry, such as the artificial-life systems, are kept in an
+[archive](#the-archive).
 
 ```python
 import chemart

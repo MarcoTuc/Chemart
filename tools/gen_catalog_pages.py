@@ -207,7 +207,7 @@ def glance(c) -> list[str]:
         L.append(f"| **network** | {NETWORK_NOTE.get(c.network, c.network)} |")
     L.append(f"| **constructive** | {'yes — the species set grows at run time' if c.constructive else 'no — fixed species set'} |")
     L.append(f"| **fidelity** | `{c.fidelity}` — {FIDELITY_NOTE.get(c.fidelity, '')} |")
-    L.append(f"| **book** | {esc(c.book)} |")
+    L.append(f"| **book** | {esc(c.book) if in_book(c) else NOT_IN_BOOK} |")
     L.append(f"| **provides** | {', '.join(f'`{p}`' for p in c.provides) or '—'} |")
     return L + [""]
 
@@ -335,16 +335,25 @@ def link(ref: str) -> str:
     return esc(ref)
 
 
+# `book: "-"` marks a chemistry published after the book.
+NOT_IN_BOOK = "not in the book (published after 2015)"
+
+
+def in_book(c) -> bool:
+    return (c.book or "-").strip() not in ("-", "—")
+
+
 def references(c, ex) -> list[str]:
     L = ["## References", ""]
     numbers = [r for r in c.refs if re.fullmatch(r"\[\d+\]", r.strip())]
     others = [r for r in c.refs if r not in numbers]
-    book = (f"Banzhaf, W. & Yamamoto, L. (2015). *Artificial Chemistries*. MIT Press. "
-            f"Section {esc(c.book)}")
-    if numbers:
-        book += f"; the book's bibliography entries {', '.join(numbers)}"
-    L.append(book + ".")
-    L.append("")
+    if in_book(c):
+        book = (f"Banzhaf, W. & Yamamoto, L. (2015). *Artificial Chemistries*. MIT Press. "
+                f"Section {esc(c.book)}")
+        if numbers:
+            book += f"; the book's bibliography entries {', '.join(numbers)}"
+        L.append(book + ".")
+        L.append("")
     if others:
         L += [f"- {link(r)}" for r in others] + [""]
     if c.sources:
