@@ -5,6 +5,7 @@
     chemart.describe_chemistry("matrix-chemistry")
     net = chemart.generate_network("matrix-chemistry", seed=0, N=4)
     traj = chemart.simulate.ode(chemart.generate_network("brusselator"), t_end=40)
+    traj = chemart.evolve("alchemy", seed=0)          # a Turing gas, frame by frame
 
 Chemistries shared on the Chemart Hub load the same way, by ``namespace/name``:
 
@@ -24,6 +25,8 @@ except PackageNotFoundError:  # running from a source tree that was never instal
 _EXPORTS = {
     "call_tool": "chemart.api",
     "describe_chemistry": "chemart.api",
+    "evolve": "chemart.api",
+    "evolve_frames": "chemart.api",
     "generate_network": "chemart.api",
     "list_chemistries": "chemart.api",
     "tool_definitions": "chemart.api",

@@ -196,24 +196,24 @@ print(net.summary())
 ```
 
 ```
-alchemy: 365 species, 1156 reactions, status=observed
-provides: catalysts, flow, initial-state, rate-constants, stoichiometry, topology
+alchemy: 50 species, 1134 reactions, status=truncated
+provides: catalysts, flow, rate-constants, stoichiometry, topology
 seed: 1
-extras: analysis, final_state, notation
+extras: analysis, notation, seed
 ```
 
 Its first reactions (`net.reactions`):
 
 ```
-^^^^(2)4 + ^^((2)(2)(2)(1)^3)^(1)1 -> ^^^^(2)4 + ^^((2)(2)(2)(1)^3)^(1)1 + ^^^(2)^^((2)(2)(2)(1)^3)^(1)1  [mass-action k=1.0]  (x1)
-^^^^((((1)1)(3)1)1)(2)^^6 + ^^(2)^1 -> ^^^^((((1)1)(3)1)1)(2)^^6 + ^^(2)^1 + ^^^((((1)1)(3)1)1)(2)^^^^(2)^1  [mass-action k=1.0]  (x1)
-^^(2)1 + ^^(2)^1 -> ^^(2)1 + 2 ^^(2)^1  [mass-action k=1.0]  (x1)
-^^^^((((1)1)(3)1)1)(2)^^6 + ^^^(3)(((((3)^3)(3)^4)2)2)(1)2 -> ^^^^((((1)1)(3)1)1)(2)^^6 + ^^^(3)(((((3)^3)(3)^4)2)2)(1)2 + ^^^((((1)1)(3)1)1)(2)^^^^^(3)(((((3)^3)(3)^4)2)2)(1)2  [mass-action k=1.0]  (x1)
-^^(2)(((1)^(3)(1)^4)^2)^^3 + ^^(2)^1 -> ^^(2)(((1)^(3)(1)^4)^2)^^3 + ^^(2)^1 + ^^((((2)^^((2)^^^(2)^1)^1)^3)^^4)^1  [mass-action k=1.0]  (x1)
-^^((2)2)^^^4 + ^(1)^^2 -> ^^((2)2)^^^4 + ^(1)^^2 + ^^^2  [mass-action k=2.0]  (x1)
-^(((((1)1)(1)1)1)1)^^2 + ^^(2)^^1 -> ^(((((1)1)(1)1)1)1)^^2 + ^^(2)^^1 + ^^^^1  [mass-action k=1.0]  (x1)
-^^^((1)1)^((4)((3)1)(2)2)1 + ^^^((3)^3)(((3)1)(1)(((1)2)(1)3)2)2 -> ^^^((1)1)^((4)((3)1)(2)2)1 + ^^^((3)^3)(((3)1)(1)(((1)2)(1)3)2)2 + ^^((1)1)^^((((4)2)(3)3)^3)(((((4)2)(3)3)1)(1)(((1)2)(1)((4)2)(3)3)2)2  [mass-action k=1.0]  (x1)
-… and 1148 more
+2 ^^(2)^^^^(5)1 -> 2 ^^(2)^^^^(5)1 + ^^^^^(5)1  [mass-action k=1.0]
+^^(2)^^^^(5)1 + ^1 -> ^^(2)^^^^(5)1 + ^1 + ^^^^^(5)1  [mass-action k=1.0]
+^^(2)^^^^(5)1 + ^^^^(1)(1)(3)((1)(1)1)((1)1)2 -> ^^(2)^^^^(5)1 + 2 ^^^^(1)(1)(3)((1)(1)1)((1)1)2  [mass-action k=1.0]
+^^(2)^^^^(5)1 + ^^^2 -> ^^(2)^^^^(5)1 + 2 ^^^2  [mass-action k=1.0]
+^^(2)^^^^(5)1 + ^^(2)2 -> ^^(2)^^^^(5)1 + ^^(2)2 + ^^^^^(5)1  [mass-action k=1.0]
+^^(2)^^^^(5)1 + ^^1 -> ^^(2)^^^^(5)1 + 2 ^^1  [mass-action k=1.0]
+^^(2)^^^^(5)1 + ^^^^((1)(2)4)^4 -> ^^(2)^^^^(5)1 + ^^^^((1)(2)4)^4 + ^^^^((1)(2)^^^^(8)1)^4  [mass-action k=1.0]
+^^(2)^^^^(5)1 + ^^(2)^2 -> ^^(2)^^^^(5)1 + ^^(2)^2 + ^^^^^(5)1  [mass-action k=1.0]
+… and 1126 more
 ```
 
 The default run is a small version of the basic experiment: `M = 100` random
@@ -341,9 +341,9 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
-| `method` | `enum` | `soup` | structural | soup: the stochastic flow reactor of Fontana & Buss 5.3, observed reactions with firing counts; closure: every reaction reachable from the seed set (the closure A* of eq. 28), complete or cut off by max_species <br>one of `soup`, `closure` |
-| `M` | `int` | `100` | population | reactor size; without terms, the number of distinct random normal forms that seed the reactor (or the closure) <br>`2` … `100000` · *range:* paper: 1000 (reactor capacity, 5.3), 3000 for the L2 merger (6.4.1); book: 1000..3000 |
-| `collisions` | `int` | `2000` | population | soup only: number of collisions (elastic ones included) <br>`0` … `10000000` · *range:* paper figs. 4-5: 5*10^5..6*10^5; Mathis et al. 2024: 10^5..6*10^6 |
+| `M` | `int` | `100` | population | reactor size; without terms, the number of distinct random normal forms that seed the reactor <br>`2` … `100000` · *range:* paper: 1000 (reactor capacity, 5.3), 3000 for the L2 merger (6.4.1); book: 1000..3000 |
+| `n_seeds` | `int` | `10` | population | without terms, the number of distinct random normal forms whose closure is taken <br>`1` … `100000` |
+| `collisions` | `int` | `2000` | population | number of collisions (elastic ones included); a frame every M collisions <br>`0` … `10000000` · *range:* paper figs. 4-5: 5*10^5..6*10^5; Mathis et al. 2024: 10^5..6*10^6 |
 | `terms` | `list` | `[]` | structural | explicit seed molecules as closed lambda terms, written λx.(M)N (λ or \) or as de Bruijn ids; reduced to normal form. Soup: M is split equally among them. Overrides the random generator <br>*range:* e.g. the L1 example-1 center [λx1.λx2.λx3.x1, λx1.λx2.λx3.λx4.x2, λx1.λx2.λx3.λx4.λx5.x3] |
 | `filter` | `enum` | `none` | selection | functional boundary condition: no-copy declares elastic every collision whose product is identical to one of its two reactants (paper 6.2) <br>one of `none`, `no-copy` · *range:* none gives Level 0 (copiers, hypercycles); no-copy gives Level 1 organisations |
 | `forbidden_patterns` | `list` | `[]` | selection | syntactic boundary conditions: regular expressions searched in the product's de Bruijn id; a match makes the collision elastic and excludes the term from the random seed <br>*range:* paper 6.2.3 bans three consecutive abstractions: ['\^\^\^'] |
@@ -356,14 +356,15 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 | `max_depth` | `int` | `7` | population | random generator: nesting level at which a variable is forced <br>`0` … `50` · *range:* paper 5.3: 20; Mathis et al. 2024: 7 |
 | `p_bound` | `float` | `0.8` | population | random generator: probability that a variable refers to an enclosing binder (chosen uniformly) rather than to a free name <br>`0.0` … `1.0` |
 | `n_free` | `int` | `3` | population | random generator: number of free variable names; free names are bound by leading abstractions (standardization) before reduction <br>`1` … `100` |
-| `max_species` | `int` | `200` | structural | closure only: species budget; organisations are usually infinite, so their closure is cut off (status truncated) <br>`1` … `100000` |
+| `max_species` | `int` | `50` | structural | species budget of the closure; organisations are usually infinite, so their closure is cut off (status truncated) <br>`1` … `100000` |
 
 ### Implementation decisions
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "11 decisions"
+??? note "12 decisions"
 
+    - Two faces: generate_network returns the closure A* (eq. 28) of the seed terms, cut off by max_species; chemart.evolve runs the stochastic flow reactor of 5.3, a frame every M collisions. Without terms the closure starts from n_seeds random normal forms and the reactor from M: the seed set of a closure and the capacity of a reactor are different quantities, which the former single method parameter blurred.
     - Terms use de Bruijn indices, so identification modulo renaming (paper 4.4.3) is equality; the paper's standardized names (x indexed by binder occurrence) are used for the structure string, and the species id is the de Bruijn string.
     - Reduction is normal-order (leftmost-outermost) beta reduction with capture-free substitution, which reaches the normal form whenever one exists (standardization theorem, paper 4.3.1). The paper instead applies Revesz's small-step axioms 4-7 and counts each one as a time unit; so max_steps counts beta contractions and the paper's 10,000 is not the same budget.
     - Space is measured in characters of the paper's notation with every variable name counted as 2 characters (exact below 10 nested binders) and checked on the whole term after each contraction; a normal form above max_nf_size is elastic (paper: 4000 and 1000 characters).

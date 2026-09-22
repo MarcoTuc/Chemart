@@ -19,6 +19,7 @@ chemistries:
   kind: generator
   constructive: true
   type: gas
+  clock: collisions
   S:
     repr: "closed normal forms of untyped lambda-expressions modulo renaming of bound variables; species id is the de Bruijn string (^ abstraction, (M)N application, 1-based indices, e.g. ^^2 for λx1.λx2.x1), structure the paper's standardized form λx1.λx2.x1"
     definition: implicit
@@ -41,9 +42,9 @@ chemistries:
     dilution: "each reactive collision adds its product and removes a random molecule; M constant (paper 5.2-5.3)"
     notes: "The ODE picture is eq. 18: x_i' = sum_jk a^i_jk x_j x_k - x_i Phi, unit rate per ordered collision; closure-mode networks carry these rates with a constant-total outflow."
   params:
-    - {name: method, type: enum, default: soup, choices: [soup, closure], role: structural, meaning: "soup: the stochastic flow reactor of Fontana & Buss 5.3, observed reactions with firing counts; closure: every reaction reachable from the seed set (the closure A* of eq. 28), complete or cut off by max_species"}
-    - {name: M, type: int, default: 100, min: 2, max: 100000, range: "paper: 1000 (reactor capacity, 5.3), 3000 for the L2 merger (6.4.1); book: 1000..3000", role: population, meaning: "reactor size; without terms, the number of distinct random normal forms that seed the reactor (or the closure)"}
-    - {name: collisions, type: int, default: 2000, min: 0, max: 10000000, range: "paper figs. 4-5: 5*10^5..6*10^5; Mathis et al. 2024: 10^5..6*10^6", role: population, meaning: "soup only: number of collisions (elastic ones included)"}
+    - {name: M, type: int, default: 100, min: 2, max: 100000, range: "paper: 1000 (reactor capacity, 5.3), 3000 for the L2 merger (6.4.1); book: 1000..3000", role: population, face: evolve, meaning: "reactor size; without terms, the number of distinct random normal forms that seed the reactor"}
+    - {name: n_seeds, type: int, default: 10, min: 1, max: 100000, role: population, face: generate, meaning: "without terms, the number of distinct random normal forms whose closure is taken"}
+    - {name: collisions, type: int, default: 2000, min: 0, max: 10000000, range: "paper figs. 4-5: 5*10^5..6*10^5; Mathis et al. 2024: 10^5..6*10^6", role: population, face: evolve, meaning: "number of collisions (elastic ones included); a frame every M collisions"}
     - {name: terms, type: list, default: [], range: "e.g. the L1 example-1 center [λx1.λx2.λx3.x1, λx1.λx2.λx3.λx4.x2, λx1.λx2.λx3.λx4.λx5.x3]", role: structural, meaning: "explicit seed molecules as closed lambda terms, written λx.(M)N (λ or \\) or as de Bruijn ids; reduced to normal form. Soup: M is split equally among them. Overrides the random generator"}
     - {name: filter, type: enum, default: none, choices: [none, no-copy], range: "none gives Level 0 (copiers, hypercycles); no-copy gives Level 1 organisations", role: selection, meaning: "functional boundary condition: no-copy declares elastic every collision whose product is identical to one of its two reactants (paper 6.2)"}
     - {name: forbidden_patterns, type: list, default: [], range: "paper 6.2.3 bans three consecutive abstractions: ['\\^\\^\\^']", role: selection, meaning: "syntactic boundary conditions: regular expressions searched in the product's de Bruijn id; a match makes the collision elastic and excludes the term from the random seed"}
@@ -56,7 +57,7 @@ chemistries:
     - {name: max_depth, type: int, default: 7, min: 0, max: 50, range: "paper 5.3: 20; Mathis et al. 2024: 7", role: population, meaning: "random generator: nesting level at which a variable is forced"}
     - {name: p_bound, type: float, default: 0.8, min: 0.0, max: 1.0, role: population, meaning: "random generator: probability that a variable refers to an enclosing binder (chosen uniformly) rather than to a free name"}
     - {name: n_free, type: int, default: 3, min: 1, max: 100, role: population, meaning: "random generator: number of free variable names; free names are bound by leading abstractions (standardization) before reduction"}
-    - {name: max_species, type: int, default: 200, min: 1, max: 100000, role: structural, meaning: "closure only: species budget; organisations are usually infinite, so their closure is cut off (status truncated)"}
+    - {name: max_species, type: int, default: 50, min: 1, max: 100000, role: structural, face: generate, meaning: "species budget of the closure; organisations are usually infinite, so their closure is cut off (status truncated)"}
   provides: [topology, stoichiometry, catalysts, rate-constants, flow, initial-state, sequence-structure-function]
   fidelity: reconstructed
   sources:
@@ -64,6 +65,7 @@ chemistries:
     - "Mathis, C., Patel, D., Weimer, W. & Forrest, S. (2024). Self-organization in computation & chemistry: Return to AlChemy. arXiv:2408.12137: the original random generator and its standardization of free variables (5, 5.1), L0/L1 statistics with the original code. https://arxiv.org/abs/2408.12137"
     - "Fontana, W. & Buss, L. W. (1994). What would be conserved if 'the tape were played twice'? PNAS 91(2):757-761 (abstract only; the PMC copy is a page scan): the three generic levels. https://www.ncbi.nlm.nih.gov/pmc/articles/PMC43028/"
   decisions:
+    - "Two faces: generate_network returns the closure A* (eq. 28) of the seed terms, cut off by max_species; chemart.evolve runs the stochastic flow reactor of 5.3, a frame every M collisions. Without terms the closure starts from n_seeds random normal forms and the reactor from M: the seed set of a closure and the capacity of a reactor are different quantities, which the former single method parameter blurred."
     - "Terms use de Bruijn indices, so identification modulo renaming (paper 4.4.3) is equality; the paper's standardized names (x indexed by binder occurrence) are used for the structure string, and the species id is the de Bruijn string."
     - "Reduction is normal-order (leftmost-outermost) beta reduction with capture-free substitution, which reaches the normal form whenever one exists (standardization theorem, paper 4.3.1). The paper instead applies Revesz's small-step axioms 4-7 and counts each one as a time unit; so max_steps counts beta contractions and the paper's 10,000 is not the same budget."
     - "Space is measured in characters of the paper's notation with every variable name counted as 2 characters (exact below 10 nested binders) and checked on the whole term after each contraction; a normal form above max_nf_size is elastic (paper: 4000 and 1000 characters)."
@@ -86,6 +88,6 @@ chemistries:
   notes: >
     Historically the most important AC: the notions of closure,
     self-maintenance and organisation come from here. The closure of an
-    organisation is usually infinite, so method closure is normally
-    truncated; analysis.self_maintaining reports whether every species of
+    organisation is usually infinite, so the closure (generate_network) is
+    normally truncated; analysis.self_maintaining reports whether every species of
     the returned set is produced inside it (eq. 38).

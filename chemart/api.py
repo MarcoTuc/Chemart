@@ -1,13 +1,17 @@
-"""Chemart's public interface: three functions, also exposed as LLM tools.
+"""Chemart's public interface, also exposed as LLM tools.
 
     list_chemistries()                      every catalogued chemistry
     describe_chemistry(id)                  metadata + JSON Schema of its parameters
-    generate_network(id, seed=None, **p)    run its generator -> Network
+    generate_network(id, seed=None, **p)    one network -> Network
+    evolve(id, seed=None, **p)              a run of its process -> Trajectory
 
 The catalog YAML is the only parameter specification. A chemistry module
-`chemart.chemistries.<id with underscores>` defines ``generate(p, rng)``,
-receives the validated parameters as attributes of `p`, and returns a
-`Network`; this module fills in the provenance.
+`chemart.chemistries.<id with underscores>` has one or two faces:
+``generate(p, rng)`` returns a `Network`, and ``evolve(p, rng)`` is a
+generator that yields `Frame`s of a process and returns the observed
+`Network` at the end. Both receive the validated parameters as attributes of
+`p`; this module fills in the provenance. A parameter used by one face only
+says so with `face` in the catalog.
 
 An id of the form ``namespace/name`` (optionally ``@revision``) names a
 chemistry shared on the Chemart Hub instead; see `chemart.hub`. Code from
@@ -27,6 +31,7 @@ import numpy as np
 
 from chemart import catalog
 from chemart.network import Network
+from chemart.trajectory import Frame, Trajectory
 
 
 @lru_cache(maxsize=1)
@@ -91,10 +96,11 @@ def list_chemistries(include_archived: bool = False) -> list[dict[str, Any]]:
     return rows
 
 
-def params_schema(c: catalog.Chemistry) -> dict[str, Any]:
+def params_schema(c: catalog.Chemistry, face: str | None = None) -> dict[str, Any]:
+    """The JSON Schema of a chemistry's parameters, or of one face's."""
     return {
         "type": "object",
-        "properties": {p.name: p.json_schema() for p in c.params},
+        "properties": {p.name: p.json_schema() for p in c.params if face is None or p.face in (None, face)},
         "additionalProperties": False,
     }
 
@@ -116,6 +122,7 @@ def describe_chemistry(chemistry: str, revision: str | None = None) -> dict[str,
         "archived": c.archived,
         "kind": c.kind,
         "type": c.type,
+        "faces": faces(c),
         "clock": c.clock,
         "constructive": c.constructive,
         "implemented": c.implemented,
@@ -130,19 +137,52 @@ def describe_chemistry(chemistry: str, revision: str | None = None) -> dict[str,
         "provides": c.provides,
         "phenomena": c.phenomena,
         "notes": _oneline(c.notes) or None,
-        "params": params_schema(c),
+        "params": params_schema(c, _face_of_generate(c)) if c.implemented else params_schema(c),
     }
+    if "evolve" in info["faces"]:
+        info["evolve_params"] = params_schema(c, "evolve")
     hub_info = getattr(c, "hub_info", None)
     if hub_info is not None:
         info["hub"] = hub_info()
     return info
 
 
-def resolve_params(c: catalog.Chemistry, given: dict[str, Any]) -> dict[str, Any]:
-    """Validate `given` against the catalog spec and fill in defaults."""
-    known = {p.name: p for p in c.params}
+#: Parameters that chose between a closure and a soup before the two became faces.
+_REMOVED_MODES = ("method", "mode")
+
+
+def faces(c: catalog.Chemistry) -> list[str]:
+    """How the chemistry can be run: "generate" and/or "evolve", from its module."""
+    if getattr(c, "load_generator", None) is not None:
+        return ["generate"]                  # hub chemistries have a generate face only
+    if not c.implemented:
+        return []
+    module = import_module(c.module)
+    return [f for f in ("generate", "evolve") if callable(getattr(module, f, None))]
+
+
+def _face_of_generate(c: catalog.Chemistry) -> str:
+    """generate_network runs the generate face, or the evolve face of a gas without one."""
+    return "evolve" if faces(c) == ["evolve"] else "generate"
+
+
+def resolve_params(c: catalog.Chemistry, given: dict[str, Any], face: str | None = None) -> dict[str, Any]:
+    """Validate `given` against the catalog spec and fill in defaults.
+
+    With `face`, only the parameters of that face (and the shared ones) are
+    accepted and returned.
+    """
+    known = {p.name: p for p in c.params if face is None or p.face in (None, face)}
     for name in given:
         if name not in known:
+            other = next((p for p in c.params if p.name == name), None)
+            if other is not None:
+                call = "chemart.evolve" if other.face == "evolve" else "chemart.generate_network"
+                raise ValueError(f"{c.id}: parameter {name!r} belongs to the {other.face} face; "
+                                 f"pass it to {call}")
+            if name in _REMOVED_MODES and "evolve" in faces(c):
+                raise ValueError(f"{c.id}: parameter {name!r} is gone: generate_network returns the "
+                                 "network (the closure) and chemart.evolve runs the process (the soup)")
             close = difflib.get_close_matches(name, known, n=1)
             hint = f" Did you mean {close[0]!r}?" if close else ""
             raise ValueError(
@@ -181,24 +221,140 @@ def generate_network(
 
 
 def generator_for(c: catalog.Chemistry, trust_remote_code: bool = False):
-    """The ``generate(p, rng)`` function of an entry, built-in or from the hub."""
+    """The ``generate(p, rng)`` function of an entry, built-in or from the hub.
+
+    For a gas with no generate face it runs ``evolve`` to the end and returns
+    the observed network.
+    """
     load = getattr(c, "load_generator", None)
     if load is not None:
         return load(trust_remote_code)
-    return import_module(c.module).generate
+    module = import_module(c.module)
+    if callable(getattr(module, "generate", None)):
+        return module.generate
+
+    def generate(p, rng):
+        frames = module.evolve(p, rng)
+        while True:
+            try:
+                next(frames)
+            except StopIteration as stop:
+                return stop.value
+
+    return generate
+
+
+def _check_seed(seed) -> None:
+    if seed is not None and (isinstance(seed, bool) or not isinstance(seed, int)):
+        raise ValueError(f"seed must be an integer or None, got {seed!r}")
 
 
 def run_generator(c: catalog.Chemistry, generate, seed: int | None, params: dict[str, Any]) -> Network:
     """Validate `params` against `c`, call `generate(p, rng)`, record provenance."""
-    if seed is not None and (isinstance(seed, bool) or not isinstance(seed, int)):
-        raise ValueError(f"seed must be an integer or None, got {seed!r}")
-    values = resolve_params(c, params)
+    _check_seed(seed)
+    values = resolve_params(c, params, _face_of_generate(c))
     rng = np.random.default_rng(seed)
     net = generate(SimpleNamespace(**copy.deepcopy(values)), rng)
     if not isinstance(net, Network):
         raise TypeError(f"{c.id}: generate returned {type(net).__name__}, expected Network")
     net.chemistry, net.params, net.seed = getattr(c, "ref", c.id), values, seed
     return net
+
+
+def evolver_for(c: catalog.Chemistry):
+    """The ``evolve(p, rng)`` function of a built-in chemistry that has one."""
+    if getattr(c, "load_generator", None) is not None:
+        raise ValueError(f"{c.id}: chemistries from the hub can only be generated, not evolved")
+    if not c.implemented:
+        raise NotImplementedError(f"{c.id!r} is catalogued but has no generator yet.")
+    evolve_ = getattr(import_module(c.module), "evolve", None)
+    if not callable(evolve_):
+        raise ValueError(f"{c.id} is a {c.type} with no process to evolve; "
+                         "use generate_network (and chemart.simulate for its dynamics)")
+    return evolve_
+
+
+def run_evolver(c: catalog.Chemistry, evolve_, seed: int | None, params: dict[str, Any], every: int = 1):
+    """Validate `params`, run `evolve(p, rng)` and yield its frames, `every`
+    frames merged into one; return the observed network with its provenance."""
+    _check_seed(seed)
+    if isinstance(every, bool) or not isinstance(every, int) or every < 1:
+        raise ValueError(f"every must be a positive integer, got {every!r}")
+    values = resolve_params(c, params, "evolve")
+    rng = np.random.default_rng(seed)
+    frames = evolve_(SimpleNamespace(**copy.deepcopy(values)), rng)
+    pending: list[Frame] = []
+    first = True
+    while True:
+        try:
+            frame = next(frames)
+        except StopIteration as stop:
+            net = stop.value
+            break
+        if first:
+            first = False
+            yield frame
+            continue
+        pending.append(frame)
+        if len(pending) == every:
+            yield _merge(pending)
+            pending = []
+    if pending:
+        yield _merge(pending)
+    if not isinstance(net, Network):
+        raise TypeError(f"{c.id}: evolve returned {type(net).__name__}, expected Network")
+    net.chemistry, net.params, net.seed = getattr(c, "ref", c.id), values, seed
+    return net
+
+
+def _merge(frames: list[Frame]) -> Frame:
+    """Consecutive frames as one: the reactions add up, the last state stands."""
+    if len(frames) == 1:
+        return frames[0]
+    from collections import Counter
+
+    fired: dict[tuple, list] = {}
+    for f in frames:
+        for lhs, rhs, n in f.fired:
+            key = (frozenset(Counter(lhs).items()), frozenset(Counter(rhs).items()))
+            entry = fired.get(key)
+            if entry is None:
+                fired[key] = [list(lhs), list(rhs), n]
+            else:
+                entry[2] += n
+    last = frames[-1]
+    return Frame(t=last.t, state=last.state, fired=list(fired.values()), observables=last.observables)
+
+
+def evolve_frames(chemistry: str, seed: int | None = None, *, every: int = 1, **params: Any):
+    """Run a chemistry's process, yielding its frames as they come.
+
+    A generator: iterate it for live frames; its return value (``yield from``
+    or ``StopIteration.value``) is the observed network.
+    """
+    c = _entry(chemistry)
+    return run_evolver(c, evolver_for(c), seed, params, every)
+
+
+def evolve(chemistry: str, seed: int | None = None, *, every: int = 1, **params: Any) -> Trajectory:
+    """Run a chemistry's process to the end and return the whole `Trajectory`.
+
+    Every chemistry with an evolve face can be evolved: the Turing gases, and
+    the chemistries that define a reactor for their network (such as a
+    lattice). Omitted parameters take their defaults; `every` keeps one frame
+    in `every`, adding up the reactions fired in between.
+    """
+    c = _entry(chemistry)
+    run = run_evolver(c, evolver_for(c), seed, params, every)
+    frames: list[Frame] = []
+    while True:
+        try:
+            frames.append(next(run))
+        except StopIteration as stop:
+            net = stop.value
+            break
+    return Trajectory(network=net, frames=frames, method="evolve", clock=c.clock or "steps",
+                      settings={"seed": seed, "params": net.params, "every": every})
 
 
 # ----------------------------------------------------------------------------

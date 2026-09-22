@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 from chemart.simulate import rhs
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries.alchemy import Diverged, app, lam, normal_form, parse, to_id, to_text, var
 
 I, K = "λx.x", "λx.λy.x"
@@ -63,7 +63,7 @@ def test_omega_has_no_normal_form():
         normal_form(parse(omega), max_steps=500)
     with pytest.raises(Diverged, match="characters"):
         normal_form(parse("(λx.((x)x)x)λx.((x)x)x"), max_size=300)
-    net = generate_network("alchemy", method="closure", terms=["λx.(x)x", I], max_steps=200)
+    net = generate_network("alchemy", terms=["λx.(x)x", I], max_steps=200)
     # (λx.(x)x) applied to itself is elastic; everything else closes on {ω, I}
     ids = {s.id for s in net.species}
     assert net.status == "complete" and ids == {"^(1)1", "^1"}
@@ -82,8 +82,8 @@ def test_parse_errors():
 
 # --- boundary conditions -------------------------------------------------------
 def test_no_copy_filter_makes_copies_elastic():
-    free = generate_network("alchemy", method="closure", terms=[I, K], max_species=30)
-    barred = generate_network("alchemy", method="closure", terms=[I, K], filter="no-copy", max_species=30)
+    free = generate_network("alchemy", terms=[I, K], max_species=30)
+    barred = generate_network("alchemy", terms=[I, K], filter="no-copy", max_species=30)
     copies = [r for r in free.reactions if not set(Counter(r.products) - Counter(r.reactants)) - set(r.reactants)]
     assert copies, "I o v = v is a copy action"
     for r in barred.reactions:
@@ -94,7 +94,7 @@ def test_no_copy_filter_makes_copies_elastic():
 
 def test_syntactic_filter_bars_three_abstractions():
     # paper 6.2.3: objects containing three consecutive abstractions are barred
-    net = generate_network("alchemy", method="closure", terms=[K], forbidden_patterns=[r"\^\^\^"])
+    net = generate_network("alchemy", terms=[K], forbidden_patterns=[r"\^\^\^"])
     assert {s.id for s in net.species} == {"^^2"} and not net.reactions
     with pytest.raises(ValueError, match="regular expression"):
         generate_network("alchemy", forbidden_patterns=["("])
@@ -102,12 +102,12 @@ def test_syntactic_filter_bars_three_abstractions():
 
 def test_mediator_is_the_generalized_collision_rule():
     # eq. 14: Phi = λx1.λx2.(x1)x2 reproduces plain application
-    a = generate_network("alchemy", method="closure", terms=[K, "λx.λy.λz.(z)x"], max_species=40)
-    b = generate_network("alchemy", method="closure", terms=[K, "λx.λy.λz.(z)x"], max_species=40,
+    a = generate_network("alchemy", terms=[K, "λx.λy.λz.(z)x"], max_species=40)
+    b = generate_network("alchemy", terms=[K, "λx.λy.λz.(z)x"], max_species=40,
                          mediator="λx1.λx2.(x1)x2")
     assert a.to_dict()["reactions"] == b.to_dict()["reactions"]
     # Phi = λa.λb.(a)(a)b lets the operator act twice: K o I = λy.λy'.I instead of λy.I
-    c = generate_network("alchemy", method="closure", terms=[K, I], mediator="λa.λb.(a)(a)b", max_species=20)
+    c = generate_network("alchemy", terms=[K, I], mediator="λa.λb.(a)(a)b", max_species=20)
     made = {(Counter(r.products) - Counter(r.reactants)).most_common(1)[0][0]
             for r in c.reactions if Counter(r.reactants) == Counter(["^^2", "^1"])}
     assert "^^^1" in made and "^^1" not in made
@@ -144,7 +144,7 @@ def copy_ecology(ids_terms):
 @pytest.mark.parametrize("members", ["AB", "CDE"])
 def test_fig1_level0_ecologies_are_closed_copy_ecologies(members):
     terms = [FIG1[m] for m in members]
-    net = generate_network("alchemy", method="closure", terms=terms)
+    net = generate_network("alchemy", terms=terms)
     assert net.status == "complete" and len(net.species) == len(members)
     assert copy_ecology(terms)
 
@@ -160,13 +160,14 @@ def test_fig1_caption_actions():
 def test_level0_reactor_collapses_to_copiers(seed):
     # 6.1: 'in many instances the system reduces to just one object species that is a self-copier'.
     # Not every run does: e.g. seed 2 ends in a nearly inert pair whose collisions are almost all elastic.
-    net = generate_network("alchemy", seed=seed, M=100, collisions=20000)
+    traj = evolve("alchemy", seed=seed, M=100, collisions=20000)
+    net = traj.network
     final = net.extras["final_state"]
-    assert net.extras["analysis"]["distinct_species"][0] == 100
+    assert len(traj.frames[0].state) == 100 and len(traj.frames[-1].state) == len(final)
     assert len(final) <= 2
     terms = [next(s.structure for s in net.species if s.id == sid) for sid in final]
     assert copy_ecology(terms)
-    closed = generate_network("alchemy", method="closure", terms=terms)
+    closed = generate_network("alchemy", terms=terms)
     assert closed.status == "complete" and len(closed.species) == len(final)
 
 
@@ -215,19 +216,19 @@ def test_example1_basic_cycle():
 def test_example1_center_is_self_maintaining(family):
     # 6.2.2 'Families': the center of family i is its i smallest objects; fewer do not seed it
     center = [to_text(projector(family + l, 1 + l)) for l in range(family)]
-    net = generate_network("alchemy", method="closure", terms=center, filter="no-copy", max_species=25)
+    net = generate_network("alchemy", terms=center, filter="no-copy", max_species=25)
     assert net.status == "truncated"
     assert all(i - j == family - 1 for i, j in map(projector_indices, (s.id for s in net.species)))
-    whole = generate_network("alchemy", method="closure", terms=center, filter="no-copy", max_species=family)
+    whole = generate_network("alchemy", terms=center, filter="no-copy", max_species=family)
     assert whole.extras["analysis"]["self_maintaining"]
-    part = generate_network("alchemy", method="closure", terms=center[:-1], filter="no-copy",
+    part = generate_network("alchemy", terms=center[:-1], filter="no-copy",
                             max_species=family - 1)
     assert not part.extras["analysis"]["self_maintaining"]
 
 
 def test_level1_reactor_settles_in_a_projector_family():
     # 6.2.2: random objects, copy actions barred -> the projector organisation O1 (one family)
-    net = generate_network("alchemy", seed=1, M=100, collisions=20000, filter="no-copy")
+    net = evolve("alchemy", seed=1, M=100, collisions=20000, filter="no-copy").network
     final = net.extras["final_state"]
     indices = [projector_indices(s) for s in final]
     assert len(final) >= 3 and None not in indices
@@ -239,7 +240,7 @@ def test_level1_reactor_settles_in_a_projector_family():
 
 def test_level1_soup_from_the_center_stays_in_its_family():
     center = [to_text(projector(3 + l, 1 + l)) for l in range(3)]
-    net = generate_network("alchemy", seed=0, terms=center, M=60, collisions=3000, filter="no-copy")
+    net = evolve("alchemy", seed=0, terms=center, M=60, collisions=3000, filter="no-copy").network
     assert net.initial_state == {to_id(parse(t)): 20 for t in center}
     assert all(projector_indices(s.id)[0] - projector_indices(s.id)[1] == 2 for s in net.species)
     assert len(net.extras["final_state"]) >= 3
@@ -280,11 +281,11 @@ def test_example2_numeral_arithmetic():
 
 def test_example2_center_is_self_maintaining():
     center = [numeral("A", -2), numeral("A", 0), numeral("B", 0), numeral("B", 2)]
-    net = generate_network("alchemy", method="closure", terms=center, filter="no-copy",
+    net = generate_network("alchemy", terms=center, filter="no-copy",
                            forbidden_patterns=[r"\^\^\^"], max_species=4)
     assert net.extras["analysis"]["self_maintaining"]
     for sub in ([center[0], center[1], center[2]], [center[1], center[2], center[3]]):
-        part = generate_network("alchemy", method="closure", terms=sub, filter="no-copy",
+        part = generate_network("alchemy", terms=sub, filter="no-copy",
                                 forbidden_patterns=[r"\^\^\^"], max_species=3)
         assert not part.extras["analysis"]["self_maintaining"]
 
@@ -314,7 +315,7 @@ def test_level2_organisation_A_is_built_by_T():
 def test_rates_give_the_flow_reactor_equation():
     # eq. 18 with unit rates on ordered collisions and a dilution flux keeping sum x = 1
     terms = [FIG1[k] for k in "CDE"]
-    net = generate_network("alchemy", method="closure", terms=terms)
+    net = generate_network("alchemy", terms=terms)
     ids, f = rhs(net)
     x = np.random.default_rng(0).uniform(0.1, 1.0, len(ids))
     x /= x.sum()
@@ -330,7 +331,9 @@ def test_rates_give_the_flow_reactor_equation():
 
 
 def test_default_soup_network():
-    net = generate_network("alchemy", seed=3)
+    traj = evolve("alchemy", seed=3)
+    net = traj.network
+    assert traj.clock == "collisions" and [f.t for f in traj.frames][:3] == [0.0, 100.0, 200.0]
     assert net.status == "observed" and net.outflow == "constant-total"
     assert sum(net.initial_state.values()) == 100 and len(net.initial_state) == 100
     assert sum(net.extras["final_state"].values()) == 100
@@ -344,4 +347,8 @@ def test_bad_parameters():
     with pytest.raises(ValueError, match="p_variable"):
         generate_network("alchemy", p_variable=0.7, p_abstraction=0.5)
     with pytest.raises(ValueError, match="smaller"):
-        generate_network("alchemy", terms=[I, K, S], M=2)
+        evolve("alchemy", terms=[I, K, S], M=2)
+    with pytest.raises(ValueError, match="belongs to the evolve face"):
+        generate_network("alchemy", collisions=10)
+    with pytest.raises(ValueError, match="is gone"):
+        generate_network("alchemy", method="soup")

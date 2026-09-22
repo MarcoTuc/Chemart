@@ -29,7 +29,8 @@ def test_contract(cid):
     """Defaults run in seconds, the network is plain JSON, same seed gives the
     same network, and the catalog claims everything the network contains."""
     entry = ENTRIES[cid]
-    assert contract.problems(entry, chemart.api.generator_for(entry)) == []
+    evolve = chemart.api.evolver_for(entry) if "evolve" in chemart.api.faces(entry) else None
+    assert contract.problems(entry, chemart.api.generator_for(entry), evolve=evolve) == []
 
 
 @pytest.mark.parametrize("cid", IMPLEMENTED)

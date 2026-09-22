@@ -34,7 +34,8 @@ from collections import Counter
 from chemart.expand import expand
 from chemart.helpers.params import apportion
 from chemart.network import CONSTANT_TOTAL, Network, Reaction, Species
-from chemart.soup import soup
+from chemart.soup import Tally, stir
+from chemart.trajectory import Frame
 
 # --- terms --------------------------------------------------------------------
 # A term is a tuple (tag, a, b, size, fv):
@@ -414,7 +415,7 @@ class Chemistry:
         return [Species(s, structure=to_text(self.terms[s])) for s in ids]
 
 
-def _seed_terms(p, chem: Chemistry, rng) -> list[str]:
+def _seed_terms(p, chem: Chemistry, rng, count: int) -> list[str]:
     if p.terms:
         if not isinstance(p.terms, list):
             raise ValueError(f"terms must be a list of lambda terms, got {p.terms!r}")
@@ -431,10 +432,10 @@ def _seed_terms(p, chem: Chemistry, rng) -> list[str]:
                          f"got {p.p_variable} + {p.p_abstraction}")
     out: dict[str, None] = {}
     attempts = 0
-    while len(out) < p.M:
+    while len(out) < count:
         attempts += 1
-        if attempts > 50 * p.M:
-            raise ValueError(f"could only draw {len(out)} distinct random normal forms for M={p.M}; "
+        if attempts > 50 * count:
+            raise ValueError(f"could only draw {len(out)} distinct random normal forms out of {count}; "
                              "increase max_depth or p_application, or lower M")
         t = random_term(rng, p.p_variable, p.p_abstraction, p.max_depth, p.p_bound, p.n_free)
         nf = chem.reduce(t)
@@ -448,24 +449,22 @@ def _seed_terms(p, chem: Chemistry, rng) -> list[str]:
     return list(out)
 
 
+NOTATION = ("species id: de Bruijn string (^ abstraction, (M)N application, 1-based indices); "
+            "structure: Fontana-Buss standardized form")
+
+
 def generate(p, rng):
+    """The closure A* of the seed set (paper eq. 28), cut off by max_species."""
     chem = Chemistry(p)
-    seeds = _seed_terms(p, chem, rng)
-    extras = {
-        "notation": "species id: de Bruijn string (^ abstraction, (M)N application, 1-based indices); "
-                    "structure: Fontana-Buss standardized form",
-    }
-    if p.method == "closure":
-        found, pairs, status = expand(chem.react, seeds, arity=2, max_species=p.max_species, ordered=True)
-        reactions = [chem.reaction(lhs, rhs) for lhs, rhs in pairs]
-        extras["seed"] = seeds
-        extras["analysis"] = {
-            "elastic": dict(chem.stats),
-            "self_maintaining": _self_maintaining(chem, found),
-        }
-        return Network(species=chem.species(found), reactions=reactions, status=status,
-                       outflow=CONSTANT_TOTAL, extras=extras)
-    return _soup(p, chem, seeds, rng, extras)
+    seeds = _seed_terms(p, chem, rng, p.n_seeds)
+    found, pairs, status = expand(chem.react, seeds, arity=2, max_species=p.max_species, ordered=True)
+    return Network(species=chem.species(found), reactions=[chem.reaction(lhs, rhs) for lhs, rhs in pairs],
+                   status=status, outflow=CONSTANT_TOTAL, extras={
+                       "notation": NOTATION,
+                       "seed": seeds,
+                       "analysis": {"elastic": dict(chem.stats),
+                                    "self_maintaining": _self_maintaining(chem, found)},
+                   })
 
 
 def _self_maintaining(chem: Chemistry, ids) -> bool:
@@ -475,7 +474,10 @@ def _self_maintaining(chem: Chemistry, ids) -> bool:
     return made == known
 
 
-def _soup(p, chem, seeds, rng, extras):
+def evolve(p, rng):
+    """The stochastic flow reactor of paper 5.3: a frame per M collisions."""
+    chem = Chemistry(p)
+    seeds = _seed_terms(p, chem, rng, p.M)
     if p.terms:
         if p.M < len(seeds):
             raise ValueError(f"M={p.M} is smaller than the {len(seeds)} distinct terms given")
@@ -484,27 +486,13 @@ def _soup(p, chem, seeds, rng, extras):
     else:
         pop = list(seeds)
     start = Counter(pop)
-    size_ = len(pop)
-    fired: dict[tuple, list] = {}
-    diversity = [len(start)]
-    done = 0
-    while done < p.collisions:
-        n = min(size_, p.collisions - done)
-        chunk, pop = soup(chem.react, pop, n, rng, arity=2, dilution="constant")
-        done += n
-        for lhs, rhs, count in chunk:
-            key = (frozenset(Counter(lhs).items()), frozenset(Counter(rhs).items()))
-            fired.setdefault(key, [lhs, rhs, 0])[2] += count
-        diversity.append(len(set(pop)))
-    reactions = [chem.reaction(lhs, rhs, count) for lhs, rhs, count in fired.values()]
-    ids = list(dict.fromkeys([*start, *(c for _, rhs, _ in fired.values() for c in rhs)]))
-    final = Counter(pop)
-    extras["analysis"] = {
-        "collisions_per_sample": size_,
-        "distinct_species": diversity,
-        "elastic_pairs": dict(chem.stats),
-    }
-    extras["final_state"] = {s: n for s, n in final.most_common()}
+    tally = Tally()
+    for step, pop, tally in stir(chem.react, pop, p.collisions, rng, arity=2, dilution="constant", tally=tally):
+        yield Frame(t=float(step), state={s: float(n) for s, n in Counter(pop).items()}, fired=tally.flush())
+    fired = tally.reactions()
+    reactions = [chem.reaction(lhs, rhs, count) for lhs, rhs, count in fired]
+    ids = list(dict.fromkeys([*start, *(c for _, rhs, _ in fired for c in rhs), *pop]))
     return Network(species=chem.species(ids), reactions=reactions, status="observed",
                    initial_state={s: n for s, n in start.items()}, outflow=CONSTANT_TOTAL,
-                   extras=extras)
+                   extras={"notation": NOTATION, "analysis": {"elastic_pairs": dict(chem.stats)},
+                           "final_state": {s: n for s, n in Counter(pop).most_common()}})
