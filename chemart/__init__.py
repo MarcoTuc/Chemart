@@ -4,6 +4,7 @@
     chemart.list_chemistries()
     chemart.describe_chemistry("matrix-chemistry")
     net = chemart.generate_network("matrix-chemistry", seed=0, N=4)
+    traj = chemart.simulate.ode(chemart.generate_network("brusselator"), t_end=40)
 
 Chemistries shared on the Chemart Hub load the same way, by ``namespace/name``:
 
@@ -30,6 +31,8 @@ _EXPORTS = {
     "Network": "chemart.network",
     "Reaction": "chemart.network",
     "Species": "chemart.network",
+    "Frame": "chemart.trajectory",
+    "Trajectory": "chemart.trajectory",
 }
 
 __all__ = sorted(_EXPORTS)
@@ -39,6 +42,6 @@ def __getattr__(name: str):
     # Lazy, so `python -m chemart.catalog` does not import the catalog twice.
     if name in _EXPORTS:
         return getattr(import_module(_EXPORTS[name]), name)
-    if name == "hub":
-        return import_module("chemart.hub")
+    if name in ("hub", "simulate"):
+        return import_module(f"chemart.{name}")
     raise AttributeError(f"module 'chemart' has no attribute {name!r}")

@@ -3,6 +3,9 @@
     chemart list                 # the chemistry catalog (--all adds the archive)
     chemart describe matrix-chemistry
     chemart generate matrix-chemistry -p N=4 --seed 0 --format json
+    chemart simulate brusselator --t-end 40                      # rate equations
+    chemart simulate brusselator --method ssa --volume 100 --seed 1 --format csv
+    chemart simulate kauffman-autocatalytic-sets --x0 1 --rates '{"dist": "lognormal", "mean": 0, "sigma": 1}'
 
 Chemart Hub:
 
@@ -57,6 +60,25 @@ def _parser() -> argparse.ArgumentParser:
     generate.add_argument("--format", choices=("summary", "text", "json"), default="summary")
     generate.add_argument("--revision", help="hub only: 'main' or a commit id")
     generate.add_argument("--trust-remote-code", action="store_true",
+                          help="hub only: allow the repo's own Python code to run on this machine")
+
+    simulate = sub.add_parser("simulate", help="simulate a chemistry's network (ODE or SSA)")
+    simulate.add_argument("chemistry", help="catalog id, or namespace/name on the hub")
+    simulate.add_argument("-p", "--param", action="append", default=[], metavar="NAME=VALUE",
+                          help="chemistry parameter")
+    simulate.add_argument("--seed", type=int, help="seeds the chemistry, the rate draws and the SSA")
+    simulate.add_argument("--method", choices=("ode", "ssa"), default="ode")
+    simulate.add_argument("--t-end", type=float, default=40.0)
+    simulate.add_argument("--points", type=int, default=200)
+    simulate.add_argument("--volume", type=float, default=1.0, help="ssa only: counts = amount x volume")
+    simulate.add_argument("--rates", metavar="SPEC",
+                          help="a number, a JSON distribution/table, or a .json/.csv file")
+    simulate.add_argument("--x0", metavar="SPEC", help="initial state, as for --rates (by species)")
+    simulate.add_argument("--fill-only", action="store_true", help="only rate reactions without a rate")
+    simulate.add_argument("--species", nargs="*", help="columns to print (default: all)")
+    simulate.add_argument("--format", choices=("table", "csv", "json"), default="table")
+    simulate.add_argument("--revision", help="hub only: 'main' or a commit id")
+    simulate.add_argument("--trust-remote-code", action="store_true",
                           help="hub only: allow the repo's own Python code to run on this machine")
 
     login = sub.add_parser("login", help="save an API token for the hub")
@@ -125,7 +147,7 @@ def _run(parser, args, api) -> int | None:
         _print_json(api.list_chemistries(args.all))
     elif args.command == "describe":
         _print_json(api.describe_chemistry(args.chemistry, args.revision))
-    elif args.command == "generate":
+    elif args.command in ("generate", "simulate"):
         params = {}
         for item in args.param:
             name, sep, raw = item.partition("=")
@@ -134,6 +156,8 @@ def _run(parser, args, api) -> int | None:
             params[name] = _value(raw)
         net = api.generate_network(args.chemistry, args.seed, revision=args.revision,
                                    trust_remote_code=args.trust_remote_code, **params)
+        if args.command == "simulate":
+            return _simulate(net, args)
         if args.format == "json":
             _print_json(net.to_dict())
         elif args.format == "text":
@@ -143,6 +167,47 @@ def _run(parser, args, api) -> int | None:
     else:
         return _hub_command(args)
     return None
+
+
+def _spec(text: str | None):
+    """A --rates/--x0 value: a file path, JSON, or a plain string."""
+    if text is None:
+        return None
+    if text.endswith((".json", ".csv")):
+        return Path(text)
+    return _value(text)
+
+
+def _simulate(net, args) -> int:
+    from chemart import simulate
+
+    options = dict(rates=_spec(args.rates), x0=_spec(args.x0), points=args.points, seed=args.seed,
+                   fill_only=args.fill_only)
+    try:
+        if args.method == "ode":
+            traj = simulate.ode(net, args.t_end, **options)
+        else:
+            traj = simulate.ssa(net, args.t_end, volume=args.volume, **options)
+    except simulate.NotSimulable as err:
+        print(f"error: {err}", file=sys.stderr)
+        return 2
+    if args.format == "json":
+        _print_json(traj.to_dict())
+        return 0
+    names, t, X = traj.array(args.species)
+    if args.format == "csv":
+        print("t," + ",".join(names))
+        for k in range(len(t)):
+            print(f"{t[k]}," + ",".join(repr(float(v)) for v in X[k]))
+        return 0
+    print(traj.network.summary())
+    if traj.settings.get("stopped"):
+        print(f"stopped early: {traj.settings['stopped']}")
+    width = max([10, *map(len, names)])
+    print(f"\n{'t':>10}  " + "  ".join(f"{n:>{width}}" for n in names))
+    for k in range(0, len(t), max(1, len(t) // 10)):
+        print(f"{t[k]:>10.4g}  " + "  ".join(f"{v:>{width}.4g}" for v in X[k]))
+    return 0
 
 
 def _hub_command(args) -> int | None:

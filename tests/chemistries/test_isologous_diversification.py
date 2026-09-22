@@ -9,7 +9,7 @@ arXiv:adap-org/9606002 (eqs. 1-9, section 5, appendix 1, captions of Figs. 4,
 
 import numpy as np
 import pytest
-from odes import rhs
+from chemart.simulate import rhs
 
 from chemart import catalog, generate_network
 from chemart.chemistries import isologous_diversification as I

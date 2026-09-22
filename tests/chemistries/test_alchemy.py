@@ -8,7 +8,7 @@ from collections import Counter
 
 import numpy as np
 import pytest
-from odes import rhs
+from chemart.simulate import rhs
 
 from chemart import generate_network
 from chemart.chemistries.alchemy import Diverged, app, lam, normal_form, parse, to_id, to_text, var

@@ -2,7 +2,7 @@
 
 import numpy as np
 import pytest
-from odes import integrate, rhs
+from chemart.simulate import integrate, rhs
 
 from chemart import generate_network
 from chemart.chemistries.arn import bits, duplication_divergence, genes, majority, promoters

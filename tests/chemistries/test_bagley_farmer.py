@@ -2,7 +2,7 @@
 
 import numpy as np
 import pytest
-from odes import rhs
+from chemart.simulate import rhs
 from scipy.integrate import solve_ivp
 
 from chemart import generate_network
@@ -11,7 +11,7 @@ SMALL = dict(max_length=3, kf=2.0, kr=1.5, nu=3.0, ku=4.0, H=0.7, delta=1.3, m0=
 
 
 def chemostat(net):
-    """The chemostat: odes.rhs applies the constant inflow, first-order outflow K and buffered H."""
+    """The chemostat: chemart.simulate.rhs applies the constant inflow, first-order outflow K and buffered H."""
     return rhs(net)
 
 

@@ -9,7 +9,7 @@ from collections import Counter
 
 import numpy as np
 import pytest
-from odes import rhs
+from chemart.simulate import rhs
 
 from chemart import generate_network
 from chemart.chemistries import ikegami_hashimoto as ih

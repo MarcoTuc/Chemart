@@ -173,39 +173,22 @@ ValueError: ka must be > 0 for the abridged form, since k_m = (ka_rev + kb) / ka
 
 ### Running it
 
-Chemart has no simulator of its own. This script integrates either form with
-SciPy:
+`chemart.simulate` integrates either form. This small helper returns the
+times and each species' curve:
 
 ```python
-import numpy as np
-from scipy.integrate import solve_ivp
-
 import chemart
+from chemart import simulate
 
 
-def simulate(net, t_end, n=201):
-    ids, R, P = net.matrices()
-    R = R.toarray()
-    S = (P.toarray() - R).astype(float)
-    x0 = np.array([net.initial_state[s] for s in ids])
-
-    def rate(r, reac, x):
-        law = r.rate
-        if law["law"] == "mass-action":
-            return law["k"] * np.prod(x ** reac)
-        s = x[reac.argmax()]                          # law == "michaelis-menten"
-        return law["vmax"] * s / (law["km"] + s)
-
-    def f(t, x):
-        return S @ np.array([rate(r, R[:, j], x) for j, r in enumerate(net.reactions)])
-
-    t = np.linspace(0, t_end, n)
-    sol = solve_ivp(f, (0, t_end), x0, t_eval=t, method="LSODA", rtol=1e-9, atol=1e-12)
-    return t, dict(zip(ids, sol.y))
+def run(net, t_end, n=201):
+    traj = simulate.ode(net, t_end, points=n)
+    ids, t, X = traj.array([s.id for s in net.species])
+    return t, dict(zip(ids, X.T))
 ```
 
 The table in *How it works* came from
-`simulate(chemart.generate_network("michaelis-menten"), 20.0)`. Each recipe
+`run(chemart.generate_network("michaelis-menten"), 20.0)`. Each recipe
 below runs in a second or two.
 
 #### When is the abridged form faithful?
@@ -215,8 +198,8 @@ with the substrate. At the defaults it is not (one unit of enzyme to ten of
 substrate), and the two forms drift apart:
 
 ```python
-t, xe = simulate(chemart.generate_network("michaelis-menten"), 20.0)
-_, xa = simulate(chemart.generate_network("michaelis-menten", form="abridged"), 20.0)
+t, xe = run(chemart.generate_network("michaelis-menten"), 20.0)
+_, xa = run(chemart.generate_network("michaelis-menten", form="abridged"), 20.0)
 for i in (10, 20, 50, 100, 200):
     print(f"t={t[i]:5.1f}  P elementary={xe['P'][i]:.3f}  abridged={xa['P'][i]:.3f}")
 ```
@@ -255,7 +238,7 @@ and only with `km = (ka' + kb) / ka`, not with the binding equilibrium
 
 ```python
 for S0 in (0.5, 2, 8, 32, 128, 512):
-    t, x = simulate(chemart.generate_network("michaelis-menten", E0=0.01, S0=S0), 5.0, n=51)
+    t, x = run(chemart.generate_network("michaelis-menten", E0=0.01, S0=S0), 5.0, n=51)
     v, S = x["ES"][-1], x["S"][-1]            # kb = 1, so v = kb * [ES] = [ES]
     print(f"S0={S0:5}  measured v={v:.5f}  vm*S/(km+S)={0.01*S/(2+S):.5f}  with km=ka_rev/ka: {0.01*S/(1+S):.5f}")
 ```

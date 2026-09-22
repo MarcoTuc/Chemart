@@ -14,7 +14,7 @@ import pytest
 
 from chemart import generate_network
 from chemart.chemistries.kappa_calculus import ABC, _split_top, canonical, kappa3_to_kappa4
-from odes import integrate
+from chemart.simulate import integrate
 
 ID = "kappa-calculus"
 

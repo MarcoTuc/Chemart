@@ -3,58 +3,54 @@
 
     uv run python .claude/skills/chemart/examples/dynamics.py
 
-Shows the two things that trip people up: finding which chemistries are
-integrable at all, and remembering that buffered species are meant to be flat.
+Shows what trips people up: finding which chemistries can be simulated as they
+come, that buffered species are meant to be flat, and how to give rates to a
+network that has none.
 """
-
-import sys
-from pathlib import Path
 
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+import chemart
+from chemart import simulate
 
-import chemart                                    # noqa: E402
-from simulate import NotIntegrable, integrate     # noqa: E402
-
-# ------------------------------------------------- which ones can be simulated
-integrable = [row["id"] for row in chemart.list_chemistries()
-              if "rate-constants" in chemart.describe_chemistry(row["id"])["provides"]]
-print(f"{len(integrable)} entries claim rate constants; e.g. {integrable[:6]}\n")
+# ------------------------------------------------- which ones carry kinetics
+rated = [row["id"] for row in chemart.list_chemistries()
+         if "rate-constants" in chemart.describe_chemistry(row["id"])["provides"]]
+print(f"{len(rated)} entries carry rate constants; e.g. {rated[:6]}\n")
 
 # --------------------------------------------------------- the Brusselator
 net = chemart.generate_network("brusselator", seed=1)
-traj, t = integrate(net, t_end=40.0, points=800)
+traj = simulate.ode(net, t_end=40.0, points=800)
+ids, t, X = traj.array()
+x = X[:, ids.index("X")]
 
 buffered = set(net.extras.get("buffered", []))
 print(f"brusselator: buffered = {sorted(buffered)} (reservoirs, held constant)")
 
-x, y = traj["X"], traj["Y"]
-
 # The published behaviour: with b > 1 + a^2 the steady state (a, b/a) is
 # unstable and the system settles into a limit cycle. Check that X keeps
 # oscillating instead of relaxing, by comparing the swing late in the run.
-late = slice(len(t) // 2, None)
+late = t > t[-1] / 2
 swing = x[late].max() - x[late].min()
 print(f"  X still swings by {swing:.3f} over the second half -> sustained oscillation")
 assert swing > 0.1, "expected a limit cycle at these parameters"
 
-# Buffered species really are constant.
 for s in buffered:
-    assert np.allclose(traj[s], traj[s][0]), s
-print(f"  buffered species stayed flat, as the model intends")
+    column = X[:, ids.index(s)]
+    assert np.allclose(column, column[0]), s
+print("  buffered species stayed flat, as the model intends")
 
-# ------------------------------------------- a chemistry that cannot be integrated
+# One stochastic path of the same network: counts = amount x volume.
+path = simulate.ssa(net, t_end=40.0, volume=100, seed=0)
+print(f"  one SSA path at volume 100: {path.settings['events']} events")
+
+# ------------------------------------------------- a network without kinetics
+kauffman = chemart.generate_network("kauffman-autocatalytic-sets", seed=1)
 try:
-    integrate(chemart.generate_network("ccm", seed=1), t_end=1.0)
-except NotIntegrable as err:
-    print(f"\nccm: {err}")
-
-# ------------------------------------------------- stochastic conversion
-# Mass-action k is a deterministic rate; Gillespie needs a stochastic c.
-from chemart.kinetics import k_to_c                # noqa: E402
-
-k = 1.0
-print(f"\nk -> c at volume 1e-15, heterodimer A + B : {k_to_c(k, {'A': 1, 'B': 1}, 1e-15):.4g}")
-print(f"k -> c at volume 1e-15, homodimer  2 A     : {k_to_c(k, {'A': 2}, 1e-15):.4g}"
-      "   (the factor 2 is the combinatorial correction)")
+    simulate.ode(kauffman, t_end=1.0, x0=1.0)
+except simulate.NotSimulable as err:
+    print(f"\nkauffman-autocatalytic-sets: {err}")
+traj = simulate.ode(kauffman, t_end=10.0, x0=1.0, seed=0,
+                    rates={"dist": "lognormal", "mean": 0, "sigma": 1})
+print(f"  with lognormal rates drawn for its {len(kauffman.reactions)} reactions it runs: "
+      f"{len(traj.frames)} frames")

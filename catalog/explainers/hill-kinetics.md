@@ -159,45 +159,27 @@ In the lumped form the rate dictionary carries `vmax = k_expr · G0`, `K`,
 
 ### Running it
 
-Chemart has no simulator of its own. This script integrates any of these
-networks with SciPy, handling both rate laws:
+`chemart.simulate` integrates any of these networks, with either rate law.
+This small helper returns the times and each species' curve:
 
 ```python
-import numpy as np
-from scipy.integrate import solve_ivp
-
 import chemart
+from chemart import simulate
 
 
-def simulate(net, t_end, n=201):
-    ids, R, P = net.matrices()
-    R = R.toarray()
-    S = (P.toarray() - R).astype(float)
-    x0 = np.array([net.initial_state[s] for s in ids])
-
-    def rate(r, reac, x):
-        law = r.rate
-        if law["law"] == "mass-action":
-            return law["k"] * np.prod(x ** reac)
-        p = x[ids.index(law["regulator"])]            # law == "hill"
-        h = p ** law["n"] / (law["K"] ** law["n"] + p ** law["n"])
-        return law["vmax"] * (h if law["mode"] == "activation" else 1 - h)
-
-    def f(t, x):
-        return S @ np.array([rate(r, R[:, j], x) for j, r in enumerate(net.reactions)])
-
-    t = np.linspace(0, t_end, n)
-    sol = solve_ivp(f, (0, t_end), x0, t_eval=t, method="LSODA", rtol=1e-9, atol=1e-12)
-    return t, dict(zip(ids, sol.y))
+def run(net, t_end, n=201):
+    traj = simulate.ode(net, t_end, points=n)
+    ids, t, X = traj.array([s.id for s in net.species])
+    return t, dict(zip(ids, X.T))
 ```
 
-All three recipes below run in about seven seconds together.
+All three recipes below run in about a second together.
 
 #### Figure 18.5, bottom left: the default initial state
 
 ```python
 for n in (1, 2, 3, 4):
-    t, x = simulate(chemart.generate_network("hill-kinetics", n=n), 2.0)
+    t, x = run(chemart.generate_network("hill-kinetics", n=n), 2.0)
     print(f"n={n}: C(0.4)={x['C'][40]:.3f}  C(2)={x['C'][-1]:.3f}  free P(2)={x['P'][-1]:.3f}")
 ```
 
@@ -223,7 +205,7 @@ fraction `C/G0` then reads off the Hill function at `P = P0`:
 for P0 in (0.5, 1.5):
     row = []
     for n in (1, 2, 4, 10):
-        t, x = simulate(chemart.generate_network("hill-kinetics", n=n, P0=P0, G0=0.001), 20.0)
+        t, x = run(chemart.generate_network("hill-kinetics", n=n, P0=P0, G0=0.001), 20.0)
         row.append(f"n={n}: {x['C'][-1] / 0.001:.3f}")
     print(f"P0={P0}  " + "  ".join(row))
 ```
@@ -246,8 +228,8 @@ same amount of `X` by `t = 20`:
 ```python
 for reg in ("activation", "repression"):
     kw = dict(n=4, P0=1.5, G0=0.001, regulation=reg)
-    _, xe = simulate(chemart.generate_network("hill-kinetics", **kw), 20.0)
-    _, xl = simulate(chemart.generate_network("hill-kinetics", form="lumped", **kw), 20.0)
+    _, xe = run(chemart.generate_network("hill-kinetics", **kw), 20.0)
+    _, xl = run(chemart.generate_network("hill-kinetics", form="lumped", **kw), 20.0)
     print(f"{reg}: elementary {xe['X'][-1]:.5f}, lumped {xl['X'][-1]:.5f}")
 ```
 

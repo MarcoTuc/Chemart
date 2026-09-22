@@ -163,36 +163,25 @@ At K = 9 the count matches the theoretical value for a fully random landscape,
 2^N/(N + 1) = 93.1 (see Results). Both rows together take about half a
 minute.
 
-**Evolving on the landscape.** Chemart has no simulator, but the network is
-linear and a few lines of SciPy integrate it. This builds the growth matrix
-from the reactions and applies the constant-total dilution:
+**Evolving on the landscape.** The network carries its rates and the
+constant-total dilution, so `chemart.simulate` integrates it as it comes:
 
 ```python
-import numpy as np
-from scipy.integrate import solve_ivp
+from chemart import simulate
 
 net = chemart.generate_network("nk-landscape", seed=1)
-ids = [s.id for s in net.species]
-ix = {s: i for i, s in enumerate(ids)}
-A = np.zeros((len(ids), len(ids)))           # production of h from g, per unit of g
-for r in net.reactions:
-    (g,) = r.reactants
-    for h, n in r.products.items():
-        A[ix[h], ix[g]] += r.rate["k"] * (n - (h == g))
-def rhs(t, x):
-    p = A @ x
-    return p - x * p.sum() / x.sum()
-
-W = np.array([net.extras["analysis"]["fitness"][s] for s in ids])
+W = net.extras["analysis"]["fitness"]
 for start in ("000000", "011000"):
-    x0 = np.zeros(len(ids)); x0[ix[start]] = 1.0
-    sol = solve_ivp(rhs, (0, 2000), x0, t_eval=[0, 50, 200, 2000], rtol=1e-8, atol=1e-12)
-    for t, x in zip(sol.t, sol.y.T):
-        print(f"start {start}  t={t:6.0f}  most common {ids[x.argmax()]} ({x.max():.2f})  mean fitness {W @ x:.3f}")
+    traj = simulate.ode(net, 2000, x0={start: 1.0}, points=41)
+    for f in traj.frames:
+        if f.t in (0, 50, 200, 2000):
+            top = max(f.state, key=f.state.get)
+            print(f"start {start}  t={f.t:6.0f}  most common {top} ({f.state[top]:.2f})  "
+                  f"mean fitness {sum(W[s] * x for s, x in f.state.items()):.3f}")
 ```
 
-Starting from `000000` alone, and from the local optimum `011000` alone (a
-few seconds):
+Starting from `000000` alone, and from the local optimum `011000` alone (about
+two seconds):
 
 ```
 start 000000  t=     0  most common 000000 (1.00)  mean fitness 0.570

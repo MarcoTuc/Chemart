@@ -4,7 +4,7 @@ from collections import Counter
 
 import numpy as np
 import pytest
-from odes import integrate
+from chemart.simulate import integrate
 
 from chemart import generate_network
 from chemart.chemistries.smn import letter_mass

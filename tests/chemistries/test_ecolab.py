@@ -3,7 +3,7 @@ technical report / ecolab_model.cc (boundedness, caps, speciation rule, rounding
 
 import numpy as np
 import pytest
-from odes import integrate, rhs
+from chemart.simulate import integrate, rhs
 
 from chemart import generate_network
 from chemart.chemistries import ecolab

@@ -9,7 +9,7 @@ from collections import Counter
 
 import numpy as np
 import pytest
-from odes import rhs
+from chemart.simulate import rhs
 
 from chemart import generate_network
 from chemart.chemistries.automata_reaction import automata, disassemble, make_react, word_id

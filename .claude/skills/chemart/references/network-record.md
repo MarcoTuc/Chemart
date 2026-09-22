@@ -89,7 +89,7 @@ one is a definition, the other is a sample.
 - Species held at fixed concentration are listed in `extras["buffered"]`, not
   expressed as flows.
 
-`scripts/simulate.py` applies all of these, so do not add flow terms yourself
+`chemart.simulate` applies all of these, so do not add flow terms yourself
 on top of them.
 
 ## extras

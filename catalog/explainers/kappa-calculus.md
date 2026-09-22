@@ -214,9 +214,9 @@ own tools:
   symmetry counts. `net.extras["analysis"]` gives the largest complex and
   whether the size budget cut the network.
 
-Chemart has no simulator of its own. To run the network, integrate its
-mass-action equations. This script does so and sums the complexes into the
-four observables the guide plots in its figure 3:
+To run the network, integrate its mass-action equations (`chemart.simulate.ode`
+does this for any rated network). This script does so by hand and sums the
+complexes into the four observables the guide plots in its figure 3:
 
 ```python
 import numpy as np

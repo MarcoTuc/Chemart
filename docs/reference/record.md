@@ -151,13 +151,52 @@ propensity — a threshold, a temperature, units.
     generated today.
 
 `arrhenius` is in the vocabulary but needs a temperature and gas constant that
-are not part of the law — `chemart.kinetics` is deliberately unit-agnostic — so
-generic integrators cannot apply it. Entries using it validate their kinetics in
-closed form instead.
+are not part of the law, because `chemart.kinetics` is deliberately
+unit-agnostic. `chemart.simulate` applies it when they are known: on the rate
+dict as `T` and `R`, or passed as `temperature=` and `gas_constant=`.
 
 !!! note "Never invent a rate"
     If a source gives no rate constant, the entry uses `None`. That is
     information, not an omission waiting to be filled in.
+
+## Units of amounts
+
+Amounts in `initial_state`, and in the frames of a trajectory, are per unit
+volume. The stochastic simulator converts them to molecule counts as
+`count = amount × volume × avogadro`, so with its defaults (`volume=1`,
+`avogadro=1`) amounts are counts, which is also how the Turing gases report
+their soups.
+
+## The trajectory record
+
+Every run returns a `Trajectory`: integrating a network
+(`chemart.simulate.ode`), sampling it stochastically (`chemart.simulate.ssa`), or
+evolving a Turing gas. Like the network, it is plain JSON and
+`Trajectory.from_dict(traj.to_dict())` reproduces it exactly.
+
+```python
+Trajectory(
+    network: Network,          # the simulated network, or the gas's observed network
+    frames: list[Frame],
+    method: "ode" | "ssa" | "evolve",
+    clock: str = "time",       # the unit of frame time: time, collisions, epochs, ...
+    settings: dict = {},       # provenance: seed, solver, rate and state specs, ...
+)
+
+Frame(
+    t: float,
+    state: dict[str, float],   # amount per species; zeros are left out
+    fired: list = [],          # [[reactant ids], [product ids], count] since the previous frame
+    observables: dict = {},    # quantities the chemistry itself reports
+)
+```
+
+The state is sparse, one dict per frame, so a soup with thousands of species
+costs no more than the species actually present. For plotting,
+`traj.array(species)` gives dense arrays `(ids, t, X)`. `traj.series(name)` is an
+observable over time, `traj.window(i, width)` the network of the reactions fired
+in a range of frames, and `traj.turnover()` a clock shared by every gas: the
+cumulative number of reactions per molecule.
 
 ## Building a network by hand
 

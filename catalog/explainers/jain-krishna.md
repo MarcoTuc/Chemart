@@ -129,31 +129,22 @@ four species share the whole population equally; the other 96 species have
 population 0.
 
 To check that this is really where the populations go, integrate eq. 15.7 for
-this network from equal populations (this uses SciPy; Chemart itself ships no
-simulator):
+this network from equal populations. The network carries it already: each
+arrow is a mass-action reaction `X_j -> X_j + X_i` with rate 1, and the
+constant-total dilution keeps the populations summing to 1, so
+`chemart.simulate` integrates it as it comes:
 
 ```python
-import numpy as np
-from scipy.integrate import solve_ivp
+from chemart import simulate
 
-ids = [s.id for s in net.species]
-idx = {s: i for i, s in enumerate(ids)}
-links = [(idx[next(iter(r.reactants))], idx[(set(r.products) - set(r.reactants)).pop()])
-         for r in net.reactions]                  # (catalyst j, product i)
-
-def f(t, x):
-    growth = np.zeros_like(x)
-    for j, i in links:
-        growth[i] += x[j]                         # X_j -> X_j + X_i at rate 1
-    return growth - x * growth.sum()              # eq. 15.7: dilution keeps sum x = 1
-
-x = solve_ivp(f, (0, 2000), np.full(len(ids), 1 / len(ids)), rtol=1e-10, atol=1e-12).y[:, -1]
-top = np.argsort(x)[::-1][:6]
-print({ids[k]: round(float(x[k]), 4) for k in top})
+traj = simulate.ode(net, 2000, x0=1 / len(net.species), points=2)
+x = traj.frames[-1].state
+top = sorted(x, key=x.get, reverse=True)[:6]
+print({s: round(max(x[s], 0.0), 4) for s in top})
 ```
 
 ```
-{'X86': 0.25, 'X47': 0.25, 'X18': 0.25, 'X93': 0.25, 'X54': 0.0, 'X35': 0.0}
+{'X18': 0.25, 'X47': 0.25, 'X86': 0.25, 'X93': 0.25, 'X20': 0.0, 'X21': 0.0}
 ```
 
 Now the consequence for the slow step. Every species outside the loop has

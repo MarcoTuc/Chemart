@@ -2,7 +2,7 @@
 
 import numpy as np
 import pytest
-from odes import rhs
+from chemart.simulate import rhs
 
 from chemart import generate_network
 from chemart.chemistries.metabolic_robot_controller import TYPES, material_balance

@@ -7,7 +7,7 @@ import math
 
 import numpy as np
 import pytest
-from odes import integrate
+from chemart.simulate import integrate
 
 from chemart import generate_network
 

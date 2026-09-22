@@ -393,7 +393,7 @@ itself when vertices are added or removed. This is the stated motivation for
 the whole approach: organizations do not vanish. The 2006 paper proposes, but
 does not run, a benchmark along these lines: sensor nodes in a line that must
 settle into alternating states and repair themselves when a node is removed.
-Chemart does not reproduce this: it has no rates and no simulator, and
+Chemart does not reproduce this: the chemistry carries no rates, and
 robustness is a property of the dynamics, not of the reaction list. The 2007
 paper itself was not available for this page, so its argument is not
 summarised here.

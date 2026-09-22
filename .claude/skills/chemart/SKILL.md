@@ -104,32 +104,30 @@ Full field-by-field spec: `references/network-record.md`.
 |---|---|
 | find the right chemistry, or read about the archive | `references/finding-chemistries.md` |
 | understand every field of the record | `references/network-record.md` |
-| simulate the dynamics / plot time courses | `references/simulating-dynamics.md` + `scripts/simulate.py` |
+| simulate the dynamics / plot time courses | `references/simulating-dynamics.md` (`chemart.simulate`, `chemart simulate`) |
 | compare chemistries, find conservation laws, study closures | `references/comparing-and-analysing.md` + `scripts/survey.py` |
 | judge how much to trust an entry | `references/fidelity-and-trust.md` |
 | add a new chemistry, or change one | `references/extending-chemart.md` |
 
 Runnable examples live in `examples/` — start with `examples/quickstart.py`.
 
-## Bundled scripts
-
-Two things every user would otherwise rewrite:
+## Simulating and surveying
 
 ```bash
-# Integrate any network that carries rate constants, and print or plot it
-uv run python .claude/skills/chemart/scripts/simulate.py brusselator --t-end 40 --seed 1
+# Simulate any network that carries rate constants (ODE, or one SSA path)
+uv run chemart simulate brusselator --t-end 40 --seed 1
+uv run chemart simulate brusselator --method ssa --volume 100 --seed 1 --format csv
 
-# Survey the catalog by capability, family, fidelity
+# Survey the catalog by capability, family, fidelity (bundled script)
 uv run python .claude/skills/chemart/scripts/survey.py --provides rate-constants energies
 uv run python .claude/skills/chemart/scripts/survey.py --family origin-of-life --verbose
 ```
 
-`simulate.py` exists because the library deliberately ships **no simulator** —
-Chemart's job is to hand you a correct network, not to be a solver. The
-repository's ODE helper lives in `tests/` and is not importable as
-`chemart.odes`, so this script is the supported way to integrate one. It
-handles the rate laws Chemart emits, the `constant-total` dilution flux and
-buffered species. For serious work, export `to_dict()` into a real solver.
+In Python, `chemart.simulate.ode(net, t_end)` and `chemart.simulate.ssa(net,
+t_end, volume=..., seed=...)` return a `Trajectory`; `rates=` and `x0=` give a
+network rates and an initial state from a number, a distribution, a table or a
+file. They handle every rate law Chemart emits, the `constant-total` dilution
+flux and buffered species.
 
 ## Choosing a chemistry quickly
 
