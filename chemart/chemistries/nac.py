@@ -38,9 +38,10 @@ or a fragmentation
 
 with the node counts of both polarities and the edge count conserved.
 
-method "rewiring" runs the rule and returns the reactions that fired with
-their counts; method "closure" is the set of clusters reachable from the
-initial ones by single rewirings (chemart.expand.expand, alternatives=True).
+Two faces: ``generate`` is the set of clusters reachable from the initial
+ones by single rewirings (chemart.expand.expand, alternatives=True);
+``evolve`` runs the rule on one graph, yields a frame every n_nodes steps and
+returns the reactions that fired with their counts.
 
 The active layer of NAC (nodes holding von Neumann programs that rewire the
 covalent and hydrogen edges: polymerase, helicase, splitase, centrosome) is
@@ -57,10 +58,11 @@ from itertools import combinations
 from chemart.expand import expand
 from chemart.helpers import params as check
 from chemart.network import Network, Reaction, Species
+from chemart.soup import Tally
+from chemart.trajectory import Frame
 
 HYDROPHILIC, HYDROPHOBIC = "i", "o"
 POLARITIES = HYDROPHILIC + HYDROPHOBIC
-METHODS = ("rewiring", "closure")
 
 # Outcomes of one attempted rewiring.
 MOVED = "moved"
@@ -391,35 +393,45 @@ def _conservation(clusters: Clusters, ids) -> list[dict]:
     ]
 
 
-def generate(p, rng):
-    if p.method not in METHODS:
-        raise ValueError(f"method must be one of {METHODS}, got {p.method!r}")
+def _start(p, rng):
     labels, adj = _initial_graph(p, rng)
     initial_edges = [(u, v) for u in range(len(adj)) for v in sorted(adj[u]) if u < v]
-    if p.method == "closure":
-        return _closure(p, labels, adj, initial_edges)
-    return _rewiring(p, labels, adj, initial_edges, rng)
+    return labels, adj, initial_edges
 
 
-def _sample(labels, adj, clusters) -> dict:
+def generate(p, rng):
+    """The closure: every cluster reachable from the initial ones by single rewirings."""
+    labels, adj, initial_edges = _start(p, rng)
+    return _closure(p, labels, adj, initial_edges)
+
+
+def _observe(labels, adj) -> dict:
+    """The demixing and small-world measures of the whole graph."""
     parts = components(adj)
     hydrophilic = [len(part) for part in parts if all(labels[v] == HYDROPHILIC for v in part)]
     return {
         "mixed_edges": mixed_edges(labels, adj),
-        "clusters": len(parts),
         "largest_hydrophilic_cluster": max(hydrophilic, default=0),
         "clustering": round(clustering(adj), 6),
         "path_length": round(mean_path_length(adj), 6),
     }
 
 
-def _rewiring(p, labels, adj, initial_edges, rng):
+def _frame(step, labels, adj, clusters, tally) -> Frame:
+    state = Counter(clusters.of(adj, labels, part) for part in components(adj))
+    return Frame(t=float(step), state={s: float(n) for s, n in state.items()},
+                 fired=tally.flush(), observables=_observe(labels, adj))
+
+
+def evolve(p, rng):
+    """The rewiring run on one graph: a frame every n_nodes attempted steps."""
+    labels, adj, initial_edges = _start(p, rng)
     clusters = Clusters()
     start = Counter(clusters.of(adj, labels, part) for part in components(adj))
-    fired: dict[tuple, list] = {}
+    tally = Tally()
     outcome = Counter()
-    trace = [_sample(labels, adj, clusters)]
     every = max(1, len(labels))
+    yield _frame(0, labels, adj, clusters, tally)
 
     for step in range(p.steps):
         kind, a, b, c = rewire(labels, adj, rng, p.polarity_constraint)
@@ -434,24 +446,20 @@ def _rewiring(p, labels, adj, initial_edges, rng):
             lhs = (clusters.add(*_before_subgraph(labels, adj, before, a, b, c)),)
             rhs = tuple(sorted(clusters.of(adj, labels, part) for part in after))
             if Counter(lhs) != Counter(rhs):
-                key = (frozenset(Counter(lhs).items()), frozenset(Counter(rhs).items()))
-                fired.setdefault(key, [lhs, rhs, 0])[2] += 1
+                tally.add(lhs, rhs)
         if (step + 1) % every == 0:
-            trace.append(_sample(labels, adj, clusters))
+            yield _frame(step + 1, labels, adj, clusters, tally)
 
-    if len(trace) == 1 or p.steps % every:
-        trace.append(_sample(labels, adj, clusters))
+    if p.steps % every:
+        yield _frame(p.steps, labels, adj, clusters, tally)
+    fired = tally.reactions()
     final = Counter(clusters.of(adj, labels, part) for part in components(adj))
-    ids = list(dict.fromkeys([*start, *(s for lhs, rhs, _ in fired.values() for s in (*lhs, *rhs)), *final]))
-    reactions = [Reaction.of(lhs, rhs, count=n) for lhs, rhs, n in fired.values()]
+    ids = list(dict.fromkeys([*start, *(s for lhs, rhs, _ in fired for s in (*lhs, *rhs)), *final]))
+    reactions = [Reaction.of(lhs, rhs, count=n) for lhs, rhs, n in fired]
     extras = {
         "space": _space(labels, adj, initial_edges, p),
         "conservation": _conservation(clusters, ids),
-        "analysis": {
-            "sampled_every": every,
-            "trace": trace,
-            "attempts": dict(outcome),
-        },
+        "analysis": {"attempts": dict(outcome)},
         "final_state": {s: n for s, n in final.most_common()},
     }
     return Network(

@@ -156,7 +156,11 @@ strings.
 
 ## Using it
 
-The default call builds the *closure* of model (i): starting from the twelve
+SAC has two faces. `chemart.generate_network("sac")`, printed above, returns
+the *closure* of a cell's strings; `chemart.evolve("sac")` runs random
+collisions inside one growing cell and returns a trajectory.
+
+The default call builds the closure of model (i): starting from the twelve
 strings, Chemart applies every string to every other string, adds whatever
 comes out, and repeats until nothing new appears. The result is complete, with
 410 species and 410 reactions, and takes under a second. The species are all
@@ -169,21 +173,25 @@ copier and constructor strings of the seed, and
 `analysis["reproduced_seed"]` lists the seed strings that some reaction
 produces; in the default run it holds all twelve.
 
-**A cell as a soup.** `method="soup"` simulates random collisions in one
-growing cell instead:
+**A cell as a soup.** `chemart.evolve` simulates random collisions in one
+growing cell instead, `steps` of them (20,000 by default):
 
 ```python
-net = chemart.generate_network("sac", seed=3, method="soup", steps=20000)
-a = net.extras["analysis"]
-a["population_size"][0], a["population_size"][-1]   # (12, 34)
-sum(r.count for r in net.reactions)                  # 850 effective collisions
+traj = chemart.evolve("sac", seed=3)
+size = [sum(f.state.values()) for f in traj.frames]
+size[0], size[-1], traj.frames[1].t                    # (12.0, 34.0, 12.0)
+net = traj.network
+sum(r.count for r in net.reactions)                    # 850 effective collisions
 ```
 
-This took about two seconds. `population_size` records the number of strings
-after every `chunk_steps` collisions (12 here, the initial size); it never
-falls, since no reaction consumes a string. `final_state` holds the final
-contents. At the end of this run none of the six genes was in its resting form
-`0000…0011`: each was part-way through a copy or a translation. With
+This takes about half a second. There is a frame every 12 collisions (the
+initial number of strings), 1,668 in all; each frame's `state` is the contents
+of the cell, so `size` is the number of strings over time. It never falls,
+since no reaction consumes a string. The network lists the 328 distinct
+reactions that fired, with counts, and `net.extras["final_state"]` holds the
+final contents. At the end of this run none of the six genes was in its resting
+form `0000…0011` (`net.extras["analysis"]["seed_copies_final"]` gives 0 for
+each): each was part-way through a copy or a translation. With
 `dilution="constant"`, random strings are removed to keep the cell at its
 initial size, a Chemart stand-in for the papers' size limit.
 
@@ -191,8 +199,10 @@ initial size, a Chemart stand-in for the papers' size limit.
 `"spindle-membrane"` seeds the ancestral cell of model (ii) or (iii). Their
 closures never end, so they always stop at `max_species`: with
 `max_species=300`, model (iii) gives 563 reactions in 0.6 s and model (ii) 397
-reactions in 1.8 s. For model (iii), `analysis["max_membrane_M"]` reports the
-longest membrane string.
+reactions in 1.5 s. For model (iii), the closure's `analysis["max_membrane_M"]`
+reports the longest membrane string, and in a trajectory each frame's
+observable `max_membrane_M` (`traj.series("max_membrane_M")`) gives the
+longest membrane in the cell at that moment.
 
 **Your own strings.** `strings` replaces the ancestral cell. The book's example
 closes after one reaction:

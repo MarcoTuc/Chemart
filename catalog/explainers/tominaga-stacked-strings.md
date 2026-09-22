@@ -157,15 +157,19 @@ shows which of them were accepted.
 
 ### What Chemart computes
 
-Chemart turns a system into a reaction network in one of two ways. The default,
-`method="closure"`, applies every rule to every combination of known species
-until nothing new appears, and returns all reachable reactions. Sources become
-reactions `∅ -> s` and drains `s -> ∅`. With `method="soup"` Chemart instead
-samples one run of the nondeterministic process from the published copy numbers
-and returns the reactions that fired, with how often. That sampler is a Chemart
-addition, since the papers do not describe their simulators.
+Chemart runs a system in two ways. The *closure* applies every rule to every
+combination of known species until nothing new appears, and returns all
+reachable reactions. Sources become reactions `∅ -> s` and drains `s -> ∅`.
+The *sampled run* instead follows one run of the nondeterministic process from
+the published copy numbers and returns the reactions that fired, with how
+often. That sampler is a Chemart addition, since the papers do not describe
+their simulators.
 
 ## Using it
+
+The chemistry has two faces. `chemart.generate_network`, printed above,
+returns the closure; `chemart.evolve` returns a sampled run as a trajectory
+(see *A sampled run* below).
 
 The default call above is the 2007 automaton with its published pool: 100 Fok I,
 20 of each transition molecule, 20 detectors, and 10 each of the inputs `abb` and
@@ -205,17 +209,40 @@ with `dna`. `system="fatty-acid-oxidation"` starts from a fatty acyl CoA with
 `{'acyl_coa_carbons': [2, 4, 6, 8, 10], 'acetyl_coa': True}`: every shorter chain
 and acetyl CoA are reached.
 
+**A sampled run.** `chemart.evolve` starts from the same pool and, at each
+step, picks one event: a rule with weight equal to the number of ways to choose
+its reactants, a source with weight 1, a drain with weight equal to the copies it
+matches. `steps` counts events, failed draws included, and `copies` multiplies
+the starting counts. The trajectory has a frame per generation, here every 220
+events, the number of objects in the published pool; each frame's `state` is
+the pool and its `fired` the reactions since the previous frame:
+
+```python
+traj = chemart.evolve("tominaga-stacked-strings", seed=1)
+traj.times()                   # [0.0, 220.0, 440.0, ..., 1980.0, 2000.0]
+reporter = "0#XTCGCX/0#XAGCGX/"
+[f.state.get(reporter, 0) for f in traj.frames]
+# [0, 0, 0, 1.0, 1.0, 2.0, 3.0, 6.0, 7.0, 7.0, 7.0]
+traj.network.extras["analysis"]
+# {'reporters': {'abb': ['S0'], 'aba': []}, 'accepted': ['abb']}
+```
+
+The reporter of `abb` first appears between events 440 and 660 and reaches 7
+copies by the end. The network of the run has 47 species and 57 reactions, each with
+its firing count, and `extras["final_state"]` is the pool at the end; the
+analysis is read from that final pool.
+
 **Your own rules.** `system="custom"` takes `rules`, `pool`, `sources` and
 `drains` as text. This is the `AB` example as a single sampled run:
 
 ```python
-net = chemart.generate_network("tominaga-stacked-strings", system="custom",
+traj = chemart.evolve("tominaga-stacked-strings", system="custom",
     rules=["0#*1AB/ + 0#CD/ -> 0#*1AB/1#CD/",
            "0#*1AB/1#CD/ + 0#AB2*/ -> 0#*1ABAB2*/1#CD/",
            "0#*1ABAB2*/1#CD/ -> 0#*1ABAB2*/ + 0#CD/"],
     pool={"0#CD/": 1}, sources=["0#AB/"], drains=["0#ABABAB1*/"],
-    method="soup", steps=200, seed=1)
-net.extras["final_state"]      # {'0#AB/': 4, '0#AB/1#CD/': 1}
+    steps=200, seed=1)
+traj.network.extras["final_state"]      # {'0#AB/': 4, '0#AB/1#CD/': 1}
 ```
 
 Over the 200 steps it built chains up to `ABABABABAB`, and the drain removed the

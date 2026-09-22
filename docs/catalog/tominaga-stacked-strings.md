@@ -175,13 +175,13 @@ shows which of them were accepted.
 
 ### What Chemart computes
 
-Chemart turns a system into a reaction network in one of two ways. The default,
-`method="closure"`, applies every rule to every combination of known species
-until nothing new appears, and returns all reachable reactions. Sources become
-reactions `∅ -> s` and drains `s -> ∅`. With `method="soup"` Chemart instead
-samples one run of the nondeterministic process from the published copy numbers
-and returns the reactions that fired, with how often. That sampler is a Chemart
-addition, since the papers do not describe their simulators.
+Chemart runs a system in two ways. The *closure* applies every rule to every
+combination of known species until nothing new appears, and returns all
+reachable reactions. Sources become reactions `∅ -> s` and drains `s -> ∅`.
+The *sampled run* instead follows one run of the nondeterministic process from
+the published copy numbers and returns the reactions that fired, with how
+often. That sampler is a Chemart addition, since the papers do not describe
+their simulators.
 
 ### Formal specification
 
@@ -199,7 +199,7 @@ Patterns: literal elements; n matches one element; *n (line start only) and n* (
 
 *How the population is bounded:* none; sources supply objects without limit and drains remove objects matched by a pattern
 
-The published dynamics is nondeterministic: repeatedly apply one rule, operate one source or operate one drain, with no spatial structure and no rates (2007 section 2.2.5, 2009 section 2). Chemart gives the closure of this process (all reachable reactions) or one sampled run.
+The published dynamics is nondeterministic: repeatedly apply one rule, operate one source or operate one drain, with no spatial structure and no rates (2007 section 2.2.5, 2009 section 2). Chemart gives the closure of this process (all reachable reactions, generate_network) and one sampled run (chemart.evolve).
 
 ### Using it in Chemart
 
@@ -231,6 +231,10 @@ Its first reactions (`net.reactions`):
 0#FFFFFFFFF/-5#GGATGXXXXXXXCTGGCTCGCAGCCTGGCTTGTCGCXX/-5#CCTACXXXXXXXGACCGAGCGTCGGACCGAACAGCGXX/ -> 0#FFFFFFFFF/-5#GGATGXXXXXXXCT/-5#CCTACXXXXXXXGACCGA/ + 0#GGCTCGCAGCCTGGCTTGTCGCXX/4#GCGTCGGACCGAACAGCGXX/
 … and 51 more
 ```
+
+The chemistry has two faces. `chemart.generate_network`, printed above,
+returns the closure; `chemart.evolve` returns a sampled run as a trajectory
+(see *A sampled run* below).
 
 The default call above is the 2007 automaton with its published pool: 100 Fok I,
 20 of each transition molecule, 20 detectors, and 10 each of the inputs `abb` and
@@ -270,17 +274,40 @@ with `dna`. `system="fatty-acid-oxidation"` starts from a fatty acyl CoA with
 `{'acyl_coa_carbons': [2, 4, 6, 8, 10], 'acetyl_coa': True}`: every shorter chain
 and acetyl CoA are reached.
 
+**A sampled run.** `chemart.evolve` starts from the same pool and, at each
+step, picks one event: a rule with weight equal to the number of ways to choose
+its reactants, a source with weight 1, a drain with weight equal to the copies it
+matches. `steps` counts events, failed draws included, and `copies` multiplies
+the starting counts. The trajectory has a frame per generation, here every 220
+events, the number of objects in the published pool; each frame's `state` is
+the pool and its `fired` the reactions since the previous frame:
+
+```python
+traj = chemart.evolve("tominaga-stacked-strings", seed=1)
+traj.times()                   # [0.0, 220.0, 440.0, ..., 1980.0, 2000.0]
+reporter = "0#XTCGCX/0#XAGCGX/"
+[f.state.get(reporter, 0) for f in traj.frames]
+# [0, 0, 0, 1.0, 1.0, 2.0, 3.0, 6.0, 7.0, 7.0, 7.0]
+traj.network.extras["analysis"]
+# {'reporters': {'abb': ['S0'], 'aba': []}, 'accepted': ['abb']}
+```
+
+The reporter of `abb` first appears between events 440 and 660 and reaches 7
+copies by the end. The network of the run has 47 species and 57 reactions, each with
+its firing count, and `extras["final_state"]` is the pool at the end; the
+analysis is read from that final pool.
+
 **Your own rules.** `system="custom"` takes `rules`, `pool`, `sources` and
 `drains` as text. This is the `AB` example as a single sampled run:
 
 ```python
-net = chemart.generate_network("tominaga-stacked-strings", system="custom",
+traj = chemart.evolve("tominaga-stacked-strings", system="custom",
     rules=["0#*1AB/ + 0#CD/ -> 0#*1AB/1#CD/",
            "0#*1AB/1#CD/ + 0#AB2*/ -> 0#*1ABAB2*/1#CD/",
            "0#*1ABAB2*/1#CD/ -> 0#*1ABAB2*/ + 0#CD/"],
     pool={"0#CD/": 1}, sources=["0#AB/"], drains=["0#ABABAB1*/"],
-    method="soup", steps=200, seed=1)
-net.extras["final_state"]      # {'0#AB/': 4, '0#AB/1#CD/': 1}
+    steps=200, seed=1)
+traj.network.extras["final_state"]      # {'0#AB/': 4, '0#AB/1#CD/': 1}
 ```
 
 Over the 200 steps it built chains up to `ABABABABAB`, and the drain removed the
@@ -292,12 +319,11 @@ do not yet contain the answer molecule, 5,000 species (about a minute) do.
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `generate_network`, or to `chemart.evolve`; a parameter marked *evolve only* belongs to the process and one marked *generate only* to the network. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
 | `system` | `enum` | `benenson-automaton` | structural | published system: benenson-automaton (2007 sec. 6.2, rules 3-11, two-state DNA automaton with Fok I), transcription (2009 sec. 3.2, rules 12-18, DNA to mRNA), fatty-acid-oxidation (2009 sec. 4, rules 25-28), adleman-hamiltonian-path (2007 sec. 6.1, Adleman's 7-node graph), ab-concatenation (2007 sec. 2 / 2009 eqs. 1-3, the catalyst CD with source AB and drain), custom (rules, pool, sources, drains) <br>one of `benenson-automaton`, `transcription`, `fatty-acid-oxidation`, `adleman-hamiltonian-path`, `ab-concatenation`, `custom` |
-| `method` | `enum` | `closure` | structural | closure: every reaction reachable from the initial pool and the sources; soup: one sampled run of the nondeterministic process, observed reactions with firing counts <br>one of `closure`, `soup` |
 | `words` | `list` | `['abb', 'aba']` | structural | benenson-automaton only: input words; word i gets the trailing tag of i+1 X (abb: X/X, aba: XX/XX as published) <br>*range:* strings over a and b; the paper's pool holds abb and aba |
 | `s1_detector` | `bool` | `False` | structural | benenson-automaton only: add the S1 detector 0#X/0#XACAG/ (rule 11's partner, not in the published pool) so that inputs ending in S1 also leave a reporter |
 | `dna` | `str` | `TATATTCGCAATGCTGAGCTAGTTTT` | structural | transcription only: upper strand of the chromosome 0#Orc&lt;dna&gt;/0#Orc&lt;complement&gt;/ (2009 example) <br>*range:* bases T, C, A, G; the promoter TATATT and the terminator TTTT drive rules 12 and 18 |
@@ -306,15 +332,15 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 | `pool` | `dict` | `{}` | structural | custom only: initial working multiset, molecule -&gt; copies <br>*range:* e.g. {'0#CD/': 1} |
 | `sources` | `list` | `[]` | structural | custom only: objects supplied without limit |
 | `drains` | `list` | `[]` | structural | custom only: patterns of objects that are removed |
-| `max_species` | `int` | `2000` | structural | closure only: species budget; closures of ab-concatenation and adleman-hamiltonian-path are infinite and truncated <br>`1` … `100000` · *range:* benenson-automaton default closes at 47 species; adleman-hamiltonian-path first contains the answer molecule between 2000 and 5000 species (5000: about 35 s) |
-| `steps` | `int` | `2000` | population | soup only: number of events (rule applications, source and drain operations), failed draws included <br>`0` … `10000000` |
-| `copies` | `int` | `1` | population | soup only: multiplies every initial count (benenson-automaton starts from the published 100 Fok I, 20 per transition molecule and detector, 10 per input; the other systems from one copy of each molecule) <br>`1` … `100000` |
+| `max_species` | `int` | `2000` | structural | *generate only.* species budget of the closure; closures of ab-concatenation and adleman-hamiltonian-path are infinite and truncated <br>`1` … `100000` · *range:* benenson-automaton default closes at 47 species; adleman-hamiltonian-path first contains the answer molecule between 2000 and 5000 species (5000: about 35 s) |
+| `steps` | `int` | `2000` | population | *evolve only.* number of events (rule applications, source and drain operations), failed draws included; a frame every generation (as many events as the initial pool has objects) <br>`0` … `10000000` |
+| `copies` | `int` | `1` | population | *evolve only.* multiplies every initial count of the sampled run (benenson-automaton starts from the published 100 Fok I, 20 per transition molecule and detector, 10 per input; the other systems from one copy of each molecule) <br>`1` … `100000` |
 
 ### Implementation decisions
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "12 decisions"
+??? note "13 decisions"
 
     - Book references: the v1 entry dated the chemistry 2007-2008 and the assignment named the EvoWorkshops 2008 music paper; the book's [855] is the 2009 Artificial Life paper on biochemical pathways and [856] the 2007 paper on molecular computing ([854] is the music paper, not cited in 18.3.2). Both journal papers were read from Wayback Machine copies of the MIT Press PDFs; the equations were checked against rendered page images because pdftotext drops minus signs, # and turns / + -&gt; into = þ !.
     - Errata in the papers, fixed: 2007 rule (11) prints 0TGTC2*/4#3*/ for 0#TGTC2*/4#3*/ (every sibling rule 6-10 has 0#); 2009 rules (12)-(18) print the second left-hand line as 0*3... while the right-hand side and the reasoning use 0#*3... . Both are read with 0#.
@@ -325,9 +351,10 @@ The sources leave gaps, and sometimes contradict each other or the book. Each su
     - Fatty acid oxidation: fatty acyl CoA with n carbons is 0#H^(n-1)O/-1#HC^n/0#H^(n-1)SCoa/, the form of the paper's C10 example; n = 2 is exactly acetyl CoA 0#HO/-1#HCC/0#HSCoa/. The carriers Fad, NadPo, CoaSH and HOH are in the initial pool as in section 4 (figure 3 draws them from sources); in the closure this makes no difference. Figure 3 starts from 0#HHHHHO/0#CCCCCC/0#HHHHHSCoa/ (no -1#H); forward application of rules 25-28 reproduces every intermediate of the figure, but its last step then yields 0#HO/0#CC/0#HSCoa/, not a third acetyl CoA. With the -1#H of the section 4 form the path yields three acetyl CoA; the printed molecule is treated as a slip of the reasoning example.
     - Closure semantics: the nondeterministic process is reduced to its reaction closure. A rule may use the same species for several terms (enough copies are assumed), sources are always available and are reactions ∅ -&gt; s, drains are reactions s -&gt; ∅ for every species they match, and drained species keep reacting (a drain is only one of the possible operations). Different matches of the same reactants (displacements) give separate reactions. chemart.expand.expand is not used because one reactant tuple can have several outcomes.
     - Closure sizes (measured): benenson-automaton with [abb, aba] 47 species / 59 reactions (complete, 0.02 s); transcription 30 / 28; fatty-acid-oxidation from C10 24 / 16; adleman-hamiltonian-path is infinite (walks repeat nodes): 2000 species (19803 reactions, 5 s) do not yet contain the answer molecule, 5000 species (64662 reactions, 34 s) do. The paper ran Adleman's model as a soup of 100,000 objects per kind, which is out of scale here; the answer is checked by applying the rules along the path.
-    - Soup: the papers' simulators (random collision, collision theory) are not specified. Chemart samples events with weight = number of ordered reactant choices for a rule, 1 per source and the matching copies for a drain; a draw needing more copies than exist is a failed step. It is a Chemart addition for a single run and has no rates.
+    - Two faces: generate_network returns the reaction closure of the initial pool and the sources; chemart.evolve samples one run of the nondeterministic process (formerly method soup) with a frame per generation, i.e. every n events where n is the number of objects in the initial pool after copies (220 for the Benenson pool), plus a last frame when the run ends or no event is possible. The frames carry the pool and the reactions fired, with sources as ∅ -&gt; s and drains as s -&gt; ∅.
+    - Sampled run: the papers' simulators (random collision, collision theory) are not specified. Chemart samples events with weight = number of ordered reactant choices for a rule, 1 per source and the matching copies for a drain; a draw needing more copies than exist is a failed step. It is a Chemart addition for a single run and has no rates.
     - No kinetics: both papers model only the qualitative aspects (2007 sec. 7), so reactions carry no rate. The v1 parameters alphabet (matrix) and stacking_rules (callable) became the system choice plus the custom rules/pool/sources/drains text. 'catalysts' is not provided because recombination consumes every reactant (Fok I and the CD catalyst are released by separate rules).
-    - extras: system, rules (with the papers' equation numbers), sources, drains, reaction_rules (the rule label of each reaction, 'source' or 'drain'), analysis (benenson: reporters per word and accepted words; transcription: the expected mRNA and whether it is produced; fatty acid: the acyl CoA chain lengths reached and acetyl CoA; adleman: whether the answer molecule of the paper's figure is produced) and, for soup, final_state.
+    - extras: system, rules (with the papers' equation numbers), sources, drains, reaction_rules (the rule label of each reaction, 'source' or 'drain'), analysis (benenson: reporters per word and accepted words; transcription: the expected mRNA and whether it is produced; fatty acid: the acyl CoA chain lengths reached and acetyl CoA; adleman: whether the answer molecule of the paper's figure is produced) and, for the evolved network, final_state.
 
 ## Results
 

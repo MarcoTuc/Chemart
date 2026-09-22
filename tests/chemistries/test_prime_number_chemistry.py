@@ -5,7 +5,7 @@ from statistics import mean
 
 import pytest
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries.prime_number_chemistry import is_prime
 
 ID = "prime-number-chemistry"
@@ -40,7 +40,7 @@ def division_fixed_point(seed):
 
 
 def test_closure_of_12_2_3():
-    net = generate_network(ID, method="closure", numbers=[12, 2, 3])
+    net = generate_network(ID, numbers=[12, 2, 3])
     assert net.status == "complete"
     assert sorted(value(s.id) for s in net.species) == [2, 3, 4, 6, 12]
     lines = set(net.to_text().splitlines())
@@ -50,7 +50,7 @@ def test_closure_of_12_2_3():
 
 
 def test_closure_contains_only_numbers_reachable_by_division():
-    net = generate_network(ID, method="closure", seed=3)
+    net = generate_network(ID, seed=3)
     seed = [value(s) for s in net.extras["seed"]]
     numbers = {value(s.id) for s in net.species}
     assert numbers == division_fixed_point(seed)
@@ -61,7 +61,7 @@ def test_closure_contains_only_numbers_reachable_by_division():
 
 def test_primes_are_exactly_the_non_reactive_numbers():
     """Book 2.5.2: 'the reaction rule precisely determines primes as nonreactive'."""
-    net = generate_network(ID, method="closure", seed=5)
+    net = generate_network(ID, seed=5)
     numbers = {value(s.id) for s in net.species}
     eaten = {value(s) for r in net.reactions for s in consumed(r)}
     assert not any(is_prime(n) for n in eaten)
@@ -71,12 +71,13 @@ def test_primes_are_exactly_the_non_reactive_numbers():
 
 
 def test_closure_truncates_on_budget():
-    net = generate_network(ID, method="closure", numbers=[2 ** 10, 2], max_species=4)
+    net = generate_network(ID, numbers=[2 ** 10, 2], max_species=4)
     assert net.status == "truncated" and len(net.species) <= 4
 
 
 def test_soup_follows_numberchem():
-    net = generate_network(ID, seed=11)
+    traj = evolve(ID, seed=11)
+    net = traj.network
     assert net.status == "observed"
     start = net.initial_state
     assert sum(start.values()) == 100
@@ -87,15 +88,16 @@ def test_soup_follows_numberchem():
     for r in net.reactions:
         assert_division_rule(r)
         assert not any(is_prime(value(s)) for s in consumed(r))
-    fraction = net.extras["analysis"]["prime_fraction"]
+    fraction = traj.series("prime_fraction")
     assert len(fraction) == 10000 // 100 + 1
+    assert traj.times()[1] == 100.0
     # primes are never consumed, so the prime count never decreases
     assert all(b >= a for a, b in zip(fraction, fraction[1:]))
 
 
 def test_prime_fraction_grows_in_the_book_default_run():
     """Book 2.5.2 / figs. 2.8-2.9: M = 100 from [2, 1000], 10000 iterations; primes emerge and stay."""
-    runs = [generate_network(ID, seed=s).extras["analysis"]["prime_fraction"] for s in range(10)]
+    runs = [evolve(ID, seed=s).series("prime_fraction") for s in range(10)]
     assert all(f[-1] > f[0] for f in runs)
     assert mean(f[0] for f in runs) < 0.3
     assert mean(f[-1] for f in runs) > 0.95
@@ -105,17 +107,17 @@ def test_prime_fraction_grows_in_the_book_default_run():
 
 def test_constructive_only_with_a_wide_interval():
     """Book 2.5.2: each of 2..101 gives no new numbers; 100 draws from [2, 1000] do."""
-    closed = generate_network(ID, seed=2, numbers=list(range(2, 102)), iterations=2000)
-    assert closed.extras["analysis"]["new_numbers"] == []
-    assert closed.extras["analysis"]["prime_fraction"][-1] > closed.extras["analysis"]["prime_fraction"][0]
-    open_ = generate_network(ID, seed=2)
+    closed = evolve(ID, seed=2, numbers=list(range(2, 102)), iterations=2000)
+    assert closed.network.extras["analysis"]["new_numbers"] == []
+    assert closed.series("prime_fraction")[-1] > closed.series("prime_fraction")[0]
+    open_ = evolve(ID, seed=2).network
     assert len(open_.extras["analysis"]["new_numbers"]) > 0
 
 
 def test_no_prime_factorisation():
     """Book 2.5.2: divisors are catalysts, so no copies are made. Each molecule only ever
     becomes a divisor of itself, so a prime p cannot outnumber the initial multiples of p."""
-    net = generate_network(ID, seed=4)
+    net = evolve(ID, seed=4).network
     start = Counter({value(s): c for s, c in net.initial_state.items()})
     for s, copies in net.extras["final_state"].items():
         p = value(s)
@@ -127,8 +129,7 @@ def test_soup_size_matters():
     """Paper [72] fig. 6 (reactor algorithm II, maxn = 10000): small soups run into dead
     ends with non-primes left, large soups end almost all-prime. Shortened to 200 generations."""
     def final(M, s):
-        net = generate_network(ID, seed=s, M=M, maxn=10000, iterations=200 * M)
-        return net.extras["analysis"]["prime_fraction"][-1]
+        return evolve(ID, seed=s, M=M, maxn=10000, iterations=200 * M).series("prime_fraction")[-1]
 
     small = [final(15, s) for s in range(6)]
     large = [final(150, s) for s in range(6)]
@@ -138,13 +139,14 @@ def test_soup_size_matters():
 
 
 @pytest.mark.parametrize(
-    "given, message",
+    "run, given, message",
     [
-        (dict(minn=500, maxn=100), "maxn must be >= minn"),
-        (dict(numbers=[4, 1]), "integers >= 2"),
-        (dict(numbers=[7]), "at least 2 molecules"),
+        (generate_network, dict(minn=500, maxn=100), "maxn must be >= minn"),
+        (evolve, dict(minn=500, maxn=100), "maxn must be >= minn"),
+        (generate_network, dict(numbers=[4, 1]), "integers >= 2"),
+        (evolve, dict(numbers=[7]), "at least 2 molecules"),
     ],
 )
-def test_rejects_inconsistent_parameters(given, message):
+def test_rejects_inconsistent_parameters(run, given, message):
     with pytest.raises(ValueError, match=message):
-        generate_network(ID, **given)
+        run(ID, **given)

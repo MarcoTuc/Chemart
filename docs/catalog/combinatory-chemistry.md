@@ -180,7 +180,7 @@ print(net.summary())
 combinatory-chemistry: 591 species, 1001 reactions, status=observed
 provides: catalysts, initial-state, mass-conservation, stoichiometry, topology
 seed: 1
-extras: analysis, conservation, final_state, reaction_kinds
+extras: conservation, final_state, reaction_kinds
 ```
 
 Its first reactions (`net.reactions`):
@@ -204,43 +204,50 @@ fill up but not to see structures emerge. The network lists every distinct
 reaction that fired, with its count. `net.extras["reaction_kinds"]` gives the
 type of each reaction in the same order (`I`, `K`, `S`, `cleave`, `condense`,
 `assemblage`), and `extras["conservation"]` holds one conservation law per
-atom type.
+atom type. `extras["final_state"]` is the final soup.
+
+`generate_network` returns only the network of the whole run. To follow the
+soup over time, `chemart.evolve` returns a trajectory with a frame every
+`record_every` iterations (1,000 by default), the first being the initial
+atoms. Each frame holds the soup (`state`, the count of each expression), the
+reactions fired since the previous frame (`fired`) and four `observables`:
+`mean_length` (atoms per molecule), `reductions` (the share of iterations
+since the previous frame that reduced something), `free_atoms` (free `S`, `K`
+and `I`) and `top_reactants` (the five molecules most eaten by `S`-reactions
+since the previous frame, the paper's signal of emerging structures). The
+diversity, the number of distinct expressions, is the size of a frame's
+`state`.
 
 ```python
 from collections import Counter
-net = chemart.generate_network("combinatory-chemistry", seed=1)
-a = net.extras["analysis"]
-print(a["diversity"])
-print(a["reductions"][-3:])
-print(Counter(net.extras["reaction_kinds"]))
+traj = chemart.evolve("combinatory-chemistry", seed=1)
+print([len(f.state) for f in traj.frames])
+print(traj.series("reductions")[-3:])
+print(traj.frames[-1].observables)
+print(Counter(traj.network.extras["reaction_kinds"]))
 ```
 
 ```
 [3, 27, 45, 61, 63, 74, 71, 70, 70, 69, 67, 63, 70, 73, 70, 73, 77, 76, 81, 77, 72]
 [0.103, 0.115, 0.114]
+{'mean_length': 1.603, 'reductions': 0.114, 'free_atoms': {'S': 104, 'K': 131, 'I': 174}, 'top_reactants': {'K': 4, 'I': 3, 'KK': 2, 'SS': 2, 'KI': 1}}
 Counter({'condense': 463, 'cleave': 182, 'K': 146, 'I': 108, 'S': 102})
 ```
-
-`extras["analysis"]` samples the soup every `record_every` iterations:
-`diversity` (distinct expressions), `mean_length` (atoms per molecule),
-`reductions` (the share of iterations that reduced something, since the last
-sample), `free_atoms` (free `S`, `K` and `I`) and `top_reactants` (the five
-molecules most eaten by `S`-reactions since the last sample, the paper's
-signal of emerging structures). `extras["final_state"]` is the final soup.
 
 ### The paper's runs
 
 The paper runs 10,000 atoms for 10 million iterations. Chemart does about
 100,000 iterations a second on small expressions, and slows down as long
-expressions form. This F = 1 run took 160 seconds:
+expressions form. This F = 1 run, with a frame every 500,000 iterations,
+took about three minutes:
 
 ```python
-net = chemart.generate_network("combinatory-chemistry", seed=0,
-                               n_I=3334, n_K=3333, n_S=3333,
-                               iterations=10_000_000, F=1, record_every=500_000)
-a = net.extras["analysis"]
-print(a["diversity"])
-print(a["top_reactants"][4], a["top_reactants"][20])
+traj = chemart.evolve("combinatory-chemistry", seed=0,
+                      n_I=3334, n_K=3333, n_S=3333,
+                      iterations=10_000_000, F=1, record_every=500_000)
+print([len(f.state) for f in traj.frames])
+top = traj.series("top_reactants")
+print(top[4], top[20])
 ```
 
 ```
@@ -256,7 +263,7 @@ the tests do.
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `chemart.evolve` (or `generate_network`, which runs the process to the end). The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
@@ -266,13 +273,13 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 | `iterations` | `int` | `20000` | population | iterations of Algorithm 1, one sampled expression each <br>`0` … `100000000` · *range:* paper: 10 million (Figs. 4-5); about 100,000 per second here |
 | `F` | `int` | `1` | structural | reactant assemblage size: a missing S reactant of at most F atoms is built from free atoms (Algorithm 2); 1 turns assemblage off <br>`1` … `1000` · *range:* paper: 1 to 20; Fig. 5 uses 1, 3, 6 and 8 |
 | `max_reductions` | `int` | `100` | structural | a reduction is drawn uniformly among at most this many redexes, the first ones in outer-to-inner order <br>`1` … `100000` · *range:* paper footnote 3: 100 |
-| `record_every` | `int` | `1000` | structural | iterations between two entries of extras['analysis']; the reactant consumption is counted over this window <br>≥ `1` · *range:* paper Fig. 5 uses windows of 500,000 reactions |
+| `record_every` | `int` | `1000` | structural | iterations per frame of chemart.evolve (the last iteration always ends a frame); the share of reductions and the reactant consumption are counted over each frame <br>≥ `1` · *range:* paper Fig. 5 uses windows of 500,000 reactions |
 
 ### Implementation decisions
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "9 decisions"
+??? note "10 decisions"
 
     - Not in the book: the paper is from 2020, five years after it. The implementation follows the paper's Algorithm 1 and Algorithm 2.
     - Outer-to-inner order (footnote 3) is the pre-order of the authors' all-reductions: an expression's own head redex first, then the redexes inside its arguments, left to right. The first max_reductions redexes that are redexes of the chemistry (S-redexes need their reactant) are kept, and one is drawn uniformly.
@@ -280,9 +287,10 @@ The sources leave gaps, and sometimes contradict each other or the book. Each su
     - An atom cannot be cleaved: when cleavage is drawn for S, K or I nothing happens and the iteration is spent (Algorithm 1 is silent).
     - Condensation with e_LEFT: Algorithm 1 does not say what happens if e_LEFT has been consumed since it was remembered. Chemart then remembers the new expression instead, as when e_LEFT is undefined; e_LEFT can condense with a copy of itself only if two copies exist.
     - Reactant assemblage (Algorithm 2) also decides whether an S-redex is available: an S-redex whose reactant is absent counts when the reactant has at most F atoms and the free atoms to build it are in the multiset. The assembly is recorded as its own reaction, atoms -&gt; x, before the S-reaction.
-    - Reactant consumption (Fig. 5) counts the reactants of S-reactions, the only reactions that incorporate a molecule, per record_every window; extras['analysis']['top_reactants'] keeps the five most consumed per window.
-    - Mean length (Fig. 4b) is the mean number of atoms per molecule, weighted by counts (the authors' pool-mean-length); diversity (Fig. 4a) is the number of distinct expressions.
+    - Reactant consumption (Fig. 5) counts the reactants of S-reactions, the only reactions that incorporate a molecule, over each frame; the frame's top_reactants observable keeps the five most consumed.
+    - Mean length (Fig. 4b) is the mean number of atoms per molecule, weighted by counts (the authors' pool-mean-length); diversity (Fig. 4a) is the number of distinct expressions, the number of species in a frame's state.
     - No rates: the paper samples expressions with probability proportional to their count and defines no rate constants, so rates are None.
+    - chemart.evolve yields a frame every record_every iterations, and at the last one; frame 0 is the initial multiset of free atoms. A frame per iteration would be far too fine (the paper runs 10 million), so record_every stays a parameter. A frame's state is the multiset, its fired the reactions since the previous frame, and its observables mean_length, reductions (the share of iterations since the previous frame that reduced something; 0 in frame 0), free_atoms ({S, K, I}: free atoms of each type) and top_reactants (the five molecules most consumed by S-reactions since the previous frame). generate_network runs the soup to the end and returns the network.
 
 ## Results
 

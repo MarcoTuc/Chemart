@@ -17,7 +17,7 @@ from collections import Counter
 
 import pytest
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries import dorin_korb_ecosystem as D
 
 ID = "dorin-korb-ecosystem"
@@ -41,8 +41,13 @@ SPEC = {
 
 
 @pytest.fixture(scope="module")
-def net():
-    return generate_network(ID, seed=1)
+def traj():
+    return evolve(ID, seed=1)
+
+
+@pytest.fixture(scope="module")
+def net(traj):
+    return traj.network
 
 
 def catalysis(network):
@@ -212,15 +217,16 @@ def test_photosynthesis_respiration_and_biosynthesis(net):
 def test_no_sugar_is_made_without_sunlight():
     # "the only way energy can be stored is in complex molecules", and only sunlight
     # can pay the high A-B bond energy, so in the dark no sugar bond ever exists
-    dark = generate_network(ID, seed=1, light_amplitude=0.0)
+    run = evolve(ID, seed=1, light_amplitude=0.0)
+    dark = run.network
     analysis = dark.extras["analysis"]
     assert analysis["trophic"]["sugar_made"] == 0
-    assert max(analysis["history"]["sugar_bonds"]) == 0
+    assert max(run.series("sugar_bonds")) == 0
     assert dark.extras["energies"]["ledger"]["light_incident"] == 0
     assert generate_network(ID, seed=1).extras["analysis"]["trophic"]["sugar_made"] > 0
 
 
-def test_trophic_structure_emerges(net):
+def test_trophic_structure_emerges(traj, net):
     # the paper's claim: organisms "naturally fall into trophic levels, generate
     # energy from chemical bonds and transform material elements in the process"
     trophic = net.extras["analysis"]["trophic"]
@@ -240,7 +246,7 @@ def test_trophic_structure_emerges(net):
     for r in breaks:
         assert sum(r.products.values()) > sum(r.reactants.values())
         assert max(content[s].get("C", 0) for s in r.reactants) >= 2
-    biomass = net.extras["analysis"]["history"]["biomass_bonds"]
+    biomass = traj.series("biomass_bonds")
     assert any(b < a for a, b in zip(biomass, biomass[1:]))
 
 
@@ -258,17 +264,33 @@ def test_figure_5_autotroph_makes_and_respires_sugar_on_its_own():
     # nothing on the grid but the figure 5 body: a C box with chlorophyll on one
     # inner wall, the sugar enzyme on the opposite one, and A-O and B-O trapped in
     # the vacuole. It photosynthesises and then respires what it made.
-    alone = generate_network(ID, seed=5, atoms={}, catalysts={}, structures="photoautotroph")
+    run = evolve(ID, seed=5, atoms={}, catalysts={}, structures="photoautotroph")
+    alone = run.network
     counts = alone.extras["analysis"]["event_counts"]
     assert counts.get("break:A-O:K", 0) > 0 and counts.get("break:B-O:K", 0) > 0
     assert counts.get("make:A-B:K", 0) > 0 and counts.get("break:A-B:EAB", 0) > 0
-    assert max(alone.extras["analysis"]["history"]["sugar_bonds"]) > 0
+    assert max(run.series("sugar_bonds")) > 0
 
     # the body itself never falls apart: its bonds are anchors that do not react
     content = atoms_of(alone)
     bodies = [s for s, a in content.items()
               if a.get("K") and a.get("EAB") and s in alone.extras["final_state"]]
     assert len(bodies) == 1 and content[bodies[0]]["C"] >= 16
+
+
+def test_a_frame_per_step(traj, net):
+    # frame 0 is the seeded grid; each later frame is one movement and one reaction phase
+    assert traj.clock == "steps" and traj.times() == [float(t) for t in range(net.params["steps"] + 1)]
+    assert traj.frames[0].fired == [] and traj.frames[0].state == net.initial_state
+    assert traj.frames[-1].state == {s: float(n) for s, n in net.extras["final_state"].items()}
+    # the reactions of each step turn one frame's molecules into the next one's
+    for before, after in zip(traj.frames, traj.frames[1:]):
+        state = Counter(before.state)
+        for lhs, rhs, n in after.fired:
+            state.subtract({s: n * k for s, k in Counter(lhs).items()})
+            state.update({s: n * k for s, k in Counter(rhs).items()})
+        assert +state == Counter(after.state)
+    assert set(traj.frames[0].observables) == {"sugar_bonds", "biomass_bonds", "inorganic_bonds", "free_atoms"}
 
 
 # ---------------------------------------------------------------------------

@@ -353,7 +353,9 @@ def _generator_problems(files, repo, card, trees, official_namespace, builtin_id
         if unclaimed:
             problems.append(f"preview.json contains {unclaimed}, which the entry does not claim in provides")
         try:
-            defaults = resolve_params(entry, {})
+            from chemart.api import _face_of_generate
+
+            defaults = resolve_params(entry, {}, _face_of_generate(entry))
         except ValueError as err:
             problems.append(f"{CHEMART_YAML}: {err}")
         else:

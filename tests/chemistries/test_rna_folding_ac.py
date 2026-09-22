@@ -197,9 +197,8 @@ def test_seed_is_reproducible_and_matters():
 
 
 def test_well_stirred_run_reports_the_reactions_that_fired():
-    run = chemart.generate_network(
-        "rna-folding-ac", seed=1, mode="well-stirred", pool=12, steps=400
-    )
+    traj = chemart.evolve("rna-folding-ac", seed=1, pool=12, steps=400)
+    run = traj.network
     assert run.status == "observed"
     assert run.reactions
     assert all(r.count >= 1 for r in run.reactions)
@@ -212,13 +211,14 @@ def test_well_stirred_run_reports_the_reactions_that_fired():
         left = sum(weight[s] * n for s, n in reaction.reactants.items())
         assert left == sum(weight[s] * n for s, n in reaction.products.items())
     assert set(run.initial_state) <= {s.id for s in run.species}
+    assert traj.frames[0].state == run.initial_state and traj.frames[1].t == 12.0
 
 
 def test_invalid_parameters_are_rejected():
     with pytest.raises(ValueError, match="its_min"):
         chemart.generate_network("rna-folding-ac", seed=1, its_min=10, its_max=6)
     with pytest.raises(ValueError, match="pool"):
-        chemart.generate_network("rna-folding-ac", seed=1, mode="well-stirred", pool=2)
+        chemart.evolve("rna-folding-ac", seed=1, pool=2)
     with pytest.raises(ValueError, match="min_recognition"):
         chemart.generate_network("rna-folding-ac", seed=1, seq_length=10, min_recognition=11)
 

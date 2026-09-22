@@ -216,28 +216,36 @@ Its first reactions (`net.reactions`):
 … and 1126 more
 ```
 
+AlChemy has two faces. `chemart.generate_network("alchemy")`, printed above,
+returns the *closure* of ten random molecules, cut off at 50 species (see
+*Closure instead of a reactor* below). `chemart.evolve("alchemy")` runs the
+*reactor*, the basic experiment of the paper, and returns a trajectory: a
+frame every `M` collisions with the contents of the pot, and at the end the
+network of every distinct reaction that fired, with `count` for how often.
+
 The default run is a small version of the basic experiment: `M = 100` random
 molecules, no filter, 2,000 collisions. It does not reproduce a published run;
 the published reactors were ten times larger and ran for hundreds of thousands
-of collisions. The network lists every distinct reaction that fired, with
-`count` for how often. The run's history is in `net.extras`:
+of collisions.
 
 ```python
-a = net.extras["analysis"]
-a["distinct_species"][:4], a["distinct_species"][-1]   # ([100, 87, 80, 63], 32)
-a["elastic_pairs"]                                     # {'no_normal_form': 22}
+traj = chemart.evolve("alchemy", seed=1)
+[len(f.state) for f in traj.frames][:4], len(traj.frames[-1].state)   # ([100, 87, 80, 63], 32)
+net = traj.network
+net.extras["analysis"]                 # {'elastic_pairs': {'no_normal_form': 22}}
 list(net.extras["final_state"].items())[:3]
 # [('^^(2)1', 13), ('^^^^^1', 7), ('^^^3', 7)]
 ```
 
-`distinct_species` is the number of different molecules in the pot, sampled
-every `collisions_per_sample` collisions (here every 100). Diversity has
-fallen from 100 to 32. `elastic_pairs` counts the ordered pairs whose collision
-was elastic, by reason: `no_normal_form` (a reduction limit was hit), `copy`
-and `forbidden` (the two filters). `final_state` is the pot at the end. Its most
-common molecule, `^^(2)1` or `λx1.λx2.(x1)x2`, copies any molecule that starts
-with a `λ`, which here means every molecule. The third reaction of the default
-network shows it at work:
+Each frame's `state` is the pot at that moment, so `len(f.state)` is the
+number of different molecules; frames come every 100 collisions
+(`traj.frames[1].t == 100.0`). Diversity has fallen from 100 to 32.
+`elastic_pairs` counts the ordered pairs whose collision was elastic, by
+reason: `no_normal_form` (a reduction limit was hit), `copy` and `forbidden`
+(the two filters). `final_state` is the pot at the end. Its most common
+molecule, `^^(2)1` or `λx1.λx2.(x1)x2`, copies any molecule that starts with a
+`λ`, which here means every molecule. The third reaction of the run shows it
+at work (`net.reactions[2]`):
 
 ```
 ^^(2)1 + ^^(2)^1 -> ^^(2)1 + 2 ^^(2)^1  [mass-action k=1.0]  (x1)
@@ -249,7 +257,7 @@ time, a molecule like this takes over the pot.
 **Level 0: collapse to a copier.** Run longer:
 
 ```python
-net = chemart.generate_network("alchemy", seed=0, collisions=20000)
+net = chemart.evolve("alchemy", seed=0, collisions=20000).network
 net.extras["final_state"]          # {'^1': 100}
 ```
 
@@ -259,7 +267,7 @@ All 100 molecules are the identity. Not every seed ends this way (see
 **Level 1: ban copying.** Add `filter="no-copy"`:
 
 ```python
-net = chemart.generate_network("alchemy", seed=1, collisions=20000, filter="no-copy")
+net = chemart.evolve("alchemy", seed=1, collisions=20000, filter="no-copy").network
 names = {s.id: s.structure for s in net.species}
 for sid, n in net.extras["final_state"].items():
     print(n, sid, names[sid])
@@ -279,27 +287,25 @@ the second-to-last one. This is one family of the projector organisation
 described under *Results*. Meanwhile 115 ordered pairs were refused as copy
 actions (`elastic_pairs`).
 
-**Closure instead of a reactor.** `method="closure"` returns every reaction
-reachable from a seed set, given as λ-terms in `terms` (write `λ` or `\`,
-applications as `(M)N`, or give de Bruijn ids). Organisations are usually
-infinite, so the closure stops at `max_species` and reports `status="truncated"`.
-The `I`, `K` example above is
+**Closure instead of a reactor.** `generate_network` returns every reaction
+reachable from a seed set: `n_seeds` random molecules, or the λ-terms given in
+`terms` (write `λ` or `\`, applications as `(M)N`, or give de Bruijn ids).
+Organisations are usually infinite, so the closure stops at `max_species` and
+reports `status="truncated"`. The `I`, `K` example above is
 
 ```python
-net = chemart.generate_network("alchemy", method="closure",
-                               terms=["λx.x", "λx.λy.x"], max_species=6)
+net = chemart.generate_network("alchemy", terms=["λx.x", "λx.λy.x"], max_species=6)
 net.summary().splitlines()[0]      # 'alchemy: 6 species, 34 reactions, status=truncated'
 ```
 
-In closure mode `net.extras["analysis"]` has `elastic` (the same counts) and
+For the closure, `net.extras["analysis"]` has `elastic` (the same counts) and
 `self_maintaining`, which says whether every returned species is produced by a
 collision among the returned species. Seeding with the center of an
 organisation and setting `max_species` to its size tests it directly:
 
 ```python
 center = ["λx1.λx2.λx3.x1", "λx1.λx2.λx3.λx4.x2", "λx1.λx2.λx3.λx4.λx5.x3"]
-net = chemart.generate_network("alchemy", method="closure", terms=center,
-                               filter="no-copy", max_species=3)
+net = chemart.generate_network("alchemy", terms=center, filter="no-copy", max_species=3)
 for r in net.reactions:
     print(r.to_text())
 net.extras["analysis"]             # {'elastic': {'copy': 2}, 'self_maintaining': True}
@@ -337,13 +343,13 @@ collisions take 1–4 seconds. A run the size of the paper's reactor,
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `generate_network`, or to `chemart.evolve`; a parameter marked *evolve only* belongs to the process and one marked *generate only* to the network. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
-| `M` | `int` | `100` | population | reactor size; without terms, the number of distinct random normal forms that seed the reactor <br>`2` … `100000` · *range:* paper: 1000 (reactor capacity, 5.3), 3000 for the L2 merger (6.4.1); book: 1000..3000 |
-| `n_seeds` | `int` | `10` | population | without terms, the number of distinct random normal forms whose closure is taken <br>`1` … `100000` |
-| `collisions` | `int` | `2000` | population | number of collisions (elastic ones included); a frame every M collisions <br>`0` … `10000000` · *range:* paper figs. 4-5: 5*10^5..6*10^5; Mathis et al. 2024: 10^5..6*10^6 |
+| `M` | `int` | `100` | population | *evolve only.* reactor size; without terms, the number of distinct random normal forms that seed the reactor <br>`2` … `100000` · *range:* paper: 1000 (reactor capacity, 5.3), 3000 for the L2 merger (6.4.1); book: 1000..3000 |
+| `n_seeds` | `int` | `10` | population | *generate only.* without terms, the number of distinct random normal forms whose closure is taken <br>`1` … `100000` |
+| `collisions` | `int` | `2000` | population | *evolve only.* number of collisions (elastic ones included); a frame every M collisions <br>`0` … `10000000` · *range:* paper figs. 4-5: 5*10^5..6*10^5; Mathis et al. 2024: 10^5..6*10^6 |
 | `terms` | `list` | `[]` | structural | explicit seed molecules as closed lambda terms, written λx.(M)N (λ or \) or as de Bruijn ids; reduced to normal form. Soup: M is split equally among them. Overrides the random generator <br>*range:* e.g. the L1 example-1 center [λx1.λx2.λx3.x1, λx1.λx2.λx3.λx4.x2, λx1.λx2.λx3.λx4.λx5.x3] |
 | `filter` | `enum` | `none` | selection | functional boundary condition: no-copy declares elastic every collision whose product is identical to one of its two reactants (paper 6.2) <br>one of `none`, `no-copy` · *range:* none gives Level 0 (copiers, hypercycles); no-copy gives Level 1 organisations |
 | `forbidden_patterns` | `list` | `[]` | selection | syntactic boundary conditions: regular expressions searched in the product's de Bruijn id; a match makes the collision elastic and excludes the term from the random seed <br>*range:* paper 6.2.3 bans three consecutive abstractions: ['\^\^\^'] |
@@ -356,7 +362,7 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 | `max_depth` | `int` | `7` | population | random generator: nesting level at which a variable is forced <br>`0` … `50` · *range:* paper 5.3: 20; Mathis et al. 2024: 7 |
 | `p_bound` | `float` | `0.8` | population | random generator: probability that a variable refers to an enclosing binder (chosen uniformly) rather than to a free name <br>`0.0` … `1.0` |
 | `n_free` | `int` | `3` | population | random generator: number of free variable names; free names are bound by leading abstractions (standardization) before reduction <br>`1` … `100` |
-| `max_species` | `int` | `50` | structural | species budget of the closure; organisations are usually infinite, so their closure is cut off (status truncated) <br>`1` … `100000` |
+| `max_species` | `int` | `50` | structural | *generate only.* species budget of the closure; organisations are usually infinite, so their closure is cut off (status truncated) <br>`1` … `100000` |
 
 ### Implementation decisions
 

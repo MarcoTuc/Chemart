@@ -19,15 +19,18 @@ its single-precision float arithmetic, and follows the technical report
 YCS-2010-458 (spec v0.2) where the two agree; see the catalog decisions for
 where they don't.
 
-Methods:
-- "container": the authors' time-stepped container (stringPM::make_next with
-  the ALife XII main loop): every time step each molecule, in random order,
-  may decay, try to bind, or execute one instruction of its complex, and
-  energy is added per step. Observed network: one reaction per complete
-  bind-execute-dissociate event (reactants at bind, products at dissociation).
-- "soup": chemart.soup.soup with instantaneous pair reactions (bind test, then
-  the program run to completion) and constant population size.
-- "closure": chemart.expand.expand of the seed set, with exact copying.
+Faces:
+- generate: chemart.expand.expand of the seed set, with exact copying (the
+  closure).
+- evolve, reactor "container": the authors' time-stepped container
+  (stringPM::make_next with the ALife XII main loop): every time step each
+  molecule, in random order, may decay, try to bind, or execute one
+  instruction of its complex, and energy is added per step. Observed network:
+  one reaction per complete bind-execute-dissociate event (reactants at bind,
+  products at dissociation).
+- evolve, reactor "soup": chemart.soup.stir with instantaneous pair reactions
+  (bind test, then the program run to completion) and constant population
+  size.
 """
 
 from __future__ import annotations
@@ -38,7 +41,8 @@ from collections import Counter
 
 from chemart.expand import expand
 from chemart.network import CONSTANT_TOTAL, Network, Reaction, Species
-from chemart.soup import soup
+from chemart.soup import Tally, stir
+from chemart.trajectory import Frame
 
 #: Symbol order of the substitution matrix and of the mutation loop
 #: (alignment.cpp default_table / config/ALXII.mtx).
@@ -528,6 +532,9 @@ class Container:
         self.arearatio = f32(agarea / cellarea)
         self.seen: dict[bytes, None] = dict.fromkeys(molecules)
         self.fired: dict = {}
+        self.tally = Tally()
+        self.epochs: list = []           # [steps done, dominant sequence] when the most common changes
+        self.steps_run = 0
         self.aborted: dict = {}
         self.decayed: Counter = Counter()
 
@@ -540,6 +547,7 @@ class Container:
         entry = self.fired.setdefault(self._key(lhs, rhs), [lhs, rhs, 0, Counter()])
         entry[2] += 1
         entry[3][lhs[0]] += 1
+        self.tally.add(_ids(lhs), _ids(rhs))
 
     def eqn_prop(self, n: int) -> bool:
         if not n:
@@ -603,30 +611,42 @@ class Container:
                     nxt.append(bag)
         self.now = nxt
 
+    def state(self) -> dict[str, float]:
+        """Every molecule by species; a bound one as the sequence it had when it bound."""
+        counts = Counter(a.seq() for a in self.now if a.status == UNBOUND)
+        for a in self.now:
+            if a.status == ACTIVE:
+                counts.update(a.rec["reactants"])
+        return {species_id(s): float(n) for s, n in counts.items()}
+
     def run(self, steps: int, samples: int = 500):
+        """Run `steps` time steps, yielding the number of steps done: 0, then after steps
+        1, 1 + every, 1 + 2 every, ... with every = max(1, steps // samples), and at the
+        end (or at extinction). A time step ends with the energy influx."""
         every = max(1, steps // samples) if steps else 1
-        series = {"time": [], "population": [], "species": [], "energy": []}
-        epochs: list = []
         dominant = None
+        yield 0
         t = 0
         for t in range(steps):
             self.step()
             if not self.now:
                 break
-            if t % every == 0:
+            sample = t % every == 0
+            if sample:
                 counts = Counter(a.seq() for a in self.now)
-                series["time"].append(t)
-                series["population"].append(len(self.now))
-                series["species"].append(len(counts))
-                series["energy"].append(self.energy)
                 top = counts.most_common(1)[0][0]
                 if top != dominant:
                     dominant = top
                     self.seen.setdefault(top, None)
-                    epochs.append([t, top])
+                    self.epochs.append([t + 1, top])
             self.energy += self.estep
-        return {"series": series, "epochs": epochs, "steps_run": t + 1 if steps else 0,
-                "extinct": not self.now}
+            if sample:
+                self.steps_run = t + 1
+                yield t + 1
+        done = t + 1 if steps else 0
+        if done != self.steps_run:
+            self.steps_run = done
+            yield done
 
 
 # --- generate ------------------------------------------------------------------
@@ -664,29 +684,56 @@ def _ids(seqs) -> list[str]:
     return [species_id(s) for s in seqs]
 
 
+def _machine(p, rng, exact: bool) -> Machine:
+    return Machine(_buffered(rng), max_length=p.max_length, traceback=p.traceback,
+                   substitution_rate=0.0 if exact else p.substitution_rate,
+                   indel_rate=0.0 if exact else p.indel_rate)
+
+
 def generate(p, rng):
+    """The closure of the distinct seed sequences, with exact copying."""
+    molecules = _parse_molecules(p.molecules, p.max_length)
+    machine = _machine(p, rng, exact=True)
+    stuck: list = []
+
+    def react(a, b):
+        out = machine.react(a, b, "possible", p.max_exec_steps)
+        if out is False:
+            stuck.append([species_id(a), species_id(b)])
+            return None
+        return out
+
+    seqs, found, status = expand(react, list(molecules), arity=2, max_species=p.max_species, ordered=True)
+    return Network(
+        species=_species(seqs),
+        reactions=[Reaction.of(_ids(lhs), _ids(rhs)) for lhs, rhs in found],
+        status=status,
+        extras={"seed": _ids(molecules), "non_terminating": stuck},
+    )
+
+
+def evolve(p, rng):
+    """The container (a frame about every steps/500 time steps) or the soup (a frame per
+    generation of collisions)."""
     if p.agent_radius > p.cell_radius:
         raise ValueError(f"agent_radius ({p.agent_radius}) must not exceed cell_radius ({p.cell_radius})")
     molecules = _parse_molecules(p.molecules, p.max_length)
-    rand = _buffered(rng)
-    exact = p.method == "closure"
-    machine = Machine(rand, max_length=p.max_length, traceback=p.traceback,
-                      substitution_rate=0.0 if exact else p.substitution_rate,
-                      indel_rate=0.0 if exact else p.indel_rate)
+    machine = _machine(p, rng, exact=False)
     initial = [s for s, n in molecules.items() for _ in range(n)]
-    if p.method == "container":
-        return _container(p, machine, molecules, initial)
-    if p.method == "soup":
-        if len(initial) < 2:
-            raise ValueError("the soup needs at least 2 molecules in total")
-        return _soup(p, machine, molecules, initial, rng)
-    return _closure(p, machine, molecules)
+    if p.reactor == "container":
+        return (yield from _container(p, machine, molecules, initial))
+    if len(initial) < 2:
+        raise ValueError("the soup needs at least 2 molecules in total")
+    return (yield from _soup(p, machine, molecules, initial, rng))
 
 
 def _container(p, machine, molecules, initial):
     box = Container(machine, initial, energy_per_step=p.energy_per_step, cell_radius=p.cell_radius,
                     agent_radius=p.agent_radius, decay=p.decay)
-    info = box.run(p.steps)
+    for t in box.run(p.steps):
+        yield Frame(t=float(t), state=box.state(), fired=box.tally.flush(),
+                    observables={"energy": box.energy,
+                                 "complexes": sum(1 for a in box.now if a.status == ACTIVE)})
     final = Counter(a.seq() for a in box.now if a.status == UNBOUND)
     in_progress = [a.rec for a in box.now if a.status == ACTIVE]
     seqs = list(molecules)
@@ -694,14 +741,13 @@ def _container(p, machine, molecules, initial):
         seqs += [*lhs, *rhs]
     for (lhs, rel) in box.aborted:
         seqs += [*lhs, *rel]
-    seqs += list(box.decayed) + list(final) + [s for _, s in info["epochs"]]
+    seqs += list(box.decayed) + list(final) + [s for _, s in box.epochs]
     for rec in in_progress:
         seqs += [*rec["reactants"], *rec["released"]]
     reactions, active = [], []
     for lhs, rhs, count, enzymes in box.fired.values():
         reactions.append(Reaction.of(_ids(lhs), _ids(rhs), count=count))
         active.append({species_id(s): n for s, n in enzymes.items()})
-    info["epochs"] = [[t, species_id(s)] for t, s in info["epochs"]]
     return Network(
         species=_species(seqs),
         reactions=reactions,
@@ -709,10 +755,9 @@ def _container(p, machine, molecules, initial):
         initial_state={species_id(s): n for s, n in molecules.items()},
         outflow=float(p.decay) if p.decay > 0 else None,
         extras={
-            "analysis": info["series"],
-            "epochs": info["epochs"],
-            "time_steps": info["steps_run"],
-            "extinct": info["extinct"],
+            "epochs": [[t, species_id(s)] for t, s in box.epochs],
+            "time_steps": box.steps_run,
+            "extinct": not box.now,
             "active_counts": active,
             "final_state": {species_id(s): n for s, n in final.most_common()},
             "decayed": {species_id(s): n for s, n in box.decayed.most_common()},
@@ -734,7 +779,13 @@ def _soup(p, machine, molecules, initial, rng):
             return None
         return out
 
-    fired, pop = soup(react, initial, p.steps, rng, arity=2, dilution="constant")
+    tally = Tally()
+    pop = initial
+    for step, pop, tally in stir(react, initial, p.steps, rng, arity=2, dilution="constant", tally=tally):
+        yield Frame(t=float(step), state={species_id(s): float(n) for s, n in Counter(pop).items()},
+                    fired=[[_ids(lhs), _ids(rhs), n] for lhs, rhs, n in tally.flush()],
+                    observables={"non_terminating": sum(stuck.values())})
+    fired = tally.reactions()
     seqs = list(molecules) + [s for lhs, rhs, _ in fired for s in (*lhs, *rhs)] + pop
     return Network(
         species=_species(seqs),
@@ -746,23 +797,4 @@ def _soup(p, machine, molecules, initial, rng):
             "final_state": {species_id(s): n for s, n in Counter(pop).most_common()},
             "non_terminating": sum(stuck.values()),
         },
-    )
-
-
-def _closure(p, machine, molecules):
-    stuck: list = []
-
-    def react(a, b):
-        out = machine.react(a, b, "possible", p.max_exec_steps)
-        if out is False:
-            stuck.append([species_id(a), species_id(b)])
-            return None
-        return out
-
-    seqs, found, status = expand(react, list(molecules), arity=2, max_species=p.max_species, ordered=True)
-    return Network(
-        species=_species(seqs),
-        reactions=[Reaction.of(_ids(lhs), _ids(rhs)) for lhs, rhs in found],
-        status=status,
-        extras={"seed": _ids(molecules), "non_terminating": stuck},
     )

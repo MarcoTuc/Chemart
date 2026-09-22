@@ -50,7 +50,8 @@ from collections import Counter, deque
 from chemart.expand import expand
 from chemart.helpers.params import apportion
 from chemart.network import CONSTANT_TOTAL, Network, Reaction, Species
-from chemart.soup import soup
+from chemart.soup import Tally, stir
+from chemart.trajectory import Frame
 
 # A machine is a tuple of nodes; a node is a tuple over input symbols of
 # (destination, output) pairs or None for a missing link. Canonical machines
@@ -256,27 +257,28 @@ def _seeds(p, chem: Chemistry, rng) -> list[str]:
     return [chem.add(_random_machine(rng, p.states, p.symbols)) for _ in range(p.M)]
 
 
+NOTATION = ("species id: nodes numbered breadth-first from the pointer (node 0), separated by ';'; "
+            "node j lists its links for inputs 0..k-1 as destination/output or '-'")
+
+
 def generate(p, rng):
+    """Every composition reachable from the seed machines, cut off by max_species."""
+    chem = Chemistry(p)
+    seeds = list(dict.fromkeys(_seeds(p, chem, rng)))
+    found, pairs, status = expand(chem.react, seeds, arity=2, max_species=p.max_species, ordered=True)
+    reactions = [Reaction.of(lhs, rhs) for lhs, rhs in pairs]
+    return Network(species=chem.species(found), reactions=reactions, status=status, extras={
+        "notation": NOTATION,
+        "seed": seeds,
+        "analysis": {"elastic": dict(chem.stats), "states": {s: len(chem.machines[s]) for s in found}},
+    })
+
+
+def evolve(p, rng):
+    """A flow reactor of M molecules (constant dilution): a frame every M collisions."""
     chem = Chemistry(p)
     drawn = _seeds(p, chem, rng)
     seeds = list(dict.fromkeys(drawn))
-    extras = {
-        "notation": "species id: nodes numbered breadth-first from the pointer (node 0), separated by ';'; "
-                    "node j lists its links for inputs 0..k-1 as destination/output or '-'",
-        "seed": seeds,
-    }
-    if p.method == "closure":
-        found, pairs, status = expand(chem.react, seeds, arity=2, max_species=p.max_species, ordered=True)
-        reactions = [Reaction.of(lhs, rhs) for lhs, rhs in pairs]
-        extras["analysis"] = {
-            "elastic": dict(chem.stats),
-            "states": {s: len(chem.machines[s]) for s in found},
-        }
-        return Network(species=chem.species(found), reactions=reactions, status=status, extras=extras)
-    return _soup(p, chem, drawn, seeds, rng, extras)
-
-
-def _soup(p, chem, drawn, seeds, rng, extras):
     if p.machines:
         if p.M < len(seeds):
             raise ValueError(f"M={p.M} is smaller than the {len(seeds)} distinct machines given")
@@ -284,27 +286,18 @@ def _soup(p, chem, drawn, seeds, rng, extras):
     else:
         pop = list(drawn)
     start = Counter(pop)
-    size = len(pop)
-    fired: dict[tuple, list] = {}
-    diversity = [len(start)]
-    done = 0
-    while done < p.collisions:
-        n = min(size, p.collisions - done)
-        chunk, pop = soup(chem.react, pop, n, rng, arity=2, dilution="constant")
-        done += n
-        for lhs, rhs, count in chunk:
-            key = (frozenset(Counter(lhs).items()), frozenset(Counter(rhs).items()))
-            fired.setdefault(key, [lhs, rhs, 0])[2] += count
-        diversity.append(len(set(pop)))
-    reactions = [Reaction.of(lhs, rhs, count=count) for lhs, rhs, count in fired.values()]
-    ids = list(dict.fromkeys([*start, *(c for _, rhs, _ in fired.values() for c in rhs)]))
-    extras["analysis"] = {
-        "collisions_per_sample": size,
-        "distinct_species": diversity,
-        "elastic": dict(chem.stats),
-        "states": {s: len(chem.machines[s]) for s in ids},
-    }
-    extras["final_state"] = dict(Counter(pop).most_common())
+    tally = Tally()
+    for step, pop, tally in stir(chem.react, pop, p.collisions, rng, arity=2, dilution="constant", tally=tally):
+        yield Frame(t=float(step), state={s: float(n) for s, n in Counter(pop).items()}, fired=tally.flush())
+    fired = tally.reactions()
+    reactions = [Reaction.of(lhs, rhs, count=count) for lhs, rhs, count in fired]
+    ids = list(dict.fromkeys([*start, *(c for _, rhs, _ in fired for c in rhs)]))
     return Network(species=chem.species(ids), reactions=reactions, status="observed",
                    initial_state={s: float(n) for s, n in start.items()}, outflow=CONSTANT_TOTAL,
-                   extras=extras)
+                   extras={
+                       "notation": NOTATION,
+                       "seed": seeds,
+                       "analysis": {"elastic": dict(chem.stats),
+                                    "states": {s: len(chem.machines[s]) for s in ids}},
+                       "final_state": dict(Counter(pop).most_common()),
+                   })

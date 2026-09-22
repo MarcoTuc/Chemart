@@ -169,8 +169,8 @@ symbols, which acts as mutation.
 
 ## Using it
 
-The default run is not a simulation. It is the *closure* of the two
-published strings: every reaction that can happen, starting from the
+The chemistry has two faces. `chemart.generate_network`, printed above, is not
+a simulation: it returns the *closure* of the two published strings: every reaction that can happen, starting from the
 replicator and the parasite, and then among everything they make, until
 nothing new appears. It has seven species: the replicator, the parasite,
 their two complements, and three strings that the complements write:
@@ -203,42 +203,46 @@ p0001111100111010111 + p1110000011000101000 -> 2 p0001111100111010111 + p1110000
 `recognition="none"` is a Chemart addition, a well-mixed limit with no
 specificity. It is not in the report.
 
-**The soup.** `method="soup"` runs the report's collision algorithm on a
+**The soup.** `chemart.evolve` runs the report's collision algorithm on a
 population of `population` molecules (200 by default; the report used 1,000),
 inoculated with `inoculum_fraction` (10%) of each seed string and filled with
 random strings of length `l` (19). `steps` is the number of molecules drawn.
-The network then holds only the reactions that fired, each with its `count`,
-and `net.extras` holds the rest:
+It returns a trajectory: a frame every `population` steps with the molecule
+counts at that moment (`state`) and the reactions fired since the previous
+frame. Its network holds only the reactions that fired, each with its
+`count`, and `net.extras` holds the rest:
 
 ```python
-net = chemart.generate_network("mccaskill-polymer-tm", seed=1, method="soup")
+traj = chemart.evolve("mccaskill-polymer-tm", seed=1)
+net = traj.network
 net.extras["analysis"]             # {'steps': 5000, 'recognition_collisions': 880}
 fs = net.extras["final_state"]     # molecule counts at the end, most common first
 list(fs.items())[:3]               # [('p0000000000000000000', 82), ('p1111111111111111111', 26), ('p1', 20)]
-fs.get("p0001111100111010111", 0)  # 0: the replicator started at 20 and died out
+rep = "p0001111100111010111"
+[int(f.state.get(rep, 0)) for f in traj.frames][::5]   # every 1,000 steps: [20, 10, 5, 2, 0, 0]
+fs.get(rep, 0)                     # 0: the replicator started at 20 and died out
 ```
 
 `net.initial_state` is the starting population and `net.outflow` is
 `constant-total`: the population size never changes. This run has 212
-species and 197 reactions and takes about 3 seconds.
+species and 197 reactions and takes about a second.
 
 **The report's run, at full size.** The report's experiment was 1.2 million
 steps in a population of 1,000:
 
 ```python
-net = chemart.generate_network("mccaskill-polymer-tm", seed=1, method="soup",
-                               steps=1_200_000, population=1000)
+net = chemart.evolve("mccaskill-polymer-tm", seed=1, steps=1_200_000, population=1000).network
 net.extras["analysis"]["recognition_collisions"]   # 174065  (the report: 177104)
 ```
 
-This takes about 20 seconds. The number of collisions is close to the
+This takes about 12 seconds. The number of collisions is close to the
 report's, but the outcome is not (see Results): the replicator and the
 parasite both go from 100 copies to none, and the population ends up mostly
 the short strings `1` (582 molecules) and `0` (253).
 
-**Mutation.** `error_rate` (soup only) is the probability that a written
-symbol is flipped. With `error_rate=0.01, steps=20000` the soup reaches 708
-species.
+**Mutation.** `error_rate` (`chemart.evolve` only; the closure is error-free)
+is the probability that a written symbol is flipped. With `error_rate=0.01,
+steps=20000` (seed 1) the soup reaches 708 species.
 
 ## Results
 

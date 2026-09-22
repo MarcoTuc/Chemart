@@ -128,19 +128,23 @@ a site), 338 were cleavases and 94 ligases.
 
 ### Two reactors
 
-Chemart offers two ways to turn the rule into a network. In **closure** mode
-it starts from a pool of random sequences and applies every ribozyme to every
+Chemart offers two ways to turn the rule into a network. The **closure**
+starts from a pool of random sequences and applies every ribozyme to every
 possible substrate (one for a cleavage, two for a ligation), folds the
 products, and repeats until nothing new appears or the species budget
-`max_species` is reached. In **well-stirred** mode it simulates a pot of
+`max_species` is reached. The **well-stirred** run simulates a pot of
 molecules: at each of `steps` collisions three molecules meet at random, the
 first acts as the catalyst if it is one, and at most one reaction fires. In a
-cleavage the third molecule rides along unchanged. Neither mode has rate
+cleavage the third molecule rides along unchanged. Neither has rate
 constants: no published rates exist that Chemart could reproduce.
 
 ## Using it
 
-The default run is closure mode on 8 random 30-base sequences. It is not a
+The chemistry has two faces. `chemart.generate_network`, printed above,
+returns the closure; `chemart.evolve` runs the well-stirred pot and returns a
+trajectory.
+
+The default call is the closure of 8 random 30-base sequences. It is not a
 published experiment. It completes with 21 species and 8 reactions, all of them
 cleavages. `net.extras` explains the network:
 
@@ -178,18 +182,23 @@ CGCACGCUCGUUCAGGUCCACGUUAGUCCU + GCUAUGCGCUUCCAGGUUUUUAACCUUCGG + GUGGCUUGCGGAAC
   -> CGCACGCUCGUUCAGGUCCACGUUAGUCCU + GUGGCUUGCGGAACGACAUGCUUCUUUGUAGCUAUGCGCUUCCAGGUUUUUAACCUUCGG
 ```
 
-**A pot of molecules.** `mode="well-stirred"` records only the reactions that
-actually fired, each with its count (`r.count`):
+**A pot of molecules.** `chemart.evolve` runs the well-stirred pot. Its
+network records only the reactions that actually fired, each with its count
+(`r.count`):
 
 ```python
-run = chemart.generate_network("rna-folding-ac", seed=1, mode="well-stirred",
-                               pool=12, steps=400)
+traj = chemart.evolve("rna-folding-ac", seed=1, pool=12, steps=400)
+run = traj.network
 # rna-folding-ac: 51 species, 20 reactions, status=observed
+len(traj.frames), traj.frames[1].t      # (35, 12.0)
 ```
 
-In this run each of the 20 reactions fired once. `dilution="constant"` removes
-molecules after every reaction to keep the population at its starting size.
-Well-stirred mode needs `pool` of at least 3.
+There is a frame every 12 collisions (the size of the starting pool); each
+frame's `state` is the pot at that moment and its `fired` the reactions of
+those collisions. In this run each of the 20 reactions fired once, and the
+pot grew from 12 to 30 molecules, since a cleavage makes two molecules out of
+one. `dilution="constant"` removes molecules after every reaction to keep the
+population at its starting size. The run needs `pool` of at least 3.
 
 Sequence length is `seq_length`; Flamm et al. (2010) used 100-base genes, and
 100-base sequences fold and map without trouble, but a closure over many of

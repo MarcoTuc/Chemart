@@ -11,7 +11,7 @@ from collections import Counter
 import numpy as np
 import pytest
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries.reflexive_ac import canonical, compose, elementary, number, parse, to_id
 
 ID = "reflexive-ac"
@@ -204,11 +204,13 @@ def test_closure_budget_truncates():
 
 
 def test_soup():
-    net = generate_network(ID, method="soup", machines=[], M=50, seed=3)
+    traj = evolve(ID, machines=[], M=50, seed=3)
+    net = traj.network
     assert net.status == "observed" and net.outflow == "constant-total"
+    assert traj.times()[:2] == [0.0, 50.0] and traj.times()[-1] == 2000.0
     assert sum(net.initial_state.values()) == 50 == sum(net.extras["final_state"].values())
     assert all(r.count >= 1 and r.catalysts == r.reactants for r in net.reactions)
-    given = generate_network(ID, method="soup", machines=["M45", "M61"], M=10, collisions=50, seed=0)
+    given = evolve(ID, machines=["M45", "M61"], M=10, collisions=50, seed=0).network
     assert given.initial_state == {to_id(parse("M45")): 5.0, to_id(parse("M61")): 5.0}
 
 
@@ -220,4 +222,4 @@ def test_bad_parameters():
     with pytest.raises(ValueError, match="symbols"):
         generate_network(ID, machines=["M45", "0/0,1/0,0/1"])
     with pytest.raises(ValueError, match="smaller"):
-        generate_network(ID, method="soup", machines=["M45", "M61", "M60"], M=2)
+        evolve(ID, machines=["M45", "M61", "M60"], M=2)

@@ -8,7 +8,7 @@ from collections import Counter
 
 import pytest
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries.typogenetics import (
     CODE_TABLES, Complex, apply_enzyme, binding_preference, enzyme, enzyme_text, outcomes, translate,
 )
@@ -123,20 +123,29 @@ def test_max_length_truncates():
 
 
 def test_soup_replicator_outgrows_dud():
-    net = generate_network("typogenetics", seed=3, method="soup", strands=["CGATTCGAATCG", "CGGC"],
-                           binding_tiebreak="rightmost", copies=50, steps=3000)
+    traj = evolve("typogenetics", seed=3, strands=["CGATTCGAATCG", "CGGC"],
+                  binding_tiebreak="rightmost", copies=50, steps=3000)
+    net = traj.network
     assert net.status == "observed" and net.outflow == "constant-total"
     assert net.initial_state == {"CGATTCGAATCG": 50, "CGGC": 50}
     assert all(r.count >= 1 for r in net.reactions)
     final = net.extras["final_state"]
     assert sum(final.values()) == 100
     assert final.get("CGATTCGAATCG", 0) > 90
+    assert traj.times()[:2] == [0.0, 100.0] and traj.frames[-1].state == {s: float(n) for s, n in final.items()}
+
+
+def test_evolve_reads_tiebreak_all_as_random():
+    # a population draws one outcome per collision, so the closure's 'all' becomes 'random'
+    default = evolve("typogenetics", seed=1).network.to_dict()
+    random = evolve("typogenetics", seed=1, binding_tiebreak="random").network.to_dict()
+    assert default["reactions"] == random["reactions"] and default["species"] == random["species"]
 
 
 def test_bad_parameters():
     with pytest.raises(ValueError, match="A, C, G, T"):
         generate_network("typogenetics", strands=["ACGU"])
-    with pytest.raises(ValueError, match="binding_tiebreak"):
-        generate_network("typogenetics", method="soup")
+    with pytest.raises(ValueError, match="evolve"):
+        generate_network("typogenetics", steps=10)
     with pytest.raises(ValueError, match="max_length"):
         generate_network("typogenetics", strands=["ACGT" * 10])

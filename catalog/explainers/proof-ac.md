@@ -150,7 +150,7 @@ space (thesis 6.1). Premises are kept, so each reaction reads `a + b -> a + b
 402 reactions) and `[]` first appears at level 4. For theories with function
 symbols the closure is usually infinite, so a species budget truncates it.
 
-**The soup.** This is RESAC's reactor (thesis algorithms 3.1 to 3.3). The
+**The reactor.** This is RESAC's reactor (thesis algorithms 3.1 to 3.3). The
 reactor is a fixed number of slots, filled with equal numbers of copies of each
 start clause; the number of copies per clause is the *multiplicity*. Each step
 draws two molecules at random. If they can resolve, one resolvent is picked at
@@ -182,6 +182,10 @@ clauses.
 
 ## Using it
 
+The chemistry has two faces, the two ways of running it described above.
+`chemart.generate_network("proof-ac")`, printed above, returns the *closure*;
+`chemart.evolve("proof-ac")` runs RESAC's *reactor* and returns a trajectory.
+
 The default call above computes the closure of the puzzle, with no restriction
 strategy: its 100 clauses and 402 reactions are everything resolution can
 derive from the eight start clauses, and the proof is among them:
@@ -202,17 +206,19 @@ level, and `a["longest_clause_in_proof"]` counts literals. Each species'
 premises appear on both sides, which is why the network reports catalysts: a
 premise is used but not consumed.
 
-**The stochastic prover (thesis fig. 6.3).** `method="soup"` runs RESAC's
+**The stochastic prover (thesis fig. 6.3).** `chemart.evolve` runs RESAC's
 reactor with the settings the thesis gives for its run-time experiment,
 multiplicity 20 (160 molecules) and elastic inflow, plus Chemart's defaults of
 educt replacement and a limit of 20,000 collisions.
 
 ```python
-net = chemart.generate_network("proof-ac", method="soup", seed=1)
+traj = chemart.evolve("proof-ac", seed=1)
+net = traj.network
 a = net.extras["analysis"]
 a["proved"], a["collisions_to_proof"], a["productive_collisions"], a["inflows"]
 # (True, 1077, 261, 816)
-times = [chemart.generate_network("proof-ac", method="soup", seed=s)
+traj.times()               # [0.0, 160.0, 320.0, 480.0, 640.0, 800.0, 960.0, 1077.0]
+times = [chemart.evolve("proof-ac", seed=s).network
          .extras["analysis"]["collisions_to_proof"] for s in range(20)]
 sorted(times)
 # [873, 1077, 1516, 1595, 1876, 2015, 2200, 2515, 3391, 3815, 3928, 4187,
@@ -220,10 +226,14 @@ sorted(times)
 ```
 
 Only about a quarter of the collisions were productive; each of the 816
-elastic ones let a start clause flow in. The soup's network lists the
-reactions that actually fired, with counts, and `net.extras["final_state"]`
-holds the reactor's last contents. `a["generations"]` is the number of
-collisions divided by the reactor size. The proofs differ from run to run: this
+elastic ones let a start clause flow in. The trajectory has a frame per
+generation (160 collisions, one per molecule) and a last one when `[]`
+appears; each frame's `state` is the reactor's contents and its `fired` the
+reactions since the previous frame (inflows are not reactions, so they show
+only in `state`). `traj.network` lists the reactions that actually fired,
+with counts, and `net.extras["final_state"]` holds the reactor's last
+contents. `a["generations"]` is the number of collisions divided by the
+reactor size. The proofs differ from run to run: this
 run's refutation has 7 steps and a 4-literal clause, other seeds give 8 steps.
 Twenty seeds take about two seconds.
 
@@ -232,8 +242,8 @@ time limit:
 
 ```python
 for m in (1, 5, 20, 100):
-    runs = [chemart.generate_network("proof-ac", method="soup", seed=s, multiplicity=m,
-                                     max_collisions=8500).extras["analysis"]
+    runs = [chemart.evolve("proof-ac", seed=s, multiplicity=m,
+                           max_collisions=8500).network.extras["analysis"]
             for s in range(12)]
     print(m, sum(r["proved"] for r in runs))
 # 1 3
@@ -274,9 +284,10 @@ The remaining settings (`factoring`, `max_length`, `replacement`,
 `inflow_rate` and the rest) are described in the parameter table below.
 
 **Slow settings.** `problem="group-right-inverse"` has function symbols, so its
-closure never ends: the default budget of 2,000 species fills up in about
-4 s, partway through level 2, without a proof. Its soup at the default scale runs all 20,000 collisions
-without a proof and takes about 40 s.
+closure never ends: the default budget of 2,000 species fills up in a few
+seconds, partway through level 2, without a proof. Its reactor
+(`chemart.evolve("proof-ac", problem="group-right-inverse")`) at the default
+scale runs all 20,000 collisions without a proof and takes 40 to 60 s.
 
 ## Results
 
@@ -335,7 +346,7 @@ clauses are soon replaced by more specialised, less reactive clauses, and
 productivity falls; inflow keeps productivity up at the cost of lower
 diversity. The open reactors consistently found the proof faster. Chemart
 provides the problem but does not reproduce this: level saturation with 2,000
-species does not finish level 2, and a soup of multiplicity 20 finds no refutation in 20,000
+species does not finish level 2, and a reactor of multiplicity 20 finds no refutation in 20,000
 collisions, far below the thesis's scale. A test checks only that the closure
 is truncated, as it must be for an infinite one.
 

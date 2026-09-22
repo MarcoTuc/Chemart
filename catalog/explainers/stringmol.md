@@ -161,36 +161,57 @@ continually, and the population settles where the two balance.
 
 ## Using it
 
-The default run puts 100 seed replicases in the container for 3,000 steps at
-the settings of the specification and the ALife XII paper (25 energy units
-per step, decay probability 1/65² per step, substitution rate 10⁻⁵). The only
-reaction is self-copying, `R + R → 3 R`, completed 101 times; no mutant
-appeared. Species names are the sequences with the function codes written as
-lower-case letters (`$ s`, `> m`, `^ t`, `? i`, `= c`, `% x`, `} e`);
-`species.structure` holds the real sequence. The rest of the run is in
-`net.extras`:
+Stringmol has two faces. `chemart.generate_network`, whose default call is
+printed above, returns the *closure* of a set of molecules: the network of
+every reaction they and their products can take part in, with copying made
+exact. `chemart.evolve` runs a reactor and returns a trajectory: a list of
+frames, each with the time, the molecules present and the reactions completed
+since the previous frame, plus the network of all reactions observed. The
+reactor is the container described above by default, or a simpler soup with
+`reactor="soup"`. Species names are the sequences with the function codes
+written as lower-case letters (`$ s`, `> m`, `^ t`, `? i`, `= c`, `% x`,
+`} e`); `species.structure` holds the real sequence.
+
+The default closure starts from the seed replicase alone. It finds a single
+reaction, self-copying `R + R → 3 R`, and nothing else, because with exact
+copying no other molecule can ever be made.
+
+**The container.** The default run puts 100 seed replicases in the container
+for 3,000 steps at the settings of the specification and the ALife XII paper
+(25 energy units per step, decay probability 1/65² per step, substitution rate
+10⁻⁵):
 
 ```python
+traj = chemart.evolve("stringmol", seed=1)
+net = traj.network
 ex = net.extras
+net.reactions[0].count      # 101  the only reaction, R + R → 3 R
 ex["final_state"]           # {seed: 98}   unbound molecules at the end
 ex["decayed"]               # {seed: 65}   unbound molecules that decayed
 ex["aborted"][0]["count"]   # 6    reactions cut short because a molecule decayed
 len(ex["in_progress"])      # 13   complexes still bound at the end
-ex["analysis"]["population"][-1], ex["analysis"]["energy"][-1]   # (123, 49174)
+last = traj.frames[-1]
+last.t, sum(last.state.values()), last.observables
+# (3000.0, 124.0, {'energy': 49254, 'complexes': 13})
 ```
 
-The population grew from 100 to 123 while unspent energy piled up: with the
-default container radius molecules rarely meet, so binding, not energy, limits
-the chemistry. `ex["analysis"]` samples population, distinct strings and energy
-about 500 times; the string count includes half-built copies, one per bound
-complex, which is why it ends at 13. `ex["epochs"]` records every change of the
-most abundant species (the papers' sweeps), and `ex["active_counts"]` how often
-each reactant was the enzyme. Reactions and extras balance exactly against the
-initial and final populations.
+No mutant appeared. The clock counts time steps: `traj.times()` starts
+`[0.0, 1.0, 7.0, 13.0]`, one frame after the first step and then every
+`steps // 500` steps (here 6), 502 frames in all. A frame's state counts every
+molecule, and a bound molecule under the sequence it had when it bound, so the
+98 free molecules and the 13 complexes make 124. Each frame also reports the
+energy left after the step's influx and the number of bound complexes
+(`traj.series("energy")`, `traj.series("complexes")`). The population grew
+from 100 to 124 while unspent energy piled up: with the default container
+radius molecules rarely meet, so binding, not energy, limits the chemistry.
+`ex["epochs"]` records every change of the most abundant species (the papers'
+sweeps) at the frame times, and `ex["active_counts"]` how often each reactant
+was the enzyme. Reactions and extras balance exactly against the initial and
+final populations.
 
-**The ALife XII cascade.** `method="closure"` does not simulate a container:
-it takes a set of molecules, reacts every ordered pair once in isolation (the
-first molecule initiates the bind), copies exactly, and repeats on the products.
+**The ALife XII cascade.** The closure does not simulate a container: it takes
+a set of molecules, reacts every ordered pair once in isolation (the first
+molecule initiates the bind), copies exactly, and repeats on the products.
 Given species 9 of the ALife XII paper and its single-point mutant 29, it finds
 the paper's cascade within seconds:
 
@@ -198,8 +219,7 @@ the paper's cascade within seconds:
 from chemart.chemistries import stringmol as sm
 sp9 = sm.ALIFE12_SPECIES_9
 sp29 = sp9.replace("$BLUBO^", "$BLUBP^")            # the single point mutation
-net = chemart.generate_network("stringmol", method="closure",
-                               molecules={sp9: 1, sp29: 1}, max_species=8)
+net = chemart.generate_network("stringmol", molecules={sp9: 1, sp29: 1}, max_species=8)
 ```
 
 ```
@@ -217,15 +237,16 @@ matters: the alignment starts from the initiator's complement, so `9 + 29` and
 
 **Mutation and collapse.** Raise the substitution rate into the range of the
 authors' configuration files and shrink the container so that molecules meet
-often, and a run shows sweeps and a collapse (this one takes 15–30 seconds):
+often, and a run shows sweeps and a collapse (this one takes about 10 to 30 seconds):
 
 ```python
-net = chemart.generate_network("stringmol", seed=1, cell_radius=100, steps=40000,
-                               substitution_rate=1e-3, indel_rate=1e-4)
+traj = chemart.evolve("stringmol", seed=1, cell_radius=100, steps=40000,
+                      substitution_rate=1e-3, indel_rate=1e-4)
+net = traj.network
 ex = net.extras
 print(net.summary().splitlines()[0])
 print("extinct:", ex["extinct"], "after", ex["time_steps"], "steps")
-print("population:", ex["analysis"]["population"][::50])
+print("population:", [int(sum(f.state.values())) for f in traj.frames[::50]])
 length = {s.id: len(s.structure) for s in net.species}
 for t, sid in ex["epochs"][:3]:          # time, length and name of each new leader
     print(t, length[sid], sid)
@@ -234,13 +255,14 @@ for t, sid in ex["epochs"][:3]:          # time, length and name of each new lea
 ```
 stringmol: 106 species, 371 reactions, status=observed
 extinct: True after 34593 steps
-population: [100, 278, 419, 452, 201, 79, 32, 12, 4]
-0 64 OOGEOLHHHRLUEUOBBBRBXUUUDYGRHBLROOREsBLUBOtBmCscimssBLUBOxeOYHOB
-8160 22 tBmCscimssBLUBOxeOYHOB
-8560 42 OOGEOLHHHRLUEUOBBBRBXUUUDYGRHBLROOREsOYHOB
+population: [100, 282, 410, 459, 208, 80, 33, 12, 4]
+1 64 OOGEOLHHHRLUEUOBBBRBXUUUDYGRHBLROOREsBLUBOtBmCscimssBLUBOxeOYHOB
+8161 22 tBmCscimssBLUBOxeOYHOB
+8561 42 OOGEOLHHHRLUEUOBBBRBXUUUDYGRHBLROOREsOYHOB
 ```
 
-After about 8,500 steps the seed replicase loses first place to a 42-symbol
+The population is printed every 50th frame, that is every 4,000 steps. After
+about 8,500 steps the seed replicase loses first place to a 42-symbol
 molecule: its binding regions followed directly by `$OYHOB`, with the copy
 program deleted. In isolated reactions this molecule is copied when a replicase
 acts on it but copies nothing itself, and it is shorter, so it is copied faster.
@@ -248,10 +270,13 @@ It spreads, the replicases decline, and the container empties. The ALife XII
 paper describes this end in words; this run is a small, fast analogue at 100
 times its mutation rate, not a reproduction.
 
-`method="soup"` draws pairs from a constant-size population and runs each
-reaction to completion at once, with no energy or decay. Container runs of the
-papers' length (about 350 molecules for 10⁵ to 10⁷ steps) are far too slow in
-pure Python.
+`reactor="soup"` draws pairs from a constant-size population and runs each
+reaction to completion at once, with no energy or decay; its clock counts
+collisions, with a frame every generation (as many collisions as there are
+molecules). In the parameter table below, `reactor`, `steps`, the container's
+energy, radii and decay and the two mutation rates are for `chemart.evolve`,
+and `max_species` is for the closure. Container runs of the papers' length
+(about 350 molecules for 10⁵ to 10⁷ steps) are far too slow in pure Python.
 
 ## Results
 

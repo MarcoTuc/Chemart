@@ -86,9 +86,10 @@ and the other states are signals that travel along the molecule.
 
 ### Worked example: one full copy
 
-This is the complete replication of `e8-a1-b1-f1`, taken from a default-sized
-run (`seed=6`). A species name lists the atoms of a molecule. For a simple
-chain it is the chain itself, read from the end that sorts first. For any
+This is the complete replication of `e8-a1-b1-f1`, taken from a run of the
+default world (`chemart.evolve("squirm3", seed=6)`). A species name lists the
+atoms of a molecule. For a simple chain it is the chain itself, read from the
+end that sorts first. For any
 other shape, such as the ladder a half-copied chain forms, the atoms are listed
 in a fixed order and followed by the bonds, as pairs of positions counted from
 0. Each line gives the rule that fired and the molecule-level reaction.
@@ -168,24 +169,75 @@ insert or delete a base (mutation).
 
 ## Using it
 
-The default run is Hutton's experiment 1 set-up with the book's example
-molecule: `e8-a1-b1-f1` on a 20×20 grid with 75 loose atoms of random type,
-for 3,000 steps. Species are named as in the worked example. The reactions are
-the molecule-level events that happened, with how often (`count`) but no rate
+Squirm3 has two faces. `chemart.generate_network`, called above, returns the
+*closure*: it ignores the grid, lets any molecules meet, and collects every
+molecule-level reaction reachable from the seed molecule and one loose atom of
+each type. `chemart.evolve` runs the world itself and records what actually
+happens in it.
+
+**The closure.** The default network above starts along the replication path:
+its first four reactions are the first four steps of the worked example (R1 to
+R4), and the next three already join two half-copied molecules into one. Such
+tangles multiply, so the closure never completes and stops at
+`max_species` molecules (default 60, status `truncated`). It takes about a
+second, and the time grows faster than the budget: 100 molecules take about
+five seconds. Its reactions carry no counts, since nothing is run. The closure
+takes a molecule as its seed, not a `cell:`, and the world's parameters (the
+grid, the food, the steps, floods and cosmic rays) belong to `chemart.evolve`
+only.
+
+**The world.** The default world is Hutton's experiment 1 set-up with the
+book's example molecule: `e8-a1-b1-f1` on a 20×20 grid with 75 loose atoms of
+random type, for 3,000 steps. It takes under a second.
+
+```python
+traj = chemart.evolve("squirm3", seed=1)
+net = traj.network
+print(net.summary())
+print(net.extras["rule_counts"])
+```
+
+```
+squirm3: 74 species, 67 reactions, status=observed
+provides: initial-state, mass-conservation, space, stoichiometry, topology
+seed: 1
+extras: conservation, dissolved_by_flood, final_state, floods, reaction_rules, rule_counts, rules, space
+{'R7': 34, 'R2': 25, 'R3': 25, 'R4': 23, 'R5': 23, 'R8': 14, 'R1': 9, 'R6': 7}
+```
+
+Species are named as in the worked example. The reactions are the
+molecule-level events that happened, with how often (`count`) but no rate
 constants, since rates come from collisions in the world. In `net.extras`:
 
-- `rule_counts`: how often each rule fired. In the default run:
-  `{'R7': 34, 'R2': 25, 'R3': 25, 'R4': 23, 'R5': 23, 'R8': 14, 'R1': 9, 'R6': 7}`.
+- `rule_counts`: how often each rule fired.
 - `reaction_rules`: each reaction with the rule or rules behind it.
 - `final_state` and `net.initial_state`: the molecules at the end and at the
   start, with counts.
 - `conservation`: one exact conservation law per atom type, plus the total
   atom count.
-- `analysis`: the number of multi-atom molecules and of reactions so far, at
-  200 sample times; `floods` and `dissolved_by_flood` count the floods.
+- `space`: the geometry of the world; `floods` and `dissolved_by_flood` count
+  the floods and the molecules they dissolved.
 
-In the default run the seed splits into two copies four times, but at step
-3,000 every copy is busy copying itself again or tangled with another.
+The run is also a sequence of frames, `traj.frames`, with time in steps: the
+start, after the first step, every `steps // 200` steps from there (15 in the
+default run) and the end. Each frame holds the molecules present, the
+reactions that fired since the previous frame and, as
+`traj.series("molecules")`, the number of molecules of more than one atom.
+
+```python
+print(len(traj.frames), traj.times()[:4], traj.times()[-1])
+print(traj.frames[2].fired)
+```
+
+```
+202 [0.0, 1.0, 16.0, 31.0] 3000.0
+[[['e8-a1-b1-f1', 'e0'], ['e3-e4-a1-b1-f1'], 1], [['e3-e4-a1-b1-f1'], ['e3-e2-a5-b1-f1'], 1], [['e3-e2-a5-b1-f1', 'a0'], ['a6-a7-b1-e2-e3-f1/0.1,1.2,1.3,2.5,3.4'], 1]]
+```
+
+Between steps 1 and 16 the seed took the first three steps of the worked
+example: R1, R2 and R3. Over the whole run it splits into two copies four
+times, but at step 3,000 every copy is busy copying itself again or tangled
+with another.
 
 **The 2002 experiment 1 molecule.** Hutton started from `e8-a1-b1-c1-f1` and
 showed the world after 3,544 steps. The same settings, over five seeds:
@@ -193,7 +245,7 @@ showed the world after 3,544 steps. The same settings, over five seeds:
 ```python
 g = "e8-a1-b1-c1-f1"
 for s in range(1, 6):
-    net = chemart.generate_network("squirm3", seed=s, seed_molecule=g, steps=3544)
+    net = chemart.evolve("squirm3", seed=s, seed_molecule=g, steps=3544).network
     splits = sum(r["count"] for r in net.extras["reaction_rules"]
                  if r["products"].get(g) == 2)
     print(s, splits, net.extras["final_state"].get(g, 0))
@@ -205,23 +257,10 @@ for s in range(1, 6):
 # 5 5 0
 ```
 
-Each run takes a second or two. Floods (`flood_period`, `flood_sectors`),
+Each run takes about a second. Floods (`flood_period`, `flood_sectors`),
 cosmic rays (`cosmic_ray`) and a 100×100 world set up experiments 2 and 3,
 with the published values in the parameter table; at tens or hundreds of
 thousands of steps, those runs take minutes to hours.
-
-**Every reaction without space.** `method="closure"` ignores the grid and lets
-any molecules meet, collecting every molecule-level reaction reachable from
-the seed and one loose atom of each type:
-
-```python
-net = chemart.generate_network("squirm3", seed=1, method="closure", max_species=40)
-print(net.summary().splitlines()[0])   # squirm3: 40 species, 58 reactions, status=truncated
-```
-
-It starts along the replication path, but tangles between half-copied
-molecules multiply, so it stops at `max_species` (`truncated`). It is slow:
-with the default `max_species=120` it did not finish in five minutes.
 
 **The 2007 cell.** `rules="membrane"` loads the 41 rules of Hutton (2007),
 which need `n_states` of at least 38. The seed prefixed with `cell:` becomes
@@ -229,19 +268,19 @@ the gene of the paper's starting cell: a loop of 18 membrane atoms `a36` with
 two anchors `a37`, one bonded to each end of the gene.
 
 ```python
-net = chemart.generate_network("squirm3", seed=5, rules="membrane", n_states=38,
-                               seed_molecule="cell:e1-b1-c1-a1-f1",
-                               space="lattice-moore", width=16, height=16,
-                               food=90, steps=400)
+net = chemart.evolve("squirm3", seed=5, rules="membrane", n_states=38,
+                     seed_molecule="cell:e1-b1-c1-a1-f1",
+                     space="lattice-moore", width=16, height=16,
+                     food=90, steps=400).network
 print(net.extras["rule_counts"])
 # {'R35': 11, 'R6': 3, 'R4': 3, 'R5': 2, 'R7': 2, 'R8': 2, 'R9': 2, 'R1': 1, 'R2': 1, 'R3': 1}
 ```
 
-This takes about ten seconds. R1, R6, R2 and R3 are the opening moves the
-paper describes (a second `e` atom joins the membrane), R4 to R9 copy bases,
-and R35 lets the membrane gain and lose atoms. 2,500 steps on a 20×20 grid
-take about half a minute. Finally, `rules="custom"` with `rule_text` runs your
-own pair rules, written in the notation above.
+This takes about a second. R1, R6, R2 and R3 are the opening moves the paper
+describes (a second `e` atom joins the membrane), R4 to R9 copy bases, and R35
+lets the membrane gain and lose atoms. 2,500 steps on a 20×20 grid with 150
+loose atoms take about ten seconds. Finally, `rules="custom"` with `rule_text`
+runs your own pair rules, written in the notation above, in either face.
 
 ## Results
 

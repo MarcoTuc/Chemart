@@ -144,8 +144,9 @@ are of order 10⁻⁴ or less.
 
 ### A worked example: the default run
 
-The default run starts from a well-mixed 24×24 lattice (576 cells): 48
-autocatalysts, 178 food particles, 350 water, no membrane. After 100 sweeps
+The default run, `chemart.evolve("ono-ikegami-protocell", seed=1)`, starts
+from a well-mixed 24×24 lattice (576 cells): 48 autocatalysts, 178 food
+particles, 350 water, no membrane. After 100 sweeps
 it holds 100 `A`, 99 `M_a`, 20 `X`, 7 `Y` and still 350 `W`. The reaction
 counts show how it got there:
 
@@ -168,20 +169,37 @@ fragments, not blobs. No enclosed compartment has formed.
 
 ## Using it
 
-The default run (about two seconds) is not a published experiment: the
-published parameters belong to a different reaction scheme (see Results), so
-the defaults were chosen to be small and fast. `mode="reactions"` returns just the six
+The model has two faces. The call printed above,
+`chemart.generate_network("ono-ikegami-protocell")`, returns just the six
 reactions of the scheme, each with `rate` set to `None`, since no source
-publishes a rate for it.
+publishes a rate for it. Its only parameter is `membrane`, which names the
+membrane species `M_a` or `M_i`. `chemart.evolve("ono-ikegami-protocell")`
+runs the lattice and returns a trajectory with a frame per sweep; every other
+parameter belongs to it.
 
-What a spatial run leaves in `net.extras`:
+The default run (under a second) is not a published experiment: the
+published parameters belong to a different reaction scheme (see Results), so
+the defaults were chosen to be small and fast. Each frame's `state` counts
+the particles of each species, and `fired` lists the reactions of that sweep:
+
+```python
+traj = chemart.evolve("ono-ikegami-protocell", seed=1)
+traj.frames[0].state    # {'A': 48.0, 'X': 178.0, 'W': 350.0}
+traj.frames[1].fired    # [[['A', 'X'], ['A', 'A'], 1], [['A', 'X'], ['A', 'M_a'], 1], [['X'], ['Y'], 2]]
+traj.frames[-1].state   # {'A': 100.0, 'M_a': 99.0, 'X': 20.0, 'Y': 7.0, 'W': 350.0}
+```
+
+`traj.network` holds the reactions that fired, with counts, and its
+`initial_state` the starting counts. What else a run leaves in
+`traj.network.extras`, all of it describing the final lattice:
 
 - `space["final"]`: the lattice as rows of `A`, `M`, `X`, `Y`, `W`, and
   `space["orientations"]` the direction (0–5) of each membrane particle. Rows
   are in axial hexagonal coordinates, so printed as a square grid the picture
   is sheared.
-- `analysis["counts"]` and `analysis["history"]`: the species counts at the
-  end and after every sweep.
+- `analysis["counts"]`: the species counts at the end, keyed by the lattice
+  codes `A`, `M`, `X`, `Y`, `W` (the counts after every sweep are the frames'
+  `state`).
 - The membrane's shape: `membrane_clusters`, `largest_membrane_cluster`,
   `mean_membrane_coordination` (membrane neighbours per membrane particle,
   about 5 inside a blob and about 2 along a thin filament) and
@@ -205,11 +223,11 @@ import chemart
 NOCHEM = dict(P_A=0.0, P_M=0.0, P_decay=0.0, X_supply=0.0)
 for seed in (1, 2):
     for membrane in ("anisotropic", "isotropic"):
-        a = chemart.generate_network(
+        a = chemart.evolve(
             "ono-ikegami-protocell", seed=seed, membrane=membrane,
             repulsion=5.0, relaxation=25, steps=60,
             M_fraction=0.12, A_fraction=0.0, X_fraction=0.20, **NOCHEM,
-        ).extras["analysis"]
+        ).network.extras["analysis"]
         print(seed, membrane, a["mean_membrane_coordination"],
               a["membrane_alignment"], a["largest_membrane_cluster"],
               a["membrane_clusters"])
@@ -226,7 +244,7 @@ Isotropic particles collapse into a few compact blobs (for seed 1, pieces of
 48 and 26 of the 75 particles) with about 4.7 membrane neighbours each.
 Anisotropic particles stay thin (1.3 to 1.7 neighbours) and line up along
 their axes (46–48% of contacts, against 11% at random), but in 20 to 34
-short pieces rather than closed walls. Each run takes one to three seconds.
+short pieces rather than closed walls. Each run takes about a second.
 
 ### A cell, fed and starved
 
@@ -237,18 +255,19 @@ depending on the energy source:
 
 ```python
 for supply in (0.30, 0.0):
-    a = chemart.generate_network(
+    traj = chemart.evolve(
         "ono-ikegami-protocell", seed=1, X_supply=supply,
         repulsion=5.0, relaxation=20, steps=100,
         initial="cell", cell_radius=5, width=24, height=24,
-    ).extras["analysis"]
-    h = a["history"]["A"]
+    )
+    a = traj.network.extras["analysis"]
+    h = [f.state.get("A", 0) for f in traj.frames]      # A in every frame
     print(supply, a["counts"], h[0], max(h), h[-1], a["protocells"])
 ```
 
 ```
-0.3 {'A': 96, 'M': 111, 'X': 37, 'Y': 5, 'W': 327} 31 96 96 0
-0.0 {'A': 48, 'M': 41, 'X': 1, 'Y': 159, 'W': 327} 31 83 48 0
+0.3 {'A': 96, 'M': 111, 'X': 37, 'Y': 5, 'W': 327} 31.0 96.0 96.0 0
+0.0 {'A': 48, 'M': 41, 'X': 1, 'Y': 159, 'W': 327} 31.0 83.0 48.0 0
 ```
 
 Fed, the autocatalyst grows from 31 to 96. Starved, food runs out, waste piles
@@ -259,7 +278,7 @@ largest membrane piece has 7 particles. Each run takes under two seconds.
 `mobility_ratio` slows the autocatalyst, as in the one-dimensional paper's
 dividing cells (which used 5), and `anisotropy=0` makes `M_a` behave like
 `M_i`. The lattice goes up to 200×200; cost grows with cells × `steps` ×
-`relaxation`, and 100×100 for 200 sweeps at the defaults takes about seven
+`relaxation`, and 100×100 for 200 sweeps at the defaults takes about six
 seconds.
 
 ## Results

@@ -22,6 +22,7 @@ chemistries:
   kind: generator
   constructive: true
   type: gas
+  clock: epochs
   S:
     repr: "64-byte programs; species id one character per byte: BFF commands <>{}-+.,[] as themselves, the zero byte as 0, any other byte b as the character U+0100+b (after cubff)"
     definition: implicit
@@ -57,7 +58,6 @@ chemistries:
     - {name: replicators, type: int, default: 0, min: 0, range: "paper 'seeded' runs: 1", role: structural, meaning: "copies of the hand-written self-replicator of the paper's Fig. 4 placed in the initial soup at random positions"}
     - {name: space, type: enum, default: soup, choices: [soup, grid], range: "paper section 2.1: soup; section 2.2: grid", role: spatial, meaning: "soup: any two programs can react; grid: programs on a width x (tapes / width) grid react with neighbours at most two cells away along each axis"}
     - {name: width, type: int, default: 16, min: 1, range: "paper: 240 (height 135)", role: spatial, meaning: "grid only: grid width; tapes must be a multiple of it"}
-    - {name: record_every, type: int, default: 1, min: 1, role: structural, meaning: "epochs between two entries of extras['analysis'] (the last epoch is always recorded)"}
   provides: [topology, stoichiometry, catalysts, initial-state, space, sequence-structure-function]
   fidelity: reconstructed
   sources:
@@ -72,6 +72,7 @@ chemistries:
     - "High-order entropy (section 2.1) is computed as cubff does: Shannon entropy of the soup's bytes minus Brotli (quality 2, window 2^24) bits per byte. Chemart's soups are far smaller than the paper's, so the absolute values differ; the jump at a state transition does not."
     - "Species names use cubff's convention for non-coding bytes (U+0100 + byte) for every such byte; cubff substitutes the letters A-L for twelve of them."
     - "No rates: reactions are drawn by pairing, not by rate constants, so rates are None."
+    - "chemart.evolve yields a frame per epoch; frame 0 is the initial soup. A frame's state counts the programs, its fired lists the mutations and executions of that epoch, and its observables are high_order_entropy, top_tape_count (copies of the most common program), ops_per_run (instructions executed per pair in that epoch, no-ops not counted; 0 in frame 0) and zero_bytes. The former record_every parameter is gone: chemart.evolve(..., every=k) keeps one frame in k. generate_network runs the soup to the end and returns the network."
   reference_impl: "https://github.com/paradigms-of-intelligence/cubff (C++/CUDA)"
   phenomena:
     - "the hand-written replicator of Fig. 4, run on itself followed by 64 zero bytes, copies itself into the second half in reverse, one byte per loop; being a palindrome, the copy is exact"

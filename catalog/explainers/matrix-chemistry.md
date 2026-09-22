@@ -210,23 +210,33 @@ lets the all-zero string `s0` react like any other.
 511 species and 237,121 distinct reactions, in about 15 seconds. The budget
 `max_species` cuts a closure off; the status then says `truncated`.
 
-**The stochastic pot.** `method="soup"` runs the book's algorithm with `M`
-strings for `steps` collisions and returns only the reactions that fired, each
-with its `count`; the status is `observed`. The pot starts with `M` split
-equally among the seeds, and `net.extras["analysis"]["final_population"]`
-holds the counts at the end. It is slow: for N = 4 and M = 1,000, a run of
-10^6 collisions, the length of the book's figures, takes 35 to 45 seconds.
+**The stochastic pot.** `chemart.evolve("matrix-chemistry")` runs the book's
+algorithm with `M` strings for `steps` collisions and returns a trajectory.
+Each frame holds the pot's contents (`state`, counts per string) every `M`
+collisions, and the reactions that fired since the previous frame. The
+trajectory's `network` holds only the reactions that fired, each with its
+`count`; its status is `observed`. The pot starts with `M` split equally among
+the seeds, and `net.extras["analysis"]["final_population"]` holds the counts
+at the end. It is slow: for N = 4 and M = 1,000, a run of 10^6 collisions, the
+length of the book's figures, takes 35 to 45 seconds.
 
 ```python
-net = chemart.generate_network("matrix-chemistry", seed=1, N=4, seed_species=list(range(1, 16)),
-                               method="soup", M=1000, steps=1_000_000)
+traj = chemart.evolve("matrix-chemistry", seed=1, N=4, seed_species=list(range(1, 16)),
+                      M=1000, steps=1_000_000)
+traj.frames[100].state        # after 100,000 collisions
+# {'s1': 56.0, 's2': 82.0, 's3': 97.0, 's4': 52.0, 's5': 101.0, 's8': 75.0,
+#  's10': 136.0, 's12': 158.0, 's15': 243.0}
+next(f.t for f in traj.frames if len(f.state) == 1)          # 661000.0
+net = traj.network
 net.extras["analysis"]["final_population"]   # {'s15': 1000}
 max(net.reactions, key=lambda r: r.count).to_text()
 # '2 s15 -> 3 s15  [mass-action k=1.0]  (x512901)'
 ```
 
-In this run the all-ones self-replicator `s15` has taken the whole pot, and
-half of the million collisions were `s15` copying itself.
+After 100,000 collisions the pot holds the nine strings that the rate
+equations settle into (see Results). The all-ones self-replicator `s15` then
+takes over and holds the whole pot from collision 661,000 on; half of the
+million collisions were `s15` copying itself.
 
 ## Results
 

@@ -239,6 +239,22 @@ net = chemart.generate_network("music-ac", seed=5, steps=3000, phrases=0)
 ```
 
 The fifth, Em, Dm, G, Em, is the chord sequence of the paper's Figure 3(2).
+
+**Following the run.** `generate_network` returns only the network of the
+whole run. `chemart.evolve` returns a trajectory with one frame per collision,
+the first being the starting pot. Each frame holds the pot (`state`), the
+reaction of that collision (`fired`, empty when a draw failed) and one
+observable, `phrases`: the number of distinct finished phrases in the pot, the
+quantity the run stops on. The paper reports no time courses, so these frames
+are the record of one Chemart run, not a published result. In the run above,
+the ten phrases were finished at these collisions:
+
+```python
+traj = chemart.evolve("music-ac", seed=5, steps=3000, phrases=0)
+ph = traj.series("phrases")
+[next(int(traj.frames[i].t) for i, n in enumerate(ph) if n >= k) for k in range(1, ph[-1] + 1)]
+# [675, 684, 1220, 1255, 1329, 2379, 2452, 2463, 2484, 2809]
+```
 Longer runs add little. With `seed=1, steps=20000, phrases=0` (about 10 s) all
 1,400 step tokens are used up, 167 bars are made, but only 12 phrases come out.
 Most of the remaining collisions are a futile cycle: a non-tonic bar is joined

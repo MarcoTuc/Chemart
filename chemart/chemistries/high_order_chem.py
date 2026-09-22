@@ -55,10 +55,11 @@ Data molecules are JSON integers or lists (nested lists allowed). Species ids:
 (``rule:expr<k>`` for the k-th unnamed expression rule) with the rule text as
 structure.
 
-method "soup" runs the algorithm for `iterations` iterations and returns the
-observed network (effective reactions with firing counts). method "closure"
-is a Chemart addition: every reaction reachable from the distinct data
-molecules under the (deterministic) rules, via chemart.expand.expand.
+evolve runs the algorithm for `iterations` iterations, a frame every
+generation (as many iterations as initial data molecules), and returns the
+observed network (effective reactions with firing counts). generate is a
+Chemart addition: every reaction reachable from the distinct data molecules
+under the (deterministic) rules, via chemart.expand.expand.
 """
 
 from __future__ import annotations
@@ -72,6 +73,8 @@ from typing import Any, Callable
 
 from chemart.expand import expand
 from chemart.network import Network, Reaction, Species
+from chemart.soup import Tally
+from chemart.trajectory import Frame
 
 
 # ---------------------------------------------------------------------------
@@ -662,7 +665,7 @@ def _data(p, rng, graph):
     return [int(v) for v in rng.integers(p.minn, p.maxn + 1, size=p.M)]
 
 
-def generate(p, rng) -> Network:
+def _setup(p, rng):
     rules = parse_rules(p.rules)
     uses_tours = any(r.tours for r, _ in rules)
     graph = TourGraph(p.cities) if uses_tours or (p.init == "tours" and not p.data) else None
@@ -672,11 +675,21 @@ def generate(p, rng) -> Network:
         if bad:
             raise ValueError(f"tour rules need list molecules that are permutations of "
                              f"0..{p.cities - 1} (cities={p.cities}), got {bad[0]!r}")
-    if p.method == "closure":
-        return _closure(p, rules, data, graph)
+    return rules, data, graph
+
+
+def generate(p, rng) -> Network:
+    """Every reaction reachable from the distinct data molecules under deterministic rules."""
+    rules, data, graph = _setup(p, rng)
+    return _closure(p, rules, data, graph)
+
+
+def evolve(p, rng):
+    """The book's HighOrderChem.iterate loop, a frame every generation of len(data) iterations."""
+    rules, data, graph = _setup(p, rng)
     if not data:
         raise ValueError("the data multiset is empty")
-    return _soup(p, rng, rules, data, graph)
+    return (yield from _soup(p, rng, rules, data, graph))
 
 
 def _rule_species(rules):
@@ -695,28 +708,33 @@ def _soup(p, rng, rules, data, graph):
     chem = HighOrderChem(rules, data, rng, graph)
     size = len(data)
     track_primes = all(r.id == "rule:divrule" for r, _ in rules) and all(isinstance(m, int) for m in data)
-    fraction = [sum(map(is_prime, data)) / size] if track_primes else None
     seen = dict.fromkeys(data)
-    fired: dict[tuple, list] = {}
+    tally = Tally()
     draws: Counter = Counter()
     idle = 0
+
+    def frame(t):
+        rule_counts = Counter(r.id for r in chem.rset)
+        state = {r.id: float(rule_counts[r.id]) for r, _ in rules if rule_counts[r.id]}
+        state.update({s: float(c) for s, c in _counts(chem.mset).items()})
+        observables = {}
+        if track_primes and chem.mset:
+            observables["prime_fraction"] = sum(map(is_prime, chem.mset)) / len(chem.mset)
+        return Frame(t=float(t), state=state, fired=tally.flush(), observables=observables)
+
+    yield frame(0)
     for i in range(p.iterations):
         rule, educts, products = chem.iterate()
         draws[rule.id] += 1
         if len(educts) < rule.arity:
             idle += 1
         elif is_effective(educts, products):
-            key = (rule.id, frozenset(Counter(educts).items()), frozenset(Counter(products).items()))
-            entry = fired.setdefault(key, [rule, educts, products, 0])
-            entry[3] += 1
+            tally.add([rule.id, *map(sid, educts)], [rule.id, *map(sid, products)])
             seen.update(dict.fromkeys(products))
-        if track_primes and (i + 1) % size == 0:
-            fraction.append(sum(map(is_prime, chem.mset)) / len(chem.mset))
+        if (i + 1) % size == 0 or i + 1 == p.iterations:
+            yield frame(i + 1)
 
-    reactions = [
-        Reaction.of([rule.id, *map(sid, educts)], [rule.id, *map(sid, products)], count=count)
-        for rule, educts, products, count in fired.values()
-    ]
+    reactions = [Reaction.of(list(lhs), list(rhs), count=count) for lhs, rhs, count in tally.reactions()]
     start = set(data)
     analysis = {
         "iterations": p.iterations,
@@ -726,8 +744,6 @@ def _soup(p, rng, rules, data, graph):
         "rule_draws": {r.id: draws.get(r.id, 0) for r, _ in rules},
         "new_molecules": [sid(m) for m in sorted(seen, key=order) if m not in start],
     }
-    if track_primes:
-        analysis["prime_fraction"] = fraction
     final_rules = Counter(r.id for r in chem.rset)
     return Network(
         species=_rule_species(rules) + _data_species(seen),
@@ -745,8 +761,8 @@ def _soup(p, rng, rules, data, graph):
 def _closure(p, rules, data, graph):
     stochastic = [r.id for r, _ in rules if r.stochastic]
     if stochastic:
-        raise ValueError(f"method closure needs deterministic rules; {stochastic} draw random "
-                         "numbers, use method soup")
+        raise ValueError(f"the closure (generate_network) needs deterministic rules; {stochastic} draw "
+                         "random numbers, use chemart.evolve")
     by_arity: dict[int, list[Rule]] = {}
     for r, _ in rules:
         by_arity.setdefault(r.arity, []).append(r)

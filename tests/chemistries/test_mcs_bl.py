@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 from chemart.simulate import rhs
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries.mcs_bl import ALPHABET, C0, Rules, candidates, mutate, species_id, to_ascii, units
 
 
@@ -224,8 +224,10 @@ def test_network_is_the_catalytic_network_equation_5_1():
 
 
 def test_single_reactor_soup():
-    net = generate_network("mcs-bl", method="soup", seed=4, steps=3000, n_max=200, p_s=0.0)
+    traj = evolve("mcs-bl", seed=4, steps=3000, n_max=200, p_s=0.0)
+    net = traj.network
     assert net.status == "observed"
+    assert traj.times()[:2] == [0.0, 40.0] and traj.times()[-1] == 3000.0   # a frame per 40 molecules
     closure = reactions_by_structure(generate_network("mcs-bl"))
     assert reactions_by_structure(net) <= closure
     assert sum(r.count for r in net.reactions) == net.extras["analysis"]["productive"] > 160
@@ -234,7 +236,7 @@ def test_single_reactor_soup():
 
 
 def test_soup_with_mutation_explores_new_strings():
-    net = generate_network("mcs-bl", method="soup", seed=2, steps=3000, n_max=300, p_s=0.05)
+    net = evolve("mcs-bl", seed=2, steps=3000, n_max=300, p_s=0.05).network
     assert net.extras["analysis"]["mutant_products"] > 0
     assert len(net.species) > 4
     assert any(r.rate is None for r in net.reactions)   # mutant products have no structural k

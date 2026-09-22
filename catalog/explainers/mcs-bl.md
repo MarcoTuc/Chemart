@@ -172,6 +172,11 @@ formal specification below summarises the rules and the reactor.
 
 ## Using it
 
+MCS.bl has two faces. `chemart.generate_network("mcs-bl")`, printed above,
+returns the *closure* of a set of strings: every reaction among the strings
+they can make. `chemart.evolve("mcs-bl")` runs the thesis' single *reactor*
+and returns a trajectory (see *The single reactor* below).
+
 The default call returns the closure of `c0`: the four strings and their six
 reactions, with `status=complete` meaning no new string can be made.
 `net.initial_state` gives 10 copies of each seed string, the amount the thesis
@@ -211,30 +216,48 @@ stops the closure: with `max_length=16` it ends at five strings of length 12
 to 16 and nine reactions; with the default `max_length=500` the species budget
 cuts it off (`max_species=200`, 10,100 reactions, `status=truncated`).
 
-**The single reactor.** `method="soup"` runs the reactor for `steps`
-collisions and returns the reactions that fired, with how often
-(`r.count`); `net.extras["final_state"]` holds the final population and
-`net.extras["analysis"]` counts collisions, productive ones and mutant
-products. The default soup, 10,000 collisions of `c0` with `p_s=1e-5` and
-capacity 1,000, takes about 2.5 s; 4,160 collisions were productive, and the
-population ended at 300, 294, 210 and 196 copies of `s1`, `s3`, `s2`, `s4`.
+**The single reactor.** `chemart.evolve("mcs-bl")` runs the reactor for
+`steps` collisions and returns a trajectory. It has a frame every time as many
+collisions have happened as the initial reactor held molecules (here 40: four
+strings × 10 copies); each frame's `state` is the population at that moment
+and its `fired` the reactions since the previous frame. `traj.network` lists
+the reactions that fired, with how often (`r.count`); its
+`extras["final_state"]` holds the final population and `extras["analysis"]`
+counts collisions, productive ones and mutant products. The default run,
+10,000 collisions of `c0` with `p_s=1e-5` and capacity 1,000, takes a fraction
+of a second:
+
+```python
+traj = chemart.evolve("mcs-bl", seed=1)
+[sum(f.state.values()) for f in traj.frames][:5], sum(traj.frames[-1].state.values())
+# ([40.0, 58.0, 75.0, 95.0, 109.0], 1000.0)
+net = traj.network
+net.extras["analysis"]      # {'collisions': 10000, 'productive': 4160, 'mutant_products': 0}
+net.extras["final_state"]   # {'m_SD0CD1': 300, 'm_SD1CD0': 294, 'm_SD0CD0': 210, 'm_SD1CD1': 196}
+```
+
+The population grows from 40 molecules to the capacity of 1,000 and stays
+there. It ended at 300, 294, 210 and 196 copies of `s1`, `s3`, `s2`, `s4`.
 
 To repeat the thesis' universal-copier experiment (§5.3: 100 copies of `*$:$`
 among 900 random strings of length 10, capacity 1,000, no mutation), repeat
 the string in the list and set one copy each:
 
 ```python
-net = chemart.generate_network("mcs-bl", method="soup", seed=0,
+traj = chemart.evolve("mcs-bl", seed=0,
         strings=["*$:$"] * 100, n_random=900, initial_copies=1,
         self_replication=True, p_s=0.0, steps=200000)
-net.extras["final_state"].get("m_SDCD", 0)     # 11
+[f.state.get("m_SDCD", 0.0) for f in traj.frames][::20]
+# [100.0, 81.0, 39.0, 31.0, 23.0, 20.0, 18.0, 11.0, 15.0, 10.0, 11.0]
+traj.network.extras["final_state"].get("m_SDCD", 0)     # 11
 ```
 
-After 200,000 collisions (7 to 11 s) the copier had fallen from 100 to 11, 15
-and 0 molecules for seeds 0, 1 and 2.
+Frames come every 1,000 collisions here, so the list samples the copier every
+20,000. After 200,000 collisions (2 to 3 s) the copier had fallen from 100 to
+11, 15 and 0 molecules for seeds 0, 1 and 2.
 
 For the catastrophe itself (§5.5), seed 100 copies of `*$0101:$0101` among 900
-random strings with `p_s=1e-3` and 100,000 collisions (7 to 11 s): for seeds 0
+random strings with `p_s=1e-3` and 100,000 collisions (about 8 s): for seeds 0
 and 1 the replicase was extinct by the end, and the mean string length had
 risen from about 10 to 391 and 380 symbols, against a limit of 500. Runs grow
 slower as strings lengthen; the thesis ran 5 million collisions per run, far
@@ -285,7 +308,7 @@ molecular level, but long strings are hit by more mutations, which break
 their rules or make them so specific that nothing matches. Five changes to
 the model (limits on length, on the wildcard, on the supply of symbols) did not
 cure it (ALife 2008). Chemart's tests check this chain of reactions exactly,
-and that the maximum length bounds it; the soup runs above show the
+and that the maximum length bounds it; the reactor runs above show the
 replicase's extinction and the growth of string length.
 
 **Cells cure it.** With 32 cells of capacity 1,000, each seeded with 250

@@ -151,28 +151,36 @@ finite reactor holds only part of one at a time.
 
 ## Using it
 
+AlChemy has two faces. `chemart.generate_network("alchemy")`, printed above,
+returns the *closure* of ten random molecules, cut off at 50 species (see
+*Closure instead of a reactor* below). `chemart.evolve("alchemy")` runs the
+*reactor*, the basic experiment of the paper, and returns a trajectory: a
+frame every `M` collisions with the contents of the pot, and at the end the
+network of every distinct reaction that fired, with `count` for how often.
+
 The default run is a small version of the basic experiment: `M = 100` random
 molecules, no filter, 2,000 collisions. It does not reproduce a published run;
 the published reactors were ten times larger and ran for hundreds of thousands
-of collisions. The network lists every distinct reaction that fired, with
-`count` for how often. The run's history is in `net.extras`:
+of collisions.
 
 ```python
-a = net.extras["analysis"]
-a["distinct_species"][:4], a["distinct_species"][-1]   # ([100, 87, 80, 63], 32)
-a["elastic_pairs"]                                     # {'no_normal_form': 22}
+traj = chemart.evolve("alchemy", seed=1)
+[len(f.state) for f in traj.frames][:4], len(traj.frames[-1].state)   # ([100, 87, 80, 63], 32)
+net = traj.network
+net.extras["analysis"]                 # {'elastic_pairs': {'no_normal_form': 22}}
 list(net.extras["final_state"].items())[:3]
 # [('^^(2)1', 13), ('^^^^^1', 7), ('^^^3', 7)]
 ```
 
-`distinct_species` is the number of different molecules in the pot, sampled
-every `collisions_per_sample` collisions (here every 100). Diversity has
-fallen from 100 to 32. `elastic_pairs` counts the ordered pairs whose collision
-was elastic, by reason: `no_normal_form` (a reduction limit was hit), `copy`
-and `forbidden` (the two filters). `final_state` is the pot at the end. Its most
-common molecule, `^^(2)1` or `λx1.λx2.(x1)x2`, copies any molecule that starts
-with a `λ`, which here means every molecule. The third reaction of the default
-network shows it at work:
+Each frame's `state` is the pot at that moment, so `len(f.state)` is the
+number of different molecules; frames come every 100 collisions
+(`traj.frames[1].t == 100.0`). Diversity has fallen from 100 to 32.
+`elastic_pairs` counts the ordered pairs whose collision was elastic, by
+reason: `no_normal_form` (a reduction limit was hit), `copy` and `forbidden`
+(the two filters). `final_state` is the pot at the end. Its most common
+molecule, `^^(2)1` or `λx1.λx2.(x1)x2`, copies any molecule that starts with a
+`λ`, which here means every molecule. The third reaction of the run shows it
+at work (`net.reactions[2]`):
 
 ```
 ^^(2)1 + ^^(2)^1 -> ^^(2)1 + 2 ^^(2)^1  [mass-action k=1.0]  (x1)
@@ -184,7 +192,7 @@ time, a molecule like this takes over the pot.
 **Level 0: collapse to a copier.** Run longer:
 
 ```python
-net = chemart.generate_network("alchemy", seed=0, collisions=20000)
+net = chemart.evolve("alchemy", seed=0, collisions=20000).network
 net.extras["final_state"]          # {'^1': 100}
 ```
 
@@ -194,7 +202,7 @@ All 100 molecules are the identity. Not every seed ends this way (see
 **Level 1: ban copying.** Add `filter="no-copy"`:
 
 ```python
-net = chemart.generate_network("alchemy", seed=1, collisions=20000, filter="no-copy")
+net = chemart.evolve("alchemy", seed=1, collisions=20000, filter="no-copy").network
 names = {s.id: s.structure for s in net.species}
 for sid, n in net.extras["final_state"].items():
     print(n, sid, names[sid])
@@ -214,27 +222,25 @@ the second-to-last one. This is one family of the projector organisation
 described under *Results*. Meanwhile 115 ordered pairs were refused as copy
 actions (`elastic_pairs`).
 
-**Closure instead of a reactor.** `method="closure"` returns every reaction
-reachable from a seed set, given as λ-terms in `terms` (write `λ` or `\`,
-applications as `(M)N`, or give de Bruijn ids). Organisations are usually
-infinite, so the closure stops at `max_species` and reports `status="truncated"`.
-The `I`, `K` example above is
+**Closure instead of a reactor.** `generate_network` returns every reaction
+reachable from a seed set: `n_seeds` random molecules, or the λ-terms given in
+`terms` (write `λ` or `\`, applications as `(M)N`, or give de Bruijn ids).
+Organisations are usually infinite, so the closure stops at `max_species` and
+reports `status="truncated"`. The `I`, `K` example above is
 
 ```python
-net = chemart.generate_network("alchemy", method="closure",
-                               terms=["λx.x", "λx.λy.x"], max_species=6)
+net = chemart.generate_network("alchemy", terms=["λx.x", "λx.λy.x"], max_species=6)
 net.summary().splitlines()[0]      # 'alchemy: 6 species, 34 reactions, status=truncated'
 ```
 
-In closure mode `net.extras["analysis"]` has `elastic` (the same counts) and
+For the closure, `net.extras["analysis"]` has `elastic` (the same counts) and
 `self_maintaining`, which says whether every returned species is produced by a
 collision among the returned species. Seeding with the center of an
 organisation and setting `max_species` to its size tests it directly:
 
 ```python
 center = ["λx1.λx2.λx3.x1", "λx1.λx2.λx3.λx4.x2", "λx1.λx2.λx3.λx4.λx5.x3"]
-net = chemart.generate_network("alchemy", method="closure", terms=center,
-                               filter="no-copy", max_species=3)
+net = chemart.generate_network("alchemy", terms=center, filter="no-copy", max_species=3)
 for r in net.reactions:
     print(r.to_text())
 net.extras["analysis"]             # {'elastic': {'copy': 2}, 'self_maintaining': True}

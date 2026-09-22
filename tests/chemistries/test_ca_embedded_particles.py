@@ -25,7 +25,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries import ca_embedded_particles as C
 
 ID = "ca-embedded-particles"
@@ -72,7 +72,8 @@ P149 = {"phi-par-a": 0.775, "phi-par-b": 0.766, "gkl": 0.816}
 
 
 def run(**kw):
-    return generate_network(ID, **kw)
+    """The observed network of a run of the automaton."""
+    return evolve(ID, **kw).network
 
 
 def multiset(stoich: dict) -> tuple:
@@ -91,7 +92,7 @@ def test_published_particle_catalog_is_reproduced_exactly(rule):
 
 @pytest.mark.parametrize("rule", sorted(PUBLISHED))
 def test_published_interaction_table_is_reproduced_exactly(rule):
-    net = run(rule=rule, reactions="published")
+    net = generate_network(ID, rule=rule)
     assert net.status == "complete"
     assert [r.to_text() for r in net.reactions] == PUBLISHED[rule]["interactions"]
     assert [s.id for s in net.species] == list(C.ORDER)
@@ -170,7 +171,7 @@ def test_gkl_gets_no_catalog_because_its_walls_are_not_those_particles():
     spec = C.RULES["gkl"]
     assert spec["particles"] == {} and spec["catalog"] is None
     with pytest.raises(ValueError, match="no particle interaction table"):
-        run(rule="gkl", reactions="published")
+        generate_network(ID, rule="gkl")
     net = run(rule="gkl", seed=2)
     assert all(s.id.startswith("w") for s in net.species)
     assert all("measured, not published" in s.structure for s in net.species)
@@ -218,6 +219,27 @@ def test_default_run_is_the_density_rule_classifying_a_low_density_lattice():
     assert set("".join(space["filtered"])) <= {".", "#"}
 
 
+def test_a_frame_per_iteration():
+    traj = evolve(ID, seed=1)
+    net = traj.network
+    assert traj.clock == "iterations" and [f.t for f in traj.frames] == [float(t) for t in range(299)]
+    assert not traj.frames[0].fired
+    density = traj.series("density")
+    assert density[0] == pytest.approx(72 / 149) and density[-1] in (0.0, 1.0)
+    # the particles present at the condensation time are the network's initial state
+    t_c = net.extras["analysis"]["condensation_time"]
+    assert traj.frames[t_c].state == net.initial_state
+    # the lattice ends at a fixed point with no particle left
+    assert traj.frames[-1].state == {}
+    fired = Counter()
+    for f in traj.frames:
+        for lhs, rhs, n in f.fired:
+            fired[(tuple(sorted(lhs)), tuple(sorted(rhs)))] += n
+    assert fired == Counter({(multiset(r.reactants), multiset(r.products)): r.count for r in net.reactions})
+    # nothing is recorded before condensation
+    assert not any(f.fired for f in traj.frames[:t_c + 1])
+
+
 def test_observed_reactions_are_collisions_of_catalogued_particles():
     net = run(seed=3, lattice=299, steps=598)
     published = {tuple(sorted(lhs)): tuple(sorted(rhs))
@@ -231,9 +253,10 @@ def test_observed_reactions_are_collisions_of_catalogued_particles():
         assert multiset(r.products) == published[key], r.to_text()
 
 
-def test_published_mode_does_not_run_the_automaton():
-    net = run(reactions="published")
-    assert "final" not in net.extras["space"], "nothing was iterated"
+def test_the_published_table_does_not_run_the_automaton():
+    net = generate_network(ID, seed=1)
+    assert "final" not in net.extras["space"] and "initial" not in net.extras["space"], "nothing was iterated"
+    assert net.to_dict()["reactions"] == generate_network(ID, seed=2).to_dict()["reactions"]
     assert net.extras["space"]["lookup_hex"] == C.RULES["phi-par-a"]["hex"]
     assert net.extras["analysis"]["catalog"]["source"].startswith("Crutchfield")
 
@@ -253,8 +276,13 @@ def test_bad_parameters():
         run(rule="rule-110")
     # phi_par^b's published look-up table does not reproduce its published
     # behaviour, so only its catalog is offered
-    with pytest.raises(ValueError, match="reactions='published'"):
+    with pytest.raises(ValueError, match="generate_network"):
         run(rule="phi-par-b")
+    # the run's parameters belong to the evolve face, and the old switch is gone
+    with pytest.raises(ValueError, match="belongs to the evolve face"):
+        generate_network(ID, lattice=75)
+    with pytest.raises(ValueError, match="'reactions' is gone"):
+        generate_network(ID, reactions="published")
 
 
 def test_the_filter_window_widens_the_walls():

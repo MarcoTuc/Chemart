@@ -160,7 +160,7 @@ product is the bitwise AND of the two words.
 ### What is measured
 
 The paper follows the soup with population-level ("macroscopic") measures, and
-Chemart records three of them for every generation:
+Chemart reports three of them for every generation:
 
 - **diversity**: the number of distinct words in the soup divided by M; 1 means
   every word is different, 1/M means a single word fills the soup;
@@ -210,64 +210,85 @@ print(net.summary())
 ```
 
 ```
-automata-reaction: 4818 species, 9872 reactions, status=observed
-provides: catalysts, flow, initial-state, rate-constants, stoichiometry, topology
+automata-reaction: 50 species, 1570 reactions, status=truncated
+provides: catalysts, flow, rate-constants, stoichiometry, topology
 seed: 1
-extras: analysis, final_state
+extras: seed
 ```
 
 Its first reactions (`net.reactions`):
 
 ```
-wb7362806 + w13410911 -> wb7362806 + w13410911 + w13410910  [mass-action k=1.0]  (x1)
-w54694c3a + w8b89e43c -> w54694c3a + w8b89e43c + w8b89e43f  [mass-action k=1.0]  (x1)
-w262802e1 + w8b169674 -> w262802e1 + 2 w8b169674  [mass-action k=1.0]  (x1)
-w3700032a + w89d94737 -> w3700032a + w89d94737 + w89d9473b  [mass-action k=1.0]  (x1)
-wedb4ccb2 + w3407a349 -> wedb4ccb2 + w3407a349 + w3407a34b  [mass-action k=1.0]  (x1)
-w27d6c977 + w0e4da006 -> w27d6c977 + w0e4da006 + w0e4da005  [mass-action k=1.0]  (x1)
-we9eff343 + w4295bf0f -> we9eff343 + w4295bf0f + w7295bf0f  [mass-action k=1.0]  (x1)
-wc9f97bcf + wf8c7532f -> wc9f97bcf + wf8c7532f + wf8c75369  [mass-action k=1.0]  (x1)
-… and 9864 more
+2 w08ec18cd -> 2 w08ec18cd + w08ec18cc  [mass-action k=1.0]
+w08ec18cd + w24e7a4f6 -> w08ec18cd + w24e7a4f6 + w24e7a4f7  [mass-action k=1.0]
+w08ec18cd + w3fcd72a9 -> w08ec18cd + w3fcd72a9 + w3fcd72a8  [mass-action k=1.0]
+w08ec18cd + w4fd42fa0 -> w08ec18cd + w4fd42fa0 + w4fd42fa1  [mass-action k=1.0]
+w08ec18cd + w7922e4ff -> w08ec18cd + w7922e4ff + w7922e4fe  [mass-action k=1.0]
+w08ec18cd + w8306bdf3 -> w08ec18cd + w8306bdf3 + w8306bdf2  [mass-action k=1.0]
+w08ec18cd + wc152a866 -> w08ec18cd + wc152a866 + wc152a867  [mass-action k=1.0]
+w08ec18cd + wd2ac6fd2 -> w08ec18cd + wd2ac6fd2 + wd2ac6fd3  [mass-action k=1.0]
+… and 1562 more
 ```
 
-The default call runs the reactor on 1,000 random words for 10 generations with
-code table 1 and no filter, 10,000 collisions in about two seconds. It is not a
+The automata reaction has two faces. `chemart.generate_network("automata-reaction")`,
+printed above, returns a *closure*: every reaction reachable from 10 random
+words, cut off at 50 species (`status=truncated`); it is mainly a tool to
+check published organizations (below). `chemart.evolve("automata-reaction")`
+runs the paper's reactor and returns a trajectory: a frame per generation of M
+collisions, with the contents of the soup, and at the end the network of every
+distinct reaction that fired.
+
+The default run is the reactor on 1,000 random words for 10 generations with
+code table 1 and no filter, 10,000 collisions in about a second. It is not a
 published experiment, but it already shows the trend of the paper's larger
-runs. Each distinct reaction that happened is recorded once, with how often it
-fired (`(x1)` above) and a rate constant `k` that counts how many of the two
-orders of the pair give that product. The history is in `net.extras`:
+runs:
 
 ```python
-a = net.extras["analysis"]
-a["diversity"]      # [1.0, 0.827, 0.734, 0.725, 0.706, 0.691, 0.678, 0.665, 0.648, 0.623, 0.604]
-a["productivity"]   # [1.0, 1.0, ...]   every collision yields a product
-a["innovativity"]   # [0.599, 0.484, 0.472, 0.424, 0.373, 0.341, 0.303, 0.299, 0.278, 0.245]
+traj = chemart.evolve("automata-reaction", seed=1)
+[round(len(f.state) / 1000, 3) for f in traj.frames]    # diversity
+# [1.0, 0.827, 0.734, 0.725, 0.706, 0.691, 0.678, 0.665, 0.648, 0.623, 0.604]
+traj.series("productivity")   # [None, 1.0, 1.0, ...]   every collision yields a product
+traj.series("innovativity")
+# [None, 0.599, 0.484, 0.472, 0.424, 0.373, 0.341, 0.303, 0.299, 0.278, 0.245]
+net = traj.network
+print(net.summary())
+# automata-reaction: 4818 species, 9872 reactions, status=observed
 list(net.extras["final_state"].items())[:3]
 # [('w94c116e2', 100), ('w94c116e0', 13), ('w94c116e3', 11)]
 ```
 
-`diversity` has one more entry than the others because it starts at
-generation 0. `final_state` is the soup at the end, most frequent word first.
-The top word here, `94c116e2`, is an active replicator: it returned itself on
-100 of 100 random operands we tried. The species' `structure` field is the word
-as a 32-character bit string, most significant bit first.
+Frame `t` counts generations. Each frame's `state` is the soup at that moment,
+so diversity is the number of words in it divided by M. Productivity and
+innovativity are the frame's `observables`; they describe the generation that
+ended at the frame, so the first frame, the initial soup, has none.
+`final_state` is the soup at the end, most frequent word first. The top word
+here, `94c116e2`, is an active replicator: it returned itself on 100 of 100
+random operands we tried. Each distinct reaction that happened is recorded
+once in `net.reactions`, with how often it fired and a rate constant `k` that
+counts how many of the two orders of the pair give that product:
+
+```
+wb7362806 + w13410911 -> wb7362806 + w13410911 + w13410910  [mass-action k=1.0]  (x1)
+```
+
+The species' `structure` field is the word as a 32-character bit string, most
+significant bit first.
 
 **Extinction by the AND reaction** (paper Fig. 2). The all-zero word is produced
 by many pairs and copies itself with any partner, so it takes over:
 
 ```python
-net = chemart.generate_network("automata-reaction", seed=0, mechanism="and",
-                               M=1000, generations=10)
-net.extras["analysis"]["diversity"]
+traj = chemart.evolve("automata-reaction", seed=0, mechanism="and", M=1000, generations=10)
+[round(len(f.state) / 1000, 3) for f in traj.frames]
 # [1.0, 0.835, 0.467, 0.212, 0.092, 0.038, 0.02, 0.011, 0.005, 0.003, 0.001]
-list(net.extras["final_state"].items())   # [('w00000000', 1000)]
+list(traj.network.extras["final_state"].items())   # [('w00000000', 1000)]
 ```
 
 **A small soup settles into an organization** (paper Fig. 3, M = 100):
 
 ```python
-net = chemart.generate_network("automata-reaction", seed=0, M=100, generations=150)
-net.extras["final_state"]
+traj = chemart.evolve("automata-reaction", seed=0, M=100, generations=150)
+traj.network.extras["final_state"]
 # {'w66847fcb': 34, 'w66847fc9': 33, 'w66847fca': 19, 'w66847fc8': 14}
 ```
 
@@ -275,29 +296,29 @@ Diversity falls from 1.0 to 0.14 by generation 50 and 0.04 by 100, and no new
 word appears in the last ten generations. Four words that differ only in their
 last two bits remain, like the paper's four (`7240a7ef`, `7240a7ea`,
 `7240a7eb`, `7240a7ee`). To check that such a set is closed, use
-`method="closure"`, which computes every reaction reachable from the given
+`generate_network`, which computes every reaction reachable from the given
 words instead of running a soup:
 
 ```python
-net = chemart.generate_network("automata-reaction", method="closure",
+net = chemart.generate_network("automata-reaction",
                                words=["66847fcb", "66847fc9", "66847fca", "66847fc8"])
 print(net.summary())
 # automata-reaction: 4 species, 12 reactions, status=complete
 ```
 
 `status=complete` means no collision leads outside the four words. On random
-words the closure grows until `max_species` stops it (`status=truncated`).
+words (`n_seeds` of them) the closure grows until `max_species` stops it
+(`status=truncated`).
 
 **Exploration ended by active replicators** (paper Fig. 4, M = 10⁴). This run
 takes about 45 seconds:
 
 ```python
-net = chemart.generate_network("automata-reaction", seed=1, M=10000, generations=60)
-a = net.extras["analysis"]
-a["diversity"][::5]      # generations 0, 5, ..., 60
+traj = chemart.evolve("automata-reaction", seed=1, M=10000, generations=60)
+[round(len(f.state) / 10000, 3) for f in traj.frames][::5]     # generations 0, 5, ..., 60
 # [1.0, 0.697, 0.687, 0.669, 0.597, 0.283, 0.032, 0.007, 0.005, 0.004, 0.004, 0.003, 0.003]
-a["innovativity"][::5]
-# [0.5809, 0.3712, 0.2954, 0.2447, 0.1756, 0.0296, 0.0001, 0.0, 0.0, ...]
+traj.series("innovativity")[5::5]                              # generations 5, 10, ..., 60
+# [0.3876, 0.3046, 0.2583, 0.199, 0.0492, 0.0008, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 ```
 
 For about 20 generations the soup stays diverse and keeps producing new words;
@@ -328,34 +349,35 @@ random ones.
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `generate_network`, or to `chemart.evolve`; a parameter marked *evolve only* belongs to the process and one marked *generate only* to the network. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
-| `method` | `enum` | `soup` | structural | soup: the paper's reactor algorithm, observed reactions with firing counts; closure: every reaction reachable from the distinct seed words (Chemart addition, e.g. to check that a published organization is closed) <br>one of `soup`, `closure` |
 | `mechanism` | `enum` | `automata` | structural | automata: the automata reaction (paper 3.2); and: the paper's reference reaction s3 = s1 AND s2 (paper 3.1, fig. 2) <br>one of `automata`, `and` |
 | `code_table` | `enum` | `1` | structural | instruction table (paper fig. 1, right): table 1 maps 1010 to NOT, table 2 maps it to EQ; the other 15 codes are identical <br>one of `1`, `2` · *range:* paper figs. 3-4 use table 1, figs. 5-10 (evolution) use table 2 |
 | `forbid_exact_replication` | `bool` | `False` | selection | filter f1 of paper eq. 3: a collision whose product equals one of its reactants is elastic, so exact replication is disabled <br>*range:* paper section 5.4 (evolution): true |
-| `M` | `int` | `1000` | population | soup size: number of random 32-bit words in the initial soup (ignored when words is given) <br>`2` … `1000000` · *range:* paper: 100 (fig. 3), 10^4 (figs. 2, 4), 10^5 (figs. 5-6), 10^6 (fig. 7) |
-| `generations` | `int` | `10` | population | soup only: run length in generations of M collisions each, elastic collisions included <br>`0` … `100000` · *range:* paper: 10 (fig. 2), 140 (fig. 3), 280 (fig. 4), 1000 and 7000 (figs. 5-6) |
-| `words` | `list` | `[]` | structural | explicit initial multiset (soup) or seed set (closure) of 32-bit words as hex strings or integers; overrides the random draw of M words <br>*range:* e.g. the fig. 3 organization [7240a7ef, 7240a7ea, 7240a7eb, 7240a7ee] |
-| `max_species` | `int` | `200` | structural | closure only: species budget; the closure of random words is usually cut off by it (status truncated) <br>≥ `1` |
+| `M` | `int` | `1000` | population | *evolve only.* soup size: number of random 32-bit words in the initial soup (ignored when words is given); a generation is M collisions <br>`2` … `1000000` · *range:* paper: 100 (fig. 3), 10^4 (figs. 2, 4), 10^5 (figs. 5-6), 10^6 (fig. 7) |
+| `n_seeds` | `int` | `10` | population | *generate only.* number of random 32-bit words whose closure is taken (ignored when words is given) <br>`1` … `1000000` |
+| `generations` | `int` | `10` | population | *evolve only.* run length in generations of M collisions each, elastic collisions included; a frame per generation <br>`0` … `100000` · *range:* paper: 10 (fig. 2), 140 (fig. 3), 280 (fig. 4), 1000 and 7000 (figs. 5-6) |
+| `words` | `list` | `[]` | structural | explicit initial multiset of the soup, or seed set of the closure, of 32-bit words as hex strings or integers; overrides the random draw of M words <br>*range:* e.g. the fig. 3 organization [7240a7ef, 7240a7ea, 7240a7eb, 7240a7ee] |
+| `max_species` | `int` | `50` | structural | *generate only.* species budget of the closure; the closure of random words is usually cut off by it (status truncated) <br>≥ `1` |
 
 ### Implementation decisions
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "11 decisions"
+??? note "12 decisions"
 
+    - Two faces: chemart.evolve runs the paper's reactor for `generations` generations of M collisions, a frame per generation (t counts generations); generate_network returns the closure of the seed words, a Chemart addition used to check that published organizations are closed. Without words the closure starts from n_seeds random words (default 10) and the reactor from M: the former single method parameter drew M words for both, so the default closure was the 200 numerically smallest of 1000 random words with no room left for their products. max_species went from 200 to 50 when the closure became the default network: almost every pair of random words makes a new word, so the closure of random words has nearly |S|^2 reactions (32,804 at 200 species, 1,570 at 50), and the cheap network measures (chemart.measure) ran for more than two minutes on the larger one. The old closure is n_seeds=1000, max_species=200.
     - The book gives only the idea (10.6.1). The machine is a line-by-line port of autoReac.c, which the paper's appendix names as the formal specification; compiled with 32-bit words it and the port agree on 2015 random pairs for each code table, and both reproduce paper table 2, the fig. 3, 4 and 10 reaction tables and the fig. 9 block (tests).
     - Where the paper's appendix and the C source disagree the source wins: TMM cycles both -&gt; operator pointer only -&gt; IO pointer only -&gt; both (autoReac.c movMode++), whereas the appendix prints both -&gt; IO pointer -&gt; operator pointer.
     - C details the paper does not spell out, kept as in autoReac.c: pointers are realised by rotating the registers, and the IO register is rotated back at the end (correctResult); pointers start at bit 0 (least significant) and 'left' moves to higher bits; instructions are read from the least significant nibble; a SETP in the last nibble gets pattern 0000; a logic instruction sets the last-ALU register, runs, and then makes one pointer step, which with copy mode on applies that ALU operation once more before moving (so EXOR/NOT/EQ cancel on that bit); CPON keeps the last ALU operation (initially ID); a MOV with a pattern checks the operator register, or the IO register in IO-pointer-only mode, after each of at most 32 steps.
     - autoReac.c also contains code tables 3 and 4, a binding-preference option and a no-correction switch; the paper uses none of them (only tables 1 and 2), so they are not exposed. The v1 params word_len and opcode_width are dropped: the machine is defined only for 32-bit words and 4-bit instructions.
     - The v1 topology param (2d-grid) and the 'space' capability are dropped: the spatial variant is Banzhaf, Dittrich & Eller (1999, Physica D 125:85-104), not [233], and lattice-2d is removed from A.reactor.
-    - Reactor: chemart.soup.soup with dilution constant runs generations x M collisions. The paper replaces a random one of the M molecules by s3; soup removes a random one of the M + 1 molecules after insertion, so s3 itself is removed with probability 1/(M + 1). soup also draws two distinct molecules, while the paper does not say whether s1 and s2 may be the same molecule. Both differences are O(1/M).
+    - Reactor: chemart.soup.stir with dilution constant runs generations x M collisions. The paper replaces a random one of the M molecules by s3; soup removes a random one of the M + 1 molecules after insertion, so s3 itself is removed with probability 1/(M + 1). soup also draws two distinct molecules, while the paper does not say whether s1 and s2 may be the same molecule. Both differences are O(1/M).
     - Rates: paper eq. 1 (catalytic network equation) with eq. 2 (k = 1 if s1 + s2 =&gt; s3 exists and passes the filter, 0 otherwise). Each network reaction is a multiset {a, b} -&gt; {a, b, s3}; its mass-action k counts the ordered pairs (a, b), (b, a) that produce s3 (1 or 2; 1 when a = b). outflow constant-total is the dilution term of eq. 1.
-    - Observed network: species are all initial words and all products; initial_state is the random soup; extras.final_state the final one (most frequent first); extras.analysis records the paper's macroscopic measures per generation: diversity Div = distinct types / M (from generation 0), productivity (inserted products / M) and total innovativity (never-seen products / M). The paper's DDC is not computed.
-    - mechanism and is the paper's reference reaction (3.1), included for fig. 2; code_table does not apply to it. method closure (chemart.expand.expand over ordered pairs) is a Chemart addition.
+    - Observed network: species are all initial words and all products; initial_state is the random soup; extras.final_state the final one (most frequent first); each frame after the first carries the paper's macroscopic measures of its generation as observables: productivity (inserted products / M) and total innovativity (never-seen products / M); diversity Div = distinct types / M is len(frame.state) / M. extras.analysis.generation_size is M. The paper's DDC is not computed.
+    - mechanism and is the paper's reference reaction (3.1), included for fig. 2; code_table does not apply to it. The closure (chemart.expand.expand over ordered pairs) is a Chemart addition.
     - Paper 3.2 says about 30% of random strings are passive and about 0.004% active self-replicators, without saying how many operands were tried. With the (C-verified) machine, 38% of random strings copy one random operand, 20-25% copy each of three, and about 0.005% (54-58 per 10^6) return themselves for eight operands; the test only checks the passive fraction is of that order.
     - Paper erratum: the fig. 4 program listing prints the binary code of CPON as 0100 (that is TDIR); the string 1e1ca260 has nibble 0110 there, and the listed mnemonics are what the machine runs.
 

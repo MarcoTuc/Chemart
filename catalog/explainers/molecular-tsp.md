@@ -142,28 +142,37 @@ variance: high overlap means low diversity.
 The default run uses the settings of PyCellChemistry's `MolecularTSP.py`, the
 authors' re-implementation that produced book Figure 17.2: ten cities on a
 ring, M = 9 random tours, all four machines with `t_R = 1/100`, 1000
-generations. (The paper's ring had 30 cities.) It takes about two seconds. Every string ends as the polygon:
+generations. (The paper's ring had 30 cities.) It takes a fraction of a
+second. Every string ends as the polygon.
+
+`generate_network` returns only the network of the whole run. To follow the
+run generation by generation, `chemart.evolve` returns a trajectory with one
+frame per generation, the first being the random start. Each frame holds the
+soup (`state`: the four machines and the strings, by species), the reactions
+of that generation (`fired`) and three `observables`: `best_length`,
+`mean_length` (the mean length `<l>`) and `overlap`.
 
 ```python
-a = net.extras["analysis"]
+traj = chemart.evolve("molecular-tsp", seed=1)
+net, a = traj.network, traj.network.extras["analysis"]
+best, mean, over = (traj.series(k) for k in ("best_length", "mean_length", "overlap"))
 a["optimum"]                                   # 61.80   the polygon's perimeter
-a["best_length"][0], a["mean_length"][0]       # (111.37, 140.39)   the random start
-a["best_length"][-1], a["mean_length"][-1]     # (61.80, 61.80)
+best[0], mean[0]                               # (111.37, 140.39)   the random start
+best[-1], mean[-1]                             # (61.80, 61.80)
 a["generation_optimum_found"]                  # 155
 a["generation_mean_within_10_percent"]         # 425
-a["overlap"][0], a["overlap"][-1]              # (0.33, 1.0)
+over[0], over[-1]                              # (0.33, 1.0)
 a["machine_successes"]                         # {'E': 33, 'C': 25, 'I': 21, 'R': 1}
 net.extras["final_state"]                      # {'t0.1.2.3.4.5.6.7.8.9': 9}
 ```
 
-`best_length`, `mean_length` and `overlap` have one value per generation,
-starting from generation 0. `generation_mean_within_10_percent` is the first
-generation at which the mean tour is within 10% of the optimum, the stopping
-criterion of paper Table 1; it and `generation_optimum_found` exist only for
-the ring, where the optimum is known, and are `None` if not reached.
-`machine_successes` counts, per machine, the operations that changed the soup.
-`best_tour`, `cities` (the coordinates) and `tour_length` (the length of every
-species) are also in `net.extras`.
+The trajectory has 1001 frames, generations 0 to 1000.
+`generation_mean_within_10_percent` is the first generation at which the mean
+tour is within 10% of the optimum, the stopping criterion of paper Table 1; it
+and `generation_optimum_found` exist only for the ring, where the optimum is
+known, and are `None` if not reached. `machine_successes` counts, per machine,
+the operations that changed the soup. `best_tour`, `cities` (the coordinates)
+and `tour_length` (the length of every species) are also in `net.extras`.
 
 The network records only operations that changed the soup, each distinct one
 once with its count, so the 84 species are the four machines and the 80
@@ -206,9 +215,10 @@ cities for every `t_R`. N = 20, 4000 generations, final overlap and best
 length:
 
 ```python
-a = chemart.generate_network("molecular-tsp", seed=s, N=20, layout="random",
-                             t_R=t_R, generations=4000).extras["analysis"]
-a["overlap"][-1], a["best_length"][-1]
+traj = chemart.evolve("molecular-tsp", seed=s, N=20, layout="random",
+                      t_R=t_R, generations=4000)
+last = traj.frames[-1].observables
+last["overlap"], last["best_length"]
 ```
 
 ```

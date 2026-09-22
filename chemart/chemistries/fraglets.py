@@ -23,13 +23,13 @@ fraglets in a node, ``a node seg`` attaches a node to a segment, ``#``
 starts a comment and ``e`` ends the input. Symbols are separated by spaces
 or ':' as in the AINS paper.
 
-Methods:
-- "closure": chemart.expand.expand of the distinct program fraglets
+Two faces:
+- ``generate``: chemart.expand.expand of the distinct program fraglets
   (status complete or truncated).
-- "ssa": the PyCellChemistry scheduler (Fraglets.propensity/react and
+- ``evolve``: the PyCellChemistry scheduler (Fraglets.propensity/react and
   Cell.gillespie): all pending transformations fire at once, then one
-  match is chosen with propensity n_active * n_passive, over all nodes
-  (status observed).
+  match is chosen with propensity n_active * n_passive, over all nodes; a
+  frame after every match (status observed).
 """
 
 from __future__ import annotations
@@ -39,6 +39,8 @@ from collections import Counter
 
 from chemart.expand import expand
 from chemart.network import Network, Reaction, Species
+from chemart.soup import Tally
+from chemart.trajectory import Frame
 
 DIALECTS = ("pycellchem", "fraglets-2007")
 MATCH_OPS = frozenset({"match", "matchp"})
@@ -349,17 +351,17 @@ def closure(chem: Chemistry, seeds, max_species: int):
     return expand(chem.react, seeds, arity=(1, 2), max_species=max_species, ordered=True)
 
 
-def ssa(chem: Chemistry, initial: Counter, steps: int, rng):
-    """PyCellChemistry scheduling. Returns (fired, final Counter, info)."""
-    pop = Counter(initial)
-    fired: dict = {}
-    elastic: set = set()
-    info = {"bimolecular_events": 0, "inert": False, "stopped": None}
+def ssa(chem: Chemistry, initial: Counter, steps: int, rng, tally: Tally, info: dict):
+    """PyCellChemistry scheduling, as a generator of recording points.
 
-    def record(lhs, rhs, count):
-        key = (frozenset(Counter(lhs).items()), frozenset(Counter(rhs).items()))
-        entry = fired.setdefault(key, [lhs, rhs, 0])
-        entry[2] += count
+    Yields (matches so far, live population) once the program's transformations
+    have settled and again after every match and the transformations it sets
+    off. `tally` records the reactions that fire; `info` is filled with the
+    run's summary (bimolecular_events, inert, stopped, elastic) when it ends.
+    """
+    pop = Counter(initial)
+    elastic: set = set()
+    info.update({"bimolecular_events": 0, "inert": False, "stopped": None})
 
     def settle():
         done = 0
@@ -377,7 +379,7 @@ def ssa(chem: Chemistry, initial: Counter, steps: int, rng):
                     continue
                 for p in out:
                     pop[p] += c
-                record((m,), tuple(out), c)
+                tally.add((m,), tuple(out), c)
                 done += c
                 if done > MAX_TRANSFORMATIONS:
                     info["stopped"] = f"more than {MAX_TRANSFORMATIONS} transformations in one step"
@@ -397,6 +399,7 @@ def ssa(chem: Chemistry, initial: Counter, steps: int, rng):
         return pairs, weights
 
     ok = settle()
+    yield 0, pop
     for _ in range(steps if ok else 0):
         pairs, weights = propensities()
         total = sum(weights)
@@ -412,20 +415,20 @@ def ssa(chem: Chemistry, initial: Counter, steps: int, rng):
         pop[b] -= 1
         for p in out:
             pop[p] += 1
-        record((a, b), tuple(out), 1)
+        tally.add((a, b), tuple(out))
         info["bimolecular_events"] += 1
-        if not settle():
+        ok = settle()
+        yield info["bimolecular_events"], pop
+        if not ok:
             break
     info["inert"] = info["stopped"] is None and not propensities()[0]
-    final = Counter({m: c for m, c in pop.items() if c > 0})
     info["elastic"] = sorted(species_id(m) for m in elastic)
-    return list(fired.values()), final, info
 
 
-# --- generator -----------------------------------------------------------------
+# --- faces ---------------------------------------------------------------------
 SCHEDULING = {
-    "closure": "every reaction reachable from the program fraglets; no kinetics",
-    "ssa": (
+    "generate": "every reaction reachable from the program fraglets; no kinetics",
+    "evolve": (
         "PyCellChemistry Fraglets.propensity/react and Cell.gillespie: before each step all "
         "transformations fire at once (instantaneous); then one match is chosen with "
         "propensity n_active * n_passive (mass action with k = 1) over all nodes; "
@@ -434,27 +437,11 @@ SCHEDULING = {
 }
 
 
-def generate(p, rng):
-    initial, segments, nodes = parse_program(p.program, p.dialect)
-    chem = Chemistry(p.dialect, segments, nodes)
-    seeds = list(initial)
-    extras = {"segments": segments, "scheduling": SCHEDULING[p.method]}
+def _state(pop) -> dict[str, float]:
+    return {species_id(m): float(c) for m, c in pop.items() if c > 0}
 
-    if p.method == "closure":
-        mols, rxns, status = closure(chem, seeds, p.max_species)
-        rows = [(lhs, rhs, None) for lhs, rhs in rxns]
-    else:
-        fired, final, info = ssa(chem, initial, p.steps, rng)
-        seen = dict.fromkeys(seeds)
-        for lhs, rhs, _ in fired:
-            seen.update(dict.fromkeys(lhs))
-            seen.update(dict.fromkeys(rhs))
-        seen.update(dict.fromkeys(final))
-        mols, status = list(seen), "observed"
-        rows = fired
-        extras["final_state"] = {species_id(m): int(c) for m, c in final.items()}
-        extras.update(info)
 
+def _network(mols, rows, status, initial, extras) -> Network:
     species = [Species(species_id(m), structure(m)) for m in mols]
     reactions = [
         Reaction(dict(Counter(species_id(m) for m in lhs)), dict(Counter(species_id(m) for m in rhs)),
@@ -472,3 +459,42 @@ def generate(p, rng):
         initial_state={species_id(m): float(c) for m, c in initial.items()},
         extras=extras,
     )
+
+
+def generate(p, rng):
+    """The closure of the distinct program fraglets, cut off by max_species."""
+    initial, segments, nodes = parse_program(p.program, p.dialect)
+    chem = Chemistry(p.dialect, segments, nodes)
+    mols, rxns, status = closure(chem, list(initial), p.max_species)
+    extras = {"segments": segments, "scheduling": SCHEDULING["generate"]}
+    return _network(mols, [(lhs, rhs, None) for lhs, rhs in rxns], status, initial, extras)
+
+
+def evolve(p, rng):
+    """A PyCellChemistry-scheduled run of the program multiset: a frame after every match.
+
+    The first frame is the program as written; if its transformations fire
+    before the first match, a second frame at t = 0 holds the settled state.
+    """
+    initial, segments, nodes = parse_program(p.program, p.dialect)
+    chem = Chemistry(p.dialect, segments, nodes)
+    tally, info = Tally(), {}
+    yield Frame(t=0.0, state=_state(initial))
+    final = initial
+    for matches, pop in ssa(chem, initial, p.steps, rng, tally, info):
+        final = pop
+        fired = [[[species_id(m) for m in lhs], [species_id(m) for m in rhs], n]
+                 for lhs, rhs, n in tally.flush()]
+        if matches or fired:
+            yield Frame(t=float(matches), state=_state(pop), fired=fired)
+    final = Counter({m: c for m, c in final.items() if c > 0})
+    rows = tally.reactions()
+    seen = dict.fromkeys(initial)
+    for lhs, rhs, _ in rows:
+        seen.update(dict.fromkeys(lhs))
+        seen.update(dict.fromkeys(rhs))
+    seen.update(dict.fromkeys(final))
+    extras = {"segments": segments, "scheduling": SCHEDULING["evolve"],
+              "final_state": {species_id(m): int(c) for m, c in final.items()}}
+    extras.update(info)
+    return _network(list(seen), rows, "observed", initial, extras)

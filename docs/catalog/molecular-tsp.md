@@ -207,28 +207,37 @@ E-machine + t0.8.2.7.4.3.1.5.6.9 -> E-machine + t0.8.2.5.4.3.1.7.6.9  (x1)
 The default run uses the settings of PyCellChemistry's `MolecularTSP.py`, the
 authors' re-implementation that produced book Figure 17.2: ten cities on a
 ring, M = 9 random tours, all four machines with `t_R = 1/100`, 1000
-generations. (The paper's ring had 30 cities.) It takes about two seconds. Every string ends as the polygon:
+generations. (The paper's ring had 30 cities.) It takes a fraction of a
+second. Every string ends as the polygon.
+
+`generate_network` returns only the network of the whole run. To follow the
+run generation by generation, `chemart.evolve` returns a trajectory with one
+frame per generation, the first being the random start. Each frame holds the
+soup (`state`: the four machines and the strings, by species), the reactions
+of that generation (`fired`) and three `observables`: `best_length`,
+`mean_length` (the mean length `<l>`) and `overlap`.
 
 ```python
-a = net.extras["analysis"]
+traj = chemart.evolve("molecular-tsp", seed=1)
+net, a = traj.network, traj.network.extras["analysis"]
+best, mean, over = (traj.series(k) for k in ("best_length", "mean_length", "overlap"))
 a["optimum"]                                   # 61.80   the polygon's perimeter
-a["best_length"][0], a["mean_length"][0]       # (111.37, 140.39)   the random start
-a["best_length"][-1], a["mean_length"][-1]     # (61.80, 61.80)
+best[0], mean[0]                               # (111.37, 140.39)   the random start
+best[-1], mean[-1]                             # (61.80, 61.80)
 a["generation_optimum_found"]                  # 155
 a["generation_mean_within_10_percent"]         # 425
-a["overlap"][0], a["overlap"][-1]              # (0.33, 1.0)
+over[0], over[-1]                              # (0.33, 1.0)
 a["machine_successes"]                         # {'E': 33, 'C': 25, 'I': 21, 'R': 1}
 net.extras["final_state"]                      # {'t0.1.2.3.4.5.6.7.8.9': 9}
 ```
 
-`best_length`, `mean_length` and `overlap` have one value per generation,
-starting from generation 0. `generation_mean_within_10_percent` is the first
-generation at which the mean tour is within 10% of the optimum, the stopping
-criterion of paper Table 1; it and `generation_optimum_found` exist only for
-the ring, where the optimum is known, and are `None` if not reached.
-`machine_successes` counts, per machine, the operations that changed the soup.
-`best_tour`, `cities` (the coordinates) and `tour_length` (the length of every
-species) are also in `net.extras`.
+The trajectory has 1001 frames, generations 0 to 1000.
+`generation_mean_within_10_percent` is the first generation at which the mean
+tour is within 10% of the optimum, the stopping criterion of paper Table 1; it
+and `generation_optimum_found` exist only for the ring, where the optimum is
+known, and are `None` if not reached. `machine_successes` counts, per machine,
+the operations that changed the soup. `best_tour`, `cities` (the coordinates)
+and `tour_length` (the length of every species) are also in `net.extras`.
 
 The network records only operations that changed the soup, each distinct one
 once with its count, so the 84 species are the four machines and the 80
@@ -271,9 +280,10 @@ cities for every `t_R`. N = 20, 4000 generations, final overlap and best
 length:
 
 ```python
-a = chemart.generate_network("molecular-tsp", seed=s, N=20, layout="random",
-                             t_R=t_R, generations=4000).extras["analysis"]
-a["overlap"][-1], a["best_length"][-1]
+traj = chemart.evolve("molecular-tsp", seed=s, N=20, layout="random",
+                      t_R=t_R, generations=4000)
+last = traj.frames[-1].observables
+last["overlap"], last["best_length"]
 ```
 
 ```
@@ -295,7 +305,7 @@ own map; it overrides `N` and `layout`.
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `chemart.evolve` (or `generate_network`, which runs the process to the end). The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
@@ -314,7 +324,7 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "11 decisions"
+??? note "12 decisions"
 
     - The book (17.2.1) gives the strings, eq. 17.1, the four machines and n_op but not the operators' details, the machine scheduling or the generation length; these follow PyCellChemistry MolecularTSP.py, the authors' re-implementation used for book fig. 17.2, checked against the paper's section 2 and fig. 2.
     - Operators, as in MolecularTSP.py: E swaps the cities at two distinct random positions; C/I remove the circular segment [p1, p2) and insert it (inverted for I) after the first p3 cities of the rest read from p2, 1 &lt;= p3 &lt; rest length, redrawing while the string is unchanged; R takes the circular segment [p1, p2) of the first tour, whose first city is the overlapping city, deletes its other cities from the second tour and inserts them right after the overlapping city. The operator examples of the reference code and all four panels of paper fig. 2 are reproduced exactly (tests).
@@ -325,7 +335,8 @@ The sources leave gaps, and sometimes contradict each other or the book. Each su
     - The run has a fixed length (generations). MolecularTSP.run also stops once the best length is below pi * 2N, the circle's circumference; for the ring layouts checked by enumeration (N = 6, 8, 10: second-best tours 44.78, 59.37, 72.95 against circumferences 37.70, 50.27, 62.83) that only happens at the optimal polygon, so it is reported instead as analysis.generation_optimum_found (optimum = the polygon perimeter 2 N^2 sin(pi/N)) together with generation_mean_within_10_percent, the stopping criterion of paper table 1.
     - Paper eq. 4 is typeset as O = sum_ij (P^T)_ij (P)_ij / (M^2 N) with P the summed upper-half adjacency matrices; taken literally for an upper-triangular P the sum vanishes. It is read as sum_ij P_ij^2 / (M^2 N), which is 1 when all M tours coincide and 1/M when no edge is shared, matching 'percentage of overlapping edges' and the 90% threshold of fig. 4 and table 3b.
     - Species are canonical cycles (a tour, its rotations and its reversal have the same length and are one species), while the soup stores the oriented strings the operators act on, as the reference code does. A collision whose released strings are the same species as its inputs is elastic and not recorded. No rate constants: t_j are frequencies of a serial algorithm, not mass-action constants; they are recorded in extras.time_scales.
-    - Observed network: species are the active machines, the initial strings and every string released; initial_state has one molecule of each active machine and the initial strings; extras.analysis holds best_length, mean_length (the paper's &lt;l&gt;) and overlap per generation from generation 0, machine_successes (paper fig. 5's contributions, as totals), generation_size and, for the ring, the known optimum; extras.cities, tour_length, final_state, best_tour.
+    - Observed network: species are the active machines, the initial strings and every string released; initial_state has one molecule of each active machine and the initial strings; extras.analysis holds machine_successes (paper fig. 5's contributions, as totals), generation_size and, for the ring, the known optimum with generation_optimum_found and generation_mean_within_10_percent; extras.cities, tour_length, final_state, best_tour.
+    - chemart.evolve yields a frame per generation; frame 0 is the initial soup. A frame's state holds the machines (one each) and the strings as canonical tours, its fired the reactions of that generation, and its observables best_length, mean_length (the paper's &lt;l&gt;) and overlap (eq. 4). chemart.evolve(..., every=k) keeps one frame in k. generate_network runs to the end and returns the network.
     - The v1 fitness_fn callable becomes the enum fitness with the single published choice tour-length. The paper's CPU times and generation counts (tables 1-4) are for N = 30-100 and are not reproduced numerically; the tests check their qualitative content on smaller instances.
 
 ## Results

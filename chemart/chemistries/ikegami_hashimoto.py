@@ -18,11 +18,11 @@ panel 3). So
 
     M + T -> M + T + M' + T'
 
-method "dynamics" runs the papers' population dynamics (capacity N per
-population, a fraction c replaced by products each generation, external noise
-flipping bits in the reading frame) and returns the reactions that fired;
-method "closure" returns the noise-free reaction network reachable from the
-seed machines and tapes.
+Two faces. ``generate`` returns the noise-free reaction network reachable
+from the seed machines and tapes (a Chemart addition). ``evolve`` runs the
+papers' population dynamics (capacity N per population, a fraction c replaced
+by products each generation, external noise flipping bits in the reading
+frame), yielding a frame per generation, and returns the reactions that fired.
 """
 
 from __future__ import annotations
@@ -36,6 +36,8 @@ import numpy as np
 from chemart.expand import expand
 from chemart.helpers.params import apportion
 from chemart.network import CONSTANT_TOTAL, Network, Reaction, Species
+from chemart.soup import Tally
+from chemart.trajectory import Frame
 
 TAPE_LEN = 7
 TAPE_MASK = (1 << TAPE_LEN) - 1
@@ -182,12 +184,17 @@ def _seeds(p, rng) -> tuple[list[int], list[int]]:
 
 
 def generate(p, rng):
+    """The noise-free closure of the seed machines and tapes."""
     machines, tapes = _seeds(p, rng)
-    if p.method == "closure":
-        return _closure(p, machines, tapes)
+    return _closure(p, machines, tapes)
+
+
+def evolve(p, rng):
+    """The papers' population dynamics: a frame per generation."""
+    machines, tapes = _seeds(p, rng)
     if p.noise_off > p.generations:
         raise ValueError(f"noise_off ({p.noise_off}) must be -1 (never) or at most generations ({p.generations})")
-    return _dynamics(p, rng, machines, tapes)
+    return (yield from _dynamics(p, rng, machines, tapes))
 
 
 # --- network pieces -------------------------------------------------------------
@@ -252,6 +259,31 @@ def _stochastic_round(x: float, rng) -> int:
     return n + int(rng.random() < x - n)
 
 
+def _reading(mpop, tpop):
+    """The reading pairs with their weights m_i t_j, and the frame's observables:
+    the active mutation rate <mu_A> of eq. 9 and the average frame length <L>."""
+    pairs = []
+    weight = 0.0
+    am_num = len_num = 0.0
+    for m, nm in mpop.items():
+        for t, nt in tpop.items():
+            r0 = react(m, t, 0)
+            if r0 is None:
+                continue
+            w = nm * nt
+            pairs.append((m, t, w, (r0, react(m, t, 1))))
+            weight += w
+            am_num += w * sum(r[4] for r in (r0, react(m, t, 1))) / (2 * r0[3])
+            len_num += w * r0[3]
+    observables = {"active_mutation": am_num / weight if weight else 0.0,
+                   "reading_length": len_num / weight if weight else 0.0}
+    return pairs, weight, observables
+
+
+def _state(mpop, tpop) -> dict[str, float]:
+    return {**{machine_id(m): float(n) for m, n in mpop.items()}, **{tape_id(t): float(n) for t, n in tpop.items()}}
+
+
 def _dynamics(p, rng, machines, tapes):
     N, c = p.N, p.c
     mpop = {m: n for m, n in zip(machines, apportion(N, [1.0] * len(machines)))} if machines else {}
@@ -266,19 +298,22 @@ def _dynamics(p, rng, machines, tapes):
 
     seen_m, seen_t = set(mpop), set(tpop)
     fired: dict[tuple, dict] = {}
-    analysis = {k: [] for k in ("distinct_machines", "distinct_tapes", "active_mutation", "reading_length")}
+    tally = Tally()
 
     def record(key, gen, exact, states=0, length=0):
         entry = fired.setdefault(key, {"gens": set(), "states": 0, "length": length, "exact": False})
+        if gen not in entry["gens"]:
+            m, t, m2, t2 = key
+            tally.add((machine_id(m), tape_id(t)), (machine_id(m), tape_id(t), machine_id(m2), tape_id(t2)))
         entry["gens"].add(gen)
         if exact:
             entry["exact"] = True
             entry["states"] = max(entry["states"], states)
             entry["length"] = length
 
+    pairs, weight, observables = _reading(mpop, tpop)
+    yield Frame(t=0.0, state=_state(mpop, tpop), fired=[], observables=observables)
     for gen in range(p.generations):
-        analysis["distinct_machines"].append(len(mpop))
-        analysis["distinct_tapes"].append(len(tpop))
         mu = p.noise if p.noise_off < 0 or gen < p.noise_off else 0.0
         registry = {necklace(t): t for t in tpop}
 
@@ -287,22 +322,6 @@ def _dynamics(p, rng, machines, tapes):
             if k not in registry:
                 registry[k] = rotate(t2, int(rng.integers(TAPE_LEN))) if p.source == "random" else t2
             return registry[k]
-
-        pairs = []
-        weight = 0.0
-        am_num = len_num = 0.0
-        for m, nm in mpop.items():
-            for t, nt in tpop.items():
-                r0 = react(m, t, 0)
-                if r0 is None:
-                    continue
-                w = nm * nt
-                pairs.append((m, t, w, (r0, react(m, t, 1))))
-                weight += w
-                am_num += w * sum(r[4] for r in (r0, react(m, t, 1))) / (2 * r0[3])
-                len_num += w * r0[3]
-        analysis["active_mutation"].append(am_num / weight if weight else 0.0)
-        analysis["reading_length"].append(len_num / weight if weight else 0.0)
 
         new_m: Counter = Counter()
         new_t: Counter = Counter()
@@ -339,6 +358,8 @@ def _dynamics(p, rng, machines, tapes):
         mpop, tpop = update(mpop, new_m), update(tpop, new_t)
         seen_m.update(mpop)
         seen_t.update(tpop)
+        pairs, weight, observables = _reading(mpop, tpop)
+        yield Frame(t=float(gen + 1), state=_state(mpop, tpop), fired=tally.flush(), observables=observables)
 
     # products that never reached one copy still took part in a reaction
     seen_m.update(k[2] for k in fired)
@@ -349,8 +370,6 @@ def _dynamics(p, rng, machines, tapes):
         if not e["exact"]:
             noise_only.append(len(reactions))
         reactions.append(_reaction(m, t, m2, t2, rate, count=len(e["gens"])))
-    analysis["distinct_machines"].append(len(mpop))
-    analysis["distinct_tapes"].append(len(tpop))
     return Network(
         species=_species(seen_m, seen_t),
         reactions=reactions,
@@ -358,7 +377,6 @@ def _dynamics(p, rng, machines, tapes):
         initial_state=initial,
         outflow=CONSTANT_TOTAL,
         extras={
-            "analysis": analysis,
             "final_state": {**{machine_id(m): n for m, n in sorted(mpop.items(), key=lambda kv: -kv[1])},
                             **{tape_id(t): n for t, n in sorted(tpop.items(), key=lambda kv: -kv[1])}},
             "noise_induced": noise_only,

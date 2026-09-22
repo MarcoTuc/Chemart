@@ -232,8 +232,8 @@ p1111111111111111111 + p0000000100100010111 -> p1111111111111111111 + p000000010
 … and 4 more
 ```
 
-The default run is not a simulation. It is the *closure* of the two
-published strings: every reaction that can happen, starting from the
+The chemistry has two faces. `chemart.generate_network`, printed above, is not
+a simulation: it returns the *closure* of the two published strings: every reaction that can happen, starting from the
 replicator and the parasite, and then among everything they make, until
 nothing new appears. It has seven species: the replicator, the parasite,
 their two complements, and three strings that the complements write:
@@ -266,67 +266,71 @@ p0001111100111010111 + p1110000011000101000 -> 2 p0001111100111010111 + p1110000
 `recognition="none"` is a Chemart addition, a well-mixed limit with no
 specificity. It is not in the report.
 
-**The soup.** `method="soup"` runs the report's collision algorithm on a
+**The soup.** `chemart.evolve` runs the report's collision algorithm on a
 population of `population` molecules (200 by default; the report used 1,000),
 inoculated with `inoculum_fraction` (10%) of each seed string and filled with
 random strings of length `l` (19). `steps` is the number of molecules drawn.
-The network then holds only the reactions that fired, each with its `count`,
-and `net.extras` holds the rest:
+It returns a trajectory: a frame every `population` steps with the molecule
+counts at that moment (`state`) and the reactions fired since the previous
+frame. Its network holds only the reactions that fired, each with its
+`count`, and `net.extras` holds the rest:
 
 ```python
-net = chemart.generate_network("mccaskill-polymer-tm", seed=1, method="soup")
+traj = chemart.evolve("mccaskill-polymer-tm", seed=1)
+net = traj.network
 net.extras["analysis"]             # {'steps': 5000, 'recognition_collisions': 880}
 fs = net.extras["final_state"]     # molecule counts at the end, most common first
 list(fs.items())[:3]               # [('p0000000000000000000', 82), ('p1111111111111111111', 26), ('p1', 20)]
-fs.get("p0001111100111010111", 0)  # 0: the replicator started at 20 and died out
+rep = "p0001111100111010111"
+[int(f.state.get(rep, 0)) for f in traj.frames][::5]   # every 1,000 steps: [20, 10, 5, 2, 0, 0]
+fs.get(rep, 0)                     # 0: the replicator started at 20 and died out
 ```
 
 `net.initial_state` is the starting population and `net.outflow` is
 `constant-total`: the population size never changes. This run has 212
-species and 197 reactions and takes about 3 seconds.
+species and 197 reactions and takes about a second.
 
 **The report's run, at full size.** The report's experiment was 1.2 million
 steps in a population of 1,000:
 
 ```python
-net = chemart.generate_network("mccaskill-polymer-tm", seed=1, method="soup",
-                               steps=1_200_000, population=1000)
+net = chemart.evolve("mccaskill-polymer-tm", seed=1, steps=1_200_000, population=1000).network
 net.extras["analysis"]["recognition_collisions"]   # 174065  (the report: 177104)
 ```
 
-This takes about 20 seconds. The number of collisions is close to the
+This takes about 12 seconds. The number of collisions is close to the
 report's, but the outcome is not (see Results): the replicator and the
 parasite both go from 100 copies to none, and the population ends up mostly
 the short strings `1` (582 molecules) and `0` (253).
 
-**Mutation.** `error_rate` (soup only) is the probability that a written
-symbol is flipped. With `error_rate=0.01, steps=20000` the soup reaches 708
-species.
+**Mutation.** `error_rate` (`chemart.evolve` only; the closure is error-free)
+is the probability that a written symbol is flipped. With `error_rate=0.01,
+steps=20000` (seed 1) the soup reaches 708 species.
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `generate_network`, or to `chemart.evolve`; a parameter marked *evolve only* belongs to the process and one marked *generate only* to the network. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
-| `method` | `enum` | `closure` | structural | closure: every reaction reachable from `strings` over ordered processor/tape pairs, error-free (Chemart addition); soup: the report's stochastic collision algorithm, reactions that fired with counts (status observed) <br>one of `closure`, `soup` |
 | `strings` | `list` | `['0001111100111010111', '0000000100100010111']` | structural | binary strings: the seed set of the closure, or the inoculum of the soup (each at inoculum_fraction of the population) <br>*range:* report section 4: the self-replicator 0001111100111010111 and its parasite 0000000100100010111 |
 | `recognition` | `enum` | `patterns` | selection | patterns: a reaction needs a recognizon collision (book eq. 10.14; the soup uses the report's pattern space); none: every ordered pair reacts (closure) or each drawn molecule is processed by a random partner (soup), a well-mixed limit without specificity (Chemart addition) <br>one of `patterns`, `none` |
 | `R` | `int` | `16` | structural | maximum recognizon length in symbols (coding length 2R bits) <br>`1` … `64` · *range:* report: R typically 16 |
 | `max_steps` | `int` | `1000` | structural | cutoff on elementary processing steps; a process that has not halted by then releases nothing <br>`1` … `100000` |
-| `max_species` | `int` | `200` | structural | closure only: species budget; status truncated when it cuts the closure off <br>`1` … `100000` |
-| `error_rate` | `float` | `0.0` | stochastic | soup only: probability that an elementary write step writes the wrong symbol (the report's single error rate for all elementary steps; acts as mutation) <br>`0.0` … `1.0` |
-| `population` | `int` | `200` | population | soup only: number of molecules, kept constant <br>`2` … `1000000` · *range:* report: 1000 strings |
-| `l` | `int` | `19` | population | soup only: length of the random background strings <br>`1` … `256` · *range:* report section 4: random strings of length 19; about 30 on average in section 3 |
-| `inoculum_fraction` | `float` | `0.1` | population | soup only: fraction of the population given to each string in `strings`; the rest is random strings of length l <br>`0.0` … `1.0` · *range:* report section 4: 10% each of replicator and parasite |
-| `steps` | `int` | `5000` | population | soup only: number of draws of a molecule placing a pattern <br>`0` … `100000000` · *range:* report section 4: 1.2 x 10^6 steps with 177104 recognition collisions |
+| `max_species` | `int` | `200` | structural | *generate only.* species budget of the closure; status truncated when it cuts the closure off <br>`1` … `100000` |
+| `error_rate` | `float` | `0.0` | stochastic | *evolve only.* probability that an elementary write step writes the wrong symbol (the report's single error rate for all elementary steps; acts as mutation) <br>`0.0` … `1.0` |
+| `population` | `int` | `200` | population | *evolve only.* number of molecules, kept constant; a frame every `population` steps <br>`2` … `1000000` · *range:* report: 1000 strings |
+| `l` | `int` | `19` | population | *evolve only.* length of the random background strings <br>`1` … `256` · *range:* report section 4: random strings of length 19; about 30 on average in section 3 |
+| `inoculum_fraction` | `float` | `0.1` | population | *evolve only.* fraction of the population given to each string in `strings`; the rest is random strings of length l <br>`0.0` … `1.0` · *range:* report section 4: 10% each of replicator and parasite |
+| `steps` | `int` | `5000` | population | *evolve only.* number of draws of a molecule placing a pattern <br>`0` … `100000000` · *range:* report section 4: 1.2 x 10^6 steps with 177104 recognition collisions |
 
 ### Implementation decisions
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "10 decisions"
+??? note "11 decisions"
 
+    - Two faces: generate_network returns every reaction reachable from `strings` over ordered processor/tape pairs, error-free (a Chemart addition; error_rate belongs to the evolve face); chemart.evolve runs the report's stochastic collision algorithm for `steps` draws, a frame every `population` steps (t counts steps), and returns the reactions that fired with counts (status observed).
     - The book gives only the scheme; the machine follows the 1988 report. Its doublet tables (section 3, items 4-5) are implemented verbatim. The report does not say where a rule starts relative to its initiator, where the heads start, the initial state or how the written tape is cut into strings. Of the literal choices tried (rule after or at the initiator, overlapping or not, forward or reversed, linear or circular, head at either end, initial state 0 or 1), exactly one family makes the published replicator replicate: a rule is the 12 bits starting at every occurrence of 111 (overlapping, the initiator bits included), both heads start at position 0 of their tapes, the state starts at 0 (1 works too), later rules overwrite earlier ones (the reverse order breaks replication), and released strings are the maximal non-blank runs of the written tape.
     - With that decoding 0001111100111010111 does not copy itself in one step but through its complement: s + s -&gt; s + s + c(s) and s + c(s) -&gt; s + c(s) + s (two alternating rules write, per tape symbol, 1 and then the opposite of the read symbol). The WRITE code has no 'same as read symbol', so one-step copying needs two rules (24 bits), longer than the 19-bit string; the report's 'self-replicating' is taken as this plus/minus-strand replication. The parasite 0000000100100010111 has its only 111 at the end, encodes no rule, and is copied by the replicator the same way (report: replicated without replicating themselves).
     - Consequence of that framing (open doubt): the initiator 111 supplies READ = 11 (both) and the first bit of WRITE, so every rule reads both symbols and writes 1 or the opposite of the read symbol; the READ codes 0, 1, blank and the WRITE codes 0, blank are never used. The report says the initiator 'may be taken to be a particular triplet such as 111', so its C program may have used another marker; nothing else in the report pins it, and the framing is kept because it is the only literal one that makes the published replicator work.

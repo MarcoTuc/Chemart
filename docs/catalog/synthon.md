@@ -186,6 +186,11 @@ updates the counts. Reactions are only ever sought among species present at
 that moment, so the network recorded is the part of the closure the kinetics
 actually visits.
 
+In Chemart the two generators are the two ways of running the chemistry:
+`chemart.generate_network` runs the DNG and returns the closure, and
+`chemart.evolve` runs the MCNG and returns its trajectory, one frame per
+reaction event.
+
 ### Formal specification
 
 Banzhaf and Yamamoto describe every artificial chemistry by three things (book §2.3): the set of possible molecules **S**, the reaction rules **R** that transform them, and the reactor algorithm **A** that decides which reactions happen, and when. For this chemistry:
@@ -202,7 +207,7 @@ Monomolecular and bimolecular reactions only, as in the papers. Cosmic rays (c.r
 
 *How the population is bounded:* none
 
-Two generators, both from the papers (after Faulon & Sault 2001): the deterministic network generator DNG (method=closure) grows every reaction object reachable from the initial species under the size constraints N, es and ep; the MC-sampling generator MCNG (method=kinetic) runs Gillespie's SSA over the molecules present and grows the network only from species that have a non-zero amount, so the recorded network is the kinetically relevant part of the closure.
+Two generators, both from the papers (after Faulon & Sault 2001): the deterministic network generator DNG (generate_network) grows every reaction object reachable from the initial species under the size constraints N, es and ep; the MC-sampling generator MCNG (chemart.evolve) runs Gillespie's SSA over the molecules present and grows the network only from species that have a non-zero amount, so the recorded network is the kinetically relevant part of the closure.
 
 ### Using it in Chemart
 
@@ -218,7 +223,7 @@ print(net.summary())
 synthon: 31 species, 161 reactions, status=complete
 provides: catalysts, initial-state, mass-conservation, rate-constants, stoichiometry, topology
 seed: 1
-extras: charges, conservation, constraints, electrons, formulas, method, note, reaction_classes, reaction_classes_used, species_encoding, templates
+extras: charges, conservation, constraints, electrons, formulas, note, reaction_classes, reaction_classes_used, species_encoding, templates
 ```
 
 Its first reactions (`net.reactions`):
@@ -255,13 +260,14 @@ mass-action constants in the table's units: s⁻¹ for one-molecule classes,
 cm³ s⁻¹ for two-molecule ones. The initial state holds the densities of Duley
 and Williams's setup, n(H) = 1000 cm⁻³ and n(O) = 0.44 cm⁻³.
 
-**Letting kinetics prune the network (figures 5 and 6).** Set
-`method="kinetic"`. The report does not publish its number of molecules or of
-steps, so they are parameters (`molecules`, default 400; `steps`, default
-2000):
+**Letting kinetics prune the network (figures 5 and 6).** Run the MCNG with
+`chemart.evolve`. The report does not publish its number of molecules or of
+steps, so they are parameters of this run only (`molecules`, default 400;
+`steps`, default 2000):
 
 ```python
-net = chemart.generate_network("synthon", method="kinetic", seed=3)
+traj = chemart.evolve("synthon", seed=3)
+net = traj.network
 net.summary()                  # synthon: 10 species, 7 reactions, status=observed
 net.extras["final_state"]      # {'H*': 377, 'HH': 11, 'HO::*': 1}
 ```
@@ -283,6 +289,26 @@ one is always kept), and almost every event moves that atom between O and OH.
 `extras["elapsed_time"]` is the simulated time in seconds, here about
 3.2 × 10¹³ s. The run takes under two seconds.
 
+The trajectory has a frame for the initial molecules and one after each of
+the 2000 events: `frame.t` is the simulated time in seconds (the trajectory's
+`clock` is `"s"`), `frame.state` the molecule counts and `frame.fired` the
+reaction that fired. `every=k` keeps one frame in k, which turns the run
+into a short time series of the counts, the kind of curve figure 6 plots:
+
+```python
+traj = chemart.evolve("synthon", seed=3, every=500)
+for f in traj.frames:
+    print(f"{f.t:9.3g}", f.state)
+```
+
+```
+        0 {'H*': 400.0, 'O::**': 1.0}
+ 1.49e+13 {'H*': 397.0, 'HH': 1.0, 'HO::*': 1.0}
+ 2.42e+13 {'H*': 394.0, 'HH': 3.0, 'O::**': 1.0}
+ 2.93e+13 {'H*': 386.0, 'HH': 7.0, 'O::**': 1.0}
+ 3.22e+13 {'H*': 377.0, 'HH': 11.0, 'HO::*': 1.0}
+```
+
 **The combinatorial explosion.** `allowed=[]` removes the observational
 constraint. Keep `max_atoms` small:
 
@@ -300,18 +326,17 @@ budget.
 charge transfer and dissociative recombination. From H and O it builds four
 reactions (`2 H* -> HH`, `H* + O::** -> HO::*`, `2 O::** -> O::*O::*`,
 `H* + HO::* -> HO::H`). The report gives no rates for these graphs, so the
-reactions have no rate and `method="kinetic"` refuses this set.
+reactions have no rate and `chemart.evolve` refuses this set.
 
 Other elements can be added with `initial` (H, He, C, N, O, F, Ne, S, Cl, Ar),
 but then `allowed` must list their molecules, or be emptied.
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `generate_network`, or to `chemart.evolve`; a parameter marked *evolve only* belongs to the process and one marked *generate only* to the network. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
-| `method` | `enum` | `closure` | structural | closure: the deterministic network generator (DNG), every reaction object reachable from the initial species; kinetic: the MC-sampling generator (MCNG), Gillespie's SSA over the molecules present, returning the reactions that fired with their counts <br>one of `closure`, `kinetic` |
 | `templates` | `enum` | `interstellar` | structural | reaction classes: interstellar = the eleven classes G1-G11 of table 1 of the 2005 paper with the rate constants it takes from Duley & Williams (1984) p. 143; fig3 = the three reaction graphs drawn in its figure 3 (radiative association, charge transfer, dissociative recombination), for which no rates are published <br>one of `interstellar`, `fig3` |
 | `initial` | `list` | `['H', 'O']` | population | initial species as element symbols; each becomes the neutral free atom of that element (H -&gt; H*, O -&gt; O::**). Known elements: H, He, C, N, O, F, Ne, S, Cl, Ar <br>*range:* the published experiment starts from hydrogen and oxygen |
 | `allowed` | `list` | `['H^+', 'H', 'H2', 'H2^+', 'H3^+', 'O', 'HO^+',…` | structural | the observational constraint of the paper: the chemical formulas a molecule may have. A reaction whose products fall outside is not generated. An empty list removes the constraint and the closure grows very fast <br>*range:* the default is the observational constraint of figure 4; [] removes it, and then max_atoms must be small (3 gives 110 species, 4 truncates) |
@@ -319,17 +344,18 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 | `max_pairs_species` | `int` | `10` | structural | constraint es: lone pairs or radicals per species <br>`1` … `100` · *range:* the published experiment uses es = 10 |
 | `max_pairs_atom` | `int` | `7` | structural | constraint ep: lone pairs or radicals per atom <br>`1` … `20` · *range:* the published experiment uses ep = 7 |
 | `max_charge` | `int` | `1` | structural | largest absolute charge a species may carry; every molecule of the published network is neutral or singly charged, and without this bound the closure fills with species like O^6+ (a Chemart addition, see decisions) <br>`0` … `10` |
-| `max_species` | `int` | `200` | structural | species budget of the closure; reactions that would exceed it are dropped and the status becomes truncated <br>`1` … `5000` |
-| `densities` | `list` | `[1000.0, 0.44]` | population | initial density of each initial species, in cm^-3, one per entry of `initial`; it is the network's initial_state and, for method=kinetic, the proportion in which the molecules are drawn <br>*range:* Duley & Williams (1984): particle density n = 1000 cm^-3 with n(O) = 0.44 cm^-3, so n(H) = 1000 cm^-3 |
-| `molecules` | `int` | `400` | population | method=kinetic: number of molecules simulated; the initial species get at least one each, otherwise a share proportional to their density <br>`2` … `100000` · *range:* the paper calls it Mp and does not publish its value |
-| `steps` | `int` | `2000` | population | method=kinetic: number of SSA reaction events <br>`1` … `1000000` · *range:* the paper calls it Mc and does not publish its value |
+| `max_species` | `int` | `200` | structural | *generate only.* species budget of the closure; reactions that would exceed it are dropped and the status becomes truncated <br>`1` … `5000` |
+| `densities` | `list` | `[1000.0, 0.44]` | population | initial density of each initial species, in cm^-3, one per entry of `initial`; it is the network's initial_state and, for chemart.evolve, the proportion in which the molecules are drawn <br>*range:* Duley & Williams (1984): particle density n = 1000 cm^-3 with n(O) = 0.44 cm^-3, so n(H) = 1000 cm^-3 |
+| `molecules` | `int` | `400` | population | *evolve only.* number of molecules simulated by the SSA; the initial species get at least one each, otherwise a share proportional to their density <br>`2` … `100000` · *range:* the paper calls it Mp and does not publish its value |
+| `steps` | `int` | `2000` | population | *evolve only.* number of SSA reaction events; a frame after each (fewer if no reaction can fire) <br>`1` … `1000000` · *range:* the paper calls it Mc and does not publish its value |
 
 ### Implementation decisions
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "14 decisions"
+??? note "15 decisions"
 
+    - Two faces, the papers' two generators: generate_network runs the deterministic network generator (DNG), the closure of the initial species under the constraints, with max_species as its budget; chemart.evolve runs the MC-sampling generator (MCNG), Gillespie's SSA over `molecules` molecules for `steps` reaction events, and returns the reactions that fired with their counts (status observed). The SSA stays inside the module because it grows the network as it runs: a pair of species is expanded only when both are present. It yields a frame after every event (frame 0 is the initial population), at the SSA time in seconds (the clock s), with the molecule counts as state and the one reaction that fired; chemart.evolve(..., every=k) keeps one frame in k. The former method parameter is gone.
     - The Artificial Life 15(1) paper itself could not be obtained (see sources), so its two illustrative examples and its headline result - the partition of the molecule set into two mirror categories of reaction networks, the homochirality argument the book reports - are NOT reproduced and nothing in this entry claims them. Everything implemented comes from the authors' own 2005 description of the same framework, from Koca's and Ugi's abstracts, and from the book paragraph.
     - Virtual atoms (the set W, standing for functional groups not active in a reaction) are not implemented: none of the published reaction classes uses them.
     - Lone pairs are loops on an atom (a count), free electrons are explicit as the paper requires for radicals, and the free electron is the species e-. Charge is never stored, always derived: q = v - 2*lone_pairs - radicals - sum of covalent bond orders (Dugundji-Ugi), so 'HO::' is OH+ and 'HO::*' is OH.
@@ -342,7 +368,7 @@ The sources leave gaps, and sometimes contradict each other or the book. Each su
     - Rates are table 1's constants verbatim, as mass-action k, with the table's units recorded in the rate dict and in extras.reaction_classes (unimolecular classes are s^-1, bimolecular cm^3 s^-1). The grain of G11 is not modelled as a species: its density is folded into the published constant, as in Duley & Williams. When several classes give the same stoichiometric reaction their constants are summed and extras.reaction_classes_used names them.
     - G1 and G2 are the same transformation and differ only in whether the reactant is a single atom or a molecule, as table 1 prints them; G10 is table 1's H2-specific photodissociation and G9 covers every other molecule.
     - Kinetics: Gillespie's SSA (the paper's choice) in molecule counts with volume 1 cm^3, so counts and the paper's cm^-3 densities coincide; the initial molecules are apportioned from `densities` with at least one of each, since n(O) = 0.44 would otherwise round to zero. Mc (steps) and Mp (molecules) are not published, so they are parameters.
-    - templates=fig3 carries no rates (figure 3 publishes none), so those reactions have rate None and method=kinetic refuses that set rather than inventing constants.
+    - templates=fig3 carries no rates (figure 3 publishes none), so those reactions have rate None and chemart.evolve refuses that set rather than inventing constants.
     - v1 parameters dropped: atom_types (matrix) is the element table, charge_model (callable) is the Dugundji-Ugi charge bookkeeping, and rate_model (callable) is the published per-class rate constants. The v1 entry's arity 2 became [1, 2]: cosmic-ray ionisation and photodissociation are unimolecular.
 
 ## Results
@@ -396,7 +422,8 @@ simulated concentrations in which "H and H2 are the dominant species"
 (figure 6). For that run the authors also removed reactions like object 8, to
 stay close to Duley and Williams's setup. Chemart's test runs 2000 events and
 checks that the observed network has fewer than a quarter of the closure's
-reactions and that H and H₂ are the two most abundant species at the end.
+reactions, that H and H₂ are the two most abundant species at the end, and
+that the trajectory has one frame per event.
 
 **The combinatorial explosion.** The report opens with the drawback of formal
 network generators: the number of generated molecules grows exponentially

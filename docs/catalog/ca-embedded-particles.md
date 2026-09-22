@@ -228,8 +228,8 @@ reached its `beta` first.
 
 ### How Chemart reads reactions from a run
 
-With `reactions="observed"`, Chemart runs the published look-up table and, at
-every step, does what the example above did by eye.
+`chemart.evolve` runs the published look-up table and, at every step, does
+what the example above did by eye.
 
 1. **Filter.** A cell is assigned to a domain when the seven cells around it
    (the window is set by `filter_window`, default 3 on each side) match one
@@ -272,7 +272,7 @@ Banzhaf and Yamamoto describe every artificial chemistry by three things (book �
 
 **R — reactions** (*explicit* — listed reaction by reaction; molecules per reaction: 1, 2). particle collisions: decay (alpha -&gt; gamma + mu), reaction (beta + gamma -&gt; eta; mu + beta -&gt; delta; eta + delta -&gt; beta) and annihilation (eta + mu -&gt; ∅; gamma + delta -&gt; ∅), each annihilation leaving one of the domains behind
 
-With reactions=published the network is the published interaction table of the chosen rule, complete and exactly as printed. With reactions=observed the CA is actually run: the reactions are the collisions that fired, each with its count, and the network may also contain events involving dislocations or a particle leaving/entering the filtered description.
+generate_network returns the published interaction table of the chosen rule, complete and exactly as printed. chemart.evolve actually runs the CA: the reactions are the collisions that fired, each with its count, and the network may also contain events involving dislocations or a particle leaving/entering the filtered description.
 
 **A — reactor**: `lattice-2d` (a two-dimensional grid on which only neighbours interact).
 
@@ -291,8 +291,8 @@ print(net.summary())
 ```
 
 ```
-ca-embedded-particles: 9 species, 7 reactions, status=observed
-provides: initial-state, space, stoichiometry, topology
+ca-embedded-particles: 6 species, 6 reactions, status=complete
+provides: space, stoichiometry, topology
 seed: 1
 extras: analysis, space
 ```
@@ -300,55 +300,26 @@ extras: analysis, space
 Its first reactions (`net.reactions`):
 
 ```
-∅ -> wL2L2  (x1)
-beta + mu -> delta  (x1)
-delta -> ∅  (x1)
-delta + gamma -> ∅  (x1)
-eta -> beta  (x1)
-mu -> delta  (x1)
-wL2L2 -> ∅  (x1)
+alpha -> gamma + mu
+beta + gamma -> eta
+mu + beta -> delta
+eta + delta -> beta
+eta + mu -> ∅
+gamma + delta -> ∅
 ```
 
-The default call above runs φ_par^a on 149 cells for 298 = 2N steps (the
-task's answer time) from an IC with 72 ones (ρ₀ = 0.483); the published
-space-time figures use ρ₀ = 0.48 and 0.51. The automaton classifies this IC
-correctly. The seven reactions listed are the events the filter saw after `t_c = 5`; on a ring this
-size only a handful of collisions happen, and several of the events are
-one-sided (`delta -> ∅`, `mu -> delta`): a particle vanishing or appearing with
-its partner assigned to a different event, or a dislocation (`wL2L2`) forming
-and healing.
-
-What to read in the result:
-
-- `net.species`: the six catalogued particles plus any other wall seen; each
-  `structure` gives the wall and its published velocity, e.g.
-  `Λ0Λ2 (v=-1.0)`.
-- `net.reactions`: the observed events, each with its count, most frequent
-  first. `net.status` is `observed`, since this is what one run showed, not a
-  complete network.
-- `net.initial_state`: the particles present at `t_c`.
-- `net.extras["analysis"]`: `condensation_time`; `classification` (`correct`,
-  `incorrect` or `undecided`); `initial_density`; `particles_seen` (how many
-  times each particle type was seen, summed over steps); `measured_velocities`
-  (mean displacement per step of every particle followed for at least 5
-  steps); `interactions_observed`; `population` (particle counts over time);
-  and the rule's `catalog`, `lookup_hex` and `published_performance`.
-- `net.extras["space"]`: the `initial` and `final` rows as strings of 0 and 1,
-  and `filtered`, the filtered space-time diagram as rows of `.` (domain) and
-  `#` (wall), thinned to about 200 rows on long runs.
-
-The velocities measured in a whole run are rough, averaged over the one to
-three tracks per particle type that last long enough: in the default run
-`gamma` and `mu` come out at exactly −1 and +1, but `delta` at −1.9 (three
-tracks) and `eta` at +0.33 (one track). Use `probe`, below, for clean values.
+The chemistry has two faces. The call printed above,
+`chemart.generate_network("ca-embedded-particles")`, runs nothing: it returns
+φ_par^a's published interaction table as a complete network
+(`status="complete"`), and its only parameter is `rule`.
+`chemart.evolve("ca-embedded-particles")` runs the automaton and returns a
+trajectory with a frame per CA iteration; `lattice`, `steps`, `density` and
+`filter_window` belong to it.
 
 #### The published catalog as a network
 
-`reactions="published"` does not run anything. It returns the rule's published
-interaction table, complete (`status="complete"`):
-
 ```python
-net = chemart.generate_network("ca-embedded-particles", reactions="published")
+net = chemart.generate_network("ca-embedded-particles")
 for s in net.species:
     print(s.id, s.structure)
 for r in net.reactions:
@@ -375,7 +346,80 @@ Mitchell and Das 1998, Table 4): the same six reactions over differently placed
 walls, with `alpha` at velocity 0, `beta` +1, `gamma` 0, `delta` −3, `eta` +3
 and `mu` +3/2. That is the only way to use φ_par^b: its printed look-up table
 does not classify density when run (see the decisions), so
-`generate_network(..., rule="phi-par-b")` in observed mode raises an error.
+`chemart.evolve(..., rule="phi-par-b")` raises an error. The seed plays no
+part here.
+
+#### A run of the automaton
+
+The default run is φ_par^a on 149 cells for 298 = 2N steps (the task's answer
+time) from an IC with 72 ones (ρ₀ = 0.483); the published space-time figures
+use ρ₀ = 0.48 and 0.51. The automaton classifies this IC correctly.
+
+```python
+traj = chemart.evolve("ca-embedded-particles", seed=1)
+net = traj.network
+for r in net.reactions:
+    print(r.to_text())
+```
+
+```
+∅ -> wL2L2  (x1)
+beta + mu -> delta  (x1)
+delta -> ∅  (x1)
+delta + gamma -> ∅  (x1)
+eta -> beta  (x1)
+mu -> delta  (x1)
+wL2L2 -> ∅  (x1)
+```
+
+These are the events the filter saw after `t_c = 5`. On a ring this size only
+a handful of collisions happen, and several of the events are one-sided
+(`delta -> ∅`, `mu -> delta`): a particle vanishing or appearing with its
+partner assigned to a different event, or a dislocation (`wL2L2`) forming and
+healing.
+
+The frames follow the run step by step:
+
+```python
+t_c = net.extras["analysis"]["condensation_time"]          # 5
+traj.frames[t_c].state      # {'beta': 1.0, 'delta': 1.0, 'gamma': 2.0, 'mu': 1.0, 'wL0L0': 1.0}
+[(f.t, f.fired) for f in traj.frames if f.fired][:2]
+# [(11.0, [[['mu'], ['delta'], 1]]), (18.0, [[['delta'], [], 1], [['eta'], ['beta'], 1]])]
+[round(d, 3) for d in traj.series("density")[::50]]
+# [0.483, 0.356, 0.02, 0.0, 0.0, 0.0]
+```
+
+A frame's `state` counts the particles present at that iteration, by name,
+and its `fired` lists the events recorded in that iteration. An event is
+recorded once it has settled, up to 4 iterations after the collision (events
+still open when the run ends are in the last frame), and never before `t_c`.
+The observable `density` is the fraction of cells in state 1; here the ring
+reaches all 0s by iteration 102 and stays there.
+
+What to read in the network:
+
+- `net.species`: the six catalogued particles plus any other wall seen; each
+  `structure` gives the wall and its published velocity, e.g.
+  `Λ0Λ2 (v=-1.0)`.
+- `net.reactions`: the observed events, each with its count, most frequent
+  first. `net.status` is `observed`, since this is what one run showed, not a
+  complete network.
+- `net.initial_state`: the particles present at `t_c`, the same as
+  `traj.frames[t_c].state`; the first frame is the particles at iteration 0.
+- `net.extras["analysis"]`: `condensation_time`; `classification` (`correct`,
+  `incorrect` or `undecided`); `initial_density`; `particles_seen` (how many
+  times each particle type was seen, summed over steps); `measured_velocities`
+  (mean displacement per step of every particle followed for at least 5
+  steps); `interactions_observed`; and the rule's `catalog`, `lookup_hex` and
+  `published_performance`.
+- `net.extras["space"]`: the `initial` and `final` rows as strings of 0 and 1,
+  and `filtered`, the filtered space-time diagram as rows of `.` (domain) and
+  `#` (wall), thinned to about 200 rows on long runs.
+
+The velocities measured in a whole run are rough, averaged over the one to
+three tracks per particle type that last long enough: in the default run
+`gamma` and `mu` come out at exactly −1 and +1, but `delta` at −1.9 (three
+tracks) and `eta` at +0.33 (one track). Use `probe`, below, for clean values.
 
 #### The worked example
 
@@ -387,7 +431,7 @@ import numpy as np
 import chemart
 from chemart.chemistries import ca_embedded_particles as C
 
-net = chemart.generate_network("ca-embedded-particles", seed=7, lattice=75, steps=150)
+net = chemart.evolve("ca-embedded-particles", seed=7, lattice=75, steps=150).network
 for r in net.reactions:
     print(r.to_text())
 print(net.extras["analysis"]["condensation_time"], net.extras["analysis"]["classification"])
@@ -460,15 +504,15 @@ with 200 it is about ±0.03.
 
 #### Collisions over several runs
 
-The six-seed run of the slow test, on 599 cells for 1,198 steps (about 9
+The six-seed run of the slow test, on 599 cells for 1,198 steps (about 6
 seconds):
 
 ```python
 from collections import Counter
 fired = Counter()
 for seed in range(6):
-    net = chemart.generate_network("ca-embedded-particles", seed=seed, lattice=599,
-                                   steps=1198, density=0.48 if seed % 2 else 0.52)
+    net = chemart.evolve("ca-embedded-particles", seed=seed, lattice=599,
+                         steps=1198, density=0.48 if seed % 2 else 0.52).network
     for r in net.reactions:
         fired[r.to_text().split("  (")[0]] += r.count
 ```
@@ -482,51 +526,51 @@ Five of the six ICs were classified correctly; `t_c` ranged from 6 to 9.
 
 #### The GKL rule
 
-`rule="gkl"` runs the Gács-Kurdyumov-Levin rule. It has the same three domains,
+`chemart.evolve(..., rule="gkl")` runs the Gács-Kurdyumov-Levin rule. It has the same three domains,
 but no particle catalog is published for it in these sources, and its walls do
 not move like φ_par^a's, so no Greek names are borrowed: every wall is a
-`wLiLj` species with a measured velocity, and `reactions="published"` raises an
-error. With `seed=1` it reports `wL1L2 + wL2L1 -> ∅` twice,
+`wLiLj` species with a measured velocity, and `generate_network` raises an
+error for it. With `seed=1` it reports `wL1L2 + wL2L1 -> ∅` twice,
 `wL0L1 + wL2L0 -> wL2L1` once, and a dislocation forming and healing; this IC
 it classifies incorrectly.
 
 The other parameters are in the table below: `lattice` and `steps` set the
-ring and the run length (runs take roughly a second at the defaults and grow
-with `lattice × steps`), `density` the IC, and `filter_window` how wide a patch
+ring and the run length (the default run takes a fraction of a second, and
+runs grow with `lattice × steps`), `density` the IC, and `filter_window` how wide a patch
 must be to count as domain (larger values report wider walls and different
 particle counts).
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `generate_network`, or to `chemart.evolve`; a parameter marked *evolve only* belongs to the process and one marked *generate only* to the network. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
-| `rule` | `enum` | `phi-par-a` | structural | which published radius-3 rule to use: phi-par-a and phi-par-b are the two density-classification CAs evolved by the genetic algorithm of Crutchfield, Mitchell & Das (their Tables 3 and 4 give the particle catalogs); gkl is the hand-designed Gacs-Kurdyumov-Levin rule, which has the same three domains but no published particle catalog. phi-par-b is offered with reactions=published only (see decisions) <br>one of `phi-par-a`, `phi-par-b`, `gkl` |
-| `reactions` | `enum` | `observed` | structural | observed: run the automaton and record the particle interactions that actually fired, with counts (status observed); published: return the rule's published particle interaction table as a complete network, without running anything <br>one of `observed`, `published` |
-| `lattice` | `int` | `149` | spatial | number of cells N of the periodic lattice <br>`12` … `5000` · *range:* the papers measure performance at N = 149, 599 and 999; the book's figure 10.14 uses 75 |
-| `steps` | `int` | `298` | population | CA iterations to run; more iterations means more observed collisions <br>`1` … `20000` · *range:* the task's answer time is T_max = 2N |
-| `density` | `float` | `0.48` | population | density rho_0 of the initial configuration: exactly round(rho_0 N) cells are set to 1, in random positions (this is the only use of the seed) <br>`0` … `1` · *range:* the published space-time figures use rho_0 = 0.48 and 0.51; performance is measured over ICs drawn uniformly, which is what the module's performance() does |
-| `filter_window` | `int` | `3` | structural | half-width of the window used by the domain filter: a site belongs to a domain when the 2w+1 sites around it agree with one spatial phase of that domain's pattern. The default 3 is the CA radius, so the window is the neighbourhood; larger values demand wider domain patches and so report wider walls <br>`1` … `16` |
+| `rule` | `enum` | `phi-par-a` | structural | which published radius-3 rule to use: phi-par-a and phi-par-b are the two density-classification CAs evolved by the genetic algorithm of Crutchfield, Mitchell & Das (their Tables 3 and 4 give the particle catalogs); gkl is the hand-designed Gacs-Kurdyumov-Levin rule, which has the same three domains but no published particle catalog. phi-par-b's catalog can be generated but the automaton cannot be run, and gkl can be run but has no catalog to generate (see decisions) <br>one of `phi-par-a`, `phi-par-b`, `gkl` |
+| `lattice` | `int` | `149` | spatial | *evolve only.* number of cells N of the periodic lattice <br>`12` … `5000` · *range:* the papers measure performance at N = 149, 599 and 999; the book's figure 10.14 uses 75 |
+| `steps` | `int` | `298` | population | *evolve only.* CA iterations to run; more iterations means more observed collisions <br>`1` … `20000` · *range:* the task's answer time is T_max = 2N |
+| `density` | `float` | `0.48` | population | *evolve only.* density rho_0 of the initial configuration: exactly round(rho_0 N) cells are set to 1, in random positions (this is the only use of the seed) <br>`0` … `1` · *range:* the published space-time figures use rho_0 = 0.48 and 0.51; performance is measured over ICs drawn uniformly, which is what the module's performance() does |
+| `filter_window` | `int` | `3` | structural | *evolve only.* half-width of the window used by the domain filter: a site belongs to a domain when the 2w+1 sites around it agree with one spatial phase of that domain's pattern. The default 3 is the CA radius, so the window is the neighbourhood; larger values demand wider domain patches and so report wider walls <br>`1` … `16` |
 
 ### Implementation decisions
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "13 decisions"
+??? note "14 decisions"
 
     - The book describes the idea and shows one filtered space-time diagram; everything quantitative (rules, domains, particles, velocities, interaction tables, performances) is reconstructed from the papers above, hence fidelity: reconstructed.
-    - kind stays analysis: the entry is a method for reading a reaction network out of a cellular automaton. It is exposed both ways: reactions=published hands back the published interaction table (complete), reactions=observed runs the automaton and reports the collisions that fired with their counts (observed).
+    - kind stays analysis: the entry is a method for reading a reaction network out of a cellular automaton.
+    - Two faces, replacing the former reactions parameter (published / observed). generate_network returns the published particle interaction table of the rule (the old reactions=published), a written-down network with status complete: nothing is run, so only rule applies and the seed plays no part; extras.space describes the rule, and no longer carries a random initial lattice that nothing iterated. chemart.evolve runs the automaton (the old reactions=observed) and yields a frame per CA iteration: the particles present (by name), the interactions recorded in that iteration, and the density of 1s. An interaction is recorded when its event settles, up to 4 iterations after the collision, and the events still open at the end go into the last frame. The network holds the interactions that fired with their counts; its initial_state is the particle population at the condensation time t_c, while the first frame is the population at iteration 0. The former extras.analysis.population (particle counts at up to 50 iterations) is the frames' state. The type stays gas (borderline): the chemistry is what a run of the automaton shows, and the catalog is the published summary of such runs.
     - Look-up tables are embedded verbatim as the published hexadecimal strings. The expansion convention is the sources' own (hex digits left to right give the 128 output bits in lexicographic order of neighbourhood, the leftmost bit being the output for neighbourhood 0000000). It is verified independently: expanding the published GKL hex code gives exactly the GKL majority rule as defined by Mitchell, Hraber & Crutchfield, bit for bit (test).
     - phi_par^a is the rule of Crutchfield, Mitchell & Das Table 1 (0504058605000F77 037755877BFFB77F). The same rule appears in Crutchfield & Mitchell (1995) Table 1 as phi_100 with two hexadecimal digits different (05040587 05000f77 03775583 7bffb77f); both reproduce the published performance within sampling error (measured P_149 = 0.78 for each against 0.775 and 0.769 published), so the difference is a transcription slip in one of the two papers and the later, catalogued form is used.
-    - phi_par^b is offered with reactions=published only. Its look-up table as printed in Crutchfield, Mitchell & Das Table 1 (00240066A0A02246 76EFEFFFFBFFAAFE, checked against the typeset page, not only the extracted text) never classifies density in our implementation: measured P_149 = 0.00 against the published 0.766, under the same bit convention that reproduces GKL and phi_par^a, and under row swaps, bit reversal and complementation. A search over all 480 single-hexadecimal-digit corrections found none that reaches P = 0.6. The published catalog of Table 4 is therefore offered as data, and running that automaton is refused rather than reported as the published rule.
-    - GKL has no published particle catalog in these sources. Its space-time behaviour has the same three domains (Mitchell, Hraber & Crutchfield describe its checkerboard signal and its white-to-black boundary), but its walls are not phi_par^a's particles: measured by probe(), GKL's Λ0Λ2 wall moves +3 where phi_par^a's gamma moves -1, its Λ2Λ0 wall +1 where delta moves -3, and its stable and unstable black-white boundaries are the other way round (Λ0Λ1 is stable and Λ1Λ0 decays). Borrowing the Greek names would therefore attach published velocities to walls that do not have them, so for GKL every wall is reported by the domains it separates (wΛ0Λ2 and so on) with a measured velocity, and no interaction table is claimed: reactions=published is refused for GKL.
+    - phi_par^b is offered through generate_network only. Its look-up table as printed in Crutchfield, Mitchell & Das Table 1 (00240066A0A02246 76EFEFFFFBFFAAFE, checked against the typeset page, not only the extracted text) never classifies density in our implementation: measured P_149 = 0.00 against the published 0.766, under the same bit convention that reproduces GKL and phi_par^a, and under row swaps, bit reversal and complementation. A search over all 480 single-hexadecimal-digit corrections found none that reaches P = 0.6. The published catalog of Table 4 is therefore offered as data, and chemart.evolve refuses to run that automaton rather than report it as the published rule.
+    - GKL has no published particle catalog in these sources. Its space-time behaviour has the same three domains (Mitchell, Hraber & Crutchfield describe its checkerboard signal and its white-to-black boundary), but its walls are not phi_par^a's particles: measured by probe(), GKL's Λ0Λ2 wall moves +3 where phi_par^a's gamma moves -1, its Λ2Λ0 wall +1 where delta moves -3, and its stable and unstable black-white boundaries are the other way round (Λ0Λ1 is stable and Λ1Λ0 decays). Borrowing the Greek names would therefore attach published velocities to walls that do not have them, so for GKL every wall is reported by the domains it separates (wΛ0Λ2 and so on) with a measured velocity, and no interaction table is claimed: generate_network refuses GKL.
     - The domain filter is the published construction in spirit, not the published transducer: a site is assigned to a domain when the 2w+1 sites around it (w = filter_window, default the CA radius 3, i.e. the neighbourhood) agree with one spatial phase of that domain's pattern, and the maximal runs of unassigned sites are the walls. The published filter is a finite-state domain-recognising transducer (Crutchfield, Mitchell & Das Appendix A; Crutchfield & Hanson 1993), which is equivalent for these periodic domains but additionally carries phase information.
     - A particle is identified by the ordered pair of domains its wall separates, which is exactly how the published catalogs define them (`p ~ Λi Λj`). Walls between two patches of the same domain are dislocations, which the published catalogs explicitly leave out; they are reported as species wΛiΛi rather than silently dropped.
     - Interactions are not instantaneous in the CA - for a few steps around a collision the lattice cannot be decomposed into domains and particles (the fourth simplifying assumption of the embedded-particle model). Chemart therefore collects what disappears and what appears within 14 cells and 4 steps into one event, and a particle that vanishes and returns within that window counts as having survived rather than as a reaction. Without this a single annihilation is reported as two events with an unassigned wall in between; and the radius has to be the width of a wall (14) rather than of the neighbourhood (7), because the centres of two colliding wedges are that far apart when they meet - with 7, every two-particle reaction of the published table is split into two one-sided events (beta + gamma -&gt; eta is reported as gamma -&gt; ∅ and beta -&gt; eta).
     - Only collisions from the condensation time t_c on are recorded, t_c being the first step at which every site is in a regular domain or in a wall between two of them that is at most two neighbourhoods (14 cells) wide, dislocations allowed. Before t_c the configuration is not yet describable in terms of particles, so events there would be filter artefacts rather than reactions. The width bound cannot be one neighbourhood: a particle's wedge is wider than the neighbourhood - phi_par^a's beta wall is a steady 8 cells - so with a 7-cell bound no configuration ever condenses. With the 14-cell bound the measured t_c is 6 at N = 149 and 8 at N = 599 for the default IC, against the published average of about 12 at N = 149.
     - Particle velocities are measured, not assumed: particles are followed from step to step by taking the nearest wall of the same type within 4 cells (one more than the fastest published velocity), with no reference to the published velocity. The module's probe() measures a single particle in isolation by building a lattice that is one domain on each half, which reproduces the published velocities exactly and shows alpha decaying into gamma and mu.
-    - Dropped v1 parameters: `rule` was an int CA rule number and `r` the radius; both are properties of the published rule, which is now a named choice, and every rule here is radius 3. `lattice_len` became `lattice`. Added: reactions, steps, density and filter_window.
+    - Dropped v1 parameters: `rule` was an int CA rule number and `r` the radius; both are properties of the published rule, which is now a named choice, and every rule here is radius 3. `lattice_len` became `lattice`. Added: steps, density and filter_window.
     - Not implemented: the epsilon-machine reconstruction that discovers the domains automatically (the domains of the catalogued rules are given); the ballistic embedded-particle model that predicts P_N from the catalog and the particle distribution at t_c; interaction-result probabilities and three-particle interactions, which the sources list for the synchronisation rules but not for phi_par^a; the synchronisation rules themselves - the look-up tables printed for phi_sync1 and phi_parent (Hordijk, Shalizi & Crutchfield 2001, Table 1) do not synchronise in our implementation (measured 0.00 and 0.28 of ICs), so their catalogs are cited but not offered.
 
 ## Results
@@ -631,7 +675,7 @@ faster with N than GKL's).
 
 - **The catalogs.** φ_par^a's and φ_par^b's domains, particles, velocities and
   interaction tables are embedded exactly as printed, and
-  `reactions="published"` returns them (tests
+  `generate_network` returns them (tests
   `test_published_particle_catalog_is_reproduced_exactly` and
   `test_published_interaction_table_is_reproduced_exactly`). A test also
   checks that every interaction composes its reactants' walls, as in the

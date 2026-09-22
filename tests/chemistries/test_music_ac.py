@@ -10,7 +10,7 @@ import itertools
 
 import pytest
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries.music_ac import (
     AVOID_PITCHES, CADENCES, CHORD_TONES, FUNCTION_CHORDS, NOTES, PITCH,
     SUBDOMINANT_TO_TONIC, Rule, describe, elements, initial_pool, is_phrase,
@@ -281,6 +281,22 @@ def test_default_run_composes_a_phrase():
     labels = {r.label for r in rule_set()}
     assert set(net.extras["reaction_rules"]) <= labels
     assert len(net.extras["rules"]) == 65
+
+
+def test_a_frame_per_collision_until_the_first_phrase():
+    """chemart.evolve: a frame per collision; the run stops once a phrase is finished."""
+    traj = evolve(ID, seed=1)
+    assert traj.clock == "collisions"
+    assert traj.times() == [float(i) for i in range(len(traj.frames))]
+    assert traj.frames[0].fired == [] and traj.frames[0].observables == {"phrases": 0}
+    assert all(sum(n for _, _, n in f.fired) <= 1 for f in traj.frames)
+    finished = {}
+    for f in traj.frames:
+        count = sum(finished.setdefault(s, is_phrase(parse_object(s))) for s in f.state)
+        assert f.observables["phrases"] == count
+    phrases = traj.series("phrases")
+    assert phrases[-1] == 1 and not any(phrases[:-1])
+    assert traj.frames[-1].state == {s: float(n) for s, n in traj.network.extras["final_state"].items()}
 
 
 def test_rules_conserve_elements():

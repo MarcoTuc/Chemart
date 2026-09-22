@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries import fraglets as fr
 
 
@@ -20,7 +20,7 @@ def reactions(net):
 
 
 def ssa_final(program, dialect="fraglets-2007", seed=0, steps=10_000):
-    net = generate_network("fraglets", program=program, dialect=dialect, method="ssa", steps=steps, seed=seed)
+    net = evolve("fraglets", program=program, dialect=dialect, steps=steps, seed=seed).network
     return net, net.extras["final_state"]
 
 
@@ -213,8 +213,12 @@ def test_lossy_link_emulation_2007_tutorial():
 
 def test_ssa_observed_network_balances():
     program = fr.CDP.replace("f a[cdp data]", "f a[cdp data]5")
-    net = generate_network("fraglets", program=program, method="ssa", seed=3)
-    assert net.status == "observed"
+    traj = evolve("fraglets", program=program, seed=3)
+    net = traj.network
+    assert net.status == "observed" and traj.clock == "steps"
+    assert traj.frames[0].state == {s: float(n) for s, n in net.initial_state.items()}
+    assert traj.frames[-1].t == net.extras["bimolecular_events"]
+    assert traj.frames[-1].state == {s: float(n) for s, n in net.extras["final_state"].items()}
     total = dict(net.initial_state)
     for r in net.reactions:
         for s, n in r.reactants.items():

@@ -210,8 +210,8 @@ reached its `beta` first.
 
 ### How Chemart reads reactions from a run
 
-With `reactions="observed"`, Chemart runs the published look-up table and, at
-every step, does what the example above did by eye.
+`chemart.evolve` runs the published look-up table and, at every step, does
+what the example above did by eye.
 
 1. **Filter.** A cell is assigned to a domain when the seven cells around it
    (the window is set by `filter_window`, default 3 on each side) match one
@@ -248,46 +248,18 @@ described here, and it is its space-time diagram that is two-dimensional.
 
 ## Using it
 
-The default call above runs φ_par^a on 149 cells for 298 = 2N steps (the
-task's answer time) from an IC with 72 ones (ρ₀ = 0.483); the published
-space-time figures use ρ₀ = 0.48 and 0.51. The automaton classifies this IC
-correctly. The seven reactions listed are the events the filter saw after `t_c = 5`; on a ring this
-size only a handful of collisions happen, and several of the events are
-one-sided (`delta -> ∅`, `mu -> delta`): a particle vanishing or appearing with
-its partner assigned to a different event, or a dislocation (`wL2L2`) forming
-and healing.
-
-What to read in the result:
-
-- `net.species`: the six catalogued particles plus any other wall seen; each
-  `structure` gives the wall and its published velocity, e.g.
-  `Λ0Λ2 (v=-1.0)`.
-- `net.reactions`: the observed events, each with its count, most frequent
-  first. `net.status` is `observed`, since this is what one run showed, not a
-  complete network.
-- `net.initial_state`: the particles present at `t_c`.
-- `net.extras["analysis"]`: `condensation_time`; `classification` (`correct`,
-  `incorrect` or `undecided`); `initial_density`; `particles_seen` (how many
-  times each particle type was seen, summed over steps); `measured_velocities`
-  (mean displacement per step of every particle followed for at least 5
-  steps); `interactions_observed`; `population` (particle counts over time);
-  and the rule's `catalog`, `lookup_hex` and `published_performance`.
-- `net.extras["space"]`: the `initial` and `final` rows as strings of 0 and 1,
-  and `filtered`, the filtered space-time diagram as rows of `.` (domain) and
-  `#` (wall), thinned to about 200 rows on long runs.
-
-The velocities measured in a whole run are rough, averaged over the one to
-three tracks per particle type that last long enough: in the default run
-`gamma` and `mu` come out at exactly −1 and +1, but `delta` at −1.9 (three
-tracks) and `eta` at +0.33 (one track). Use `probe`, below, for clean values.
+The chemistry has two faces. The call printed above,
+`chemart.generate_network("ca-embedded-particles")`, runs nothing: it returns
+φ_par^a's published interaction table as a complete network
+(`status="complete"`), and its only parameter is `rule`.
+`chemart.evolve("ca-embedded-particles")` runs the automaton and returns a
+trajectory with a frame per CA iteration; `lattice`, `steps`, `density` and
+`filter_window` belong to it.
 
 #### The published catalog as a network
 
-`reactions="published"` does not run anything. It returns the rule's published
-interaction table, complete (`status="complete"`):
-
 ```python
-net = chemart.generate_network("ca-embedded-particles", reactions="published")
+net = chemart.generate_network("ca-embedded-particles")
 for s in net.species:
     print(s.id, s.structure)
 for r in net.reactions:
@@ -314,7 +286,80 @@ Mitchell and Das 1998, Table 4): the same six reactions over differently placed
 walls, with `alpha` at velocity 0, `beta` +1, `gamma` 0, `delta` −3, `eta` +3
 and `mu` +3/2. That is the only way to use φ_par^b: its printed look-up table
 does not classify density when run (see the decisions), so
-`generate_network(..., rule="phi-par-b")` in observed mode raises an error.
+`chemart.evolve(..., rule="phi-par-b")` raises an error. The seed plays no
+part here.
+
+#### A run of the automaton
+
+The default run is φ_par^a on 149 cells for 298 = 2N steps (the task's answer
+time) from an IC with 72 ones (ρ₀ = 0.483); the published space-time figures
+use ρ₀ = 0.48 and 0.51. The automaton classifies this IC correctly.
+
+```python
+traj = chemart.evolve("ca-embedded-particles", seed=1)
+net = traj.network
+for r in net.reactions:
+    print(r.to_text())
+```
+
+```
+∅ -> wL2L2  (x1)
+beta + mu -> delta  (x1)
+delta -> ∅  (x1)
+delta + gamma -> ∅  (x1)
+eta -> beta  (x1)
+mu -> delta  (x1)
+wL2L2 -> ∅  (x1)
+```
+
+These are the events the filter saw after `t_c = 5`. On a ring this size only
+a handful of collisions happen, and several of the events are one-sided
+(`delta -> ∅`, `mu -> delta`): a particle vanishing or appearing with its
+partner assigned to a different event, or a dislocation (`wL2L2`) forming and
+healing.
+
+The frames follow the run step by step:
+
+```python
+t_c = net.extras["analysis"]["condensation_time"]          # 5
+traj.frames[t_c].state      # {'beta': 1.0, 'delta': 1.0, 'gamma': 2.0, 'mu': 1.0, 'wL0L0': 1.0}
+[(f.t, f.fired) for f in traj.frames if f.fired][:2]
+# [(11.0, [[['mu'], ['delta'], 1]]), (18.0, [[['delta'], [], 1], [['eta'], ['beta'], 1]])]
+[round(d, 3) for d in traj.series("density")[::50]]
+# [0.483, 0.356, 0.02, 0.0, 0.0, 0.0]
+```
+
+A frame's `state` counts the particles present at that iteration, by name,
+and its `fired` lists the events recorded in that iteration. An event is
+recorded once it has settled, up to 4 iterations after the collision (events
+still open when the run ends are in the last frame), and never before `t_c`.
+The observable `density` is the fraction of cells in state 1; here the ring
+reaches all 0s by iteration 102 and stays there.
+
+What to read in the network:
+
+- `net.species`: the six catalogued particles plus any other wall seen; each
+  `structure` gives the wall and its published velocity, e.g.
+  `Λ0Λ2 (v=-1.0)`.
+- `net.reactions`: the observed events, each with its count, most frequent
+  first. `net.status` is `observed`, since this is what one run showed, not a
+  complete network.
+- `net.initial_state`: the particles present at `t_c`, the same as
+  `traj.frames[t_c].state`; the first frame is the particles at iteration 0.
+- `net.extras["analysis"]`: `condensation_time`; `classification` (`correct`,
+  `incorrect` or `undecided`); `initial_density`; `particles_seen` (how many
+  times each particle type was seen, summed over steps); `measured_velocities`
+  (mean displacement per step of every particle followed for at least 5
+  steps); `interactions_observed`; and the rule's `catalog`, `lookup_hex` and
+  `published_performance`.
+- `net.extras["space"]`: the `initial` and `final` rows as strings of 0 and 1,
+  and `filtered`, the filtered space-time diagram as rows of `.` (domain) and
+  `#` (wall), thinned to about 200 rows on long runs.
+
+The velocities measured in a whole run are rough, averaged over the one to
+three tracks per particle type that last long enough: in the default run
+`gamma` and `mu` come out at exactly −1 and +1, but `delta` at −1.9 (three
+tracks) and `eta` at +0.33 (one track). Use `probe`, below, for clean values.
 
 #### The worked example
 
@@ -326,7 +371,7 @@ import numpy as np
 import chemart
 from chemart.chemistries import ca_embedded_particles as C
 
-net = chemart.generate_network("ca-embedded-particles", seed=7, lattice=75, steps=150)
+net = chemart.evolve("ca-embedded-particles", seed=7, lattice=75, steps=150).network
 for r in net.reactions:
     print(r.to_text())
 print(net.extras["analysis"]["condensation_time"], net.extras["analysis"]["classification"])
@@ -399,15 +444,15 @@ with 200 it is about ±0.03.
 
 #### Collisions over several runs
 
-The six-seed run of the slow test, on 599 cells for 1,198 steps (about 9
+The six-seed run of the slow test, on 599 cells for 1,198 steps (about 6
 seconds):
 
 ```python
 from collections import Counter
 fired = Counter()
 for seed in range(6):
-    net = chemart.generate_network("ca-embedded-particles", seed=seed, lattice=599,
-                                   steps=1198, density=0.48 if seed % 2 else 0.52)
+    net = chemart.evolve("ca-embedded-particles", seed=seed, lattice=599,
+                         steps=1198, density=0.48 if seed % 2 else 0.52).network
     for r in net.reactions:
         fired[r.to_text().split("  (")[0]] += r.count
 ```
@@ -421,17 +466,17 @@ Five of the six ICs were classified correctly; `t_c` ranged from 6 to 9.
 
 #### The GKL rule
 
-`rule="gkl"` runs the Gács-Kurdyumov-Levin rule. It has the same three domains,
+`chemart.evolve(..., rule="gkl")` runs the Gács-Kurdyumov-Levin rule. It has the same three domains,
 but no particle catalog is published for it in these sources, and its walls do
 not move like φ_par^a's, so no Greek names are borrowed: every wall is a
-`wLiLj` species with a measured velocity, and `reactions="published"` raises an
-error. With `seed=1` it reports `wL1L2 + wL2L1 -> ∅` twice,
+`wLiLj` species with a measured velocity, and `generate_network` raises an
+error for it. With `seed=1` it reports `wL1L2 + wL2L1 -> ∅` twice,
 `wL0L1 + wL2L0 -> wL2L1` once, and a dislocation forming and healing; this IC
 it classifies incorrectly.
 
 The other parameters are in the table below: `lattice` and `steps` set the
-ring and the run length (runs take roughly a second at the defaults and grow
-with `lattice × steps`), `density` the IC, and `filter_window` how wide a patch
+ring and the run length (the default run takes a fraction of a second, and
+runs grow with `lattice × steps`), `density` the IC, and `filter_window` how wide a patch
 must be to count as domain (larger values report wider walls and different
 particle counts).
 
@@ -537,7 +582,7 @@ faster with N than GKL's).
 
 - **The catalogs.** φ_par^a's and φ_par^b's domains, particles, velocities and
   interaction tables are embedded exactly as printed, and
-  `reactions="published"` returns them (tests
+  `generate_network` returns them (tests
   `test_published_particle_catalog_is_reproduced_exactly` and
   `test_published_interaction_table_is_reproduced_exactly`). A test also
   checks that every interaction composes its reactants' walls, as in the

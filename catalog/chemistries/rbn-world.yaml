@@ -1,0 +1,71 @@
+chemistries:
+
+- id: rbn-world
+  name: RBN World
+  intuition: >
+    Random Boolean networks as atoms. Each atom is a small random Boolean
+    network with two bonding sites. Whether two atoms bond is not written in a
+    table: it is decided by a property of their dynamics, such as the fraction
+    of nodes that are on over the attractor, and a bond breaks again when the
+    dynamics change. Molecules are trees of Boolean networks, and a collision
+    can join molecules, break them, or leave an atom in a different state
+    without bonding. A sub-symbolic chemistry: reactivity emerges from the
+    atoms' behaviour.
+  aliases: ["RBN-World", "bRBN-World"]
+  origin: "Faulconbridge, Stepney, Miller & Caves, 2009-2011"
+  book: "18.4.2; subsymbolic AC 10.7.3"
+  refs: ["[264]", "[263]"]
+  family: automata
+  kind: generator
+  constructive: true
+  type: gas
+  clock: collisions
+  S:
+    repr: "an atom is a bonding RBN (bRBN: an RBN plus 2 bonding sites); a molecule is a tree of bRBNs joined at bonding sites, and each tree level carries its own node states"
+    definition: implicit
+    notes: "species are the molecules observed in a run; their structure string gives the tree, the site-level bonds and the states at every level"
+  R:
+    definition: implicit
+    arity: 2
+    scheme: >
+      two molecules collide at a random empty site each; a bond forms between
+      the smallest bRBNs whose emergent attractor property satisfies the
+      bonding rule, before and after the sites are filled; then every bond
+      that no longer satisfies it breaks, e.g. A + B -> (A-B),
+      A1 + B -> A2 + B, (A-B) + C -> A + B + C
+  A:
+    reactor: well-stirred-multiset
+    dilution: none
+    notes: "iterative mixing of random pairs (Faulconbridge thesis 8.2.2.1); atoms are conserved"
+  params:
+    - {name: N, type: int, default: 10, min: 1, max: 25, range: "RBN World papers use N in {5, 10, 15, 20, 25}; the thesis's evolved atoms use N = 10", role: structural, meaning: "Boolean nodes per atom"}
+    - {name: K, type: int, default: 2, min: 1, max: 12, range: "1 <= K <= N and N * K >= 2 (the bonding sites take two input slots); RBN World uses K in {2, 3}", role: structural, meaning: "inputs per node of an atom"}
+    - {name: function_bias, type: float, default: 0.5, min: 0, max: 1, role: structural, meaning: "probability that a truth-table output of an atom is 1"}
+    - {name: bonding_rule, type: enum, default: proportion-sum-one, choices: [proportion-sum-one, total-sum-zero, cycle-length-equal], role: structural, meaning: "emergent property and criterion that decide bonds. proportion-sum-one and total-sum-zero passed all low-level tests (ALife XII); cycle-length-equal is the original ECAL 2009 chemistry"}
+    - {name: elements, type: int, default: 5, min: 1, max: 26, range: "Faulkner et al. (2018) seed the reactor with five atom types", role: structural, meaning: "number of random atom types (bRBNs), named A, B, C, ..."}
+    - {name: copies, type: int, default: 20, min: 1, max: 1000, range: "the thesis uses 1000 copies of each element", role: population, meaning: "initial molecules of each element"}
+    - {name: collisions, type: int, default: 1000, min: 0, max: 100000, role: population, meaning: "random pairwise collisions simulated, a frame every elements * copies of them; the observed network grows with it"}
+  provides: [topology, stoichiometry, catalysts, initial-state, mass-conservation, sequence-structure-function]
+  fidelity: reconstructed
+  sources:
+    - "Banzhaf & Yamamoto (2015), section 18.4.2: the paragraph on RBN World (atoms are RBNs extended with bonding sites, molecules are networks of bRBNs, reactions form and cleave bonds); section 10.7.3 credits [264] with the sub-symbolic idea"
+    - "Faulconbridge, A. (2011). RBN-World: sub-symbolic artificial chemistry for artificial life. PhD thesis, University of York. Chapters 5-8 (bRBN construction, reaction pseudocode figs. 6.1.1-6.1.4, example reactions 6.2.1-6.2.8, bonding properties and criteria, reactor). https://etheses.whiterose.ac.uk/2061/"
+    - "Faulconbridge, A., Stepney, S., Miller, J. F. & Caves, L. (2010). RBN-World: the hunt for a rich AChem. ALife XII, 261-268 (book ref [263]). Tables 1-5. https://www-users.york.ac.uk/~ss44/bib/ss/nonstd/alife12_rbn.pdf"
+    - "Faulkner, P., Krastev, M., Sebald, A. & Stepney, S. (2018). Sub-symbolic artificial chemistries. In Inspired by Nature, Springer. Section 5 (bRBN-World). https://www-users.york.ac.uk/~ss44/bib/ss/nonstd/ssachem2018.pdf"
+  decisions:
+    - "Split from the rbn entry, where it was model=rbn-world, when the chemistries got two faces: RBN World is a gas (molecules are trees of bRBNs and a procedure computes the products), the classic RBN a generator. The book names RBN World in one paragraph; the model is reconstructed from the thesis, the ALife XII paper and Faulkner et al. (2018). Atoms are drawn with rbn's random_rbn, so N, K and function_bias mean what they mean there. rbn's K_distribution is not offered (RBN World atoms have a fixed K), and N goes up to 25, the largest atoms in the papers, because nothing here enumerates the 2^N states that cap rbn at 16."
+    - "One face, evolve: chemart.evolve runs the reactor and yields a frame every elements * copies collisions (one pass over the initial population). A frame's state is the soup, its fired list the reactions since the previous frame, and its observable largest_molecule_atoms the number of atoms in the largest molecule present. There is no generate face: no source defines a closure of the reaction rules, and every attractor state of every tree is a species. generate_network('rbn-world') runs the reactor to the end and returns its network."
+    - "bRBN atoms (thesis 5.3.1; Faulkner et al. 5.1.2): a random N-node, K-input RBN plus two bonding nodes, each replacing one input of a random node. Not stated: the two sites take distinct input slots. Node initial states are random with probability 0.5 (thesis 5.2.1) and shared by every copy of an element. Atoms are settled onto their attractor before entering the reactor, so the first species of each element is its settled state A.1."
+    - "Bonding rules: only the three published chemistries are offered. proportion/sum one (thesis ch. 8 and Faulkner et al. 2018, the default) and total/sum zero are the only property/criterion pairs that passed all low-level tests (ALife XII table 5); cycle length/equal is the original ECAL 2009 choice, taken as exact equality ('bonds only exist between bRBNs that have the same cycle length', thesis ch. 6). Sum tolerance is 0.001. The other combinations of ALife XII table 3 (equal/similar/different on flashing, flashes, magnitude, etc.) are not offered: they normalise by a property range p_min..p_max whose value for composites, which differ in size and cycle length, is not specified. cycle_properties() still computes all six properties."
+    - "Property evaluation (thesis 6.2.1, 6.2.6): a bRBN is run from its stored state until a state repeats; that first repeated state becomes the stored state, and the property is taken over the cycle. Empty sites read 0, filled sites read 1, and inside a composite a bond becomes reciprocal inputs between the two nodes fed by the bonded sites (thesis 5.3.3). Every tree level stores its own node states. Proportion and total count the N nodes of each atom in the bRBN, bonding nodes excluded. If no attractor is found within 65536 steps the property is undefined and the rule fails."
+    - "Reaction (thesis figs. 6.1.1-6.1.4): pick a random empty site on each molecule. Test the atoms holding them, then climb to the larger enclosing composite (both when sizes are equal) until the rule holds or no larger composite is left. Fill the two sites and retest; if the rule fails, empty them again, keeping the changed states (A1 + B -> A2 + B). Otherwise zip the two trees level by level (Faulkner et al. fig. 12). Finally break every bond whose two child bRBNs fail the rule, repeating until none breaks; split disconnected composites and remove single-child ones. A new composite takes its states from the nodes it replaces, and a split one inherits them (not stated)."
+    - "Faulkner et al. (2018)'s temperature analogue is described as preliminary and is not implemented. Linking and decomposition succeed with probability 1, as in all the earlier RBN World work."
+    - "Reactor: iterative mixing (thesis fig. 8.2.1) of copies molecules per element for the given number of collisions, recording each distinct non-elastic reaction with its count (status observed). The thesis's Gillespie-like timing and its genetic-algorithm search for rich atom sets (ch. 8) are not implemented; atoms are random, as in ECAL 2009 and ALife XII. RBN World defines no rate constants. extras.conservation gives one atom-count law per element."
+    - "Species identity: a canonical code of the tree (children sorted), with site-level bonds and the node states at every level. Two molecules with the same element tree but different bonding sites or states are different species. Ids are the readable structure plus an index in order of first observation (A.1, (A-B).2), extending the thesis's state numbering to whole molecules. Isomorphic molecules with internal symmetries could in rare cases get two ids."
+    - "The ECAL 2009 paper [264] was not accessible (Springer). Its model is the one described in chapters 5-6 of the thesis by the same author."
+    - "The number of bonding sites is fixed at b = 2, as in every RBN World source (the v1 parameter bonding_sites is dropped)."
+  phenomena:
+    - "synthesis, decomposition, and emergent catalysis with state change, A1 + B -> A2 + B (thesis 6.2.6)"
+    - "linking is not associative: ((A-B-C)-D) != ((A-B)-(C-D)) in general"
+    - "only proportion/sum-one and total/sum-zero chemistries show variation in all five low-level tests (synthesis, self-synthesis, decomposition, substitution, catalysis; ALife XII)"
+    - "RBN World aims at autocatalytic sets, hypercycles and heteropolymers built from bRBNs; GA-evolved atoms gave a network of 1286 reactions and 645 particles with a longest loop of 8 reactions (Faulkner et al. 2018)"

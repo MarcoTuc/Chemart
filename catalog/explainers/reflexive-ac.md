@@ -156,16 +156,20 @@ choice, not something from the papers.
 
 ### The reactor
 
-Chemart offers two reactors. The **closure** starts from the seed machines, composes every
-ordered pair, adds the new products and repeats until nothing new appears or
-the species budget `max_species` is spent. The **soup** is the book's standard
-well-stirred flow reactor: a population of `M` molecules, from which an
-ordered pair is drawn at random; the product is added and a random molecule
-removed, so the population stays at `M`.
+Chemart offers two ways to run the chemistry. The **closure** starts from the
+seed machines, composes every ordered pair, adds the new products and repeats
+until nothing new appears or the species budget `max_species` is spent. The
+**flow reactor** is the book's standard well-stirred reactor: a population of
+`M` molecules, from which an ordered pair is drawn at random; the product is
+added and a random molecule removed, so the population stays at `M`.
 
 ## Using it
 
-The default run is the closure from a single M45 with `max_states = 64`. It is
+The chemistry has two faces. `chemart.generate_network`, printed above,
+returns the closure; `chemart.evolve` runs the flow reactor and returns a
+trajectory.
+
+The default network is the closure from a single M45 with `max_states = 64`. It is
 complete, with six species of 2, 4, 16, 16, 32 and 64 states: the growth
 series described above. The first reaction is the worked example; the others
 compose the products with M45 and with each other. The species names get long quickly, so use `net.extras`:
@@ -207,15 +211,18 @@ net = chemart.generate_network("reflexive-ac", machines=["M45", "M61"])
 net.summary()     # reflexive-ac: 64 species, 194 reactions, status=complete
 ```
 
-**A soup of random machines.** With `machines=[]`, Chemart draws `M` random
-machines with `states` states over `symbols` symbols (links uniform, then cut
-to the part reachable from state 0). In the soup, `extras["analysis"]
-["distinct_species"]` gives the number of distinct species after every `M`
-collisions, and `extras["final_state"]` the final population:
+**A flow reactor of random machines.** With `machines=[]`, Chemart draws `M`
+random machines with `states` states over `symbols` symbols (links uniform,
+then cut to the part reachable from state 0). `chemart.evolve` runs
+`collisions` collisions (2,000 by default) and returns a trajectory with a
+frame every `M` collisions; each frame's `state` is the population at that
+moment, so `len(f.state)` is the number of distinct species. The network of
+the reactions that fired, with counts, is `traj.network`, and its
+`extras["final_state"]` is the final population:
 
 ```python
-net = chemart.generate_network("reflexive-ac", seed=3, method="soup", machines=[], M=50)
-net.extras["analysis"]["distinct_species"]
+traj = chemart.evolve("reflexive-ac", seed=3, machines=[], M=50)
+[len(f.state) for f in traj.frames]
 # [38, 46, 47, 47, 38, 42, 43, 39, 32, 29, 22, 21, 14, 16, 11, 10, 8, 7, 8, 8,
 #  7, 6, 7, 6, 5, 5, 4, 4, 4, 4, 4, 4, 4, 3, 2, 2, 2, 2, 2, 2, 2]
 ```
@@ -227,7 +234,7 @@ machine copies itself. Over seeds 0-9, the default 2,000 collisions left one
 species in 4 runs and two to four in the others, always self-reproducing
 machines of 7 to 57 states; with `collisions=6000`, seeds 0-4 all ended with a
 single species. This is a Chemart observation, not a published result. A run
-of 2,000 collisions takes about two seconds.
+of 2,000 collisions takes well under a second.
 
 ## Results
 
@@ -247,7 +254,7 @@ within the size bound, that the self-composition `M45 + M45` is among the
 reactions and gives four states, and that large products are elastic. The
 claims of self-similar topologies, new pathways and open-ended diversity
 cannot be checked against the paper's examples, which are not available, and
-are not tested. Chemart's own soup, a reactor the paper may not have used, does
+are not tested. Chemart's own flow reactor, which the paper may not have used, does
 not show open-ended diversity: a random population collapses to one or a few
 self-reproducing machines.
 

@@ -20,8 +20,10 @@ are the bonds that *store* energy. Released energy is pooled in the
 spatially-connected cluster of atoms around the reaction site, is spendable
 only in the same time step, and is otherwise lost.
 
-The returned network is the set of reactions that actually fired in one run,
-with firing counts.
+The chemistry is a gas with one face, ``evolve``: a frame per time step (one
+movement phase and one reaction phase), whose observables count the sugar,
+biomass and inorganic bonds and the free atoms. The returned network is the
+set of reactions that actually fired in one run, with firing counts.
 """
 
 from __future__ import annotations
@@ -31,6 +33,8 @@ import math
 from collections import Counter
 
 from chemart.network import Network, Reaction, Species
+from chemart.soup import Tally
+from chemart.trajectory import Frame
 
 #: Appendix "Known atoms": atom : shell 1 : shell 2 : shell 3.
 SHELLS = {
@@ -177,12 +181,10 @@ class _World:
         self.registry = _Registry()
         self.prob = {"low": p.p_low, "moderate": p.p_moderate, "high": p.p_high}
         self.energy = {"low": p.energy_low, "high": p.energy_high}
-        self.fired: dict[tuple, list] = {}
+        self.tally = Tally()
+        self.detail: dict[tuple, dict] = {}    # reaction key -> action, bond, energy, catalysts
         self.ledger = Counter()
-        self.history: dict[str, list[int]] = {
-            "sugar_bonds": [], "biomass_bonds": [], "inorganic_bonds": [],
-            "free_atoms": [], "molecules": [],
-        }
+        self.state = Counter()                 # species -> molecules present, kept up to date by record
         self.events = Counter()                # (action, bond, catalyst) -> count
 
     # -- construction -------------------------------------------------------
@@ -360,6 +362,7 @@ class _World:
         mol_u = self.molecule(u)
         before = [mol_u] if v in mol_u else [mol_u, self.molecule(v)]
         left = [self.species(m) for m in before]
+        self.state.subtract(left)
         catalysing = None
         if catalyst is not None:
             cat_atoms = next(
@@ -375,41 +378,34 @@ class _World:
         mol_u = self.molecule(u)
         after = [mol_u] if v in mol_u else [mol_u, self.molecule(v)]
         right = [self.species(m) for m in after]
+        self.state.update(right)
         if catalysing is not None:
             left.append(catalysing)
             right.append(catalysing)
-        reactants, products = Counter(left), Counter(right)
-        rkey = (frozenset(reactants.items()), frozenset(products.items()))
-        entry = self.fired.setdefault(
-            rkey, [dict(reactants), dict(products), 0,
-                   {"action": action, "bond": key, "energy_released": released,
-                    "catalysts": Counter()}],
-        )
-        entry[2] += 1
+        self.tally.add(left, right)
+        detail = self.detail.setdefault(
+            _key(left, right), {"action": action, "bond": key, "energy_released": released,
+                                "catalysts": Counter()})
         if catalyst:
-            entry[3]["catalysts"][catalyst] += 1
+            detail["catalysts"][catalyst] += 1
         self.events[(action, key, catalyst)] += 1
 
-    def sample(self) -> None:
+    def frame(self, t: int) -> Frame:
+        """The world after t steps: its molecules, the reactions since the last frame, bond counts."""
         bonds = Counter()
         for i, partners in enumerate(self.bond):
             for j in partners:
                 if j > i:
                     bonds[bond_key(self.type[i], self.type[j])] += 1
-        self.history["sugar_bonds"].append(bonds["A-B"])
-        self.history["biomass_bonds"].append(bonds["C-C"])
-        self.history["inorganic_bonds"].append(bonds["A-O"] + bonds["B-O"])
-        self.history["free_atoms"].append(sum(1 for b in self.bond if not b))
-        self.history["molecules"].append(len(self.molecules()))
+        return Frame(
+            t=float(t), state={s: float(n) for s, n in self.state.items() if n}, fired=self.tally.flush(),
+            observables={"sugar_bonds": bonds["A-B"], "biomass_bonds": bonds["C-C"],
+                         "inorganic_bonds": bonds["A-O"] + bonds["B-O"],
+                         "free_atoms": sum(1 for b in self.bond if not b)})
 
-    def run(self) -> None:
-        self.initial = Counter(self.species(m) for m in self.molecules())
-        self.sample()
-        for t in range(self.p.steps):
-            self.move()
-            self.react(t)
-            self.sample()
-        self.final = Counter(self.species(m) for m in self.molecules())
+
+def _key(lhs, rhs) -> tuple:
+    return (frozenset(Counter(lhs).items()), frozenset(Counter(rhs).items()))
 
 
 # ---------------------------------------------------------------------------
@@ -499,7 +495,8 @@ def _check(p) -> None:
         )
 
 
-def generate(p, rng):
+def evolve(p, rng):
+    """The paper's world: a frame per time step (frame 0 is the seeded grid)."""
     _check(p)
     atoms = _counts("atoms", p.atoms, BUILDING_BLOCKS)
     catalysts = _counts("catalysts", p.catalysts, CATALYSTS)
@@ -523,7 +520,14 @@ def generate(p, rng):
     for atom, k in zip(order, chosen):
         world.add(atom, free[int(k)])
 
-    world.run()
+    world.initial = Counter(world.species(m) for m in world.molecules())
+    world.state = Counter(world.initial)
+    yield world.frame(0)
+    for t in range(p.steps):
+        world.move()
+        world.react(t)
+        yield world.frame(t + 1)
+    world.final = Counter(world.species(m) for m in world.molecules())
     return _network(world, p)
 
 
@@ -531,8 +535,9 @@ def _network(world: _World, p) -> Network:
     reg = world.registry
     names = sorted(reg.atoms)
     reactions, events = [], []
-    for reactants, products, count, detail in world.fired.values():
-        reactions.append(Reaction(reactants, products, None, count))
+    for lhs, rhs, count in world.tally.reactions():
+        detail = world.detail[_key(lhs, rhs)]
+        reactions.append(Reaction(dict(Counter(lhs)), dict(Counter(rhs)), None, count))
         events.append({
             "action": detail["action"], "bond": detail["bond"],
             "energy_released": detail["energy_released"],
@@ -598,7 +603,6 @@ def _network(world: _World, p) -> Network:
             "analysis": {
                 "steps": p.steps,
                 "event_counts": by_event,
-                "history": world.history,
                 "trophic": {
                     "photosynthesis": "AO + BO -(K, sunlight)-> AB + 2 O (section 3.1.1)",
                     "respiration": "O + AB -(EAB)-> A + BO + energy (section 3.1.2)",

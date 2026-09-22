@@ -8,18 +8,20 @@ and the divisor acts as a catalyst:
 
     s1 + s2 -> s1 + s2/s1      (s1 < s2, s1 | s2; otherwise elastic)
 
-method "soup" is the book's run (NumberChem.py): M integers drawn uniformly
-from [minn, maxn], `iterations` collisions of two distinct random molecules,
-observed reactions with firing counts. method "closure" is the reaction
-closure of the distinct seed numbers (always finite: every product divides
-an existing number), truncated only by `max_species`.
+Two faces. `generate` is the reaction closure of the distinct seed numbers
+(always finite: every product divides an existing number), truncated only by
+`max_species`. `evolve` is the book's run (NumberChem.py): M integers drawn
+uniformly from [minn, maxn], `iterations` collisions of two distinct random
+molecules, a frame per generation (M collisions) with the prime fraction, and
+the observed reactions with firing counts at the end.
 """
 
 from collections import Counter
 
 from chemart.expand import expand
 from chemart.network import Network, Reaction, Species
-from chemart.soup import soup
+from chemart.soup import Tally, stir
+from chemart.trajectory import Frame
 
 
 def divide(a: int, b: int):
@@ -67,57 +69,13 @@ def _prime_fraction(pop) -> float:
     return sum(1 for n in pop if is_prime(n)) / len(pop)
 
 
+def _state(pop) -> dict[str, float]:
+    return {sid(n): float(c) for n, c in sorted(Counter(pop).items())}
+
+
 def generate(p, rng):
+    """The closure of the distinct seed numbers (a Chemart addition), cut off by max_species."""
     start = _initial(p, rng)
-    if p.method == "closure":
-        return _closure(p, start)
-    if len(start) < 2:
-        raise ValueError(f"the soup needs at least 2 molecules, got {len(start)}")
-    return _soup(p, rng, start)
-
-
-def _soup(p, rng, start):
-    size = len(start)
-    pop = list(start)
-    fired: dict[tuple, list] = {}
-    seen = dict.fromkeys(start)
-    fraction = [_prime_fraction(pop)]
-    done = 0
-    # Run in chunks of one generation (M collisions, book 2.6.1) to record the
-    # prime fraction; the random stream is identical to a single soup() call.
-    while done < p.iterations:
-        steps = min(size, p.iterations - done)
-        chunk, pop = soup(divide, pop, steps, rng)
-        for lhs, rhs, count in chunk:
-            key = (frozenset(Counter(lhs).items()), frozenset(Counter(rhs).items()))
-            entry = fired.setdefault(key, [lhs, rhs, 0])
-            entry[2] += count
-            seen.update(dict.fromkeys(rhs))
-        done += steps
-        fraction.append(_prime_fraction(pop))
-
-    numbers = sorted(seen)
-    reactions = [_reaction(lhs, rhs, count) for lhs, rhs, count in fired.values()]
-    final = Counter(pop)
-    return Network(
-        species=[Species(sid(n), structure=str(n)) for n in numbers],
-        reactions=reactions,
-        status="observed",
-        initial_state={sid(n): c for n, c in sorted(Counter(start).items())},
-        extras={
-            "analysis": {
-                "generation_size": size,
-                "prime_fraction": fraction,
-                "effective_collisions": sum(r.count for r in reactions),
-                "new_numbers": [n for n in numbers if n not in set(start)],
-            },
-            "final_state": {sid(n): c for n, c in sorted(final.items())},
-            "primes": [sid(n) for n in numbers if is_prime(n)],
-        },
-    )
-
-
-def _closure(p, start):
     seed = sorted(set(start))
     numbers, reactions, status = expand(divide, seed, arity=2, max_species=p.max_species, ordered=False)
     numbers = sorted(numbers)
@@ -127,6 +85,39 @@ def _closure(p, start):
         status=status,
         extras={
             "seed": [sid(n) for n in seed],
+            "primes": [sid(n) for n in numbers if is_prime(n)],
+        },
+    )
+
+
+def evolve(p, rng):
+    """The book's soup (NumberChem.py): a frame per generation of M collisions."""
+    start = _initial(p, rng)
+    if len(start) < 2:
+        raise ValueError(f"the soup needs at least 2 molecules, got {len(start)}")
+    size = len(start)
+    tally = Tally()
+    for step, pop, tally in stir(divide, start, p.iterations, rng, arity=2, tally=tally):
+        fired = [[[sid(n) for n in lhs], [sid(n) for n in rhs], count] for lhs, rhs, count in tally.flush()]
+        yield Frame(t=float(step), state=_state(pop), fired=fired,
+                    observables={"prime_fraction": _prime_fraction(pop)})
+
+    events = tally.reactions()
+    numbers = sorted({*start, *(n for _, rhs, _ in events for n in rhs)})
+    reactions = [_reaction(lhs, rhs, count) for lhs, rhs, count in events]
+    final = Counter(pop)
+    return Network(
+        species=[Species(sid(n), structure=str(n)) for n in numbers],
+        reactions=reactions,
+        status="observed",
+        initial_state={sid(n): c for n, c in sorted(Counter(start).items())},
+        extras={
+            "analysis": {
+                "generation_size": size,
+                "effective_collisions": sum(r.count for r in reactions),
+                "new_numbers": [n for n in numbers if n not in set(start)],
+            },
+            "final_state": {sid(n): c for n, c in sorted(final.items())},
             "primes": [sid(n) for n in numbers if is_prime(n)],
         },
     )

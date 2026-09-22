@@ -238,14 +238,24 @@ larger ones: `C16KEAB_d33a` is the autotroph body at the start, and
 `C19KEAB_7460` is the same body at the end of the run after it had bonded
 three more carbons.
 
-The trophic summary counts each step of the cycle:
+The trophic summary counts each step of the cycle over the whole run. To
+follow the world step by step, `chemart.evolve` returns a trajectory with one
+frame per time step, the first being the seeded grid. Each frame holds the
+molecules present (`state`), the bond events of that step (`fired`) and four
+`observables`: the `sugar_bonds` (`A-B`), `biomass_bonds` (`C-C`) and
+`inorganic_bonds` (`A-O` plus `B-O`) present, and the `free_atoms`, atoms
+with no bond. Its network is the one `generate_network` returns:
 
 ```python
+traj = chemart.evolve("dorin-korb-ecosystem", seed=1)
+net = traj.network
 a = net.extras["analysis"]
 a["trophic"]["sugar_made"], a["trophic"]["sugar_respired"]         # (13, 7)
 a["trophic"]["biomass_built"], a["trophic"]["biomass_decomposed"]  # (12, 5)
 a["trophic"]["inorganic_split"]                                    # 146
-a["history"]["sugar_bonds"]      # A-B bonds present after each step (at most 5 here)
+max(traj.series("sugar_bonds"))  # 5: A-B bonds present at once, at most
+traj.frames[-1].observables
+# {'sugar_bonds': 0, 'biomass_bonds': 23, 'inorganic_bonds': 33, 'free_atoms': 63}
 net.extras["energies"]["ledger"]
 # {'consumed': 271, 'dissipated': 246, 'light_incident': 62014, 'light_lost': 61797,
 #  'light_spent': 217, 'released': 300, 'balanced': True}
@@ -307,7 +317,7 @@ for 1,000 steps with about 1,650 atoms took 22 seconds and made 551 sugar bonds 
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `chemart.evolve` (or `generate_network`, which runs the process to the end). The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
@@ -330,7 +340,7 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "12 decisions"
+??? note "13 decisions"
 
     - The paper gives no numbers: table 1 grades probabilities as low/moderate/high and bond energies as +/- low/high, and section 4 states that no run with all organism types had been performed, so nothing quantitative is published. The three levels are parameters (p_low 0.01, p_moderate 0.1, p_high 0.9) and so are the two magnitudes (energy_low 1, energy_high 8). Energies are integers so that the energy ledger balances exactly.
     - Table 1 is implemented verbatim, including two entries the book's summary omits: ECC also catalyses *making* C-O bonds (the spacer of the figure 6 decomposer), and the catalysed break of A-O and B-O is credited to chlorophyll as well as to the inorganic enzyme.
@@ -342,6 +352,7 @@ The sources leave gaps, and sometimes contradict each other or the book. Each su
     - The grid is a torus and the neighbourhood is von Neumann (atoms are squares that bond along shared edges). Movement is per molecule, rigid, one square, rejected on any collision.
     - Species identity is the canonical bond graph, so lattice conformation (how a molecule is folded on the grid) is not part of it, while constitutional isomers with different bond graphs are different species. Ids are the atom formula for one- and two-atom molecules and formula plus a certificate hash beyond that.
     - The network is the set of reactions that fired in one run (status observed, with counts). Catalysts appear on both sides whenever the catalysing atom belongs to a molecule that is not itself a reactant.
+    - chemart.evolve yields a frame per time step (one movement phase and one reaction phase); frame 0 is the seeded grid. A frame's state counts the molecules present, its fired lists the bond events of that step as reactions, and its observables are sugar_bonds (A-B), biomass_bonds (C-C), inorganic_bonds (A-O plus B-O) and free_atoms (unbonded atoms). The number of molecules, formerly also recorded, is the total of the state. generate_network runs the world to the end and returns the network; extras.analysis keeps the whole-run event_counts and trophic summary.
     - Photosynthesis is three elementary bond events, not one: chlorophyll breaks A-O and breaks B-O, then makes A-B, so the freed A and B compete with the 'high' probability of re-forming A-O and B-O. The sugar yield therefore turns on a ratio table 1 leaves unquantified. In the soup, where A and B are plentiful, sugar is made steadily; an isolated figure 5 autotroph, whose vacuole holds one A and one B, makes it only in some runs (seed 5 at the default parameters is one).
     - A free C can only bond where a reaction has just released energy into its contact cluster, so biomass and its decomposition concentrate around the seeded bodies and dense patches. The default therefore seeds both organism bodies (structures: all); with structures: none the soup is lively but builds almost no C-C biomass.
 

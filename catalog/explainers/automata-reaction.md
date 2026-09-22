@@ -142,7 +142,7 @@ product is the bitwise AND of the two words.
 ### What is measured
 
 The paper follows the soup with population-level ("macroscopic") measures, and
-Chemart records three of them for every generation:
+Chemart reports three of them for every generation:
 
 - **diversity**: the number of distinct words in the soup divided by M; 1 means
   every word is different, 1/M means a single word fills the soup;
@@ -167,44 +167,65 @@ filter, 0 otherwise.
 
 ## Using it
 
-The default call runs the reactor on 1,000 random words for 10 generations with
-code table 1 and no filter, 10,000 collisions in about two seconds. It is not a
+The automata reaction has two faces. `chemart.generate_network("automata-reaction")`,
+printed above, returns a *closure*: every reaction reachable from 10 random
+words, cut off at 50 species (`status=truncated`); it is mainly a tool to
+check published organizations (below). `chemart.evolve("automata-reaction")`
+runs the paper's reactor and returns a trajectory: a frame per generation of M
+collisions, with the contents of the soup, and at the end the network of every
+distinct reaction that fired.
+
+The default run is the reactor on 1,000 random words for 10 generations with
+code table 1 and no filter, 10,000 collisions in about a second. It is not a
 published experiment, but it already shows the trend of the paper's larger
-runs. Each distinct reaction that happened is recorded once, with how often it
-fired (`(x1)` above) and a rate constant `k` that counts how many of the two
-orders of the pair give that product. The history is in `net.extras`:
+runs:
 
 ```python
-a = net.extras["analysis"]
-a["diversity"]      # [1.0, 0.827, 0.734, 0.725, 0.706, 0.691, 0.678, 0.665, 0.648, 0.623, 0.604]
-a["productivity"]   # [1.0, 1.0, ...]   every collision yields a product
-a["innovativity"]   # [0.599, 0.484, 0.472, 0.424, 0.373, 0.341, 0.303, 0.299, 0.278, 0.245]
+traj = chemart.evolve("automata-reaction", seed=1)
+[round(len(f.state) / 1000, 3) for f in traj.frames]    # diversity
+# [1.0, 0.827, 0.734, 0.725, 0.706, 0.691, 0.678, 0.665, 0.648, 0.623, 0.604]
+traj.series("productivity")   # [None, 1.0, 1.0, ...]   every collision yields a product
+traj.series("innovativity")
+# [None, 0.599, 0.484, 0.472, 0.424, 0.373, 0.341, 0.303, 0.299, 0.278, 0.245]
+net = traj.network
+print(net.summary())
+# automata-reaction: 4818 species, 9872 reactions, status=observed
 list(net.extras["final_state"].items())[:3]
 # [('w94c116e2', 100), ('w94c116e0', 13), ('w94c116e3', 11)]
 ```
 
-`diversity` has one more entry than the others because it starts at
-generation 0. `final_state` is the soup at the end, most frequent word first.
-The top word here, `94c116e2`, is an active replicator: it returned itself on
-100 of 100 random operands we tried. The species' `structure` field is the word
-as a 32-character bit string, most significant bit first.
+Frame `t` counts generations. Each frame's `state` is the soup at that moment,
+so diversity is the number of words in it divided by M. Productivity and
+innovativity are the frame's `observables`; they describe the generation that
+ended at the frame, so the first frame, the initial soup, has none.
+`final_state` is the soup at the end, most frequent word first. The top word
+here, `94c116e2`, is an active replicator: it returned itself on 100 of 100
+random operands we tried. Each distinct reaction that happened is recorded
+once in `net.reactions`, with how often it fired and a rate constant `k` that
+counts how many of the two orders of the pair give that product:
+
+```
+wb7362806 + w13410911 -> wb7362806 + w13410911 + w13410910  [mass-action k=1.0]  (x1)
+```
+
+The species' `structure` field is the word as a 32-character bit string, most
+significant bit first.
 
 **Extinction by the AND reaction** (paper Fig. 2). The all-zero word is produced
 by many pairs and copies itself with any partner, so it takes over:
 
 ```python
-net = chemart.generate_network("automata-reaction", seed=0, mechanism="and",
-                               M=1000, generations=10)
-net.extras["analysis"]["diversity"]
+traj = chemart.evolve("automata-reaction", seed=0, mechanism="and", M=1000, generations=10)
+[round(len(f.state) / 1000, 3) for f in traj.frames]
 # [1.0, 0.835, 0.467, 0.212, 0.092, 0.038, 0.02, 0.011, 0.005, 0.003, 0.001]
-list(net.extras["final_state"].items())   # [('w00000000', 1000)]
+list(traj.network.extras["final_state"].items())   # [('w00000000', 1000)]
 ```
 
 **A small soup settles into an organization** (paper Fig. 3, M = 100):
 
 ```python
-net = chemart.generate_network("automata-reaction", seed=0, M=100, generations=150)
-net.extras["final_state"]
+traj = chemart.evolve("automata-reaction", seed=0, M=100, generations=150)
+traj.network.extras["final_state"]
 # {'w66847fcb': 34, 'w66847fc9': 33, 'w66847fca': 19, 'w66847fc8': 14}
 ```
 
@@ -212,29 +233,29 @@ Diversity falls from 1.0 to 0.14 by generation 50 and 0.04 by 100, and no new
 word appears in the last ten generations. Four words that differ only in their
 last two bits remain, like the paper's four (`7240a7ef`, `7240a7ea`,
 `7240a7eb`, `7240a7ee`). To check that such a set is closed, use
-`method="closure"`, which computes every reaction reachable from the given
+`generate_network`, which computes every reaction reachable from the given
 words instead of running a soup:
 
 ```python
-net = chemart.generate_network("automata-reaction", method="closure",
+net = chemart.generate_network("automata-reaction",
                                words=["66847fcb", "66847fc9", "66847fca", "66847fc8"])
 print(net.summary())
 # automata-reaction: 4 species, 12 reactions, status=complete
 ```
 
 `status=complete` means no collision leads outside the four words. On random
-words the closure grows until `max_species` stops it (`status=truncated`).
+words (`n_seeds` of them) the closure grows until `max_species` stops it
+(`status=truncated`).
 
 **Exploration ended by active replicators** (paper Fig. 4, M = 10⁴). This run
 takes about 45 seconds:
 
 ```python
-net = chemart.generate_network("automata-reaction", seed=1, M=10000, generations=60)
-a = net.extras["analysis"]
-a["diversity"][::5]      # generations 0, 5, ..., 60
+traj = chemart.evolve("automata-reaction", seed=1, M=10000, generations=60)
+[round(len(f.state) / 10000, 3) for f in traj.frames][::5]     # generations 0, 5, ..., 60
 # [1.0, 0.697, 0.687, 0.669, 0.597, 0.283, 0.032, 0.007, 0.005, 0.004, 0.004, 0.003, 0.003]
-a["innovativity"][::5]
-# [0.5809, 0.3712, 0.2954, 0.2447, 0.1756, 0.0296, 0.0001, 0.0, 0.0, ...]
+traj.series("innovativity")[5::5]                              # generations 5, 10, ..., 60
+# [0.3876, 0.3046, 0.2583, 0.199, 0.0492, 0.0008, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 ```
 
 For about 20 generations the soup stays diverse and keeps producing new words;

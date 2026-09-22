@@ -72,8 +72,8 @@ collisions.
 
 ### A worked example
 
-Start from the three numbers 12, 2 and 3. Chemart's closure mode (explained
-under Using it) lists every reaction that can ever happen from them:
+Start from the three numbers 12, 2 and 3. Chemart's closure (explained under
+Using it) lists every reaction that can ever happen from them:
 
 ```
 n2 + n12 -> n2 + n6
@@ -112,27 +112,53 @@ small soup may not contain the divisor a composite needs.
 
 ## Using it
 
-The default run above is the book's appendix experiment: `M = 100` numbers
-drawn uniformly from 2 to 1000 (`minn` and `maxn`, both ends included, so a
-number can be drawn twice), then 10,000 collisions, which is 100 generations.
-The network records what happened rather than what could happen (status
-`observed`): each reaction carries the number of times it fired, shown as
-`(x1)`, and `n162 + n324 -> n162 + n2` is 324 divided by 162.
+The chemistry has two faces. `chemart.generate_network`, printed above,
+returns the *closure* of a bag of numbers; `chemart.evolve` runs the book's
+*soup* and returns a trajectory.
 
-The rest of the run is in `net.extras`:
+**Every reaction a bag can reach.** The closure is a Chemart addition, not in
+the book. Instead of simulating, it applies the rule to the distinct starting
+numbers, then to everything produced, until nothing new appears, as in the
+{2, 3, 12} example above. The default call draws `M = 100` numbers uniformly
+from 2 to 1000 (`minn` and `maxn`, both ends included, so a number can be drawn
+twice) and closes the 97 distinct ones: 261 numbers, 51 of them prime, and
+1,095 reactions. The result has status `complete`, since the closure is
+always finite, unless it exceeds `max_species` and is cut off (`truncated`).
+It records which reactions are possible, not how often they fire, and copies
+in the starting bag do not matter. `net.extras["seed"]` lists the starting
+numbers and `net.extras["primes"]` the prime species.
+
+**The book's run.** `chemart.evolve` with the same defaults is the book's
+appendix experiment: the same 100 numbers, then 10,000 collisions (`iterations`),
+which is 100 generations. The trajectory has a frame per generation, and each
+frame carries the fraction of molecules that are prime:
 
 ```python
+traj = chemart.evolve("prime-number-chemistry", seed=1)
+f = traj.series("prime_fraction")
+len(traj.frames), traj.frames[1].t      # (101, 100.0)
+f[0], f[-1]                             # (0.14, 1.0)
+```
+
+`prime_fraction` is the fraction of prime molecules at the start and after
+each generation. In this run it was 0.14, 0.20, 0.41, 0.67, 0.82, 0.90 and
+0.97 at generations 0, 10, 20, ... 60, then reached 1.0 at generation 66 and
+stayed there: an S-shaped curve. Each frame's `state` is the bag at that
+moment and its `fired` the reactions of that generation, e.g.
+`[['n162', 'n324'], ['n162', 'n2'], 1]`, 324 divided by 162.
+
+`traj.network` records what happened rather than what could happen (status
+`observed`): each reaction carries the number of times it fired. The rest of
+the run is in its `extras`:
+
+```python
+net = traj.network
 a = net.extras["analysis"]
 a["effective_collisions"]            # 172    reactions out of 10,000 collisions
 len(a["new_numbers"])                # 104    numbers produced that were not drawn
-a["prime_fraction"][0], a["prime_fraction"][-1]   # (0.14, 1.0)
 net.extras["final_state"]            # {'n2': 10, 'n3': 10, 'n5': 6, 'n7': 5, ...}
 ```
 
-`prime_fraction` holds the fraction of molecules that are prime at the start
-and after each generation (101 values here). In this run it was 0.14, 0.20,
-0.41, 0.67, 0.82, 0.90 and 0.97 at generations 0, 10, 20, ... 60, then
-reached 1.0 at generation 66 and stayed there: an S-shaped curve.
 `initial_state` is the drawn bag, `final_state` the bag at the end, and
 `extras["primes"]` lists the prime species among all numbers seen (51 here).
 The 201 species are the 97 distinct drawn numbers plus the 104 new ones.
@@ -141,10 +167,10 @@ The 201 species are the 97 distinct drawn numbers plus the 104 new ones.
 with `numbers`, which replaces the random draw:
 
 ```python
-net = chemart.generate_network("prime-number-chemistry", seed=1,
-                               numbers=list(range(2, 102)), iterations=20000)
-a = net.extras["analysis"]
-a["new_numbers"], a["prime_fraction"][0], a["prime_fraction"][-1]   # ([], 0.26, 1.0)
+traj = chemart.evolve("prime-number-chemistry", seed=1,
+                      numbers=list(range(2, 102)), iterations=20000)
+f = traj.series("prime_fraction")
+traj.network.extras["analysis"]["new_numbers"], f[0], f[-1]   # ([], 0.26, 1.0)
 ```
 
 Every quotient of two numbers up to 101 is itself between 2 and 101, so no new
@@ -158,8 +184,8 @@ and ran 700 generations. Here are ten seeds for each soup size:
 ```python
 import statistics
 for M in (20, 50, 100, 200):
-    finals = [chemart.generate_network("prime-number-chemistry", seed=s, M=M,
-              maxn=10000, iterations=700 * M).extras["analysis"]["prime_fraction"][-1]
+    finals = [chemart.evolve("prime-number-chemistry", seed=s, M=M, maxn=10000,
+              iterations=700 * M).series("prime_fraction")[-1]
               for s in range(10)]
     print(M, round(statistics.mean(finals), 2), sum(f == 1.0 for f in finals))
 ```
@@ -173,14 +199,6 @@ for M in (20, 50, 100, 200):
 The columns are soup size, mean final prime fraction, and runs that ended
 all-prime. The loop takes about half a minute, mostly for `M = 200`: cost
 grows with the number of collisions, here 140,000 per run.
-
-**Every reaction a bag can reach.** `method="closure"` is a Chemart addition,
-not in the book. Instead of simulating, it applies the rule to the distinct
-starting numbers, then to everything produced, until nothing new appears, as
-in the {2, 3, 12} example above. The result has status `complete`, since the
-closure is always finite, unless it exceeds `max_species` and is cut off
-(`truncated`). It records which reactions are possible, not how often they
-fire, and copies in the starting bag do not matter.
 
 ## Results
 

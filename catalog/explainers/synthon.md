@@ -168,6 +168,11 @@ updates the counts. Reactions are only ever sought among species present at
 that moment, so the network recorded is the part of the closure the kinetics
 actually visits.
 
+In Chemart the two generators are the two ways of running the chemistry:
+`chemart.generate_network` runs the DNG and returns the closure, and
+`chemart.evolve` runs the MCNG and returns its trajectory, one frame per
+reaction event.
+
 ## Using it
 
 The default call above is the report's figure 4 experiment: the DNG, the
@@ -190,13 +195,14 @@ mass-action constants in the table's units: s⁻¹ for one-molecule classes,
 cm³ s⁻¹ for two-molecule ones. The initial state holds the densities of Duley
 and Williams's setup, n(H) = 1000 cm⁻³ and n(O) = 0.44 cm⁻³.
 
-**Letting kinetics prune the network (figures 5 and 6).** Set
-`method="kinetic"`. The report does not publish its number of molecules or of
-steps, so they are parameters (`molecules`, default 400; `steps`, default
-2000):
+**Letting kinetics prune the network (figures 5 and 6).** Run the MCNG with
+`chemart.evolve`. The report does not publish its number of molecules or of
+steps, so they are parameters of this run only (`molecules`, default 400;
+`steps`, default 2000):
 
 ```python
-net = chemart.generate_network("synthon", method="kinetic", seed=3)
+traj = chemart.evolve("synthon", seed=3)
+net = traj.network
 net.summary()                  # synthon: 10 species, 7 reactions, status=observed
 net.extras["final_state"]      # {'H*': 377, 'HH': 11, 'HO::*': 1}
 ```
@@ -218,6 +224,26 @@ one is always kept), and almost every event moves that atom between O and OH.
 `extras["elapsed_time"]` is the simulated time in seconds, here about
 3.2 × 10¹³ s. The run takes under two seconds.
 
+The trajectory has a frame for the initial molecules and one after each of
+the 2000 events: `frame.t` is the simulated time in seconds (the trajectory's
+`clock` is `"s"`), `frame.state` the molecule counts and `frame.fired` the
+reaction that fired. `every=k` keeps one frame in k, which turns the run
+into a short time series of the counts, the kind of curve figure 6 plots:
+
+```python
+traj = chemart.evolve("synthon", seed=3, every=500)
+for f in traj.frames:
+    print(f"{f.t:9.3g}", f.state)
+```
+
+```
+        0 {'H*': 400.0, 'O::**': 1.0}
+ 1.49e+13 {'H*': 397.0, 'HH': 1.0, 'HO::*': 1.0}
+ 2.42e+13 {'H*': 394.0, 'HH': 3.0, 'O::**': 1.0}
+ 2.93e+13 {'H*': 386.0, 'HH': 7.0, 'O::**': 1.0}
+ 3.22e+13 {'H*': 377.0, 'HH': 11.0, 'HO::*': 1.0}
+```
+
 **The combinatorial explosion.** `allowed=[]` removes the observational
 constraint. Keep `max_atoms` small:
 
@@ -235,7 +261,7 @@ budget.
 charge transfer and dissociative recombination. From H and O it builds four
 reactions (`2 H* -> HH`, `H* + O::** -> HO::*`, `2 O::** -> O::*O::*`,
 `H* + HO::* -> HO::H`). The report gives no rates for these graphs, so the
-reactions have no rate and `method="kinetic"` refuses this set.
+reactions have no rate and `chemart.evolve` refuses this set.
 
 Other elements can be added with `initial` (H, He, C, N, O, F, Ne, S, Cl, Ar),
 but then `allowed` must list their molecules, or be emptied.
@@ -291,7 +317,8 @@ simulated concentrations in which "H and H2 are the dominant species"
 (figure 6). For that run the authors also removed reactions like object 8, to
 stay close to Duley and Williams's setup. Chemart's test runs 2000 events and
 checks that the observed network has fewer than a quarter of the closure's
-reactions and that H and H₂ are the two most abundant species at the end.
+reactions, that H and H₂ are the two most abundant species at the end, and
+that the trajectory has one frame per event.
 
 **The combinatorial explosion.** The report opens with the drawback of formal
 network generators: the number of generated molecules grows exponentially

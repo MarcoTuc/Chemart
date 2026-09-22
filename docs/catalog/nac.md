@@ -118,8 +118,9 @@ becomes a differently wired cluster of the same nodes) or a *fragmentation*
 Take the five-node path `i–i–i–o–o`, nodes 0 to 4, and run 40 steps:
 
 ```python
-net = chemart.generate_network("nac", seed=1, polarities="iiioo",
-                               edges=[[0, 1], [1, 2], [2, 3], [3, 4]], steps=40)
+traj = chemart.evolve("nac", seed=1, polarities="iiioo",
+                      edges=[[0, 1], [1, 2], [2, 3], [3, 4]], steps=40)
+net = traj.network
 ```
 
 Three reactions fired:
@@ -150,11 +151,13 @@ changes nothing a species id can see, so it is not recorded.
 ### The reactor
 
 There are no rates. No source gives a time scale for a rewiring, so Chemart
-counts steps. Because A is a random *node*, a cluster is rewired in proportion
-to its size. Method `rewiring` runs the rule on one graph and returns the
-reactions that fired with their counts; method `closure` instead lists every
-cluster that can be reached from the starting clusters by single rewirings,
-without simulating anything.
+counts steps: the clock of a run is the number of attempted rewirings,
+cancelled and inert ones included. Because A is a random *node*, a cluster is
+rewired in proportion to its size. Chemart offers NAC in two ways.
+`chemart.evolve` runs the rule on one graph and returns the reactions that
+fired with their counts, as in the worked example. `chemart.generate_network`
+instead lists every cluster that can be reached from the starting clusters by
+single rewirings (the *closure*), without simulating anything.
 
 ### Formal specification
 
@@ -172,7 +175,7 @@ A, B and C always lie in one cluster (B is adjacent to A and C is at distance tw
 
 *How the population is bounded:* none
 
-One graph of n_nodes nodes is rewired step by step; the reactions that fired are returned with their counts (status observed) and the graph itself is kept in extras.space. Method closure instead enumerates every cluster reachable from the initial ones by single rewirings.
+One graph of n_nodes nodes is rewired step by step (chemart.evolve); the reactions that fired are returned with their counts (status observed) and the graph itself is kept in extras.space. generate_network instead enumerates every cluster reachable from the initial ones by single rewirings (the closure).
 
 ### Using it in Chemart
 
@@ -185,55 +188,76 @@ print(net.summary())
 ```
 
 ```
+nac: 100 species, 427 reactions, status=truncated
+provides: initial-state, mass-conservation, space, stoichiometry, topology
+seed: 1
+extras: analysis, conservation, space
+```
+
+Its first reactions (`net.reactions`):
+
+```
+iiiiiioooooo:0-1.1-2.1-3.1-10.2-3.2-6.2-7.3-6.3-8.4-6.5-7.5-9.6-7.6-10.7-10.8-9.8-11.9-10 -> iiiiiioooooo:0-1.1-2.1-3.1-10.2-3.2-4.2-6.3-6.3-7.4-6.5-8.5-9.6-8.6-10.7-9.7-11.8-10.9-10
+iiiiiioooooo:0-1.1-2.1-3.1-10.2-3.2-6.2-7.3-6.3-8.4-6.5-7.5-9.6-7.6-10.7-10.8-9.8-11.9-10 -> iiiiiioooooo:0-1.0-2.1-2.1-3.1-6.2-3.2-10.3-6.3-7.4-6.5-8.5-9.6-8.6-10.7-9.7-11.8-10.9-10
+iiiiiioooooo:0-1.1-2.1-3.1-10.2-3.2-6.2-7.3-6.3-8.4-6.5-7.5-9.6-7.6-10.7-10.8-9.8-11.9-10 -> iiiiiioooooo:0-1.1-2.1-3.1-10.2-3.2-4.2-6.3-6.3-7.4-8.4-9.5-6.6-8.6-10.7-9.7-11.8-10.9-10
+iiiiiioooooo:0-1.1-2.1-3.1-10.2-3.2-6.2-7.3-6.3-8.4-6.5-7.5-9.6-7.6-10.7-10.8-9.8-11.9-10 -> iiiiiioooooo:0-1.1-2.1-4.1-10.2-3.2-6.2-7.3-6.4-6.4-8.5-7.5-9.6-7.6-10.7-10.8-9.8-11.9-10
+iiiiiioooooo:0-1.1-2.1-3.1-10.2-3.2-6.2-7.3-6.3-8.4-6.5-7.5-9.6-7.6-10.7-10.8-9.8-11.9-10 -> iiiiiioooooo:0-1.0-2.1-2.1-3.1-10.2-6.2-7.3-6.3-8.4-6.5-7.5-9.6-7.6-10.7-10.8-9.8-11.9-10
+iiiiiioooooo:0-1.1-2.1-3.1-10.2-3.2-6.2-7.3-6.3-8.4-6.5-7.5-9.6-7.6-10.7-10.8-9.8-11.9-10 -> iiiiiioooooo:0-1.1-2.1-3.1-10.2-4.2-6.2-7.3-6.3-9.4-7.4-8.5-6.6-7.6-10.7-10.8-9.8-10.9-11
+iiiiiioooooo:0-1.1-2.1-3.1-10.2-3.2-6.2-7.3-6.3-8.4-6.5-7.5-9.6-7.6-10.7-10.8-9.8-11.9-10 -> iiiiiioooooo:0-1.1-2.1-10.2-3.2-6.2-8.3-4.3-6.3-7.4-6.5-7.5-9.6-7.6-10.7-10.8-9.8-11.9-10
+iiiiiioooooo:0-1.1-2.1-3.1-10.2-3.2-6.2-7.3-6.3-8.4-6.5-7.5-9.6-7.6-10.7-10.8-9.8-11.9-10 -> iiiiiioooooo:0-1.0-2.1-3.1-10.2-3.2-6.2-7.3-6.3-8.4-6.5-7.5-9.6-7.6-10.7-10.8-9.8-11.9-10
+… and 419 more
+```
+
+The default call above builds the closure. It draws a random graph of 12
+nodes, six of each polarity, with 18 edges (mean degree 3); here all 12 nodes
+form one cluster, which is the seed of the closure
+(`net.extras["analysis"]["seed"]`). Every reaction printed is one rewiring of
+that 12-node cluster. The closure of a graph this size is far larger than the
+`max_species` budget of 100 clusters, so it stops with `status=truncated`: 92
+of its clusters are rewirings of the 12 nodes, 6 have 11 nodes and 2 are lone
+nodes (`net.extras["analysis"]["cluster_sizes"]`), and 12 of its 427
+reactions are fragmentations. `extras["conservation"]` holds the three
+conserved quantities (hydrophilic nodes, hydrophobic nodes, edges) per
+species, and `extras["space"]` the node polarities and edges of the starting
+graph.
+
+**Running the rule.** `chemart.evolve` runs 600 rewiring attempts on the same
+starting graph and records a frame every `n_nodes` attempts (here 12), and one
+at the end. Each frame holds the clusters present (`frame.state`) and four
+measures of the whole graph (`frame.observables`): the number of mixed `i`–`o`
+edges, the size of the largest all-hydrophilic cluster, and the clustering
+coefficient and mean path length (both defined under Results).
+
+```python
+traj = chemart.evolve("nac", seed=1)
+net = traj.network
+print(net.summary())
+net.extras["analysis"]["attempts"]
+# {'cancelled-polarity': 73, 'moved': 175, 'no-neighbour': 87, 'no-distance-two': 265}
+traj.frames[0].observables
+# {'mixed_edges': 8, 'largest_hydrophilic_cluster': 0, 'clustering': 0.15, 'path_length': 2.136364}
+traj.frames[-1].observables
+# {'mixed_edges': 0, 'largest_hydrophilic_cluster': 5, 'clustering': 0.777778, 'path_length': 1.1}
+net.extras["final_state"]
+# {'iiiii:0-1.0-2.0-3.0-4.1-2.1-3.1-4.2-3.2-4.3-4': 1, 'ooooo:0-3.0-4.1-2.1-3.1-4.2-3.2-4.3-4': 1, 'i': 1, 'o': 1}
+```
+
+```
 nac: 61 species, 64 reactions, status=observed
 provides: initial-state, mass-conservation, space, stoichiometry, topology
 seed: 1
 extras: analysis, conservation, final_state, space
 ```
 
-Its first reactions (`net.reactions`):
-
-```
-iiiiiioooooo:0-1.1-2.1-3.1-10.2-3.2-6.2-7.3-6.3-8.4-6.5-7.5-9.6-7.6-10.7-10.8-9.8-11.9-10 -> iiiiiiooooo:0-1.1-2.1-3.1-10.2-3.2-6.2-7.3-6.3-8.4-6.5-7.5-9.6-7.6-8.6-10.7-10.8-9.9-10 + o  (x1)
-iiiiiiooooo:0-1.1-2.1-3.1-10.2-3.2-6.2-7.3-6.3-8.4-6.5-7.5-9.6-7.6-8.6-10.7-10.8-9.9-10 -> iiiiiiooooo:0-1.1-2.1-3.1-6.1-8.2-3.2-10.3-6.3-7.4-6.5-7.5-9.6-7.6-8.6-10.7-10.8-9.9-10  (x1)
-iiiiiiooooo:0-1.1-2.1-3.1-6.1-8.2-3.2-10.3-6.3-7.4-6.5-7.5-9.6-7.6-8.6-10.7-10.8-9.9-10 -> iiiiiiooooo:0-1.0-2.1-2.1-3.1-6.1-8.2-6.2-7.3-10.4-6.5-7.5-9.6-7.6-8.6-10.7-10.8-9.9-10  (x1)
-iiiiiiooooo:0-1.0-2.1-2.1-3.1-6.1-8.2-6.2-7.3-10.4-6.5-7.5-9.6-7.6-8.6-10.7-10.8-9.9-10 -> iiiiiiooooo:0-1.0-2.1-2.1-3.1-6.1-9.2-6.2-7.3-10.4-6.5-7.5-8.6-7.6-9.6-10.8-9.8-10.9-10  (x1)
-iiiiiiooooo:0-1.0-2.1-2.1-3.1-6.1-9.2-6.2-7.3-10.4-6.5-7.5-8.6-7.6-9.6-10.8-9.8-10.9-10 -> iiiiiiooooo:0-1.0-2.1-2.1-3.1-6.1-9.2-6.2-7.3-8.4-6.5-7.5-10.6-7.6-9.6-10.8-9.8-10.9-10  (x1)
-iiiiiiooooo:0-1.0-2.1-2.1-3.1-6.1-9.2-6.2-7.3-8.4-6.5-7.5-10.6-7.6-9.6-10.8-9.8-10.9-10 -> iiiiiiooooo:0-2.1-2.1-3.2-3.2-4.2-7.2-9.3-6.3-7.4-8.5-6.5-10.6-7.7-9.7-10.8-9.8-10.9-10  (x1)
-iiiiiiooooo:0-2.1-2.1-3.2-3.2-4.2-7.2-9.3-6.3-7.4-8.5-6.5-10.6-7.7-9.7-10.8-9.8-10.9-10 -> iiiiiiooooo:0-2.1-2.1-3.2-3.2-4.2-7.2-10.3-6.4-8.5-6.5-9.6-10.7-8.7-9.7-10.8-9.8-10.9-10  (x1)
-iiiiiiooooo:0-2.1-2.1-3.2-3.2-4.2-7.2-10.3-6.4-8.5-6.5-9.6-10.7-8.7-9.7-10.8-9.8-10.9-10 -> iiiiiiooooo:0-2.1-2.1-3.2-3.2-4.2-7.2-8.3-6.4-10.5-6.5-9.6-10.7-8.7-9.7-10.8-9.8-10.9-10  (x1)
-… and 56 more
-```
-
-The default run starts from a random graph of 12 nodes, six of each polarity,
-with 18 edges (mean degree 3), and makes 600 rewiring attempts. The first
-reaction printed above already sheds a lone `o` node from the one big starting
-cluster. What matters is in `net.extras`:
-
-```python
-a = net.extras["analysis"]
-a["attempts"]
-# {'cancelled-polarity': 73, 'moved': 175, 'no-neighbour': 87, 'no-distance-two': 265}
-a["trace"][0]
-# {'mixed_edges': 8, 'clusters': 1, 'largest_hydrophilic_cluster': 0, 'clustering': 0.15, 'path_length': 2.136364}
-a["trace"][-1]
-# {'mixed_edges': 0, 'clusters': 4, 'largest_hydrophilic_cluster': 5, 'clustering': 0.777778, 'path_length': 1.1}
-net.extras["final_state"]
-# {'iiiii:0-1.0-2.0-3.0-4.1-2.1-3.1-4.2-3.2-4.3-4': 1, 'ooooo:0-3.0-4.1-2.1-3.1-4.2-3.2-4.3-4': 1, 'i': 1, 'o': 1}
-```
-
-`trace` samples the graph every `n_nodes` steps (`a["sampled_every"]`, here
-12). Its fields are the number of mixed `i`–`o` edges, the number of clusters,
-the size of the largest all-hydrophilic cluster, the clustering coefficient and
-the mean path length (both defined under Results). Here the eight mixed edges
-are gone by step 156, and the graph ends as a five-node hydrophilic
-cluster with every pair linked, a five-node hydrophobic cluster missing two of
-its ten possible links, and one stray node of each kind. The 18 edges are all
-still there (10 + 8). Once a cluster is fully linked nothing is at distance
-two, which is why most late attempts are `no-distance-two`: the run has
-frozen. `extras["space"]` holds the node polarities and the initial and final
-edge lists, and `extras["conservation"]` the three conserved quantities
-(hydrophilic nodes, hydrophobic nodes, edges) per species.
+`traj.series("mixed_edges")` gives one measure over the frames, and
+`traj.times()` the step of each frame. Here the eight mixed edges are gone by
+step 156, and the graph ends as a five-node hydrophilic cluster with every
+pair linked, a five-node hydrophobic cluster missing two of its ten possible
+links, and one stray node of each kind. The 18 edges are all still there
+(10 + 8). Once a cluster is fully linked nothing is at distance two, which is
+why most late attempts are `no-distance-two`: the run has frozen.
+`extras["space"]` holds the node polarities and the initial and final edge
+lists.
 
 **Switching the constraint off.** `polarity_constraint=False` is the plain
 acquaintance-network rule, a Chemart option rather than a published variant.
@@ -241,18 +265,18 @@ On the same seed nine mixed edges remain after 600 steps, and the largest
 cluster holds five `i` and three `o` nodes:
 
 ```python
-loose = chemart.generate_network("nac", seed=1, polarity_constraint=False)
-loose.extras["analysis"]["trace"][-1]["mixed_edges"]      # 9
+loose = chemart.evolve("nac", seed=1, polarity_constraint=False)
+loose.series("mixed_edges")[-1]      # 9
 ```
 
-**A larger graph.** With 40 nodes, mean degree 4 and 4,000 steps (about 5 s),
-mixed edges fall from 37 to 2 by step 400 and to 0 by step 1,000. The run ends
-with a 13-node hydrophilic cluster, a 15-node hydrophobic one and 12 isolated
-nodes (7 hydrophilic, 5 hydrophobic). Without the constraint (about 9 s) 42
-mixed edges remain at the end:
+**A larger graph.** With 40 nodes, mean degree 4 and 4,000 steps (a few
+seconds), mixed edges fall from 37 to 2 by step 400 and to 0 by step 840. The
+run ends with a 13-node hydrophilic cluster, a 15-node hydrophobic one and 12
+isolated nodes (7 hydrophilic, 5 hydrophobic). Without the constraint 42 mixed
+edges remain at the end:
 
 ```python
-net = chemart.generate_network("nac", seed=1, n_nodes=40, mean_degree=4, steps=4000)
+traj = chemart.evolve("nac", seed=1, n_nodes=40, mean_degree=4, steps=4000)
 ```
 
 Almost every event produces a new cluster shape here, so this run lists 2,918
@@ -284,46 +308,62 @@ rewirings  clustering  path length
 
 **Explicit graphs and the closure.** `polarities` and `edges` (see the
 parameter table) set the starting graph by hand, as in the worked example.
-`method="closure"` on that same path finds the same three reactions and stops,
-`status=complete`. On a random graph of 8 nodes and 6 edges
-(`n_nodes=8, mean_degree=1.5`) the closure is complete at 16 species and 24
-reactions; at 8 edges (`mean_degree=2.0`) it hits the `max_species` budget of
-300 in under a second and returns `status=truncated`.
+The closure of that same path finds the same three reactions and stops:
+
+```python
+net = chemart.generate_network("nac", seed=1, polarities="iiioo",
+                               edges=[[0, 1], [1, 2], [2, 3], [3, 4]])
+print(net.summary())
+```
+
+```
+nac: 4 species, 3 reactions, status=complete
+provides: initial-state, mass-conservation, space, stoichiometry, topology
+seed: 1
+extras: analysis, conservation, space
+```
+
+On a random graph of 8 nodes and 6 edges (`n_nodes=8, mean_degree=1.5`) the
+closure is complete at 16 species and 24 reactions. At 8 edges
+(`mean_degree=2.0`) it hits the default `max_species` budget of 100 (399
+reactions) and returns `status=truncated`; with `max_species=300` it stops at
+300 species and 1,919 reactions, still in well under a second.
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `generate_network`, or to `chemart.evolve`; a parameter marked *evolve only* belongs to the process and one marked *generate only* to the network. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
-| `method` | `enum` | `rewiring` | structural | rewiring: run the local rewiring rule on one graph and return the reactions that fired with their counts; closure: every cluster reachable from the initial ones by single rewirings (chemart.expand, one alternative per rewiring) <br>one of `rewiring`, `closure` |
 | `n_nodes` | `int` | `12` | population | number of molecular nodes in the graph <br>`2` … `400` · *range:* the published small-world measurement uses N = 200 with K = 10 (module helpers random_graph, rewire, clustering, mean_path_length); closures are readable up to about 8 nodes |
 | `hydrophilic_fraction` | `float` | `0.5` | structural | fraction of the nodes that are hydrophilic (round(n_nodes * fraction) of them, at random positions); the rest are hydrophobic <br>`0.0` … `1.0` |
 | `mean_degree` | `float` | `3.0` | spatial | initial random wiring: round(n_nodes * mean_degree / 2) distinct undirected weak edges drawn uniformly <br>`0.0` … `100.0` · *range:* K = 10 in the published small-world measurement |
 | `polarities` | `str` | `` | structural | explicit node polarities over i (hydrophilic) and o (hydrophobic); overrides n_nodes and hydrophilic_fraction <br>*range:* e.g. iiiooo |
 | `edges` | `list` | `[]` | spatial | explicit initial wiring as [[u, v], ...] over node ids 0..n-1; overrides mean_degree <br>*range:* e.g. [[0, 1], [1, 2], [2, 3]] |
-| `steps` | `int` | `600` | population | rewiring only: number of attempted rewiring steps, cancelled ones included <br>`0` … `10000000` · *range:* the small-world measurement needs a few thousand rewirings at N = 200; the default graph has demixed after about 600 attempts |
+| `steps` | `int` | `600` | population | *evolve only.* number of attempted rewiring steps, cancelled ones included; a frame every n_nodes steps <br>`0` … `10000000` · *range:* the small-world measurement needs a few thousand rewirings at N = 200; the default graph has demixed after about 600 attempts |
 | `polarity_constraint` | `bool` | `True` | structural | true: a rewiring whose new stopping node C has the other polarity is cancelled (the NAC hydrophilic/hydrophobic interaction); false: rewire regardless, which is the plain acquaintance-network rule and does not demix |
-| `max_species` | `int` | `300` | structural | closure only: species budget; reactions whose new clusters would exceed it are dropped and the status becomes truncated <br>≥ `1` · *range:* 8 nodes and 6 edges close at 16 clusters; 8 nodes and 8 edges pass 300 in a fraction of a second |
+| `max_species` | `int` | `100` | structural | *generate only.* species budget of the closure; reactions whose new clusters would exceed it are dropped and the status becomes truncated <br>≥ `1` · *range:* 8 nodes and 6 edges close at 16 clusters; 8 nodes and 8 edges pass 300 in a fraction of a second; the default graph (12 nodes, 18 edges) reaches 300 in about 2 s |
 
 ### Implementation decisions
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "13 decisions"
+??? note "15 decisions"
 
+    - Two faces: generate_network returns the closure, every cluster reachable from the initial ones by single rewirings (chemart.expand, one alternative per rewiring), cut off by max_species; chemart.evolve runs the rewiring rule on one graph for steps attempts, a frame every n_nodes attempts (and one at the end), each reporting the clusters present and the demixing and small-world measures (mixed_edges, largest_hydrophilic_cluster, clustering, path_length). They replace the former method parameter (closure | rewiring).
+    - max_species defaults to 100 (it was 300): the closure of the default graph (12 nodes, 18 edges) is far larger than any budget, and 300 clusters took about 2 s, too close to the few seconds a default run may take; 100 take under a second. Pass max_species=300 for the former default.
     - None of the three references of the book section could be obtained: [824] and [825] (Biosystems, Elsevier) and [827] (ECAL 2005 workshop CD-ROM, never published online; its journal version is the paywalled Australian Journal of Chemistry paper above) are all closed access, no open version exists in Unpaywall, OpenAlex, OpenAIRE or Semantic Scholar, the author's ATR page (www.nis.atr.jp/~hsuzuki) stops in February 2006 and its 2004-2005 paper PDFs are not in the Internet Archive, whose CDX search was offline during this work. Everything below therefore rests on the book, the three abstracts and Suzuki's own JSAI 2004 slides; nothing here is quoted from [824], [825] or [827].
     - Scope: Chemart implements NAC's passive layer only - the solvent graph, the local rewiring rule and the hydrophilic/hydrophobic constraint, all of which the slides state in full. The active layer (nodes holding von Neumann programs that rewire covalent and hydrogen edges; the designed polymerase, helicase, splitase, replicase and centrosome agents; the folding of a node chain into a control-flow cluster of [824]) is specified only in the papers that could not be obtained, and is not implemented rather than invented.
     - Molecules and reactions: the book calls the nodes molecules and the edges bonds but never writes NAC as a reaction network. Chemart makes a species out of a connected cluster of weakly bonded nodes, identified up to isomorphism, and a reaction out of one rewiring event: isomerisation when the cluster stays whole, fragmentation when the deleted edge was a bridge. This is a Chemart reading of the model, not a published formulation.
     - Edge types: the slides give four (covalent and hydrogen, rewired by programs; hydrophilic and hydrophobic, rewired passively) and the book calls the first two directed and the weak ones undirected. Without the active layer only the passive edges remain, and a weak edge's type is fixed by its endpoints (both hydrophilic or both hydrophobic), since the constraint forbids a mixed one from ever being created. Chemart therefore stores one undirected weak edge set and no direction.
-    - The rewiring rule is taken verbatim from slides 9-13 (A at random; B at random among A's neighbours; C at random among the nodes at distance two from A; A-B deleted, A-C created). The distance-two set is computed before the deletion, as in the slides' order. The step is inert when A has no neighbour or nothing at distance two; extras.analysis.attempts counts moved, cancelled-polarity, no-neighbour and no-distance-two.
+    - The rewiring rule is taken verbatim from slides 9-13 (A at random; B at random among A's neighbours; C at random among the nodes at distance two from A; A-B deleted, A-C created). The distance-two set is computed before the deletion, as in the slides' order. The step is inert when A has no neighbour or nothing at distance two; extras.analysis.attempts of an evolved network counts moved, cancelled-polarity, no-neighbour and no-distance-two.
     - Small-world check of slide 14: read literally (C drawn among all the nodes at distance two from A), the rule takes a random network of N = 200, K = 10 from C = 0.053, L = 2.55 to C = 0.151, L = 2.59 in about 2000 rewirings - the rise of the slide with the path length unchanged - after which C drifts slowly back down (0.148 at 5x10^3, 0.131 at 2x10^4, 0.119 at 5x10^4 rewirings). The slide's plot range is not legible in the archived copy, so the test asserts the published claim in the regime where it holds rather than a plateau. A reading in which C is instead drawn among the neighbours of B (the 'common friend' of the acquaintance network) raises C several times more slowly (0.094 after 10^4 rewirings), so the literal reading is the one implemented.
     - The polarity constraint follows slides 18-19 ('a hydrophilic node and a hydrophobic node cannot be wired by the passive rewiring ... the rewiring is canceled'): the whole step is cancelled, so A-B survives. The slides show the cancellation for C's polarity only; Chemart does not test B, which is being unwired. Consequence, and the reason the network demixes: a mixed edge can be deleted but never created.
     - Selection is uniform over the nodes for A, over A's neighbours for B and over the distance-two set for C, as the slides say ('randomly chosen'); no weights are given anywhere. chemart.soup.soup is not used because the rule picks a node, not a molecule, so larger clusters react proportionally more often.
     - Initial state: a uniformly random simple graph with round(n_nodes * mean_degree / 2) edges and round(n_nodes * hydrophilic_fraction) hydrophilic nodes at random positions, matching the book's figure 11.14(a) ('hydrophilic and hydrophobic nodes are randomly mixed in a network with randomly generated edges'). The published run of slide 14 is N = 200, K = 10; the defaults are much smaller so that cluster ids stay readable and the run is fast.
-    - No kinetics: no source gives a rate or a time scale for a rewiring, so no reaction carries a rate. Counts in the rewiring method are firing counts of the recorded events.
+    - No kinetics: no source gives a rate or a time scale for a rewiring, so no reaction carries a rate. Counts in an evolved network are firing counts of the recorded events.
     - Conservation: a rewiring moves one edge inside one cluster, so hydrophilic nodes, hydrophobic nodes and weak edges are conserved by every reaction; the three vectors are in extras.conservation. Clusters never merge, so the closure terminates.
-    - The v1 parameter initial_edges (matrix) became edges (a list of [u, v] pairs) plus mean_degree; programs (callable) is dropped with the active layer; method, steps, polarity_constraint and max_species are added. polarity_constraint false is a Chemart option, not a published variant: it gives the plain acquaintance-network rewiring of Davidsen et al. and is what shows that the demixing comes from the constraint.
+    - The v1 parameter initial_edges (matrix) became edges (a list of [u, v] pairs) plus mean_degree; programs (callable) is dropped with the active layer; steps, polarity_constraint and max_species are added (and method, since replaced by the two faces). polarity_constraint false is a Chemart option, not a published variant: it gives the plain acquaintance-network rewiring of Davidsen et al. and is what shows that the demixing comes from the constraint.
     - The 'network energy' of the Australian Journal of Chemistry paper, which NAC minimises to make the graph imitate three-dimensional space, is only described in its abstract; no formula could be obtained, so none is implemented and no energy is reported.
 
 ## Results

@@ -18,10 +18,12 @@ The run follows the authors' re-implementation (PyCellChemistry
 MolecularTSP.py on HighOrderChem): each operation cycle picks a machine with
 probability proportional to its time scale t_j (m_j = 1 machine of each sort),
 draws n_op distinct strings uniformly from the M strings, and puts the released
-strings back. A generation is c = ceil(M / sum_j t_j) cycles. The observed
-network holds the reactions that changed the soup, with firing counts; species
-ids are canonical tours (rotation and direction removed), while the soup keeps
-the oriented strings the operators act on.
+strings back. A generation is c = ceil(M / sum_j t_j) cycles. The chemistry
+is a gas with one face, ``evolve``: a frame per generation, observing the best
+and mean tour length and the population overlap. The observed network holds
+the reactions that changed the soup, with firing counts; species ids are
+canonical tours (rotation and direction removed), while the soup keeps the
+oriented strings the operators act on.
 """
 
 from __future__ import annotations
@@ -30,6 +32,8 @@ import math
 from collections import Counter
 
 from chemart.network import Network, Reaction, Species
+from chemart.soup import Tally
+from chemart.trajectory import Frame
 
 MACHINES = ("E", "C", "I", "R")
 N_OP = {"E": 1, "C": 1, "I": 1, "R": 2}
@@ -208,7 +212,8 @@ def _cities(p, rng) -> list[list[float]]:
     return random_cities(p.N, rng)
 
 
-def generate(p, rng) -> Network:
+def evolve(p, rng):
+    """The machine-string soup: a frame per generation (frame 0 is the initial soup)."""
     rates = {"E": p.t_E, "C": p.t_C, "I": p.t_I, "R": p.t_R}
     total = sum(rates.values())
     if total <= 0:
@@ -230,13 +235,21 @@ def generate(p, rng) -> Network:
         seen.setdefault(tour_id(t), (canonical(t), l))
 
     ops = math.ceil(p.M / total)
-    fired: dict[tuple, list] = {}
+    tally = Tally()
     successes = dict.fromkeys(active, 0)
+    machines = {machine_id(k): 1.0 for k in active}
     best = [min(lengths)]
     mean = [sum(lengths) / p.M]
-    over = [overlap(pop, n)]
 
-    for _ in range(p.generations):
+    def frame(g):
+        state = dict(machines)
+        state.update((s, float(c)) for s, c in Counter(tour_id(t) for t in pop).items())
+        return Frame(t=float(g), state=state, fired=tally.flush(),
+                     observables={"best_length": best[-1], "mean_length": mean[-1],
+                                  "overlap": overlap(pop, n)})
+
+    yield frame(0)
+    for generation in range(1, p.generations + 1):
         for _ in range(ops):
             kind = active[int(rng.choice(len(active), p=weights))] if len(active) > 1 else active[0]
             if N_OP[kind] == 1:
@@ -268,17 +281,12 @@ def generate(p, rng) -> Network:
                 pop[k], lengths[k] = t, l
                 seen.setdefault(tour_id(t), (canonical(t), l))
             successes[kind] += 1
-            key = (kind, frozenset(Counter(lhs).items()), frozenset(Counter(rhs).items()))
-            entry = fired.setdefault(key, [kind, lhs, rhs, 0])
-            entry[3] += 1
+            tally.add([machine_id(kind), *lhs], [machine_id(kind), *rhs])
         best.append(min(lengths))
         mean.append(sum(lengths) / p.M)
-        over.append(overlap(pop, n))
+        yield frame(generation)
 
-    reactions = [
-        Reaction.of([machine_id(k), *lhs], [machine_id(k), *rhs], count=count)
-        for k, lhs, rhs, count in fired.values()
-    ]
+    reactions = [Reaction.of(lhs, rhs, count=count) for lhs, rhs, count in tally.reactions()]
     species = [Species(machine_id(k), structure=DESCRIPTION[k]) for k in active]
     species += [Species(sid, structure="(" + ", ".join([f"{l:.6f}", *map(str, t)]) + ")")
                 for sid, (t, l) in seen.items()]
@@ -286,9 +294,6 @@ def generate(p, rng) -> Network:
     optimum = ring_optimum(n) if not p.cities and p.layout == "ring" else None
     analysis = {
         "generation_size": ops,
-        "best_length": best,
-        "mean_length": mean,
-        "overlap": over,
         "machine_successes": successes,
         "optimum": optimum,
     }

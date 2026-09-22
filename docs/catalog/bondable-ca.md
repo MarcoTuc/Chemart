@@ -44,7 +44,7 @@ the book's figure 10.16, a "periodic table" of CA atoms.
 
 BCA sits in the book's chapter on automata and machines, §10.7.3, next to the
 other chemistries built on cellular automata. Its closest neighbour in the
-catalog is [RBN World](rbn.md) (the `rbn-world` model of that entry): the same
+catalog is [RBN World](rbn-world.md): the same
 subsymbolic idea, with random Boolean networks as atoms and properties such as
 cycle length as the bonding criterion. [Embedded particles in cellular
 automata](ca-embedded-particles.md) (§10.7.2) also uses CAs, but the other way
@@ -475,7 +475,7 @@ Banzhaf, W. & Yamamoto, L. (2015). *Artificial Chemistries*. MIT Press. Section 
 
 - Banzhaf & Yamamoto (2015), section 10.7.3 and figures 10.15-10.16: atoms as 1-d binary CAs with closed boundaries, mean polarity as the observable, bonding strength as the largest contiguous sequence of complementary binary numbers, the coupled neighbourhood once bonded, and the 'periodic table' of the 256 rules by settled mean polarity.
 - Hatcher, M., Banzhaf, W. & Yu, T. (2011). Bondable cellular automata. In Proc. 11th European Conference on Artificial Life (ECAL 2011), pages 326-333, MIT Press. doi:10.7551/978-0-262-29714-1-ch051 (book ref [373]). Open copy on Banzhaf's page, http://www.cs.mun.ca/~banzhaf/papers/bondable2011.pdf, found after the implementation was written (the implementation decisions were made without it). Its model differs from Chemart's in the start state (a single live cell), the running mean polarity, the bond site (longest run of 1s against longest run of 0s, no threshold), the coupling (a linked cell sees its partner's whole neighbourhood), unbonding (when the bonded atoms no longer have opposite polarity) and molecule shape (binary trees, up to two atom pairs per bond). Its Table 3 (75 positive, 115 negative, 66 neutral rules) is reproduced by Chemart's CA step from its start state.
-- Faulconbridge, Stepney, Miller & Caves (2011). RBN-World: a sub-symbolic artificial chemistry (book ref [264]), the system in which the sub-symbolic idea was first discussed; implemented separately as the rbn-world model of catalog id rbn.
+- Faulconbridge, Stepney, Miller & Caves (2011). RBN-World: a sub-symbolic artificial chemistry (book ref [264]), the system in which the sub-symbolic idea was first discussed; implemented separately as catalog id rbn-world.
 
 ### Further reading
 

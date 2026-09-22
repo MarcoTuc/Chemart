@@ -36,8 +36,10 @@ A compatible pair reacts with probability 1 - exp(-k dt); when a bond breaks,
 both molecules stay refractory for `refractory_time`, which is how SRSim
 suppresses geminate recombination.
 
-The network is the observed set of complex-level reactions with firing counts
-(status "observed"); the geometry, the reactor and the final configuration are
+The chemistry is a gas with one face, ``evolve``: a frame per
+molecular-dynamics step, at the simulated time, whose state counts the
+complexes. The network is the observed set of complex-level reactions with
+firing counts (status "observed"); the geometry, the reactor and the final configuration are
 in extras["space"], the force law in extras["interaction_law"], the rule set
 and its kinetics in extras["rules"] / extras["kinetics"], and the assembly
 statistics in extras["analysis"].
@@ -53,6 +55,8 @@ from collections import Counter
 import numpy as np
 
 from chemart.network import Network, Reaction, Species
+from chemart.soup import Tally
+from chemart.trajectory import Frame
 
 MODELS = ("polymer", "dimerization", "scaffold", "custom")
 INTEGRATORS = ("langevin", "brownian")
@@ -533,6 +537,7 @@ class World:
         self._dirty = True
         self._pairs = None
         self.events: dict[tuple, list] = {}
+        self.tally = Tally()
         self.counts: Counter = Counter()
         self.species: dict[str, str] = {}
         self.mean_counts: Counter = Counter()
@@ -727,6 +732,7 @@ class World:
 
     # -- the run ----------------------------------------------------------
     def run(self):
+        """Run the steps, yielding after each one."""
         every = max(1, self.p.steps // 200)
         half = self.p.steps // 2
         for step in range(self.p.steps):
@@ -735,8 +741,13 @@ class World:
             self.react()
             if step >= half and step % every == 0:
                 self._sample()
+            yield step + 1
         if not self.mean_samples:
             self._sample()
+
+    def frame(self) -> Frame:
+        return Frame(t=float(self.time), state={s: float(n) for s, n in self.counts.items()},
+                     fired=self.tally.flush())
 
     def _sample(self):
         self.mean_samples += 1
@@ -925,6 +936,7 @@ class World:
         entry[2] += 1
         if rule.label not in entry[3]:
             entry[3].append(rule.label)
+        self.tally.add(before, after)
         self._pairs = None
 
 
@@ -1051,7 +1063,8 @@ def _k_macro(rule: Rule) -> float:
     return rule.k * (rule.v_react if rule.order == 2 and rule.kind != "unbind" else 1.0)
 
 
-def generate(p, rng):
+def evolve(p, rng):
+    """The spatial run: a frame per molecular-dynamics step (frame 0 is the initial state)."""
     if p.model not in MODELS:
         raise ValueError(f"model must be one of {MODELS}, got {p.model!r}")
     if p.integrator not in INTEGRATORS:
@@ -1068,7 +1081,9 @@ def generate(p, rng):
         raise ValueError(f"box = {p.box} is too small: the reaction distance is "
                          f"{world.max_reaction_distance:.2f} and the minimum image convention "
                          "needs a box of more than twice that")
-    world.run()
+    yield world.frame()
+    for _ in world.run():
+        yield world.frame()
 
     species: dict[str, str] = {}
     reactions, labels = [], []

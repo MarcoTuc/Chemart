@@ -20,25 +20,17 @@ be the distinct *cell types* of an organism: every cell carries the same
 genes, but each settles into a different stable pattern of gene activity (book
 §18.5).
 
-Chemart offers the RBN as a chemistry in two different ways, under one entry:
-
-- **The RBN written as reactions.** Each node's two states become two
-  species, and each row of a truth table becomes a reaction in which the input
-  nodes act as catalysts that switch the node. This is the classic model, in a
-  form that reaction-network tools can read.
-- **RBN World**, built by Adam Faulconbridge, Susan Stepney, Julian Miller and
-  Leo Caves at York between 2009 and 2011. Here a whole RBN is one *atom*.
-  Two atoms bond when a property of their dynamics, measured on their
-  attractors, meets a criterion, and bonds break again when the dynamics change.
-  Molecules are thus trees of Boolean networks. The book calls this a
-  *subsymbolic* artificial chemistry (§10.7.3): whether two atoms react is not
-  written in a table but emerges from the atoms' behaviour.
-
-The first form differs from random-network neighbours such as [random
-catalytic networks](random-catalytic-networks.md) in being purely logical,
-with no rates or concentrations. The second is the sibling of [Bondable Cellular Automata](bondable-ca.md), which uses
-one-dimensional cellular automata as atoms in the same way. The archived entry
+Chemart offers the RBN written as reactions. Each node's two states become
+two species, and each row of a truth table becomes a reaction in which the
+input nodes act as catalysts that switch the node. This is the classic model,
+in a form that reaction-network tools can read. It differs from random-network
+neighbours such as [random catalytic networks](random-catalytic-networks.md)
+in being purely logical, with no rates or concentrations. The archived entry
 organization-computing uses the same two-species-per-variable encoding.
+
+The same section of the book also describes a second use of RBNs in
+chemistry, [RBN World](rbn-world.md), in which a whole RBN is one *atom* and
+atoms bond when their dynamics are compatible. It has its own entry.
 
 ## How it works
 
@@ -106,56 +98,9 @@ The book also suggests replacing the fixed K by a distribution with mean K;
 Chemart draws in-degrees from a Poisson or a power-law distribution
 (`K_distribution`).
 
-### RBN World
-
-An atom of RBN World is a *bonding RBN* (bRBN): a random RBN of N nodes with K
-inputs each, in which two inputs, chosen at random, are rewired to two
-*bonding sites*. An empty site reads 0 and a filled one reads 1, so bonding
-changes what the network computes. When two atoms are bonded inside a
-molecule, the site wiring becomes reciprocal inputs between the two networks,
-and the pair runs as one larger network. A molecule is a tree: the atoms are
-the leaves, and each internal node is a composite bRBN made of the bRBNs below
-it.
-
-To decide whether two bRBNs bond, each is run from its stored state until a
-state repeats, and a number is computed over its attractor cycle. The default
-*bonding rule*, `proportion-sum-one`, uses the fraction of nodes that are on,
-averaged over the cycle, and requires the two fractions to add up to 1.
-
-A collision picks a free site on each molecule. It tests the two atoms that
-hold the sites, climbing to larger enclosing composites if the test fails.
-If some pair passes, the sites are filled and the test is repeated, because
-filling a site changes the dynamics. If it still passes, the molecules join;
-if not, the sites are emptied again, but the atoms keep the states they moved
-to. Finally every bond in the molecule is rechecked, and those that no longer
-pass break, which can split a molecule. The reactor mixes random pairs of
-molecules for a fixed number of collisions and records each distinct outcome
-as a reaction.
-
-The default run (seed 1) has five elements, `A` to `E`, 20 copies of each.
-Their settled proportions are 0.6, 0.5, 0.55, 0.35 and 0.6. Only `B` pairs
-with anything, and only with itself, since 0.5 + 0.5 = 1. So every reaction in
-this run involves `B`. The most frequent ones are:
-
-```
-B.1 + B.1 -> B.1 + B.2       15 times
-B.2 + E.1 -> B.1 + E.1       10 times
-B.1 + B.1 -> (B-B).1          4 times
-```
-
-The number after the dot numbers the different states of the same structure
-in the order they were first seen: `B.1` is `B` settled on its attractor,
-`B.2` a second state. In the first reaction two `B` atoms tried to bond, the
-test failed once the sites were filled, and one of them was left in a new
-state. This is the pattern of the thesis's example `A1 + B → A2 + B`, which it
-calls a simple form of catalysis, "not designed into any part of the system":
-`B` is unchanged, yet the collision turns `A1` into `A2`. In the second, a
-collision with `E` makes `B.2` run its dynamics again, which returns it to
-`B.1`. The third is synthesis: two `B` atoms bonded, and the bond survived.
-
 ## Using it
 
-The default call above is the classic network: N = 10 nodes, K = 2 inputs,
+The default call above draws a network of N = 10 nodes with K = 2 inputs and
 unbiased tables, so it sits at the critical point λ = 1. The species `x{i}_b`
 say that node i has value b, and `net.initial_state` holds one of each pair,
 the random starting pattern. The dynamics are in `net.extras["analysis"]`:
@@ -206,26 +151,6 @@ critical point: with K = 4, `function_bias=0.15` gives λ = 2 × 4 × 0.15 × 0.
 sensitivity is about 1.5 in all three. A power law on 1..N needs
 K < (N + 1)/2; larger K raises an error.
 
-**RBN World.** Set `model="rbn-world"`. The species ids are readable
-structures (`(B-B).1`), and each species' `structure` field holds the full code: the tree,
-which sites are bonded, and the node states at every level. `net.extras` also
-has `elements` (the wiring and tables of each atom, with `site0` and `site1`
-marking the bonding sites), `conservation` (one law per element: atoms are
-never created or destroyed) and, in `analysis`, the `final_population` and
-`largest_molecule_atoms`. The default run takes about a second; 5,000
-collisions on 100 copies of each element take about two. With seed 2 and those
-settings, decomposition appears among the observed reactions:
-
-```
-(B-C).1 + B.1 -> C.1 + B.1 + B.1       5 times
-```
-
-Because the atoms are random, few of them can bond under the default rule:
-seeds 1 to 4 give only one to four distinct synthesis reactions each. `bonding_rule="cycle-length-equal"`,
-the original 2009 chemistry, bonds far more readily: with the default settings
-and seed 1, 98 of the 100 atoms end up in a single molecule (seeds 2 and 3: 62
-and 39).
-
 ## Results
 
 **Attractors as cell types.** Kauffman (1969) found cycle attractors in RBNs
@@ -256,51 +181,6 @@ better. Chemart's tests only check that its Poisson and power-law in-degrees
 have mean K; the recipe above shows the more ordered dynamics in a small run,
 but that is not a test, and only the abstract of Fox and Hill's paper was
 available when the generator was written.
-
-**RBN World: reactions from dynamics.** Faulconbridge's thesis (2011, ch. 6)
-walks through example reactions of increasing complexity: synthesis
-`A + B → (A–B)`, bonding onto an existing molecule at an atom, `(A–B–C)`, or at
-the whole molecule, `((A–B)–C)`, decomposition `(A–B) + C → A + B + C`, and
-`A1 + B → A2 + B`. In the last, an attempted bond fails but leaves `A` in a
-different state; the thesis calls multiple states "a key feature of RBN-World
-that is often missing from other Artificial Chemistries". Chemart's tests
-rebuild the thesis's structure-tree examples, including the nine-atom example
-of Faulkner et al. (2018, fig. 12), check that every surviving bond still meets the
-rule, and find both synthesis and state-changing catalysis in the default
-network on six seeds, with the atom counts conserved.
-
-**Linking is not associative.** Because the bonding rule is tested on the
-bRBNs at every level of the tree, the order in which atoms join matters:
-`((A–B–C)–D)` is in general not `((A–B)–(C–D))` (Faulkner et al. 2018). The
-tests check the structural side of this, that bonding `C` to the atom `B` of
-`(A–B)` gives `(A–B–C)` while bonding it to the composite gives `((A–B)–C)`.
-
-**Which chemistries are worth studying.** The ALife XII paper (Faulconbridge et
-al. 2010) treats the design choices as a search space: six bonding properties
-(cycle length, flashing, flashes, total, magnitude, proportion), several
-comparison criteria, and atoms of 5 to 25 nodes with K = 2 or 3. It tested
-200 alternative chemistries, 10,000 random samples each, for five low-level
-behaviours: synthesis, self-synthesis, decomposition, substitution and
-catalysis. A chemistry passed a test if its samples showed variation, some
-passing and some failing. Only 19
-passed all five (the paper's table 5), and they all use either proportion with
-sum one or total with sum zero; the original cycle-length/equal choice did not
-pass. Chemart offers these two and the original, and its tests reproduce the
-paper's worked example of the six properties on a four-node cycle (table 2:
-cycle length 6, flashing 3, flashes 8, total −4, magnitude 14, proportion
-0.417). It does not rerun the 200-chemistry screen.
-
-**Evolved atoms and long loops.** The aim of RBN World, in the book's words, is
-chemistries "able to produce autocatalytic sets, hypercycles and
-heteropolymers". Rather than sampling atoms at random, the thesis (ch. 8) uses a
-genetic algorithm, 100 vessels for 300 generations, each seeded with 1,000
-atoms of each of five types, to find atom sets whose reaction networks contain
-long reaction loops. One network analysed in detail had 1,286 reactions and
-645 molecular species, and its longest loop had 8 reactions (thesis §8.5.1.1,
-repeated in Faulkner et al. 2018). Chemart reproduces neither this search nor
-the thesis's Gillespie-style timing; its atoms are random, as in the 2009 and
-2010 papers. Nor does it implement the temperature analogue with which
-Faulkner et al. report preliminary experiments.
 
 ## Further reading
 

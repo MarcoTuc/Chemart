@@ -6,7 +6,7 @@ from collections import Counter
 import numpy as np
 import pytest
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries.molecular_tsp import (
     canonical, cut, distance_matrix, exchange, overlap, random_cut, random_exchange,
     random_recombine, recombine, ring_cities, ring_optimum, tour_id, tour_length,
@@ -94,18 +94,23 @@ def assert_machine_reaction(net, r):
 
 def test_default_ring_run_reaches_the_polygon():
     """Book fig. 17.2 / paper fig. 3: random tours on a ring converge to the ring in 1000 generations."""
-    net = generate_network(ID, seed=3)
+    traj = evolve(ID, seed=3)
+    net = traj.network
     a = net.extras["analysis"]
-    assert net.status == "observed"
+    best, mean, over = (traj.series(k) for k in ("best_length", "mean_length", "overlap"))
+    assert net.status == "observed" and traj.clock == "generations"
     assert a["generation_size"] == math.ceil(9 / 3.01) == 3
-    assert len(a["best_length"]) == len(a["mean_length"]) == 1001
-    assert a["best_length"][0] > 1.3 * a["optimum"]
-    assert a["best_length"][-1] == pytest.approx(a["optimum"])
+    assert traj.times() == [float(g) for g in range(1001)]
+    assert best[0] > 1.3 * a["optimum"]
+    assert best[-1] == pytest.approx(a["optimum"])
     assert net.extras["best_tour"]["id"] == "t" + ".".join(map(str, range(10)))
     # local selection: neither the best nor the mean length ever increases
-    for series in (a["best_length"], a["mean_length"]):
+    for series in (best, mean):
         assert all(b <= x + 1e-9 for x, b in zip(series, series[1:]))
-    assert a["overlap"][-1] > a["overlap"][0]
+    assert over[-1] > over[0]
+    # a frame holds the four machines and the nine strings; the first is the initial soup
+    assert traj.frames[0].fired == [] and traj.frames[0].state == net.initial_state
+    assert all(sum(f.state.values()) == 4 + 9 for f in traj.frames)
     for r in net.reactions:
         assert r.count >= 1
         assert_machine_reaction(net, r)
@@ -139,8 +144,8 @@ def test_higher_recombination_frequency_is_faster():
 def test_recombination_collapses_variance_on_random_cities():
     """Paper table 2b / conclusion: frequent recombination drives the population overlap (eq. 4) up."""
     def final(t_R, s):
-        a = generate_network(ID, seed=s, N=20, layout="random", t_R=t_R, generations=400).extras["analysis"]
-        return a["overlap"][-1], a["best_length"][-1]
+        last = evolve(ID, seed=s, N=20, layout="random", t_R=t_R, generations=400).frames[-1].observables
+        return last["overlap"], last["best_length"]
     rare = [final(0.001, s) for s in range(3)]
     often = [final(1.0, s) for s in range(3)]
     assert all(o > 0.8 for o, _ in often)

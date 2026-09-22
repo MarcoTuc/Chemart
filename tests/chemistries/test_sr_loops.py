@@ -20,7 +20,7 @@ from collections import Counter
 import numpy as np
 import pytest
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries import sr_loops as S
 
 ID = "sr-loops"
@@ -50,7 +50,7 @@ def at_step(rule, side, steps):
     """The lattice after `steps` updates, and the ancestor pattern and its position."""
     grid, pattern, home = lattice(rule, side)
     n_states, table, _ = S.rule(rule)
-    for grid in S.evolve(grid, table, n_states, steps):
+    for grid in S.run_ca(grid, table, n_states, steps):
         pass
     return grid, pattern, home
 
@@ -98,7 +98,7 @@ def test_byl_loop_replicates_every_25_steps():
     # Byl (1989): a 12-cell loop with a period of 25
     grid, pattern, home = lattice("byl", 60)
     n_states, table, _ = S.rule("byl")
-    found = [t for t, g in enumerate(S.evolve(grid, table, n_states, 80), start=1)
+    found = [t for t, g in enumerate(S.run_ca(grid, table, n_states, 80), start=1)
              if S.copies(g, pattern, home=home)]
     assert found == [25, 50, 75]
 
@@ -147,6 +147,24 @@ def test_default_network_is_langtons_loop_replicating_itself():
     assert len(space["final"]) == 60 and set("".join(space["final"])) <= set("01234567")
 
 
+def test_frames_follow_the_loops_and_the_cells():
+    # macro: a frame per observation of the loops, the state counts loops by species
+    traj = evolve(ID, seed=1)
+    assert traj.clock == "steps" and traj.times() == [float(t) for t in range(321)]
+    assert traj.frames[0].state == {"L086aaa": 1.0} and traj.frames[0].fired == []
+    assert traj.frames[-1].state == {"L086aaa": 4.0}
+    births = [f.t for f in traj.frames if f.fired]
+    assert births[0] == 128.0, "the daughter separates at step 128"
+    # observing every 10 steps gives a frame every 10 steps and the same network
+    sparse = evolve(ID, seed=1, track_every=10)
+    assert sparse.times() == [float(t) for t in range(0, 321, 10)]
+    # micro: a frame per step, the state counts the cells in each state
+    micro = evolve(ID, mode="micro", steps=20)
+    assert micro.times() == [float(t) for t in range(21)]
+    assert micro.frames[0].state == {"s1": 17.0, "s2": 61.0, "s4": 2.0, "s7": 6.0}
+    assert all(f.fired for f in micro.frames[1:])
+
+
 @pytest.mark.parametrize("name, kw, events", [
     ("byl", dict(grid=40, steps=80, min_loop_cells=4), "L012aaa -> 2 L012aaa"),
     ("reggia-2", dict(grid=40, steps=80, min_loop_cells=4), "L005aaa -> 2 L005aaa"),
@@ -165,14 +183,16 @@ def test_the_small_loops_replicate_as_themselves(name, kw, events):
 def test_sdsr_loops_dissolve_and_the_population_reaches_a_steady_state():
     # Sayama (1998, 1999): with structural dissolution the colony keeps turning over
     # instead of freezing, and the population settles in a bounded space
-    net = generate_network(ID, rule="sdsr", grid=100, steps=4000, min_loop_cells=40,
-                           track_every=5)
+    # 801 observations; every=16 keeps 51 of them, one every 80 steps
+    traj = evolve(ID, rule="sdsr", grid=100, steps=4000, min_loop_cells=40, track_every=5,
+                  every=16)
+    net = traj.network
     analysis = net.extras["analysis"]
     assert analysis["births"] > 100 and analysis["deaths"] > 100
     text = [r.to_text() for r in net.reactions]
     assert any(t.startswith("L086aaa -> 2 L086aaa") for t in text)
     assert any(t.startswith("L086aaa -> ∅") for t in text)
-    counts = [p["loops"] for p in analysis["population"]]
+    counts = [sum(f.state.values()) for f in traj.frames]
     assert counts[0] == 1 and max(counts) > 10
     second_half = counts[len(counts) // 2:]
     assert 5 <= min(second_half) and max(second_half) <= 3 * (sum(second_half) / len(second_half))
@@ -183,24 +203,26 @@ def test_sdsr_loops_dissolve_and_the_population_reaches_a_steady_state():
 def test_evoloop_colony_evolves_towards_smaller_loops():
     # Sayama (1999), Salzberg et al. (2004), book 8.2.3: "as the various loops compete for
     # space, smaller loops that have a reproductive advantage emerge and dominate"
-    net = generate_network(ID, rule="evoloop", grid=200, steps=30000, min_loop_cells=20,
-                           track_every=25)
+    # 1201 observations; every=24 keeps 51 of them, one every 600 steps
+    traj = evolve(ID, rule="evoloop", grid=200, steps=30000, min_loop_cells=20, track_every=25,
+                  every=24)
+    net = traj.network
     analysis = net.extras["analysis"]
     assert analysis["births"] > 500 and analysis["deaths"] > 500
     assert analysis["species_seen"] > 20, "variation on collision creates new species"
     text = [r.to_text() for r in net.reactions]
     assert any(t.startswith("L149aaa -> 2 L149aaa") for t in text), "the ancestor replicates"
     assert any(" + L" in t and t.startswith("L149aaa -> L149aaa") for t in text), "L -> L + L'"
-    start, end = analysis["population"][0], analysis["population"][-1]
-    assert end["loops"] > 20 > start["loops"]
-    assert start["cells"] == [149]
+    start, end = traj.frames[0], traj.frames[-1]
+    assert sum(end.state.values()) > 20 > sum(start.state.values())
+    assert start.observables["cells"] == [149]
     # the typical loop left is far smaller than the size-8 ancestor (leftover sheath
     # structures of dissolved loops are still counted, so the mean stays higher)
-    cells = sorted(end["cells"])
+    cells = sorted(end.observables["cells"])
     assert cells[0] <= 30 and cells[len(cells) // 2] < 100
-    dominant = max(end["by_species"], key=lambda s: end["by_species"][s])
+    dominant = max(end.state, key=lambda s: end.state[s])
     assert int(dominant[1:4]) < 60, "the dominant species is much smaller than the ancestor"
-    assert end["by_species"].get("L149aaa", 0) < end["by_species"][dominant]
+    assert end.state.get("L149aaa", 0) < end.state[dominant]
 
 
 # --- the micro reading ---------------------------------------------------------------

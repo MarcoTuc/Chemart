@@ -9,7 +9,7 @@ from collections import Counter
 
 import pytest
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries.laing_molecular_machines import parse_program, run, turing_program
 
 INCREMENT = "CT1.W1.H.TT1.W0.R.CT1.W1"
@@ -115,8 +115,7 @@ def test_detach_gives_several_products():
 
 
 def test_soup_observes_counter_reactions():
-    net = generate_network("laing-molecular-machines", seed=2, method="soup", copies=20, steps=400,
-                           max_length=8)
+    net = evolve("laing-molecular-machines", seed=2, copies=20, steps=400, max_length=8).network
     assert net.status == "observed" and net.outflow == "constant-total"
     assert net.initial_state == {"m:" + INCREMENT: 20, "t:0": 20}
     assert sum(net.extras["final_state"].values()) == 40
@@ -129,6 +128,6 @@ def test_bad_parameters():
     with pytest.raises(ValueError, match="CT<label>"):
         generate_network("laing-molecular-machines", machines=["CT7.H"])
     with pytest.raises(ValueError, match="binding"):
-        generate_network("laing-molecular-machines", method="soup", binding="all")
+        evolve("laing-molecular-machines", binding="all")
     with pytest.raises(ValueError, match="max_length"):
         generate_network("laing-molecular-machines", tapes=["00000"])

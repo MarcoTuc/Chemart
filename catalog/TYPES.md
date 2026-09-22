@@ -28,7 +28,7 @@ How a chemistry can be run is a separate question, answered by its module: `gene
 | `bondable-ca` | generator | Whether atoms bond is computed from their CA dynamics; the closure over atoms generates molecules and bonds. |
 | `brane-calculi` | generator | Reduction rules rewrite nested membrane terms; the closure generates the configurations. |
 | `brusselator` | given | Four reactions, written down. |
-| `ca-embedded-particles` | gas *(borderline)* | The particles and their collisions are read out of a cellular automaton run (the published option gives a written-down network). |
+| `ca-embedded-particles` | gas *(borderline)* | The particles and their collisions are read out of a cellular automaton run (its generate face is the published catalogue, a written-down network). |
 | `ccm` | gas *(borderline)* | A search procedure: rules rewrite atom states when a local order test passes; the species set is fixed, the trace evolves. |
 | `cham` | generator | Heating, cooling and reaction rules rewrite process-algebra terms; the closure generates the network. |
 | `chameleon` | given | Three reactions over three colours, written down. |
@@ -89,7 +89,8 @@ How a chemistry can be run is a separate question, answered by its module: `gene
 | `quasispecies` (archived: pruned) | generator | Every genotype of length L, with replication and mutation reactions built by formula. |
 | `raf` | generator | Kauffman's binary polymer model up to length n, with catalysis drawn at random, to analyse for RAF sets. |
 | `random-catalytic-networks` | generator | A random catalytic network over structureless species. |
-| `rbn` | generator *(borderline)* | A random Boolean network drawn once, each truth-table row one reaction (the rbn-world model is a gas). |
+| `rbn` | generator *(borderline)* | A random Boolean network drawn once, each truth-table row one reaction (RBN World, built from the same networks, is the gas rbn-world). |
+| `rbn-world` | gas | Atoms are random Boolean networks with bonding sites; whether two bond is computed from their attractors, and the soup of molecules evolves. |
 | `reflexive-ac` | gas | Finite state machines compose with machines into new machines. |
 | `replication-death` (archived: pruned) | given | Birth and death, written down. |
 | `replicator-equation` (archived: pruned) | given | Reactions fixed by a supplied payoff matrix. |

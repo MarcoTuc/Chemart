@@ -21,6 +21,7 @@ chemistries:
   kind: generator
   constructive: true
   type: gas
+  clock: collisions
   S:
     repr: >
       objects (molecules) are stacks of lines of elements written disp#elements/ per line, the
@@ -91,6 +92,7 @@ chemistries:
     - "Wildcard numbers are generated, not copied. For the default 8 notes per bar and 4 bars per phrase the generated rules (1), (2), (6), (7), (8), (9) and (10) come out character for character as printed in the paper (checked by a test); other bar sizes reuse the same scheme."
     - "Reactor: the paper's simulator (Cocoa/Objective-C, random collision) is not available and the authors themselves state it 'lacks sufficient theoretical foundation for simulating quantitative behaviour' and report only the products, not time series. Chemart therefore samples a rule with a weight equal to its number of ordered reactant choices, draws reactants in proportion to their copies and one match uniformly, and records the reactions that fired with their firing counts. No rates are attached anywhere, and no time series is claimed."
     - "Run length: the paper's runs produce three to five phrases in about an hour on a PowerPC G5 and have no terminating condition. Chemart stops after `phrases` finished phrases (default 1, reached in about 0.2 s), or after `steps` collisions; phrases=0 runs the whole budget. The published wall-clock times are not reproduced."
+    - "chemart.evolve yields a frame per collision, failed draws included since they count toward steps; frame 0 is the initial pot. A frame's state is the pot, its fired the reaction of that collision (empty for a failed draw), and its one observable, phrases, the number of distinct finished phrases in the pot, the quantity the run stops on. The paper reports no time series, so the frames are the record of one Chemart run, not a published dynamics; chemart.evolve(..., every=k) keeps one frame in k. generate_network runs to the end and returns the network."
     - "Initial counts are the published ones, which the paper calls 'somewhat arbitrary', chosen so that a few phrases appear in reasonable time; copies scales them uniformly."
     - "v1 parameters: mode is kept with its single published choice, the callable harmony_filter becomes avoid_notes (the section 3.3 rules) together with the cadences choice (the section 3.4 filter), and the matrix seed_patterns becomes the published initial multiset with copies."
     - "Rules conserve elements ('conserving elements just like a chemical reaction does', section 2), so extras.conservation carries one conservation vector per element kind; the tests check m^T (P - R) = 0 for each of them."

@@ -12,7 +12,7 @@ from collections import Counter
 import numpy as np
 import pytest
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries.nac import (
     CANCELLED, HYDROPHILIC, MOVED, NO_DISTANCE_TWO, canonical, cluster_id, clustering,
     components, distance_two, mean_path_length, mixed_edges, random_graph, rewire,
@@ -139,7 +139,9 @@ def nodes_per_species(net) -> dict[str, int]:
 
 
 def test_default_network_is_an_observed_rewiring_run():
-    net = generate_network(ID, seed=1)
+    traj = evolve(ID, seed=1)
+    net = traj.network
+    assert traj.clock == "steps" and traj.times()[:3] == [0.0, 12.0, 24.0] and traj.times()[-1] == 600.0
     assert net.status == "observed" and net.reactions
     assert all(r.rate is None and r.count >= 1 for r in net.reactions)
     for r in net.reactions:
@@ -154,7 +156,7 @@ def test_default_network_is_an_observed_rewiring_run():
 
 
 def test_every_reaction_conserves_nodes_and_edges():
-    net = generate_network(ID, seed=2)
+    net = evolve(ID, seed=2).network
     ids, R, P = net.matrices()
     stoichiometry = (P - R).toarray()
     for law in net.extras["conservation"]:
@@ -164,21 +166,21 @@ def test_every_reaction_conserves_nodes_and_edges():
 
 def test_hydrophilic_and_hydrophobic_nodes_demix():
     """Book fig. 11.14(a)-(b) and Suzuki (2008): mixed edges vanish, hydrophilic nodes cluster."""
-    net = generate_network(ID, seed=1)
-    trace = net.extras["analysis"]["trace"]
-    assert trace[0]["mixed_edges"] > 0 and trace[-1]["mixed_edges"] == 0
-    assert all(a["mixed_edges"] >= b["mixed_edges"] for a, b in zip(trace, trace[1:])), \
-        "a mixed edge can be deleted but never created"
-    hydrophilic = net.extras["space"]["nodes"].count(HYDROPHILIC)
-    assert trace[-1]["largest_hydrophilic_cluster"] >= hydrophilic - 1
-    assert trace[-1]["clustering"] > trace[0]["clustering"]
+    traj = evolve(ID, seed=1)
+    mixed = traj.series("mixed_edges")
+    assert mixed[0] > 0 and mixed[-1] == 0
+    assert all(a >= b for a, b in zip(mixed, mixed[1:])), "a mixed edge can be deleted but never created"
+    hydrophilic = traj.network.extras["space"]["nodes"].count(HYDROPHILIC)
+    assert traj.series("largest_hydrophilic_cluster")[-1] >= hydrophilic - 1
+    clustering_ = traj.series("clustering")
+    assert clustering_[-1] > clustering_[0]
 
-    loose = generate_network(ID, seed=1, polarity_constraint=False)
-    assert loose.extras["analysis"]["trace"][-1]["mixed_edges"] > 0, "the constraint is what demixes"
+    loose = evolve(ID, seed=1, polarity_constraint=False)
+    assert loose.series("mixed_edges")[-1] > 0, "the constraint is what demixes"
 
 
 def test_given_graph_is_used_as_the_initial_state():
-    net = generate_network(ID, seed=1, polarities="iioo", edges=[[0, 1], [1, 2], [2, 3]], steps=0)
+    net = evolve(ID, seed=1, polarities="iioo", edges=[[0, 1], [1, 2], [2, 3]], steps=0).network
     assert net.extras["space"]["nodes"] == list("iioo")
     assert net.extras["space"]["initial_edges"] == [[0, 1], [1, 2], [2, 3]]
     assert net.initial_state == {cluster_id(tuple("iioo"), ((0, 1), (1, 2), (2, 3))): 1.0}
@@ -187,7 +189,7 @@ def test_given_graph_is_used_as_the_initial_state():
 
 # --- the closure -----------------------------------------------------------------------
 def test_closure_terminates_and_conserves():
-    net = generate_network(ID, seed=1, method="closure", n_nodes=8, mean_degree=1.5)
+    net = generate_network(ID, seed=1, n_nodes=8, mean_degree=1.5)
     assert net.status == "complete" and net.species
     ids, R, P = net.matrices()
     stoichiometry = (P - R).toarray()
@@ -203,15 +205,15 @@ def test_closure_terminates_and_conserves():
 
 
 def test_closure_truncates_on_its_budget():
-    net = generate_network(ID, seed=1, method="closure", n_nodes=8, mean_degree=2.0, max_species=40)
+    net = generate_network(ID, seed=1, n_nodes=8, mean_degree=2.0, max_species=40)
     assert net.status == "truncated" and len(net.species) <= 40
 
 
 def test_same_seed_same_graph():
-    a = generate_network(ID, seed=11)
-    b = generate_network(ID, seed=11)
+    a = evolve(ID, seed=11)
+    b = evolve(ID, seed=11)
     assert a.to_dict() == b.to_dict()
-    assert generate_network(ID, seed=12).extras["space"] != a.extras["space"]
+    assert evolve(ID, seed=12).network.extras["space"] != a.network.extras["space"]
 
 
 # --- parameters -------------------------------------------------------------------------

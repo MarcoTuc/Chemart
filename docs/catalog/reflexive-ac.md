@@ -174,12 +174,12 @@ choice, not something from the papers.
 
 ### The reactor
 
-Chemart offers two reactors. The **closure** starts from the seed machines, composes every
-ordered pair, adds the new products and repeats until nothing new appears or
-the species budget `max_species` is spent. The **soup** is the book's standard
-well-stirred flow reactor: a population of `M` molecules, from which an
-ordered pair is drawn at random; the product is added and a random molecule
-removed, so the population stays at `M`.
+Chemart offers two ways to run the chemistry. The **closure** starts from the
+seed machines, composes every ordered pair, adds the new products and repeats
+until nothing new appears or the species budget `max_species` is spent. The
+**flow reactor** is the book's standard well-stirred reactor: a population of
+`M` molecules, from which an ordered pair is drawn at random; the product is
+added and a random molecule removed, so the population stays at `M`.
 
 ### Formal specification
 
@@ -195,9 +195,9 @@ Reflexive composition (Salzberg & Sayama 2025, eqs. 1-2): on input i the composi
 
 **A — reactor**: `graph-rewrite` (graph rewriting: molecules are graphs and reactions rewrite them); or `well-stirred-multiset` (a well-stirred pot of discrete molecules that meet at random, with no notion of position).
 
-*How the population is bounded:* closure: none; soup: each reactive collision adds the product and removes a random molecule (population M constant)
+*How the population is bounded:* the closure has none; the flow reactor (chemart.evolve) adds the product of each reactive collision and removes a random molecule (population M constant)
 
-The source describes the reaction and its products, not a reactor; the flow-reactor soup is the book's standard AC reactor, a Chemart choice.
+The source describes the reaction and its products, not a reactor; the flow reactor is the book's standard AC reactor, a Chemart choice.
 
 ### Using it in Chemart
 
@@ -228,7 +228,11 @@ Its first reactions (`net.reactions`):
 1/0,2/0;0/0,3/0;4/1,5/1;6/1,7/1;8/0,9/0;10/1,11/1;12/0,13/0;14/1,15/1;16/1,17/1;18/0,19/0;20/1,21/1;22/0,23/0;24/1,25/1;26/0,27/0;28/1,29/1;30/0,31/0;29/0,28/0;31/1,30/1;25/0,24/0;27/1,26/1;9/1,8/1;11/0,10/0;2/1,1/1;7/0,6/0;21/0,20/0;23/1,22/1;17/0,16/0;19/1,18/1;13/1,12/1;15/0,14/0;3/1,0/1;5/0,4/0 + 0/0,1/0;1/1,0/1 -> 1/0,2/0;0/0,3/0;4/1,5/1;6/1,7/1;8/0,9/0;10/1,11/1;12/0,13/0;14/1,15/1;16/1,17/1;18/0,19/0;20/1,21/1;22/0,23/0;24/1,25/1;26/0,27/0;28/1,29/1;30/0,31/0;29/0,28/0;31/1,30/1;25/0,24/0;27/1,26/1;9/1,8/1;11/0,10/0;2/1,1/1;7/0,6/0;21/0,20/0;23/1,22/1;17/0,16/0;19/1,18/1;13/1,12/1;15/0,14/0;3/1,0/1;5/0,4/0 + 0/0,1/0;1/1,0/1 + 1/0,2/0;0/0,3/0;4/1,5/1;6/1,7/1;8/0,9/0;10/1,11/1;12/0,13/0;14/1,15/1;16/1,17/1;18/0,19/0;20/1,21/1;22/0,23/0;24/1,25/1;26/0,27/0;28/1,29/1;30/0,31/0;32/0,33/0;34/1,35/1;36/0,37/0;38/1,39/1;40/1,41/1;42/0,43/0;44/1,45/1;46/0,47/0;48/0,49/0;50/1,51/1;52/0,53/0;54/1,55/1;56/1,57/1;58/0,59/0;60/1,61/1;62/0,63/0;55/0,54/0;53/1,52/1;51/0,50/0;49/1,48/1;63/1,62/1;61/0,60/0;59/1,58/1;57/0,56/0;15/0,14/0;13/1,12/1;5/0,4/0;3/1,0/1;23/1,22/1;21/0,20/0;19/1,18/1;17/0,16/0;39/0,38/0;37/1,36/1;35/0,34/0;33/1,32/1;47/1,46/1;45/0,44/0;43/1,42/1;41/0,40/0;11/0,10/0;9/1,8/1;7/0,6/0;2/1,1/1;31/1,30/1;29/0,28/0;27/1,26/1;25/0,24/0
 ```
 
-The default run is the closure from a single M45 with `max_states = 64`. It is
+The chemistry has two faces. `chemart.generate_network`, printed above,
+returns the closure; `chemart.evolve` runs the flow reactor and returns a
+trajectory.
+
+The default network is the closure from a single M45 with `max_states = 64`. It is
 complete, with six species of 2, 4, 16, 16, 32 and 64 states: the growth
 series described above. The first reaction is the worked example; the others
 compose the products with M45 and with each other. The species names get long quickly, so use `net.extras`:
@@ -270,15 +274,18 @@ net = chemart.generate_network("reflexive-ac", machines=["M45", "M61"])
 net.summary()     # reflexive-ac: 64 species, 194 reactions, status=complete
 ```
 
-**A soup of random machines.** With `machines=[]`, Chemart draws `M` random
-machines with `states` states over `symbols` symbols (links uniform, then cut
-to the part reachable from state 0). In the soup, `extras["analysis"]
-["distinct_species"]` gives the number of distinct species after every `M`
-collisions, and `extras["final_state"]` the final population:
+**A flow reactor of random machines.** With `machines=[]`, Chemart draws `M`
+random machines with `states` states over `symbols` symbols (links uniform,
+then cut to the part reachable from state 0). `chemart.evolve` runs
+`collisions` collisions (2,000 by default) and returns a trajectory with a
+frame every `M` collisions; each frame's `state` is the population at that
+moment, so `len(f.state)` is the number of distinct species. The network of
+the reactions that fired, with counts, is `traj.network`, and its
+`extras["final_state"]` is the final population:
 
 ```python
-net = chemart.generate_network("reflexive-ac", seed=3, method="soup", machines=[], M=50)
-net.extras["analysis"]["distinct_species"]
+traj = chemart.evolve("reflexive-ac", seed=3, machines=[], M=50)
+[len(f.state) for f in traj.frames]
 # [38, 46, 47, 47, 38, 42, 43, 39, 32, 29, 22, 21, 14, 16, 11, 10, 8, 7, 8, 8,
 #  7, 6, 7, 6, 5, 5, 4, 4, 4, 4, 4, 4, 4, 3, 2, 2, 2, 2, 2, 2, 2]
 ```
@@ -290,28 +297,27 @@ machine copies itself. Over seeds 0-9, the default 2,000 collisions left one
 species in 4 runs and two to four in the others, always self-reproducing
 machines of 7 to 57 states; with `collisions=6000`, seeds 0-4 all ended with a
 single species. This is a Chemart observation, not a published result. A run
-of 2,000 collisions takes about two seconds.
+of 2,000 collisions takes well under a second.
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `generate_network`, or to `chemart.evolve`; a parameter marked *evolve only* belongs to the process and one marked *generate only* to the network. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
-| `method` | `enum` | `closure` | structural | closure: every composition reachable from the seed machines (chemart.expand over ordered pairs), complete or cut off by max_species; soup: a stochastic flow reactor of M molecules, observed reactions with firing counts <br>one of `closure`, `soup` |
 | `machines` | `list` | `['M45']` | structural | seed machines: elementary numbers M&lt;n&gt; (optionally @S0/@S1 for the pointer) or machine texts 'dest/out,...;...' with '-' for a missing link and optional '@j' pointer; all must share the alphabet. Empty: M random machines <br>*range:* e.g. ['M45', 'M61'], ['M54'], ['0/0,1/1;1/1,0/1@1']; the arXiv:2505.07186 machines of interest are M7, M44, M45, M54, M60, M61 |
-| `M` | `int` | `50` | population | soup: reactor size (given machines are split equally); without machines, the number of random machines drawn (closure seeds or initial soup population) <br>`2` … `100000` |
+| `M` | `int` | `50` | population | without machines, the number of random machines drawn (the closure's seeds or the reactor's initial population); in the reactor, its size (given machines are split equally) <br>`2` … `100000` |
 | `states` | `int` | `2` | population | random machines: number of states before trimming to the part reachable from state 0; links are uniform over states and outputs <br>`1` … `1000` |
 | `symbols` | `int` | `2` | structural | random machines: input/output alphabet size k <br>`1` … `16` · *range:* the sources use the binary alphabet {0, 1} |
 | `max_states` | `int` | `64` | structural | largest product accepted: a composition with more reachable nodes is elastic <br>`1` … `100000` |
-| `max_species` | `int` | `100` | structural | closure only: species budget; reactions that would add more are dropped and status becomes truncated <br>`1` … `100000` |
-| `collisions` | `int` | `2000` | population | soup only: number of collisions (elastic ones included) <br>`0` … `10000000` |
+| `max_species` | `int` | `100` | structural | *generate only.* species budget of the closure; reactions that would add more are dropped and status becomes truncated <br>`1` … `100000` |
+| `collisions` | `int` | `2000` | population | *evolve only.* number of collisions (elastic ones included); a frame every M collisions <br>`0` … `10000000` |
 
 ### Implementation decisions
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "10 decisions"
+??? note "11 decisions"
 
     - The primary source [737] and its companions (Salzberg 2006a, ALife X; 2006b, Artificial Life 12:487-512) were not accessible (paywalled; no preprint, thesis or archived copy found). The reaction is reconstructed from the 2025 restatement of the formulation by the same author, which says the earlier studies composed distinct sender and receiver machines repeatedly into exponentially larger state-space graphs. The exact product construction, elastic conditions and reactor of the 2007 paper are therefore Chemart's reading, not a transcription.
     - Molecule: a deterministic Mealy machine over the alphabet {0..k-1} with a pointer (the current state, the dark node of the 2025 figures), trimmed to the nodes reachable from the pointer. Missing links are allowed so that input data (e.g. the tape chains of the 2004 paper, with a symbol playing xi) are graphs of the same kind; a composite link exists only if both links it passes through exist.
@@ -320,8 +326,9 @@ The sources leave gaps, and sometimes contradict each other or the book. Each su
     - Not modelled: the 2004 graph-constructing-graph machinery (xi-flows chosen by a decision tree over N-loops, translation of the output string by codons into construction-head instructions that grow and fold the graph). The 2025 restatement does not use it, and the 2004 paper leaves conflict resolution open.
     - Elastic boundary: products with more than max_states reachable nodes (Chemart choice, since state counts multiply at every composition). No rates are published, so reactions carry rate None.
     - Canonical id: breadth-first numbering from the pointer with links taken in input order; for accessible deterministic graphs this is a complete isomorphism invariant, so no general graph canonisation is needed.
-    - Soup: chemart.soup with constant dilution draws an ordered pair (sender, receiver), adds the product and removes a random molecule; initial population: the given machines in equal copies, or M random machines (duplicates allowed). Random machines have uniform links over states and outputs, trimmed from state 0. These are Chemart choices; the defaults (closure from M45, M = 50, 2000 collisions, max_states 64, max_species 100) are small, not published values.
-    - The v1 entry had no parameters; all parameters are new. v1 said 'dilution: none', which holds for the closure; the soup is an added reactor.
+    - Two faces: generate_network returns the closure, every composition reachable from the seed machines (chemart.expand over ordered pairs), complete or cut off by max_species; chemart.evolve runs a stochastic flow reactor of M molecules, a frame every M collisions, and returns the reactions that fired with counts. The number of distinct species over time, formerly extras.analysis.distinct_species, is read off the frames' state.
+    - Flow reactor: chemart.stir with constant dilution draws an ordered pair (sender, receiver), adds the product and removes a random molecule; initial population: the given machines in equal copies, or M random machines (duplicates allowed). Random machines have uniform links over states and outputs, trimmed from state 0. These are Chemart choices; the defaults (closure from M45, M = 50, 2000 collisions, max_states 64, max_species 100) are small, not published values.
+    - The v1 entry had no parameters; all parameters are new. v1 said 'dilution: none', which holds for the closure; the flow reactor is an added one.
     - Published numbers checked by computation: Table 1 encoding (M61 = 00111101, M45 = 00101101), 76 machines unique under complement and mirror, the Table 2 equivalents, transposition M45 &lt;-&gt; M54 and M60 -&gt; M60 (fig. 17, footnote 3), M45 equal to rule 90 on even steps with the fig. 7 boundary inputs, M54 even steps as rule-90 preimages with the eqs. 6-7 inputs, M44 inverted by flipping the lattice. The fig. 12 caption's input sequence (0 up to t = 5, then 1, 1) was not reproduced: with the constraint algorithm as described, the run from two centred 1 cells needs input 1 at t = 0; the figure's step indexing cannot be recovered from the text. Likewise fig. 13's statement that M60 with the same initial states and boundary inputs has the same even rows as M54 did not hold when M60 was fed M54's inputs, so only M54's reversal is tested.
 
 ## Results
@@ -342,7 +349,7 @@ within the size bound, that the self-composition `M45 + M45` is among the
 reactions and gives four states, and that large products are elastic. The
 claims of self-similar topologies, new pathways and open-ended diversity
 cannot be checked against the paper's examples, which are not available, and
-are not tested. Chemart's own soup, a reactor the paper may not have used, does
+are not tested. Chemart's own flow reactor, which the paper may not have used, does
 not show open-ended diversity: a random population collapses to one or a few
 self-reproducing machines.
 

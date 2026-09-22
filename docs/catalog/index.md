@@ -1,20 +1,20 @@
 # Catalog
 
-**72** chemistries, one page each, generated from the catalog so these pages cannot drift from the library. A further 28 archived entries are listed [at the end](#archive).
+**73** chemistries, one page each, generated from the catalog so these pages cannot drift from the library. A further 28 archived entries are listed [at the end](#archive).
 
 | | |
 |---|---|
 | given — a reaction network written down; you choose its rates and initial state | 19 |
 | generator — an algorithm computes the network from the chemistry's arguments | 24 |
-| gas — a Turing gas: structured molecules react by a procedure and the soup evolves | 29 |
-| constructive (open, growing species set) | 43 |
+| gas — a Turing gas: structured molecules react by a procedure and the soup evolves | 30 |
+| constructive (open, growing species set) | 44 |
 | carry their own rate constants or rate law | 29 |
 | carry energetics or thermodynamic consistency | 6 |
 | declare a conservation law | 27 |
 | define space | 13 |
 | define compartments | 7 |
 
-By kind: 57 generator, 7 formalism, 4 wet, 2 analysis, 2 framework.
+By kind: 58 generator, 7 formalism, 4 wet, 2 analysis, 2 framework.
 
 The catalog is grouped by what each chemistry is: a **given** network, a **generator** of networks, or a Turing **gas** (the reasoning for every entry is in `catalog/TYPES.md`). Columns: **grows** is whether the species set is open and expands at run time; **S/R** is the species and reaction count at *default* parameters with `seed=1`, which for most chemistries scales up considerably; **beyond topology** lists only the capabilities that distinguish entries, since every one of them supplies topology and stoichiometry. **fidelity** says how close the implementation is to a published specification — see [Fidelity and trust](../trust.md).
 
@@ -28,7 +28,7 @@ Each chemistry's own page has the full capability list, the complete attribution
 |---|---|---|:--:|---|--:|---|
 | [Analog computation of algebraic functions with concentrations](analog-function-crn.md) | Hjelmfelt et al. | application | · | book+decisions | 2/2 | kinetics |
 | [ARMS (Abstract Rewriting System on Multisets)](arms.md) | Suzuki & Tanaka, 1997 | rewriting | · | reconstructed | 7/6 | — |
-| [Varela-Maturana-Uribe autopoiesis model](autopoiesis-vmu.md) | Varela, Maturana & Uribe… | origin-of-life | · | reconstructed | 8/33 | space |
+| [Varela-Maturana-Uribe autopoiesis model](autopoiesis-vmu.md) | Varela, Maturana & Uribe… | origin-of-life | · | reconstructed | 8/16 | space |
 | [Brusselator](brusselator.md) | Prigogine & Lefever, 1968 | application | · | book | 6/4 | kinetics |
 | [Colored chameleon chemistry](chameleon.md) | Winkler, 2009 puzzle (Com… | core | · | book | 3/3 | kinetics, conservation |
 | [Chemoton](chemoton.md) | Ganti, ~1952/1971 | origin-of-life | · | reconstructed | 38/40 | kinetics, compartments |
@@ -71,7 +71,7 @@ Each chemistry's own page has the full capability list, the complete attribution
 | [MGS](mgs.md) | Giavitto & Michel, 2001 | rewriting | yes | reconstructed | 21/25 | conservation, space |
 | [RAF sets (reflexively autocatalytic, F-generated)](raf.md) | Hordijk & Steel, 2004-2015 | origin-of-life | · | reconstructed | 254/746 | conservation |
 | [Random catalytic reaction networks](random-catalytic-networks.md) | Stadler, Fontana & Miller… | evolutionary-dynamics | · | book+decisions | 10/42 | kinetics, flow |
-| [Random Boolean Networks (RBN) and RBN World](rbn.md) | Kauffman, 1969 | evolutionary-dynamics | · | reconstructed | 20/40 | conservation |
+| [Random Boolean Networks (RBN)](rbn.md) | Kauffman, 1969 | evolutionary-dynamics | · | reconstructed | 20/40 | — |
 | [String Metabolic Network (SMN)](smn.md) | Ono, Fujiwara & Yuta, 2005 | systems-biology | yes | book+decisions | 21/24 | conservation, flow |
 | [Self-Organizing Assembly Systems (SOAS)](soas.md) | Frei, Di Marzo Serugendo… | non-chemical | yes | reconstructed | 582/1326 | — |
 | [Synthon artificial chemistry](synthon.md) | Lenaerts & Bersini, 2009 | systems-biology | yes | reconstructed | 31/161 | kinetics, conservation |
@@ -79,34 +79,35 @@ Each chemistry's own page has the full capability list, the complete attribution
 
 ## gas
 
-29 chemistries: a Turing gas: molecules carry structure and a procedure makes them react, so the soup and its network evolve in chemical-evolutionary time.
+30 chemistries: a Turing gas: molecules carry structure and a procedure makes them react, so the soup and its network evolve in chemical-evolutionary time.
 
 | chemistry | origin | family | grows | fidelity | S/R | beyond topology |
 |---|---|---|:--:|---|--:|---|
-| [AlChemy (lambda-calculus chemistry)](alchemy.md) | Fontana, 1991 | rewriting | yes | reconstructed | 365/1156 | kinetics, flow |
-| [Automata reaction (32-bit binary string chemistry)](automata-reaction.md) | Dittrich & Banzhaf, 1998 | automata | yes | reconstructed | 4818/9872 | kinetics, flow |
+| [AlChemy (lambda-calculus chemistry)](alchemy.md) | Fontana, 1991 | rewriting | yes | reconstructed | 50/1134 | kinetics, flow |
+| [Automata reaction (32-bit binary string chemistry)](automata-reaction.md) | Dittrich & Banzhaf, 1998 | automata | yes | reconstructed | 200/32804 | kinetics, flow |
 | [BFF (self-modifying Brainfuck soup)](bff.md) | Agüera y Arcas, Alakuijal… | automata | yes | reconstructed | 837/646 | space |
-| [Embedded particles in cellular automata](ca-embedded-particles.md) | Hanson & Crutchfield 1992 | automata | · | reconstructed | 9/7 | space |
+| [Embedded particles in cellular automata](ca-embedded-particles.md) | Hanson & Crutchfield 1992 | automata | · | reconstructed | 6/6 | space |
 | [Chemical Casting Model (CCM)](ccm.md) | Kanada, 1992-1996 | application | · | reconstructed | 64/187 | — |
 | [Combinator chemistry](combinator-chemistry.md) | Speroni di Fenizio, 2000 | rewriting | yes | reconstructed | 107/3268 | conservation, flow |
 | [Combinatory Chemistry](combinatory-chemistry.md) | Kruszewski & Mikolov, 2020 | rewriting | yes | reconstructed | 591/1001 | conservation |
 | [Dorin & Korb virtual ecosystem chemistry](dorin-korb-ecosystem.md) | Dorin & Korb, 2007 | spatial | yes | reconstructed | 26/46 | energies, conservation, space |
 | [Fraglets](fraglets.md) | Tschudin, 2003 | application | yes | reconstructed | 7/4 | compartments |
-| [High-order chemistry (rules as molecules)](high-order-chem.md) | Yamamoto, 2014 (PyCellChe… | core | yes | book+decisions | 198/154 | — |
-| [Machine-tape chemistry](ikegami-hashimoto.md) | Ikegami & Hashimoto, 1995 | automata | yes | reconstructed | 164/1482 | kinetics, flow |
+| [High-order chemistry (rules as molecules)](high-order-chem.md) | Yamamoto, 2014 (PyCellChe… | core | yes | book+decisions | 262/1095 | — |
+| [Machine-tape chemistry](ikegami-hashimoto.md) | Ikegami & Hashimoto, 1995 | automata | yes | reconstructed | 266/3970 | kinetics, flow |
 | [Laing's artificial molecular machines](laing-molecular-machines.md) | Laing, 1972-1977 | automata | yes | book+decisions | 17/15 | flow |
 | [Matrix chemistry](matrix-chemistry.md) | Banzhaf, 1993 | core | yes | book+decisions | 23/375 | kinetics, flow |
 | [Polymers as Turing machines / pattern processing chemistry](mccaskill-polymer-tm.md) | McCaskill, 1988 | automata | yes | reconstructed | 7/12 | flow |
 | [Molecular Classifier System (MCS.bl)](mcs-bl.md) | Decraene, Mitchell & McMu… | bio-inspired | yes | reconstructed | 4/6 | kinetics, flow |
 | [Molecular Traveling Salesman](molecular-tsp.md) | Banzhaf, 1990 | application | yes | reconstructed | 84/79 | — |
 | [Algorithmic chemistry for music composition](music-ac.md) | Miura & Tominaga, 2006 (h… | application | yes | reconstructed | 772/719 | conservation |
-| [Network Artificial Chemistry (NAC)](nac.md) | Suzuki, 2004-2009 | network | yes | reconstructed | 61/64 | conservation, space |
-| [Prime number (number-division) chemistry](prime-number-chemistry.md) | Banzhaf, Dittrich & Rauhe… | core | yes | book+decisions | 201/159 | — |
+| [Network Artificial Chemistry (NAC)](nac.md) | Suzuki, 2004-2009 | network | yes | reconstructed | 100/427 | conservation, space |
+| [Prime number (number-division) chemistry](prime-number-chemistry.md) | Banzhaf, Dittrich & Rauhe… | core | yes | book+decisions | 261/1095 | — |
 | [Artificial chemistry as a proof search system](proof-ac.md) | Busch & Banzhaf, 2003 | application | yes | reconstructed | 100/402 | — |
+| [RBN World](rbn-world.md) | Faulconbridge, Stepney, M… | automata | yes | reconstructed | 7/9 | conservation |
 | [Reflexive artificial chemistry](reflexive-ac.md) | Salzberg, 2007 | rewriting | yes | reconstructed | 6/7 | flow |
 | [RNA-folding ribozyme artificial chemistry](rna-folding-ac.md) | Ullrich & Flamm, 2008 | systems-biology | yes | reconstructed | 21/8 | energies, conservation |
 | [SAC (string-based artificial chemistry with cells)](sac.md) | Suzuki & Ono, 2002-2003 | bio-inspired | yes | reconstructed | 410/410 | — |
-| [Squirm3](squirm3.md) | Hutton, 2002-2007 | spatial | yes | reconstructed | 74/67 | conservation, space |
+| [Squirm3](squirm3.md) | Hutton, 2002-2007 | spatial | yes | reconstructed | 60/98 | conservation, space |
 | [Self-replicating loops in cellular automata](sr-loops.md) | von Neumann 1966 | automata | yes | reconstructed | 1/1 | space |
 | [SRSim (rule-based spatial simulator)](srsim.md) | Gruenert & Dittrich, 2010… | systems-biology | yes | reconstructed | 13/19 | kinetics, conservation, space |
 | [Stringmol](stringmol.md) | Hickinbotham, Clark, Step… | bio-inspired | yes | reconstructed | 1/1 | flow |

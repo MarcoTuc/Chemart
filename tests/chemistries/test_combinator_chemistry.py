@@ -9,7 +9,7 @@ from collections import Counter
 
 import pytest
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries.combinator_chemistry import (
     Chemistry, Elastic, apply, atom_counts, normal_form, parse, reduce_terms, show,
 )
@@ -238,8 +238,8 @@ def test_default_closure_conserves_atoms():
 # --- soups ----------------------------------------------------------------------
 def test_reactive_soup_conserves_atoms_and_varies_population():
     # 2000 paper / ECAL 2001: the number of atoms is constant, the number of molecules is not
-    net = generate_network("combinator-chemistry", seed=3, method="soup", M=60, generations=15,
-                           atoms_per_type=150, prob_destroy=0.01)
+    traj = evolve("combinator-chemistry", seed=3, M=60, generations=15, atoms_per_type=150, prob_destroy=0.01)
+    net = traj.network
     assert net.status == "observed" and all(r.count for r in net.reactions)
     _conserves_atoms(net)
     total = Counter()
@@ -248,15 +248,16 @@ def test_reactive_soup_conserves_atoms_and_varies_population():
             total[x] += k * c
     for x, free in net.extras["final_free_atoms"].items():
         assert total[x] + free == 150
-    assert len(set(net.extras["analysis"]["population"])) > 1
+    population = [sum(n for s, n in f.state.items() if not s.startswith("free:")) for f in traj.frames]
+    assert len(population) == 16 and len(set(population)) > 1
     # random molecules are assembled from the pool, and molecules decay back into it
     assert any(all(s.startswith("free:") for s in r.reactants) for r in net.reactions)
     assert any(all(s.startswith("free:") for s in r.products) for r in net.reactions)
 
 
 def test_catalytic_soup_keeps_its_size():
-    net = generate_network("combinator-chemistry", seed=0, method="soup", reaction="catalytic",
-                           atoms="BCIKSW", M=50, generations=5)
+    net = evolve("combinator-chemistry", seed=0, reaction="catalytic", atoms="BCIKSW", M=50,
+                 generations=5).network
     assert sum(net.extras["final_state"].values()) == 50
     assert net.outflow == "constant-total"
     for r in net.reactions:

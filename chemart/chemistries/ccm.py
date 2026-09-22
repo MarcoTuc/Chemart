@@ -38,14 +38,18 @@ atom by c; a reaction resets it to f0.
 
 Scheduling is the mathematical-random strategy: every test draws the atoms at
 random. The run ends with the demos' termination test (a run of failed tests
-of adaptive length) or after max_tests tests. The observed network holds the
-distinct reactions that fired, with counts.
+of adaptive length) or after max_tests tests. The chemistry is a gas with one
+face, ``evolve``: a frame after every accepted reaction, timed in tests, with
+the global order degree (GOD) as its observable. The observed network holds
+the distinct reactions that fired, with counts.
 """
 
 from __future__ import annotations
 
 from chemart.helpers import params as check
 from chemart.network import Network, Reaction, Species
+from chemart.soup import Tally
+from chemart.trajectory import Frame
 
 RULES = ("no-catalyst", "single-catalyst", "double-catalyst", "triple-catalyst", "variable-catalyst")
 FIXED_CATALYSTS = {"no-catalyst": 0, "single-catalyst": 1, "double-catalyst": 2, "triple-catalyst": 3}
@@ -156,7 +160,8 @@ class _Run:
         self.failed = 0
         self.reactions = 0
         self.uphill = 0
-        self.fired: dict[tuple, list] = {}
+        self.tally = Tally()
+        self.shown = 0                          # tests at the last frame
         self.threshold = patience
         self.threshold_20 = 20 * patience
         self.terminated = False
@@ -185,9 +190,12 @@ class _Run:
             self.uphill += 1
         for a in changed:
             self.frustration[a] = self.f0
-        key = (frozenset(lhs), frozenset(rhs))
-        entry = self.fired.setdefault(key, [lhs, rhs, 0])
-        entry[2] += 1
+        self.tally.add(lhs, rhs)
+
+    def frame(self, state: dict[str, float], god: int) -> Frame:
+        """A frame at the current test: the working memory, the reactions since the last frame, GOD."""
+        self.shown = self.tests
+        return Frame(t=float(self.tests), state=state, fired=self.tally.flush(), observables={"god": god})
 
     def done(self) -> bool:
         """Queens_Sort/USAmap_color loopTick termination test, plus the max_tests budget."""
@@ -213,6 +221,11 @@ def _queens(p, rng):
     run = _Run(p, n, 1000 + n * n)
     god = queens_god(cols)
     trace = [god]
+
+    def state():
+        return {queen_id(r, c): 1.0 for r, c in enumerate(cols)}
+
+    yield run.frame(state(), god)
 
     while not run.done():
         run.attempts += 1
@@ -247,6 +260,9 @@ def _queens(p, rng):
             cols[a], cols[b] = cb, ca
         run.react([a] if rule == "variable-catalyst" else [a, b], lhs, rhs, before, after)
         trace.append(god)
+        yield run.frame(state(), god)
+    if run.tests > run.shown:
+        yield run.frame(state(), god)
 
     start = [queen_id(r, c) for r, c in enumerate(initial)]
     return run, start, cols, trace, n * (n - 1) // 2, initial, {"N": n}, species_of_queen
@@ -277,6 +293,11 @@ def _coloring(p, rng):
     god = coloring_god(colors, edges)
     trace = [god]
 
+    def state():
+        return {vertex_id(i, c): 1.0 for i, c in enumerate(colors)}
+
+    yield run.frame(state(), god)
+
     while not run.done():
         run.attempts += 1
         v = int(rng.integers(n))
@@ -303,6 +324,9 @@ def _coloring(p, rng):
         colors[v] = new
         run.react([v], lhs, rhs, before, after)
         trace.append(god)
+        yield run.frame(state(), god)
+    if run.tests > run.shown:
+        yield run.frame(state(), god)
 
     instance = {"vertices": n, "edges": [list(e) for e in edges], "colors": q,
                 "mean_degree": 2 * len(edges) / n if n else 0.0}
@@ -310,20 +334,19 @@ def _coloring(p, rng):
     return run, start, colors, trace, len(edges), initial, instance, species_of_vertex
 
 
-TRACE_LIMIT = 20000
-
-
-def generate(p, rng) -> Network:
+def evolve(p, rng):
+    """Kanada's reactor: a frame after every accepted reaction, timed in tests, plus one
+    at the last test if the run ended on failed tests; the observable is GOD."""
     if p.rule not in RULES:
         raise ValueError(f"rule must be one of {RULES}, got {p.rule!r}")
     if p.frustration and p.f0 <= 0:
         raise ValueError("frustration=True needs f0 > 0 (a zero frustration never grows); set frustration=False instead")
     solve = _queens if p.problem == "n-queens" else _coloring
-    run, start, final, trace, god_max, initial, instance, describe = solve(p, rng)
+    run, start, final, trace, god_max, initial, instance, describe = yield from solve(p, rng)
 
     order: dict[str, None] = dict.fromkeys(start)
     reactions = []
-    for lhs, rhs, count in run.fired.values():
+    for lhs, rhs, count in run.tally.reactions():
         order.update(dict.fromkeys(rhs))
         reactions.append(Reaction.of(lhs, rhs, count=count))
     species = [Species(sid, structure=describe(sid)) for sid in order]
@@ -341,8 +364,6 @@ def generate(p, rng) -> Network:
         "mod_final": god / god_max if god_max else 1.0,
         "solved": god == god_max,
         "first_solution_reaction": first,
-        "god": trace[:TRACE_LIMIT],
-        "god_truncated": len(trace) > TRACE_LIMIT,
         "mean_frustration_final": sum(run.frustration) / len(run.frustration),
     }
     return Network(

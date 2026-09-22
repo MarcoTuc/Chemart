@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from chemart.simulate import rhs
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries.matrix_chemistry import bitstring, operation, reaction_table
 
 
@@ -259,9 +259,9 @@ def test_destructor_can_be_made_reactive():
 
 
 def test_soup_records_fired_reactions():
-    kwargs = dict(N=4, seed_species=ALL_4BIT, method="soup", M=300, steps=4000)
-    net = generate_network("matrix-chemistry", seed=3, **kwargs)
-    assert net == generate_network("matrix-chemistry", seed=3, **kwargs)
+    kwargs = dict(N=4, seed_species=ALL_4BIT, M=300, steps=4000)
+    net = evolve("matrix-chemistry", seed=3, **kwargs).network
+    assert net == evolve("matrix-chemistry", seed=3, **kwargs).network
     assert net.status == "observed" and all(r.count > 0 for r in net.reactions)
     assert sum(r.count for r in net.reactions) <= 4000
     assert sum(net.initial_state.values()) == 300

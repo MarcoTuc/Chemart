@@ -9,7 +9,7 @@ from collections import Counter
 import numpy as np
 import pytest
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries import stringmol as sm
 
 SEED = sm.SEED_REPLICASE
@@ -113,8 +113,8 @@ def test_role_goes_to_the_later_bind_site():
 
 def test_copy_mutations_move_along_the_symbol_loop():
     # spec 10.6.1: a substitution writes the next or previous symbol in the loop of the substitution matrix
-    net = generate_network("stringmol", seed=3, method="soup", molecules={SEED: 30}, steps=300,
-                           substitution_rate=0.01, indel_rate=0.0)
+    net = evolve("stringmol", seed=3, reactor="soup", molecules={SEED: 30}, steps=300,
+                 substitution_rate=0.01, indel_rate=0.0).network
     loop = sm.KEY
     seed_id = sm.species_id(SEED)
     structure = {s.id: s.structure for s in net.species}
@@ -134,9 +134,12 @@ def test_copy_mutations_move_along_the_symbol_loop():
 
 # --- container, soup, closure --------------------------------------------------
 def test_container_observed_network_balances_exactly():
-    net = generate_network("stringmol", seed=5, molecules={SEED: 40, SP9: 10}, steps=1500, energy_per_step=40,
-                           cell_radius=40.0, decay=0.001, substitution_rate=0.002, indel_rate=0.0005)
+    traj = evolve("stringmol", seed=5, molecules={SEED: 40, SP9: 10}, steps=1500, energy_per_step=40,
+                  cell_radius=40.0, decay=0.001, substitution_rate=0.002, indel_rate=0.0005)
+    net = traj.network
     assert net.status == "observed" and net.outflow == pytest.approx(0.001)
+    assert traj.clock == "steps" and traj.times()[:3] == [0.0, 1.0, 4.0] and traj.times()[-1] == 1500.0
+    assert traj.frames[0].state == {s: float(n) for s, n in net.initial_state.items()}
     ex = net.extras
     pop = Counter(net.initial_state)
     for r, active in zip(net.reactions, ex["active_counts"]):
@@ -154,6 +157,11 @@ def test_container_observed_network_balances_exactly():
         pop.subtract(rec["reactants"])
     pop.subtract(ex["decayed"])
     assert +pop == Counter(ex["final_state"]) and not -pop
+    # a frame counts a bound molecule as the sequence it had when it bound
+    last = Counter(ex["final_state"])
+    for rec in ex["in_progress"]:
+        last.update(rec["reactants"])
+    assert traj.frames[-1].state == {s: float(n) for s, n in last.items()}
     assert len(net.species) > 2, "mutation creates new species"
     ids = {s.id for s in net.species}
     assert all(sm.species_id(s.structure) == s.id for s in net.species) and len(ids) == len(net.species)
@@ -163,24 +171,24 @@ def test_energy_and_decay_maintain_the_population():
     # ALife XII: the balance between energy influx and decay maintains the population
     common = dict(molecules={SEED: 60}, steps=4000, cell_radius=30.0, decay=1 / 650, substitution_rate=0.0,
                   indel_rate=0.0)
-    fed = generate_network("stringmol", seed=2, energy_per_step=25, **common)
-    pops = fed.extras["analysis"]["population"]
-    assert not fed.extras["extinct"] and 25 <= min(pops[len(pops) // 2:]) and max(pops) <= 200
-    assert sum(r.count for r in fed.reactions) > 100
-    starved = generate_network("stringmol", seed=2, energy_per_step=0, **common)
-    assert not starved.reactions
-    assert starved.extras["analysis"]["population"][-1] < 60 * 0.2
+    fed = evolve("stringmol", seed=2, energy_per_step=25, **common)
+    pops = [sum(f.state.values()) for f in fed.frames[1:]]
+    assert not fed.network.extras["extinct"] and 25 <= min(pops[len(pops) // 2:]) and max(pops) <= 200
+    assert sum(r.count for r in fed.network.reactions) > 100
+    starved = evolve("stringmol", seed=2, energy_per_step=0, **common)
+    assert not starved.network.reactions and set(starved.series("energy")) == {0}
+    assert sum(starved.frames[-1].state.values()) < 60 * 0.2
 
 
 def test_closure_of_the_seed_replicase():
-    net = generate_network("stringmol", method="closure", molecules={SEED: 1})
+    net = generate_network("stringmol", molecules={SEED: 1})
     seed_id = sm.species_id(SEED)
     assert net.status == "complete" and [s.id for s in net.species] == [seed_id]
     assert [(r.reactants, r.products) for r in net.reactions] == [({seed_id: 2}, {seed_id: 3})]
 
 
 def test_closure_contains_the_alife12_cascade():
-    net = generate_network("stringmol", method="closure", molecules={SP9: 1, SP29: 1}, max_species=8)
+    net = generate_network("stringmol", molecules={SP9: 1, SP29: 1}, max_species=8)
     ids = {s: sm.species_id(s) for s in (SP9, SP29, SP30, SP31)}
     found = {(frozenset(r.reactants.items()), frozenset(r.products.items())) for r in net.reactions}
     assert (frozenset({ids[SP29]: 1, ids[SP9]: 1}.items()), frozenset({ids[SP30]: 1, ids[SP9]: 1}.items())) in found
@@ -189,9 +197,12 @@ def test_closure_contains_the_alife12_cascade():
 
 
 def test_soup_keeps_the_population_size():
-    net = generate_network("stringmol", seed=4, method="soup", molecules={SEED: 20, SP31: 5}, steps=200)
+    traj = evolve("stringmol", seed=4, reactor="soup", molecules={SEED: 20, SP31: 5}, steps=200)
+    net = traj.network
     assert net.status == "observed" and net.outflow == "constant-total"
     assert sum(net.extras["final_state"].values()) == 25
+    assert traj.times() == [0.0, 25.0, 50.0, 75.0, 100.0, 125.0, 150.0, 175.0, 200.0]
+    assert all(sum(f.state.values()) == 25 for f in traj.frames)
 
 
 def test_bad_parameters():
@@ -200,6 +211,6 @@ def test_bad_parameters():
     with pytest.raises(ValueError, match="positive integer"):
         generate_network("stringmol", molecules={SEED: 0})
     with pytest.raises(ValueError, match="agent_radius"):
-        generate_network("stringmol", agent_radius=20.0, cell_radius=10.0)
+        evolve("stringmol", agent_radius=20.0, cell_radius=10.0)
     with pytest.raises(ValueError, match="max_length"):
         generate_network("stringmol", molecules={SEED: 2}, max_length=10)

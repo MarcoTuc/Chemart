@@ -14,9 +14,10 @@ The machine is a line-by-line port of the authors' ANSI C source
 as the formal specification. It reproduces the paper's Table 2 and reaction
 tables (Figs. 3, 4, 9, 10); see the tests.
 
-method "soup" runs the paper's reactor algorithm with chemart.soup.soup and
-returns the observed reactions; method "closure" returns the reaction closure
-of the seed words (e.g. a published organization).
+evolve runs the paper's reactor algorithm (chemart.soup.stir), a frame per
+generation of M collisions, and returns the observed reactions; generate
+returns the reaction closure of the seed words (e.g. a published
+organization).
 """
 
 from __future__ import annotations
@@ -25,7 +26,8 @@ from collections import Counter
 
 from chemart.expand import expand
 from chemart.network import CONSTANT_TOTAL, Network, Reaction, Species
-from chemart.soup import soup
+from chemart.soup import Tally, stir
+from chemart.trajectory import Frame
 
 MASK = 0xFFFFFFFF
 
@@ -207,63 +209,20 @@ def _species(words) -> list[Species]:
     return [Species(word_id(w), structure=f"{w:032b}") for w in sorted(set(words))]
 
 
-def generate(p, rng):
+def _check(p) -> None:
     if p.mechanism == "and" and p.code_table != 1:
         raise ValueError("code_table only applies to mechanism 'automata'; leave it at 1 for 'and'")
-    start = _parse_words(p.words) if p.words else [int(w) for w in rng.integers(0, 1 << 32, size=p.M, dtype="uint64")]
+
+
+def _random_words(rng, n: int) -> list[int]:
+    return [int(w) for w in rng.integers(0, 1 << 32, size=n, dtype="uint64")]
+
+
+def generate(p, rng):
+    """Every reaction reachable from the distinct seed words, cut off by max_species."""
+    _check(p)
+    start = _parse_words(p.words) if p.words else _random_words(rng, p.n_seeds)
     react = make_react(p.mechanism, p.code_table, p.forbid_exact_replication)
-    if p.method == "closure":
-        return _closure(p, react, start)
-    if len(start) < 2:
-        raise ValueError(f"the soup needs at least 2 molecules, got {len(start)}")
-    return _soup(p, react, rng, start)
-
-
-def _soup(p, react, rng, start):
-    size = len(start)
-    pop = list(start)
-    seen = set(start)
-    fired: dict[tuple, list] = {}
-    diversity = [len(set(pop)) / size]
-    productivity, innovativity = [], []
-    for _ in range(p.generations):
-        chunk, pop = soup(_catalytic(react), pop, size, rng, arity=2, dilution="constant")
-        inserted = new = 0
-        for lhs, rhs, count in chunk:
-            key = (frozenset(Counter(lhs).items()), frozenset(Counter(rhs).items()))
-            entry = fired.setdefault(key, [lhs, rhs, 0])
-            entry[2] += count
-            inserted += count
-            (s3,) = (Counter(rhs) - Counter(lhs)).elements()
-            if s3 not in seen:
-                seen.add(s3)
-                new += 1
-        diversity.append(len(set(pop)) / size)
-        productivity.append(inserted / size)
-        innovativity.append(new / size)
-
-    reactions = [_reaction(react, lhs, rhs, count) for lhs, rhs, count in fired.values()]
-    words = set(start).union(*(rhs for _, rhs, _ in fired.values()))
-    final = Counter(pop)
-    return Network(
-        species=_species(words),
-        reactions=reactions,
-        status="observed",
-        initial_state={word_id(w): c for w, c in sorted(Counter(start).items())},
-        outflow=CONSTANT_TOTAL,
-        extras={
-            "analysis": {
-                "generation_size": size,
-                "diversity": diversity,
-                "productivity": productivity,
-                "innovativity": innovativity,
-            },
-            "final_state": {word_id(w): c for w, c in final.most_common()},
-        },
-    )
-
-
-def _closure(p, react, start):
     seed = sorted(set(start))
     words, found, status = expand(_catalytic(react), seed, arity=2, max_species=p.max_species, ordered=True)
     return Network(
@@ -272,4 +231,55 @@ def _closure(p, react, start):
         status=status,
         outflow=CONSTANT_TOTAL,
         extras={"seed": [word_id(w) for w in seed]},
+    )
+
+
+def _ids(fired):
+    return [[[word_id(w) for w in lhs], [word_id(w) for w in rhs], n] for lhs, rhs, n in fired]
+
+
+def evolve(p, rng):
+    """The paper's reactor: `generations` x M collisions, a frame per generation.
+
+    Each frame after the first reports the paper's productivity (inserted
+    products / M) and innovativity (never-seen products / M) of that generation.
+    """
+    _check(p)
+    start = _parse_words(p.words) if p.words else _random_words(rng, p.M)
+    react = make_react(p.mechanism, p.code_table, p.forbid_exact_replication)
+    if len(start) < 2:
+        raise ValueError(f"the soup needs at least 2 molecules, got {len(start)}")
+    size = len(start)
+    seen = set(start)
+    tally = Tally()
+    pop = start
+    for step, pop, tally in stir(_catalytic(react), start, p.generations * size, rng, every=size, arity=2,
+                                 dilution="constant", tally=tally):
+        fired = tally.flush()
+        observables = {}
+        if step:
+            new = 0
+            for lhs, rhs, _ in fired:
+                (s3,) = (Counter(rhs) - Counter(lhs)).elements()
+                if s3 not in seen:
+                    seen.add(s3)
+                    new += 1
+            observables = {"productivity": sum(n for _, _, n in fired) / size, "innovativity": new / size}
+        yield Frame(t=float(step // size), state={word_id(w): float(n) for w, n in sorted(Counter(pop).items())},
+                    fired=_ids(fired), observables=observables)
+
+    fired = tally.reactions()
+    reactions = [_reaction(react, lhs, rhs, count) for lhs, rhs, count in fired]
+    words = set(start).union(*(rhs for _, rhs, _ in fired))
+    final = Counter(pop)
+    return Network(
+        species=_species(words),
+        reactions=reactions,
+        status="observed",
+        initial_state={word_id(w): c for w, c in sorted(Counter(start).items())},
+        outflow=CONSTANT_TOTAL,
+        extras={
+            "analysis": {"generation_size": size},
+            "final_state": {word_id(w): c for w, c in final.most_common()},
+        },
     )

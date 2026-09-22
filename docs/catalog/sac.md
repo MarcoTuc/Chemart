@@ -188,7 +188,7 @@ Genes (genotypic strings) are 0000 + the phenotype with a suppressor \ inserted 
 
 *How the population is bounded:* cells grow by producing strings and divide when their string count has doubled (model iii: only with a membrane string of ten M); max 100 cells with max 50 strings, an old cell removed when a new one is added
 
-Chemart builds one cell's chemistry: the closure of the ancestral cell, or a well-stirred run inside one cell. Division, ages and the cell population are recorded in extras.cell_level only.
+Chemart builds one cell's chemistry: the closure of the ancestral cell (generate_network), or a well-stirred run inside one cell (chemart.evolve). Division, ages and the cell population are recorded in extras.cell_level only.
 
 ### Using it in Chemart
 
@@ -221,7 +221,11 @@ s_00d0d0c1c1c0c2c2c0s0011c0c2c2c0 + s_0000bpbbb0bbb2bbb0bbb2bpbbbbbzbpbsbcbbbbbc
 … and 402 more
 ```
 
-The default call builds the *closure* of model (i): starting from the twelve
+SAC has two faces. `chemart.generate_network("sac")`, printed above, returns
+the *closure* of a cell's strings; `chemart.evolve("sac")` runs random
+collisions inside one growing cell and returns a trajectory.
+
+The default call builds the closure of model (i): starting from the twelve
 strings, Chemart applies every string to every other string, adds whatever
 comes out, and repeats until nothing new appears. The result is complete, with
 410 species and 410 reactions, and takes under a second. The species are all
@@ -234,21 +238,25 @@ copier and constructor strings of the seed, and
 `analysis["reproduced_seed"]` lists the seed strings that some reaction
 produces; in the default run it holds all twelve.
 
-**A cell as a soup.** `method="soup"` simulates random collisions in one
-growing cell instead:
+**A cell as a soup.** `chemart.evolve` simulates random collisions in one
+growing cell instead, `steps` of them (20,000 by default):
 
 ```python
-net = chemart.generate_network("sac", seed=3, method="soup", steps=20000)
-a = net.extras["analysis"]
-a["population_size"][0], a["population_size"][-1]   # (12, 34)
-sum(r.count for r in net.reactions)                  # 850 effective collisions
+traj = chemart.evolve("sac", seed=3)
+size = [sum(f.state.values()) for f in traj.frames]
+size[0], size[-1], traj.frames[1].t                    # (12.0, 34.0, 12.0)
+net = traj.network
+sum(r.count for r in net.reactions)                    # 850 effective collisions
 ```
 
-This took about two seconds. `population_size` records the number of strings
-after every `chunk_steps` collisions (12 here, the initial size); it never
-falls, since no reaction consumes a string. `final_state` holds the final
-contents. At the end of this run none of the six genes was in its resting form
-`0000…0011`: each was part-way through a copy or a translation. With
+This takes about half a second. There is a frame every 12 collisions (the
+initial number of strings), 1,668 in all; each frame's `state` is the contents
+of the cell, so `size` is the number of strings over time. It never falls,
+since no reaction consumes a string. The network lists the 328 distinct
+reactions that fired, with counts, and `net.extras["final_state"]` holds the
+final contents. At the end of this run none of the six genes was in its resting
+form `0000…0011` (`net.extras["analysis"]["seed_copies_final"]` gives 0 for
+each): each was part-way through a copy or a translation. With
 `dilution="constant"`, random strings are removed to keep the cell at its
 initial size, a Chemart stand-in for the papers' size limit.
 
@@ -256,8 +264,10 @@ initial size, a Chemart stand-in for the papers' size limit.
 `"spindle-membrane"` seeds the ancestral cell of model (ii) or (iii). Their
 closures never end, so they always stop at `max_species`: with
 `max_species=300`, model (iii) gives 563 reactions in 0.6 s and model (ii) 397
-reactions in 1.8 s. For model (iii), `analysis["max_membrane_M"]` reports the
-longest membrane string.
+reactions in 1.5 s. For model (iii), the closure's `analysis["max_membrane_M"]`
+reports the longest membrane string, and in a trajectory each frame's
+observable `max_membrane_M` (`traj.series("max_membrane_M")`) gives the
+longest membrane in the cell at that moment.
 
 **Your own strings.** `strings` replaces the ancestral cell. The book's example
 closes after one reaction:
@@ -272,23 +282,22 @@ To try the language directly, `chemart.chemistries.sac` exports `decode`,
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `generate_network`, or to `chemart.evolve`; a parameter marked *evolve only* belongs to the process and one marked *generate only* to the network. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
-| `method` | `enum` | `closure` | structural | closure: every reaction reachable from the seed strings (chemart.expand); soup: random collisions inside one cell, observed reactions with firing counts <br>one of `closure`, `soup` |
 | `organisation` | `enum` | `independent-genes` | structural | published ancestral cell: (i) six separate genes + copier (3) + constructor (3), the book's 12-string replication system; (ii) one chromosome + copier (4) + constructor (4); (iii) seven separate genes regulated by L/R spindle tags + copier (4) + constructor (3) + membrane seed EM <br>one of `independent-genes`, `single-chromosome`, `spindle-membrane` · *range:* paper [823] models (i), (ii), (iii) |
-| `strings` | `list` | `[]` | structural | explicit seed strings (a multiset for soup); overrides organisation <br>*range:* e.g. the book's P0 (author's spelling, see R.scheme) with the operand 002301 |
-| `max_species` | `int` | `2000` | structural | closure only: species budget (status truncated when exceeded) <br>≥ `1` · *range:* model (i) closes at 410 species; the closures of models (ii) and (iii) are infinite and always truncated (see decisions) |
-| `steps` | `int` | `20000` | population | soup only: number of collisions, elastic ones included <br>`0` … `10000000` · *range:* model (i), one copy of each string: 20000 collisions grow the cell from 12 to 30-40 strings in under a second |
-| `copies` | `int` | `1` | population | soup only: copies of every seed string in the initial cell <br>`1` … `1000` |
-| `dilution` | `enum` | `none` | population | soup only: none lets the cell grow; constant removes random strings back to the initial size (a stand-in for the cell-size cap, not in the papers) <br>one of `none`, `constant` |
+| `strings` | `list` | `[]` | structural | explicit seed strings (a multiset for the soup of chemart.evolve); overrides organisation <br>*range:* e.g. the book's P0 (author's spelling, see R.scheme) with the operand 002301 |
+| `max_species` | `int` | `2000` | structural | *generate only.* species budget of the closure (status truncated when exceeded) <br>≥ `1` · *range:* model (i) closes at 410 species; the closures of models (ii) and (iii) are infinite and always truncated (see decisions) |
+| `steps` | `int` | `20000` | population | *evolve only.* number of collisions, elastic ones included; a frame every (initial number of strings) collisions <br>`0` … `10000000` · *range:* model (i), one copy of each string: 20000 collisions grow the cell from 12 to 30-40 strings in under a second |
+| `copies` | `int` | `1` | population | *evolve only.* copies of every seed string in the initial cell <br>`1` … `1000` |
+| `dilution` | `enum` | `none` | population | *evolve only.* none lets the cell grow; constant removes random strings back to the initial size (a stand-in for the cell-size cap, not in the papers) <br>one of `none`, `constant` |
 
 ### Implementation decisions
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "15 decisions"
+??? note "16 decisions"
 
     - Neither [642] and [826] (J. Three Dimensional Images 16(4), 2002) nor the text of [823] could be obtained (not open access; the author's archived page links the PDFs but the Wayback Machine has no copy). Every string and example is taken from Suzuki's ECAL 2003 slides for [823]; the decoding details below are reconstructed so that all published examples and all three published ancestral cells work, and are not quoted from a paper.
     - Book erratum: eq. 11.2 prints P0 = \0!$0'0"1*0'1"2 but decodes it as [\0][\!]$[...]. Read literally, that string is the rules [0!] and [00*01 → 01*02] and the $ stops after [0!] matches, so 002301 is not rewritten. The author's slides spell the same string \0&\!$0'0"1*0'1"2 (with & and a suppressed !), which gives [\0]&[\!]$[00*01 → 01*02] and 002301 -&gt; 012302; the slides' own example uses operand 003301 -&gt; 013302.
@@ -301,8 +310,9 @@ The sources leave gaps, and sometimes contradict each other or the book. Each su
     - The book's 12-string replication system is model (i): six genes and six enzymes (copier 00'0'0"1..., /\0\2\0\2/..., 00'1'1...; constructor likewise with marker 0220). The genes are generated as 0000 + escape(phenotype) + 0011 and equal the slide transcription character for character; model (ii) is one chromosome 0000 + escaped genes joined by 01010110 + 3300 (checked against the slide), model (iii) genes end in 0011 and the ancestral cell also gets the membrane seed EM (the slide lists the genes and enzymes only; EM is the seed named on p. 19).
     - Slides transcribed from images at 450 dpi; the model (iii) enzymes were cross-checked against their genes, which the slide prints separately.
     - The v1 parameters cell_cap, division_size and age_limit are dropped: cells, division, ages and the cell population act on whole sets of strings, not on one reaction network. Their published values (division when the string count doubles, membrane of ten M in model iii, max 100 cells with max 50 strings, age counter reset at division) are recorded in extras.cell_level. The v1 matrix parameter seed_program became organisation plus an optional strings list; 'compartments' is dropped from provides because the network does not contain cells.
-    - Model (iii) membrane growth: the breeder "M\E\M decodes to [EM → MEM], so repeated collisions grow EM to MMMMMMMMMMEM, the ten-M membrane that allows division (slide p. 19); extras.analysis.max_membrane_M reports the largest M count of any membrane string.
-    - No kinetics: the sources give no rates, so reactions carry no rate. method soup (chemart.soup.soup, two distinct strings drawn uniformly, the first as operator) and dilution constant are Chemart additions for one well-stirred cell; soup analysis records the population size and the largest membrane after every chunk of (initial size) collisions.
+    - Model (iii) membrane growth: the breeder "M\E\M decodes to [EM → MEM], so repeated collisions grow EM to MMMMMMMMMMEM, the ten-M membrane that allows division (slide p. 19); the closure's extras.analysis.max_membrane_M reports the largest M count of any membrane string, and each frame of chemart.evolve the largest M count in the cell (observable max_membrane_M).
+    - No kinetics: the sources give no rates, so reactions carry no rate. The soup of chemart.evolve (chemart.soup.stir, two distinct strings drawn uniformly, the first as operator) and dilution constant are Chemart additions for one well-stirred cell.
+    - Two faces: generate_network returns the closure of the seed strings (chemart.expand), cut off by max_species; chemart.evolve runs the soup inside one cell, a frame every (initial number of strings) collisions with the observable max_membrane_M, and returns the reactions that fired with counts. With dilution constant the cell is diluted back to its initial size for the whole run; the former method soup ran in chunks and re-targeted the size to each chunk's start. The two differ only when a rewrite deletes a whole operand and the cell shrinks; the published ancestral cells never shrink (checked for models i-iii, 3000 collisions, seeds 0-3, identical results).
     - Model (ii) race in the published strings: at the end of a copy, the copier's single-character mover /\0\2\0\2/!/*"!\0\2\0\2 (needed for the unsuppressed gene separators 01010110) can also move the marker past the terminator 3300 before the cutting rule acts; the copy then runs on into the copy and never closes. If the cutting rule acts first, the chromosome is copied exactly (test). Whether the papers restrict ! or order the rules is unknown; Chemart applies no priority, so closures and soups of model (ii) contain these error branches.
     - Closure sizes with the published ancestral cells: model (i) 410 species and 410 reactions (complete, about a second, every seed string reproduced). The closures of models (ii) and (iii) are infinite: the model (ii) copier error branch keeps copying into its own copy, and the model (iii) breeder turns EM into M...MEM without bound (in the papers division stops it at ten M). They are always truncated by max_species (model (iii): 300 species / 563 reactions in about 1 s, 800 / 1394 in about 2.5 s; model (ii): 300 / 397 in about 1.6 s).
 

@@ -131,11 +131,30 @@ net.extras["final_assignment"]               # [4, 6, 1, 5, 2, 0, 3, 7]   a solu
 a["god_initial"], a["god_final"]             # (0, 28)
 ```
 
-`final_assignment[i]` is the column of the queen in row `i`. `a["god"]` holds
-the global order degree after every reaction, which is the curve Kanada plots.
-The network itself records each distinct accepted reaction once, with how often
-it happened, so a count like 187 reactions in the summary is the number of
-*different* swaps, while `a["reactions"]` counts every accepted one.
+`final_assignment[i]` is the column of the queen in row `i`. The network itself
+records each distinct accepted reaction once, with how often it happened, so a
+count like 187 reactions in the summary is the number of *different* swaps,
+while `a["reactions"]` counts every accepted one.
+
+To watch the run rather than its outcome, `chemart.evolve` returns a
+trajectory. It has a frame for the starting board, one after every accepted
+reaction, and a last one at the final attempt when the run ended on a streak of
+failures. Time is counted in attempted reactions (tests). Each frame holds the
+board (`state`, one species per queen), the reaction just accepted (`fired`)
+and the global order degree as the observable `god`, the curve Kanada plots:
+
+```python
+traj = chemart.evolve("ccm", seed=1)
+god = traj.series("god")
+len(traj.frames), traj.times()[-2:]          # (190, [573.0, 1637.0])
+god[:10]                                     # [0, 12, 16, 21, 25, 25, 23, 24, 25, 26]
+god[-3:]                                     # [24, 28, 28]
+traj.frames[1].fired                         # [[['q3=3', 'q4=4', 'q6=6'], ['q3=4', 'q4=3', 'q6=6'], 1]]
+```
+
+The board was solved at the 573rd attempt. The run then went on failing,
+because a solved board never changes, until the termination test stopped it at
+attempt 1,637.
 
 **Colouring the USA map.** Set `problem="graph-coloring"`. The default graph is
 the 48 contiguous states with their 106 borders, starting all one colour:

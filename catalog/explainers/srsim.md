@@ -198,6 +198,18 @@ holds each rule's reactive volume and macroscopic constant. A species whose
 text would exceed 120 characters is named by its formula and a hash, such as
 `M10#df2d2d`.
 
+`chemart.evolve("srsim", ...)` runs the same simulation and returns it as a
+trajectory: one frame per step, timed in simulated time (step × `dt`), the unit
+the rate constants are given in. A frame's `state` counts the complexes and its
+`fired` lists the reactions of that step. In the default run the 50 monomers
+assemble into fewer, larger complexes:
+
+```python
+traj = chemart.evolve("srsim", seed=1)
+[(f.t, sum(f.state.values())) for f in traj.frames[::500]]
+# [(0.0, 50.0), (10.0, 17.0), (20.0, 13.0), (30.0, 12.0)]
+```
+
 **Geometry decides the shapes.** Vary `bond_angle` with a tighter tolerance
 (each run takes a couple of seconds):
 

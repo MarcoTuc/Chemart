@@ -30,9 +30,11 @@ The 65 rules built here implement the five steps of the paper's algorithm
 contains its first note, replace avoid notes, concatenate bars along the
 cadence rules, and cut out four-bar phrases that start on a tonic bar.
 
-The reactor is a random-collision run (section 5); the observed network holds
-the reactions that fired with their firing counts, and extras["analysis"]
-carries the phrases that were composed, as notes, chords and functions.
+The reactor is a random-collision run (section 5). The chemistry is a gas
+with one face, ``evolve``: a frame per collision, observing the number of
+finished phrases in the pot. The observed network holds the reactions that
+fired with their firing counts, and extras["analysis"] carries the phrases
+that were composed, as notes, chords and functions.
 """
 
 from __future__ import annotations
@@ -42,6 +44,8 @@ from collections import Counter
 from itertools import product
 
 from chemart.network import Network, Reaction, Species
+from chemart.soup import Tally
+from chemart.trajectory import Frame
 
 # --- the musical material (paper, section 3) -------------------------------------
 #: the diatonic scale of C major in one octave, as eighth notes (section 3)
@@ -436,11 +440,16 @@ class Reactor:
         self.parsed = {t: parse_object(t) for t in self.counts}
         self.slots: dict[str, list[tuple[int, int, list]]] = {}
         self.totals = [[0] * r.arity for r in rules]
-        self.fired: dict[tuple, list] = {}
+        self.tally = Tally()
+        self.labels: dict[tuple, str] = {}
+        self.phrase_flags: dict[str, bool] = {}
         self.seen = dict.fromkeys(self.counts)
         self.failed = 0
         for text, count in self.counts.items():
             self._index(text, count)
+        # the objects present and the number of distinct finished phrases, kept up to date
+        self.present = dict(self.counts)
+        self.finished = len(self.phrases())
 
     def _index(self, text: str, delta: int) -> None:
         if text not in self.slots:
@@ -456,8 +465,15 @@ class Reactor:
             self.totals[i][pos] += delta
 
     def _change(self, text: str, delta: int) -> None:
-        self.counts[text] += delta
+        before = self.counts[text]
+        after = self.counts[text] = before + delta
         self._index(text, delta)
+        if after > 0:
+            self.present[text] = after
+        else:
+            self.present.pop(text, None)
+        if (before > 0) != (after > 0) and self._is_phrase(text):
+            self.finished += 1 if after > 0 else -1
 
     def _pick(self, rule_index: int, pos: int) -> str:
         total = self.totals[rule_index][pos]
@@ -506,12 +522,21 @@ class Reactor:
             self.parsed.setdefault(text, obj)
             self._change(text, 1)
             self.seen.setdefault(text, None)
-        key = (frozenset(Counter(lhs).items()), frozenset(Counter(rhs).items()))
-        self.fired.setdefault(key, [lhs, rhs, rule.label, 0])[3] += 1
+        self.labels.setdefault(_key(lhs, rhs), rule.label)
+        self.tally.add(lhs, rhs)
         return True
 
     def phrases(self) -> list[str]:
-        return [t for t, c in self.counts.items() if c > 0 and is_phrase(self.parsed[t])]
+        return [t for t, c in self.counts.items() if c > 0 and self._is_phrase(t)]
+
+    def _is_phrase(self, text: str) -> bool:
+        flag = self.phrase_flags.get(text)
+        if flag is None:
+            flag = self.phrase_flags[text] = is_phrase(self.parsed[text])
+        return flag
+
+    def state(self) -> dict[str, float]:
+        return {t: float(c) for t, c in self.present.items()}
 
     def run(self, steps: int, stop_after: int = 0) -> None:
         for _ in range(steps):
@@ -521,8 +546,18 @@ class Reactor:
                 return
 
 
+def _key(lhs, rhs) -> tuple:
+    return (frozenset(Counter(lhs).items()), frozenset(Counter(rhs).items()))
+
+
 # --- generator ------------------------------------------------------------------------
-def generate(p, rng) -> Network:
+def evolve(p, rng):
+    """A random-collision run: a frame per collision (frame 0 is the initial pot).
+
+    Failed draws are collisions too, with nothing fired. The run stops after
+    `steps` collisions, once `phrases` finished phrases are in the pot, or
+    when no rule can fire.
+    """
     if p.mode not in MODES:
         raise ValueError(f"mode must be one of {MODES}, got {p.mode!r}")
     if p.cadences not in CADENCE_SETS:
@@ -536,10 +571,18 @@ def generate(p, rng) -> Network:
         pool = Counter({t: c * p.copies for t, c in pool.items()})
 
     reactor = Reactor(rules, pool, rng)
-    reactor.run(p.steps, p.phrases)
+    yield Frame(t=0.0, state=reactor.state(), observables={"phrases": reactor.finished})
+    for n in range(1, p.steps + 1):
+        if p.phrases and reactor.finished >= p.phrases:
+            break
+        if not reactor.step():
+            break
+        yield Frame(t=float(n), state=reactor.state(), fired=reactor.tally.flush(),
+                    observables={"phrases": reactor.finished})
 
-    reactions = [Reaction.of(lhs, rhs, count=count) for lhs, rhs, _, count in reactor.fired.values()]
-    labels = [label for _, _, label, _ in reactor.fired.values()]
+    fired = reactor.tally.reactions()
+    reactions = [Reaction.of(lhs, rhs, count=count) for lhs, rhs, count in fired]
+    labels = [reactor.labels[_key(lhs, rhs)] for lhs, rhs, _ in fired]
     species_ids = list(reactor.seen)
     species = [Species(t, structure=describe(reactor.parsed[t], p.notes_per_bar))
                for t in species_ids]

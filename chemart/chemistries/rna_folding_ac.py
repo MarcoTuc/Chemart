@@ -24,11 +24,12 @@ give ligation, and multiloops (composite ITS) are not catalytic:
 The ribozyme binds the Watson-Crick reverse complement of its loop sequence, so
 both reactions conserve the number of nucleotides (extras["conservation"]).
 
-`mode="closure"` returns every reaction reachable from the initial pool, with
-one substrate for a cleavage and two for a ligation. `mode="well-stirred"`
-returns the reactions that fired in a multiset run, each with its firing count;
-a collision there always draws three molecules, so a cleavage recorded in that
-mode carries the third molecule through unchanged as a spectator.
+Two faces. `generate` returns every reaction reachable from the initial pool
+(the closure), with one substrate for a cleavage and two for a ligation.
+`evolve` runs a well-stirred multiset (chemart.soup.stir), a frame every
+`pool` collisions, and returns the reactions that fired, each with its firing
+count; a collision there always draws three molecules, so a cleavage recorded
+in a run carries the third molecule through unchanged as a spectator.
 """
 
 from __future__ import annotations
@@ -40,7 +41,8 @@ import RNA
 
 from chemart.expand import expand
 from chemart.network import Network, Reaction, Species
-from chemart.soup import soup
+from chemart.soup import Tally, stir
+from chemart.trajectory import Frame
 
 ALPHABET = "ACGU"
 COMPLEMENT = {"A": "U", "U": "A", "G": "C", "C": "G"}
@@ -180,19 +182,17 @@ def collision_rule(function_of: Callable[[str], dict | None], min_fragment: int,
     return collide
 
 
-def generate(p, rng):
+def _check(p) -> None:
     if p.its_min > p.its_max:
         raise ValueError(f"its_min ({p.its_min}) cannot exceed its_max ({p.its_max})")
     if p.min_recognition > p.seq_length:
         raise ValueError(
             f"min_recognition ({p.min_recognition}) cannot exceed seq_length ({p.seq_length})"
         )
-    if p.mode == "well-stirred" and p.pool < 3:
-        raise ValueError(
-            "a well-stirred collision draws 3 molecules, so pool must be >= 3 "
-            f"in well-stirred mode, got {p.pool}"
-        )
 
+
+def _maps(p):
+    """Cached sequence -> (structure, energy) and sequence -> function maps."""
     folded: dict[str, tuple[str, float]] = {}
     functions: dict[str, dict | None] = {}
 
@@ -209,26 +209,52 @@ def generate(p, rng):
             )
         return functions[seq]
 
-    seeds = list(dict.fromkeys(
+    return fold_of, function_of
+
+
+def _seeds(p, rng) -> list[str]:
+    return list(dict.fromkeys(
         "".join(rng.choice(list(ALPHABET), p.seq_length)) for _ in range(p.pool)
     ))
 
-    if p.mode == "closure":
-        react = reaction_rule(function_of, p.min_fragment)
-        found, pairs, status = expand(
-            react, seeds, arity=(2, 3), max_species=p.max_species, alternatives=True
-        )
-        reactions = [Reaction.of(list(lhs), list(rhs)) for lhs, rhs in pairs]
-    else:
-        collide = collision_rule(function_of, p.min_fragment, rng)
-        events, _ = soup(collide, seeds, p.steps, rng, arity=3, dilution=p.dilution)
-        found = list(dict.fromkeys(
-            [*seeds, *(m for lhs, rhs, _ in events for m in (*lhs, *rhs))]
-        ))
-        reactions = [Reaction.of(list(lhs), list(rhs), count=int(n))
-                     for lhs, rhs, n in events]
-        status = "observed"
 
+def generate(p, rng):
+    """The closure of the initial pool, cut off by max_species."""
+    _check(p)
+    fold_of, function_of = _maps(p)
+    seeds = _seeds(p, rng)
+    react = reaction_rule(function_of, p.min_fragment)
+    found, pairs, status = expand(
+        react, seeds, arity=(2, 3), max_species=p.max_species, alternatives=True
+    )
+    reactions = [Reaction.of(list(lhs), list(rhs)) for lhs, rhs in pairs]
+    return _network(found, reactions, status, seeds, fold_of, function_of)
+
+
+def evolve(p, rng):
+    """A well-stirred run of three-molecule collisions: a frame every `pool` collisions."""
+    _check(p)
+    if p.pool < 3:
+        raise ValueError(
+            "a well-stirred collision draws 3 molecules, so pool must be >= 3 "
+            f"to evolve, got {p.pool}"
+        )
+    fold_of, function_of = _maps(p)
+    seeds = _seeds(p, rng)
+    collide = collision_rule(function_of, p.min_fragment, rng)
+    tally = Tally()
+    for step, pop, tally in stir(collide, seeds, p.steps, rng, arity=3, dilution=p.dilution, tally=tally):
+        yield Frame(t=float(step), state={s: float(n) for s, n in Counter(pop).items()},
+                    fired=tally.flush())
+    events = tally.reactions()
+    found = list(dict.fromkeys(
+        [*seeds, *(m for lhs, rhs, _ in events for m in (*lhs, *rhs))]
+    ))
+    reactions = [Reaction.of(list(lhs), list(rhs), count=int(n)) for lhs, rhs, n in events]
+    return _network(found, reactions, "observed", seeds, fold_of, function_of)
+
+
+def _network(found, reactions, status, seeds, fold_of, function_of) -> Network:
     species, energies, catalysts = [], {}, {}
     for seq in found:
         structure, energy = fold_of(seq)

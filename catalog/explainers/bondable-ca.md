@@ -36,7 +36,7 @@ the book's figure 10.16, a "periodic table" of CA atoms.
 
 BCA sits in the book's chapter on automata and machines, §10.7.3, next to the
 other chemistries built on cellular automata. Its closest neighbour in the
-catalog is [RBN World](rbn.md) (the `rbn-world` model of that entry): the same
+catalog is [RBN World](rbn-world.md): the same
 subsymbolic idea, with random Boolean networks as atoms and properties such as
 cycle length as the bonding criterion. [Embedded particles in cellular
 automata](ca-embedded-particles.md) (§10.7.2) also uses CAs, but the other way

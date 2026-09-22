@@ -164,12 +164,32 @@ The default call above is Langton's loop replicating three times. The species'
 a = net.extras["analysis"]
 a["births"], a["deaths"], a["loops_final"]    # (3, 0, 4)
 a["ancestor_copy_steps"]                      # [151, 298, 302]
-a["population"]                               # snapshots: loops, their sizes, count per species
 net.extras["space"]["final"]                  # the final lattice, one string per row
 ```
 
+`generate_network` returns only the network of the whole run. To follow the
+colony over time, `chemart.evolve` returns the run as a trajectory of frames,
+one per look at the loops: step 0, then every step, or every `track_every`
+steps. A frame's `state` counts the loops of each species, its `fired` lists
+the births and deaths since the previous look, and its observable `cells`
+lists the sizes of the living loops:
+
+```python
+traj = chemart.evolve("sr-loops", seed=1)
+f = traj.frames[128]
+f.t, f.state, f.fired, f.observables
+# (128.0, {'L086aaa': 2.0}, [[['L086aaa'], ['L086aaa', 'L086aaa'], 1]], {'cells': [72, 73]})
+[f.t for f in traj.frames if f.fired]    # [128.0, 275.0, 279.0]
+```
+
+At step 128 the daughter already carries the name `L086aaa`, although it is
+identified as a copy only at step 151. A species is settled only when the run
+ends, so the frames are named then and all arrive at the end of the run.
+
 With `mode="micro"` the same run gives the cell-state network instead: 7
-species and 89 distinct transitions (6,347 firings) in 151 steps.
+species and 89 distinct transitions (6,347 firings) in 151 steps. There is a
+frame per step, whose `state` counts the cells in each state; after 151 steps
+it is `{'s1': 31.0, 's2': 122.0, 's4': 4.0, 's7': 14.0}`.
 
 The loop detector cannot tell two touching loops from one larger loop. When a
 colony packs the lattice, a loop that merges into a neighbour's group is
@@ -191,16 +211,18 @@ Eight Byl loops stand on the lattice at the end. With `rule="reggia-2"` the
 `L005aaa -> 2 L005aaa` come with touching artefacts such as `L005aaa -> ∅`.
 
 **Freezing against turn-over.** Langton's loop and the SDSR loop on a 100×100
-torus for 4,000 steps take 3 to 5 seconds each:
+torus for 4,000 steps take a few seconds each:
 
 ```python
-net = chemart.generate_network("sr-loops", rule="sdsr", grid=100, steps=4000,
-                               min_loop_cells=40, track_every=5)
+traj = chemart.evolve("sr-loops", rule="sdsr", grid=100, steps=4000,
+                      min_loop_cells=40, track_every=5)
+loops = [sum(f.state.values()) for f in traj.frames]    # living loops, every 5 steps
 ```
 
-The SDSR run records 274 `L086aaa -> 2 L086aaa` and 296 `L086aaa -> ∅`. In the
-recorded snapshots the number of loops first reaches 28 near step 900, then
-fluctuates between 8 and 28; 13 loops, all `L086aaa`, remain at the end.
+The SDSR run records 274 `L086aaa -> 2 L086aaa` and 296 `L086aaa -> ∅` in
+`traj.network`. The number of loops first reaches 28 at step 880; from step
+1,000 on it fluctuates between 8 and 33; 13 loops, all `L086aaa`, remain at
+the end.
 Short-lived species such as `L049aac` are pieces of dissolving loops. With
 `rule="langton"` the count settles at 13 by step 1,600, and between steps
 3,000 and 3,100 only 20 of 4,431 occupied cells change, against 1,255 of 1,507
@@ -277,9 +299,9 @@ not read the G/T/C genome.
 **Islands, concentrations and robustness.** The book's Figure 10.13, from
 Sayama (1999), plots changing concentrations of loop species in a bounded
 space, and §8.2.3 says that in large spaces the species cluster into islands.
-Chemart records per-species counts in `extras["analysis"]["population"]` and
-the final lattice in `extras["space"]["final"]`, from which both can be drawn,
-but no test checks them. The book also credits dissolution with giving
+Chemart records per-species counts in the frames of `chemart.evolve` and the
+final lattice in `extras["space"]["final"]`, from which both can be drawn, but
+no test checks them. The book also credits dissolution with giving
 evoloops "some degree of robustness to underlying hardware errors"; Chemart
 has no way to inject such errors and does not test it. Not implemented: the
 study of evoloops under hostile pathogens and mass killings (book ref [739]),

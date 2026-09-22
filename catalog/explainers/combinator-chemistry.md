@@ -195,10 +195,12 @@ species are the pool, and `net.extras["conservation"]` holds the seven
 conservation laws, one per atom type. Species names are combinators in normal
 form; each species' `structure` gives the same combinator fully parenthesised.
 
-`method="closure"` is how you look at an organisation: give its generating
-molecules as `molecules` and the closure finds everything they make.
-`method="soup"` runs the reactor and returns the reactions that actually fired,
-each with its count. Molecules you pass must be in normal form.
+The chemistry has two faces. `generate_network` computes closures, which is
+how you look at an organisation: give its generating molecules as `molecules`
+and the closure finds everything they make. `chemart.evolve` runs the reactor
+and returns a trajectory: a frame per generation with the contents of the
+soup, and at the end the network of the reactions that actually fired, each
+with its count. Molecules you pass must be in normal form.
 
 **A single reaction.** The reduction machinery can be called directly:
 
@@ -252,22 +254,25 @@ net = chemart.generate_network("combinator-chemistry", molecules=[ALPHA],
 # ALPHA, K, KK, K(ALPHA) ... K(K(K(ALPHA))), K(KK) ... K(K(K(K(K(KK)))))
 ```
 
-**A reactive soup.** `method="soup"` with the defaults runs 20 generations of a
-reactive soup of about 100 random molecules, with 200 atoms of each type. It
-takes under two seconds, and with seed 1 the population falls from 103 to 5
-molecules: most reactions turn two molecules into one, and the inflow adds only
-one molecule per generation. The history is in `net.extras["analysis"]`
-(`population`, `diversity` and `free_atoms` per generation), and the end state
-in `net.extras["final_state"]` and `net.extras["final_free_atoms"]`.
+**A reactive soup.** `chemart.evolve("combinator-chemistry")` with the defaults
+runs 20 generations of a reactive soup of about 100 random molecules, with 200
+atoms of each type. It takes under two seconds, and with seed 1 the population
+falls from 103 to 5 molecules: most reactions turn two molecules into one, and
+the inflow adds only one molecule per generation. Frame `t` counts
+generations. Each frame's `state` holds the molecules and the free atoms
+(`free:X`), so the population size, the diversity and the pool over time are
+read from the frames; the end state is also in `net.extras["final_state"]` and
+`net.extras["final_free_atoms"]`.
 
 Organisations take thousands of generations to appear. With 600 atoms per type
 (the thesis figure 6.7) and 3,000 generations:
 
 ```python
-net = chemart.generate_network("combinator-chemistry", seed=2, method="soup",
-                               generations=3000, atoms_per_type=600)
-a = net.extras["analysis"]
-a["population"][::500]   # [100, 13, 196, 218, 226, 222, 230]
+traj = chemart.evolve("combinator-chemistry", seed=2, generations=3000, atoms_per_type=600)
+def population(frame):   # molecules only, leaving out the free:X pool
+    return int(sum(n for s, n in frame.state.items() if not s.startswith("free:")))
+[population(f) for f in traj.frames][::500]   # [100, 13, 196, 218, 226, 222, 230]
+net = traj.network
 list(net.extras["final_state"].items())[:2]
 # [('B(SIR)(R(B(SIR)))', 176), ('C(B(SWW)(S(SWW)))(WW)', 6)]
 net.extras["final_free_atoms"]
@@ -285,9 +290,8 @@ generations; at that scale pure Python is slow.
 **A level-1 catalytic soup.**
 
 ```python
-L1 = dict(method="soup", reaction="catalytic", atoms="BCIKSW",
-          max_size=15, max_react_size=15, max_depth=7)
-net = chemart.generate_network("combinator-chemistry", seed=4, M=100, generations=5000, **L1)
+L1 = dict(reaction="catalytic", atoms="BCIKSW", max_size=15, max_react_size=15, max_depth=7)
+net = chemart.evolve("combinator-chemistry", seed=4, M=100, generations=5000, **L1).network
 net.extras["final_state"]   # {'WK': 100}
 ```
 
@@ -414,7 +418,7 @@ between generations 5,000, 7,000 and 9,000. Another run (figure 6.2) found its
 first organisation at physical generation 2,357 and moved to a second at
 10,212, which uses a different set of atoms. Not every run moves: some stay in
 one organisation for the whole experiment. Chemart implements this level (the
-default soup) but its tests only check that atoms are conserved and the
+default of `chemart.evolve`) but its tests only check that atoms are conserved and the
 population varies. The runs under *Using it* show the qualitative picture of a
 settled population, dominated by few molecules and limited by an exhausted
 atom type, and in one case a collapse and regrowth, but no systematic

@@ -8,7 +8,7 @@ grid of section 2.2), checked against the authors' cubff code.
 import numpy as np
 import pytest
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries.bff import (
     FIG4_REPLICATOR, TAPE, encode, high_order_entropy, run, show,
 )
@@ -108,6 +108,16 @@ def test_soup_records_reactions_and_mutations():
     assert sum(net.extras["final_state"].values()) == 128
 
 
+def test_a_frame_per_epoch():
+    traj = evolve("bff", seed=0, epochs=5)
+    assert traj.clock == "epochs" and traj.times() == [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
+    first = traj.frames[0]
+    assert first.fired == [] and first.observables["ops_per_run"] == 0.0
+    assert all(sum(f.state.values()) == 128 for f in traj.frames)
+    assert traj.frames[-1].state == {s: float(n) for s, n in traj.network.extras["final_state"].items()}
+    assert set(first.observables) == {"high_order_entropy", "top_tape_count", "ops_per_run", "zero_bytes"}
+
+
 def test_no_mutation_no_mutation_reactions():
     net = generate_network("bff", seed=0, mutation_rate=0.0, epochs=4)
     assert "mutation" not in net.extras["reaction_kinds"]
@@ -146,12 +156,13 @@ def test_grid_needs_a_multiple_of_the_width():
 def test_seeded_runs_reach_a_state_transition_and_random_short_runs_do_not():
     # Fig. 7: 'seeded' runs (one Fig. 4 replicator, 128 epochs) reach a state transition
     # 22% of the time; 'short' runs from random programs almost never (3 of 1000).
-    # A transition is high-order entropy >= 1 (Fig. 6). Here 64 programs, 100 epochs.
+    # A transition is high-order entropy >= 1 (Fig. 6), read at the start and after
+    # 100 epochs (every=100 keeps those two frames). Here 64 programs.
     def transitions(**kw):
         out = 0
         for seed in range(12):
-            a = generate_network("bff", seed=seed, tapes=64, epochs=100, record_every=100, **kw)
-            out += max(a.extras["analysis"]["high_order_entropy"]) >= 1.0
+            traj = evolve("bff", seed=seed, tapes=64, epochs=100, every=100, **kw)
+            out += max(traj.series("high_order_entropy")) >= 1.0
         return out
 
     seeded = transitions(replicators=1)

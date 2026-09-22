@@ -17,7 +17,7 @@ import math
 import numpy as np
 import pytest
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries.srsim import (SCAFFOLD_PREFACTORS, SCAFFOLD_RATES, canonical_text,
                                        parse_types, reactive_volume)
 
@@ -267,6 +267,20 @@ def test_a_custom_model_runs_its_own_rules():
     assert custom.extras["analysis"]["events_by_rule"]["phos"] > 0
     assert custom.extras["analysis"]["events_by_rule"]["bind"] > 0
     assert any("{p}" in s.structure for s in custom.species)
+
+
+def test_a_frame_per_step_at_the_simulated_time():
+    traj = evolve(ID, seed=1, steps=100)
+    assert traj.clock == "time"
+    assert traj.times() == pytest.approx([0.02 * k for k in range(101)])
+    net = traj.network
+    assert traj.frames[0].state == net.initial_state and traj.frames[0].fired == []
+    final = net.extras["analysis"]["final_counts"]
+    assert traj.frames[-1].state == {s: float(n) for s, n in final.items()}
+    # every frame holds the 50 monomers, bound or not
+    (law,) = net.extras["conservation"]
+    for frame in traj.frames:
+        assert sum(law["vector"][s] * n for s, n in frame.state.items()) == 50
 
 
 def test_the_seed_reproduces_the_run():

@@ -19,6 +19,7 @@ chemistries:
   kind: generator
   constructive: true
   type: gas
+  clock: steps
   S:
     repr: >
       Two readings (book 10.7.2), chosen with `mode`. (a) macro: an emergent
@@ -61,7 +62,7 @@ chemistries:
     - {name: ancestors, type: int, default: 1, min: 1, max: 1000, range: "Sayama's competition runs start two ancestors at opposite ends of the space", role: population, meaning: "how many copies of the ancestor to place; one is centred, several are placed at random non-overlapping positions (this is the only use of the seed)"}
     - {name: ancestor_pattern, type: str, default: "", role: structural, meaning: "the seed loop as a Golly RLE string ('x = 4, y = 4, rule = ...' then the run-length-encoded rows, '.' = quiescent, A = state 1); empty means the published ancestor of the chosen rule"}
     - {name: min_loop_cells, type: int, default: 12, min: 1, max: 100000, range: "12 = Byl's loop; use 4 for the Chou-Reggia loops, 20 or more to ignore the debris of dissolving loops", role: structural, meaning: "macro mode: the smallest connected group of non-quiescent cells that counts as a loop; smaller groups are debris and are ignored"}
-    - {name: track_every, type: int, default: 1, min: 1, max: 100000, role: population, meaning: "macro mode: observe the loops every this many steps (higher is faster but misses loops that live shorter than one interval)"}
+    - {name: track_every, type: int, default: 1, min: 1, max: 100000, role: population, meaning: "macro mode: observe the loops every this many steps, one frame per observation (higher is faster but misses loops that live shorter than one interval)"}
   provides: [topology, stoichiometry, catalysts, initial-state, space, sequence-structure-function]
   fidelity: reconstructed
   sources:
@@ -86,6 +87,7 @@ chemistries:
     - "The chemistry is deterministic: the CA, the ancestor and its position are fixed. The seed is used only to place several ancestors (ancestors > 1) at random non-overlapping positions."
     - "Boundary: periodic (Sayama's 'periodic space') by default; 'quiescent' treats everything outside the lattice as background. The unbounded plane of the original papers is not offered - bounded space is what makes the loops compete (book 10.7.2)."
     - "Dropped v1 parameters: n_states, neighbourhood, grid and seed_loop (types matrix) and dissolution. The number of states and the neighbourhood are properties of the chosen rule, not free knobs; grid becomes the lattice side; seed_loop becomes ancestor_pattern (a Golly RLE string); dissolution is what distinguishes rule=sdsr and rule=evoloop from rule=langton."
+    - "chemart.evolve runs the automaton; the time is the step of the automaton. Macro: a frame per observation of the loops (step 0, then every track_every steps and the last step); its state counts the loops of each species, its fired lists the births and deaths since the previous observation, and its observable cells lists the sizes of the living loops. Because species are merged retrospectively (a loop is its mother's species once it shows her configuration), the names are settled only when the run ends, so the macro frames are all yielded then. Micro: a frame per step, its state the number of cells in each non-quiescent state and its fired the transitions of that step. The former extras.analysis.population (a thinned copy of the macro series) and extras.analysis.cells (micro) are gone; chemart.evolve(..., every=k) thins the frames. generate_network runs the automaton and returns the network."
     - "Not implemented: the Tempesti (1995), Perrier (1996) and Sexyloop (2007) variants, and von Neumann's 29-state automaton [453]; the evoloop gene sequence (G/T/C) reading of Salzberg et al.; the loops' interaction with 'hostile' environments [739]."
   reference_impl: "Sayama's LoopS / EvoLoopS and Java evoloop simulator, https://bingweb.binghamton.edu/~sayama/SDSR/ ; Golly (https://golly.sourceforge.net), Rules/*.rule and Patterns/Loops/*.rle."
   phenomena:

@@ -30,9 +30,10 @@ The machine is a catalyst; the tape is replaced by its pieces:
 
     m + t -> m + t_1 + ... + t_n
 
-method "closure" returns every reaction reachable from the seed machines and
-tapes (chemart.expand.expand); method "soup" draws random pairs from a
-population (chemart.soup.soup) and returns the reactions that fired.
+generate returns every reaction reachable from the seed machines and tapes
+(chemart.expand.expand); evolve draws random pairs from a population
+(chemart.soup.stir), a frame every generation, and returns the reactions that
+fired.
 turing_program compiles a 2-symbol Turing machine into a Laing machine, which is
 how the tests exercise universal computation (book 10.5.1, Laing [485]).
 """
@@ -46,7 +47,8 @@ from itertools import product as cartesian
 
 from chemart.expand import expand
 from chemart.network import CONSTANT_TOTAL, Network, Reaction, Species
-from chemart.soup import soup
+from chemart.soup import Tally, stir
+from chemart.trajectory import Frame
 
 SIMPLE = ("W0", "W1", "L", "R", "H", "NOP", "D")
 _TOKEN = re.compile(r"^(?:W0|W1|L|R|H|NOP|D|(CT|TT)([A-Za-z0-9_]+))$")
@@ -190,8 +192,9 @@ def turing_program(table: dict, start: str = "A", halt: str = "H") -> list[str]:
 
 # ---------------------------------------------------------------------------
 class _Chemistry:
-    def __init__(self, p, rng):
+    def __init__(self, p, rng, either_order: bool = False):
         self.p, self.rng = p, rng
+        self.either_order = either_order    # the soup reacts machine + tape drawn in either order
         self.truncated = False
         self.cache: dict[tuple, list[tuple]] = {}
 
@@ -224,7 +227,7 @@ class _Chemistry:
         a, b = lhs
         if a.startswith("m:") and b.startswith("t:"):
             return self.outcomes(a, b, fresh)
-        if self.p.method == "soup" and a.startswith("t:") and b.startswith("m:"):
+        if self.either_order and a.startswith("t:") and b.startswith("m:"):
             return self.outcomes(b, a, fresh)
         return []                      # machine + machine, tape + tape: no reaction
 
@@ -234,7 +237,7 @@ def _species(ids) -> list[Species]:
             for s in ids]
 
 
-def generate(p, rng) -> Network:
+def _seeds(p) -> tuple[list[str], list[str]]:
     if not isinstance(p.machines, list) or not p.machines:
         raise ValueError("machines must be a non-empty list of instruction strings like 'CT1.W1.H.TT1.W0'")
     if not isinstance(p.tapes, list) or not p.tapes:
@@ -243,13 +246,22 @@ def generate(p, rng) -> Network:
     tapes = list(dict.fromkeys(tape_id(parse_tape(t)) for t in p.tapes))
     if any(len(t) - 2 > p.max_length for t in tapes):
         raise ValueError(f"seed tapes must not be longer than max_length={p.max_length}")
-    chem = _Chemistry(p, rng)
-    if p.method == "closure":
-        return _closure(p, chem, machines + tapes)
+    return machines, tapes
+
+
+def generate(p, rng) -> Network:
+    """Every reaction reachable from the seed machines and tapes, cut off by max_species."""
+    machines, tapes = _seeds(p)
+    return _closure(p, _Chemistry(p, rng), machines + tapes)
+
+
+def evolve(p, rng):
+    """A well-stirred soup of `copies` of each seed (Chemart addition), a frame every generation."""
+    machines, tapes = _seeds(p)
     if p.binding == "all":
-        raise ValueError("method 'soup' needs one outcome per collision: use binding leftmost or "
-                         "random (or method 'closure' for 'all')")
-    return _soup(p, chem, machines, tapes, rng)
+        raise ValueError("evolve needs one outcome per collision: use binding leftmost or "
+                         "random (generate_network takes 'all')")
+    return (yield from _soup(p, _Chemistry(p, rng, either_order=True), machines, tapes, rng))
 
 
 def _closure(p, chem, seed) -> Network:
@@ -271,13 +283,18 @@ def _closure(p, chem, seed) -> Network:
     return Network(species=_species(ids), reactions=reactions, status=status, extras={"seed": seed})
 
 
-def _soup(p, chem, machines, tapes, rng) -> Network:
+def _soup(p, chem, machines, tapes, rng):
     def react(*lhs):
         found = chem.results(lhs, fresh=p.binding == "random")
         return found[0] if found else None
 
     start = [s for s in machines + tapes for _ in range(p.copies)]
-    fired, final = soup(react, start, p.steps, rng, arity=2, dilution="constant")
+    tally = Tally()
+    final = start
+    for step, final, tally in stir(react, start, p.steps, rng, arity=2, dilution="constant", tally=tally):
+        yield Frame(t=float(step), state={s: float(n) for s, n in Counter(final).items()},
+                    fired=[[list(lhs), list(rhs), n] for lhs, rhs, n in tally.flush()])
+    fired = tally.reactions()
     ids = list(dict.fromkeys([*start, *(s for _, rhs, _ in fired for s in rhs)]))
     return Network(
         species=_species(ids),

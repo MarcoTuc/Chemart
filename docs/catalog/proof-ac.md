@@ -168,7 +168,7 @@ space (thesis 6.1). Premises are kept, so each reaction reads `a + b -> a + b
 402 reactions) and `[]` first appears at level 4. For theories with function
 symbols the closure is usually infinite, so a species budget truncates it.
 
-**The soup.** This is RESAC's reactor (thesis algorithms 3.1 to 3.3). The
+**The reactor.** This is RESAC's reactor (thesis algorithms 3.1 to 3.3). The
 reactor is a fixed number of slots, filled with equal numbers of copies of each
 start clause; the number of copies per clause is the *multiplicity*. Each step
 draws two molecules at random. If they can resolve, one resolvent is picked at
@@ -206,7 +206,7 @@ Banzhaf and Yamamoto describe every artificial chemistry by three things (book �
 
 Fontana & Buss's lambda-term reading under the Curry-Howard isomorphism is mentioned in the book but not implemented; the book's concrete system ([147], [148]) is resolution on clauses
 
-**R — reactions** (*implicit* — computed by an algorithm from the molecules that meet; molecules per reaction: 2). binary resolution (Busch 2004, Def. 1.2.12): if a literal of s1 and a negated literal of s2 have a most general unifier g, s1 + s2 -&gt; resolvent ((s1 - {l}) u (s2 - {~l'}))g; otherwise elastic. Closure: s1 + s2 -&gt; s1 + s2 + s3; soup, educt replacement: s1 + s2 -&gt; s_i + s3; free replacement: s3 displaces a random molecule
+**R — reactions** (*implicit* — computed by an algorithm from the molecules that meet; molecules per reaction: 2). binary resolution (Busch 2004, Def. 1.2.12): if a literal of s1 and a negated literal of s2 have a most general unifier g, s1 + s2 -&gt; resolvent ((s1 - {l}) u (s2 - {~l'}))g; otherwise elastic. Closure: s1 + s2 -&gt; s1 + s2 + s3; reactor, educt replacement: s1 + s2 -&gt; s_i + s3; free replacement: s3 displaces a random molecule
 
 factoring (Def. 1.2.13) is folded into the reaction as resolution of factors; identical literals merge; tautologies and clauses longer than max_length are unstable (thesis 6.3)
 
@@ -247,6 +247,10 @@ has(john,m) + ~cat(X1),~has(X2,X1),~has(X2,X3),~mice(X3) -> has(john,m) + ~cat(X
 … and 394 more
 ```
 
+The chemistry has two faces, the two ways of running it described above.
+`chemart.generate_network("proof-ac")`, printed above, returns the *closure*;
+`chemart.evolve("proof-ac")` runs RESAC's *reactor* and returns a trajectory.
+
 The default call above computes the closure of the puzzle, with no restriction
 strategy: its 100 clauses and 402 reactions are everything resolution can
 derive from the eight start clauses, and the proof is among them:
@@ -267,17 +271,19 @@ level, and `a["longest_clause_in_proof"]` counts literals. Each species'
 premises appear on both sides, which is why the network reports catalysts: a
 premise is used but not consumed.
 
-**The stochastic prover (thesis fig. 6.3).** `method="soup"` runs RESAC's
+**The stochastic prover (thesis fig. 6.3).** `chemart.evolve` runs RESAC's
 reactor with the settings the thesis gives for its run-time experiment,
 multiplicity 20 (160 molecules) and elastic inflow, plus Chemart's defaults of
 educt replacement and a limit of 20,000 collisions.
 
 ```python
-net = chemart.generate_network("proof-ac", method="soup", seed=1)
+traj = chemart.evolve("proof-ac", seed=1)
+net = traj.network
 a = net.extras["analysis"]
 a["proved"], a["collisions_to_proof"], a["productive_collisions"], a["inflows"]
 # (True, 1077, 261, 816)
-times = [chemart.generate_network("proof-ac", method="soup", seed=s)
+traj.times()               # [0.0, 160.0, 320.0, 480.0, 640.0, 800.0, 960.0, 1077.0]
+times = [chemart.evolve("proof-ac", seed=s).network
          .extras["analysis"]["collisions_to_proof"] for s in range(20)]
 sorted(times)
 # [873, 1077, 1516, 1595, 1876, 2015, 2200, 2515, 3391, 3815, 3928, 4187,
@@ -285,10 +291,14 @@ sorted(times)
 ```
 
 Only about a quarter of the collisions were productive; each of the 816
-elastic ones let a start clause flow in. The soup's network lists the
-reactions that actually fired, with counts, and `net.extras["final_state"]`
-holds the reactor's last contents. `a["generations"]` is the number of
-collisions divided by the reactor size. The proofs differ from run to run: this
+elastic ones let a start clause flow in. The trajectory has a frame per
+generation (160 collisions, one per molecule) and a last one when `[]`
+appears; each frame's `state` is the reactor's contents and its `fired` the
+reactions since the previous frame (inflows are not reactions, so they show
+only in `state`). `traj.network` lists the reactions that actually fired,
+with counts, and `net.extras["final_state"]` holds the reactor's last
+contents. `a["generations"]` is the number of collisions divided by the
+reactor size. The proofs differ from run to run: this
 run's refutation has 7 steps and a 4-literal clause, other seeds give 8 steps.
 Twenty seeds take about two seconds.
 
@@ -297,8 +307,8 @@ time limit:
 
 ```python
 for m in (1, 5, 20, 100):
-    runs = [chemart.generate_network("proof-ac", method="soup", seed=s, multiplicity=m,
-                                     max_collisions=8500).extras["analysis"]
+    runs = [chemart.evolve("proof-ac", seed=s, multiplicity=m,
+                           max_collisions=8500).network.extras["analysis"]
             for s in range(12)]
     print(m, sum(r["proved"] for r in runs))
 # 1 3
@@ -339,17 +349,17 @@ The remaining settings (`factoring`, `max_length`, `replacement`,
 `inflow_rate` and the rest) are described in the parameter table below.
 
 **Slow settings.** `problem="group-right-inverse"` has function symbols, so its
-closure never ends: the default budget of 2,000 species fills up in about
-4 s, partway through level 2, without a proof. Its soup at the default scale runs all 20,000 collisions
-without a proof and takes about 40 s.
+closure never ends: the default budget of 2,000 species fills up in a few
+seconds, partway through level 2, without a proof. Its reactor
+(`chemart.evolve("proof-ac", problem="group-right-inverse")`) at the default
+scale runs all 20,000 collisions without a proof and takes 40 to 60 s.
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `generate_network`, or to `chemart.evolve`; a parameter marked *evolve only* belongs to the process and one marked *generate only* to the network. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
-| `method` | `enum` | `closure` | structural | closure: level-saturation closure of the start clauses (every resolvent of every pair, level by level); soup: RESAC's stochastic reactor, observed reactions with counts <br>one of `closure`, `soup` |
 | `problem` | `enum` | `gini-1995` | structural | gini-1995: the 8 clauses of thesis table 6.1; group-right-inverse: the 6 clauses of thesis table 6.2 (Loveland 1978); custom: read clauses and goal <br>one of `gini-1995`, `group-right-inverse`, `custom` |
 | `clauses` | `str` | `` | structural | custom only: the theory's clauses (axioms), without support <br>*range:* clause text: ';' between clauses, ',' between literals, ~ for negation, upper-case variables |
 | `goal` | `str` | `` | structural | custom only: the clauses of the negated theorem; they carry support under the set-of-support strategies |
@@ -357,18 +367,18 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 | `strategy` | `enum` | `unrestricted` | selection | restriction strategy (thesis 1.3.3): set-of-support needs one parent descending from the goal; negative needs one parent with only negative literals <br>one of `unrestricted`, `set-of-support`, `negative`, `negative-set-of-support` · *range:* thesis 6.3 names negative-set-of-support as RESAC's preset; the published proof of table 6.1 is not a negative or set-of-support derivation |
 | `factoring` | `bool` | `True` | structural | resolve factors of the parents too (without it the calculus is not refutation-complete) |
 | `max_length` | `int` | `0` | structural | clauses with more non-logical symbols than this are unstable and not produced; 0 = no limit <br>≥ `0` |
-| `max_species` | `int` | `2000` | structural | closure only: species budget; the closure of a first-order theory can be infinite, so it is then truncated <br>`1` … `100000` |
-| `replacement` | `enum` | `educt` | population | soup only: educt replaces one reactant (chosen with probability 1/2) by the resolvent; free overwrites a random molecule of the reactor <br>one of `educt`, `free` |
-| `multiplicity` | `int` | `20` | population | soup only: copies of each start clause in the reactor (reactor size = multiplicity x number of start clauses) <br>`1` … `100000` · *range:* thesis fig. 6.1: 1-7000; fig. 6.3: 20; fig. 6.4: 14000 |
-| `max_collisions` | `int` | `20000` | population | soup only: time limit in collisions, elastic ones included <br>`0` … `100000000` · *range:* thesis fig. 6.1: time limits up to 80000 collisions |
-| `elastic_inflow` | `bool` | `True` | population | soup only: after every elastic collision a random start clause overwrites a random molecule (thesis 3.1.3; used in figs. 6.1-6.4) |
-| `inflow_rate` | `float` | `0.0` | population | soup only: one start clause flows in every round(1/inflow_rate) collisions (thesis algorithm 3.3); 0 = none; needs elastic_inflow false <br>`0.0` … `1.0` |
+| `max_species` | `int` | `2000` | structural | *generate only.* species budget of the closure; the closure of a first-order theory can be infinite, so it is then truncated <br>`1` … `100000` |
+| `replacement` | `enum` | `educt` | population | *evolve only.* educt replaces one reactant (chosen with probability 1/2) by the resolvent; free overwrites a random molecule of the reactor <br>one of `educt`, `free` |
+| `multiplicity` | `int` | `20` | population | *evolve only.* copies of each start clause in the reactor (reactor size = multiplicity x number of start clauses; a frame every reactor size collisions) <br>`1` … `100000` · *range:* thesis fig. 6.1: 1-7000; fig. 6.3: 20; fig. 6.4: 14000 |
+| `max_collisions` | `int` | `20000` | population | *evolve only.* time limit in collisions, elastic ones included <br>`0` … `100000000` · *range:* thesis fig. 6.1: time limits up to 80000 collisions |
+| `elastic_inflow` | `bool` | `True` | population | *evolve only.* after every elastic collision a random start clause overwrites a random molecule (thesis 3.1.3; used in figs. 6.1-6.4) |
+| `inflow_rate` | `float` | `0.0` | population | *evolve only.* one start clause flows in every round(1/inflow_rate) collisions (thesis algorithm 3.3); 0 = none; needs elastic_inflow false <br>`0.0` … `1.0` |
 
 ### Implementation decisions
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "13 decisions"
+??? note "14 decisions"
 
     - The book only sketches the idea; the chemistry is RESAC from the thesis [147]. The ECAL 2003 paper [148] (Busch & Banzhaf, How to program artificial chemistries) was not openly accessible; the thesis contains its material. Fontana & Buss [284], Howard [406] (Curry-Howard) and Nordin & Banzhaf [620] are background only: no lambda-term proof chemistry is implemented.
     - First-order, as in the sources: terms with functions and constants, Robinson unification with occurs check, clauses standardised apart before resolving (Def. 1.2.12 and remark).
@@ -377,12 +387,13 @@ The sources leave gaps, and sometimes contradict each other or the book. Each su
     - Species are clauses up to variable renaming: the id renames variables in order of first occurrence and takes the lexicographically smallest text over all orderings of literals with the same variable-free skeleton. For clauses with more than 720 such orderings a single ordering is used, so a few alphabetic variants could then remain distinct species. No subsumption is applied (the thesis lists none).
     - Clause syntax follows Prolog (upper-case variables, lower-case constants). Table 6.1 writes variables lower-case and the Skolem constants John, S, M upper-case; they are transcribed as X, Y, Z and john, s, m. Table 6.2's P is written p.
     - Thesis table 6.1 splits the problem into s1-s5 (the theory) and s6-s8 (the negated goal: lightsleep(john), has(john,m), mice(m)); that split defines the goal clauses, which matters only for the set-of-support strategies. The extracted text of example 1.2.1 lost its negation signs; it is used in the tests with the signs restored from the prose.
-    - The method closure is level saturation (thesis 1.3.3 and 6.1): each round resolves every allowed pair with at least one clause from the previous round. chemart.expand.expand is not used because it allows one outcome per reactant pair, while two clauses can have several resolvents; each resolvent is a separate reaction s1 + s2 -&gt; s1 + s2 + s3 (premises survive, the theory grows). Under set-of-support a clause is supported if any reaction producing it had a supported parent.
-    - The soup follows algorithms 3.1-3.3: the reactor is filled with multiplicity copies of each distinct start clause in random order; two distinct positions i != j are drawn; Res2 picks uniformly among all resolvable literal pairings (of factors), after dropping tautologies and over-long clauses. Educt replacement overwrites M[i] or M[j] with probability 1/2 (reaction s1 + s2 -&gt; s_j + s3); free replacement overwrites a random position k, which can be one of the reactants (then recorded as s1 + s2 -&gt; s_other + s3; otherwise s1 + s2 -&gt; s1 + s2 + s3, the displaced molecule leaving by outflow).
+    - Two faces: generate_network returns the level-saturation closure of the start clauses, cut off by max_species; chemart.evolve runs RESAC's stochastic reactor, a frame every generation (reactor size = multiplicity x start clauses collisions) until the target appears or max_collisions, and returns the reactions that fired with counts (status observed). The reactor is its own loop, not chemart.soup.stir: it draws i and j one at a time and a replacement position k, overwrites molecules in place and lets start clauses flow in between collisions, which stir's replace-and-dilute step cannot express; the bookkeeping uses chemart.soup.Tally. Inflows are not reactions, so they change the frames' state but are not in their fired lists.
+    - The closure is level saturation (thesis 1.3.3 and 6.1): each round resolves every allowed pair with at least one clause from the previous round. chemart.expand.expand is not used because it allows one outcome per reactant pair, while two clauses can have several resolvents; each resolvent is a separate reaction s1 + s2 -&gt; s1 + s2 + s3 (premises survive, the theory grows). Under set-of-support a clause is supported if any reaction producing it had a supported parent.
+    - The reactor follows algorithms 3.1-3.3: the reactor is filled with multiplicity copies of each distinct start clause in random order; two distinct positions i != j are drawn; Res2 picks uniformly among all resolvable literal pairings (of factors), after dropping tautologies and over-long clauses. Educt replacement overwrites M[i] or M[j] with probability 1/2 (reaction s1 + s2 -&gt; s_j + s3); free replacement overwrites a random position k, which can be one of the reactants (then recorded as s1 + s2 -&gt; s_other + s3; otherwise s1 + s2 -&gt; s1 + s2 + s3, the displaced molecule leaving by outflow).
     - Inflow of start clauses overwrites a random molecule; it is a molecule count per collision, not a concentration rate, so it is described by parameters and extras.analysis.inflows rather than Network.inflow. The run ends at max_collisions or when the target is produced (thesis 6.3 item 7).
-    - The proof (extras.analysis.proof) is the list of reactions that first produced each clause on the way to the target, premises before conclusions: for the closure this is a derivation of lowest level, for the soup the actual construction pathway (book 16.5: dead ends do not appear).
-    - The group-theory problem (table 6.2) is provided as transcribed, but its published proof of length 8 is not checked: level saturation with 2000 species only covers levels 1-3 (about 14 s), and a soup with multiplicity 20 finds no refutation in 20000 collisions, far below the thesis's multiplicity 14000. The thesis does not list the proof steps.
-    - The v1 parameters axioms, target (type matrix) and max_collisions are replaced by problem/clauses/goal/target (clause text) and the soup parameters above. Rates are None: no source gives rate constants.
+    - The proof (extras.analysis.proof) is the list of reactions that first produced each clause on the way to the target, premises before conclusions: for the closure this is a derivation of lowest level, for the reactor the actual construction pathway (book 16.5: dead ends do not appear).
+    - The group-theory problem (table 6.2) is provided as transcribed, but its published proof of length 8 is not checked: level saturation with 2000 species only covers levels 1-3 (about 14 s), and a reactor with multiplicity 20 finds no refutation in 20000 collisions, far below the thesis's multiplicity 14000. The thesis does not list the proof steps.
+    - The v1 parameters axioms, target (type matrix) and max_collisions are replaced by problem/clauses/goal/target (clause text) and the reactor parameters above. Rates are None: no source gives rate constants.
 
 ## Results
 
@@ -441,7 +452,7 @@ clauses are soon replaced by more specialised, less reactive clauses, and
 productivity falls; inflow keeps productivity up at the cost of lower
 diversity. The open reactors consistently found the proof faster. Chemart
 provides the problem but does not reproduce this: level saturation with 2,000
-species does not finish level 2, and a soup of multiplicity 20 finds no refutation in 20,000
+species does not finish level 2, and a reactor of multiplicity 20 finds no refutation in 20,000
 collisions, far below the thesis's scale. A test checks only that the closure
 is truncated, as it must be for an infinite one.
 

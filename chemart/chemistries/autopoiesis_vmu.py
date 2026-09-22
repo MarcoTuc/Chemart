@@ -24,10 +24,13 @@ and mobile, hence available to repair a rupture of the membrane; without it
 they bond to each other and to the membrane and the cell cannot heal
 (`bond_inhibition=False` reproduces that failure).
 
-Mode ``lattice`` (the default) runs the lattice and returns the reactions that
-fired, with counts (status observed), the grid in ``extras["space"]`` and the
-membrane measurements in ``extras["analysis"]``. Mode ``reactions`` returns the
-reactions the chemistry defines, as a complete network.
+Two faces. ``generate`` returns the reactions the chemistry defines, as a
+complete network. ``evolve`` runs the lattice and yields a frame per time step
+(the species counts, the reactions fired in the step, and the membrane
+measurements closed_chains, membranes and enclosed_catalysts); it returns the
+reactions that fired, with counts (status observed), the final grid in
+``extras["space"]`` and the whole-run membrane measurements in
+``extras["analysis"]``.
 
 Species: ``S`` substrate, ``C`` catalyst, ``L0``/``L1``/``L2`` a link with 0, 1
 or 2 bonds, and ``L0S``/``L1S``/``L2S`` the same link holding an absorbed
@@ -40,6 +43,7 @@ import math
 from collections import Counter
 
 from chemart.network import Network, Reaction, Species
+from chemart.trajectory import Frame
 
 HOLE, SUBSTRATE, CATALYST, LINK = 0, 1, 2, 3
 
@@ -148,11 +152,8 @@ class World:
         self.time = 0
         self.record = record
         self.fired: dict[tuple, list] = {}
+        self.window: dict[tuple, list] = {}      # fired since the last flush()
         self.events = Counter()
-        self.series: dict[str, list[int]] = {
-            k: [] for k in ("substrates", "links", "free_links", "chain_links",
-                            "closed_chains", "enclosed_catalysts")
-        }
         self.enclosure: list[bool] = []
         self.crossings = Counter()
         self._origin_side: dict[int, bool] = {}     # link site -> interior at absorption
@@ -222,8 +223,21 @@ class World:
         if not self.record or reactants == products:
             return
         key = (frozenset(reactants.items()), frozenset(products.items()))
-        entry = self.fired.setdefault(key, [dict(reactants), dict(products), 0])
-        entry[2] += 1
+        for book in (self.fired, self.window):
+            entry = book.setdefault(key, [dict(reactants), dict(products), 0])
+            entry[2] += 1
+
+    def flush(self) -> list[list]:
+        """The reactions fired since the last flush, as a frame's `fired`; then forget them."""
+        out = [[sorted(Counter(lhs).elements()), sorted(Counter(rhs).elements()), n]
+               for lhs, rhs, n in self.window.values()]
+        self.window = {}
+        return out
+
+    def census(self) -> dict[str, float]:
+        """How many of each species the lattice holds; holes are not a species."""
+        counts = Counter(self.species_at(i) for i in range(self.size) if self.cell[i] != HOLE)
+        return {s: float(n) for s, n in sorted(counts.items())}
 
     def species_at(self, i: int) -> str:
         kind = self.cell[i]
@@ -362,9 +376,10 @@ class World:
             return
         if self.inhibited(i, j) or self.uniform() >= self.p_bond:
             return
-        reactants = Counter({self.species_at(i): 1, self.species_at(j): 1})
+        # a list, not a dict: two links of the same species are two reactants
+        reactants = Counter([self.species_at(i), self.species_at(j)])
         self.bond(i, j)
-        products = Counter({self.species_at(i): 1, self.species_at(j): 1})
+        products = Counter([self.species_at(i), self.species_at(j)])
         self.events["bond"] += 1
         self._fire(reactants, products)
 
@@ -456,19 +471,18 @@ class World:
                     interiors[c] = region
         return cycles, interiors
 
-    def observe(self) -> None:
-        """Record the per-step series and refresh the interior used for crossings."""
+    def observe(self) -> dict[str, int]:
+        """Measure the membranes now, as a frame's observables, and refresh the
+        interior used to count crossings."""
         cycles, interiors = self.enclosed()
-        links = [i for i, k in enumerate(self.cell) if k == LINK]
-        self.series["substrates"].append(
-            sum(1 for k in self.cell if k == SUBSTRATE) + int(sum(self.absorbed)))
-        self.series["links"].append(len(links))
-        self.series["free_links"].append(sum(1 for i in links if not self.bonds[i]))
-        self.series["chain_links"].append(sum(1 for i in links if len(self.bonds[i]) == 2))
-        self.series["closed_chains"].append(len(cycles))
-        self.series["enclosed_catalysts"].append(len(interiors))
         self.enclosure.append(bool(interiors))
         self._interior = next(iter(interiors.values()), frozenset())
+        return {
+            "closed_chains": len(cycles),
+            # Von Kamp (2002), 2.2: a closed chain of six links or more is a membrane
+            "membranes": sum(1 for c in cycles if len(c) >= 6),
+            "enclosed_catalysts": len(interiors),
+        }
 
     def run(self, steps: int) -> None:
         self.observe()
@@ -493,7 +507,7 @@ def _neighbourhoods(width: int, height: int):
 
 
 # ----------------------------------------------------------------------------
-# the defined network (mode "reactions")
+# the defined network (the generate face)
 def defined_reactions() -> list[Reaction]:
     out = [Reaction({"C": 1, "S": 2}, {"C": 1, "L0": 1})]
     for a, b in ((0, 0), (0, 1), (1, 1)):
@@ -525,16 +539,18 @@ def _mobility(value) -> dict[str, float]:
     return out
 
 
-def generate(p, rng):
-    species = [Species(i, structure=s) for i, s in SPECIES_STRUCTURE.items()]
-    if p.mode == "reactions":
-        return Network(
-            species=species,
-            reactions=defined_reactions(),
-            status="complete",
-            extras={"rules": _RULES},
-        )
+def _species() -> list[Species]:
+    return [Species(i, structure=s) for i, s in SPECIES_STRUCTURE.items()]
 
+
+def generate(p, rng):
+    """The reactions the chemistry defines (book 6.1.5), as a complete network."""
+    return Network(species=_species(), reactions=defined_reactions(), status="complete",
+                   extras={"rules": _RULES})
+
+
+def evolve(p, rng):
+    """Run the SCL lattice (McMullin's reconstruction): a frame per time step."""
     mobility = _mobility(p.mobility)
     if p.n_catalysts > p.width * p.height:
         raise ValueError(f"n_catalysts = {p.n_catalysts} exceeds the {p.width * p.height} sites of the lattice")
@@ -554,10 +570,14 @@ def generate(p, rng):
     centres = world.seed_catalysts(p.n_catalysts)
     if p.initial == "cell" and centres:
         world.seed_ring(centres[0])
-    initial = Counter(world.species_at(i) for i in range(world.size) if world.cell[i] != HOLE)
+    initial = world.census()
 
-    world.run(p.steps)
-    return _network(world, species, initial, p)
+    yield Frame(t=0.0, state=initial, observables=world.observe())
+    for _ in range(p.steps):
+        world.step()
+        yield Frame(t=float(world.time), state=world.census(), fired=world.flush(),
+                    observables=world.observe())
+    return _network(world, initial, p)
 
 
 _RULES = (
@@ -572,7 +592,7 @@ _RULES = (
 )
 
 
-def _network(world: World, species: list[Species], initial: Counter, p) -> Network:
+def _network(world: World, initial: dict[str, float], p) -> Network:
     reactions = [
         Reaction(reactants, products, count=count)
         for reactants, products, count in world.fired.values()
@@ -595,10 +615,10 @@ def _network(world: World, species: list[Species], initial: Counter, p) -> Netwo
         if enclosure[t] and not enclosure[t - 1] and first is not None and t > first
     )
     return Network(
-        species=species,
+        species=_species(),
         reactions=reactions,
         status="observed",
-        initial_state={s: float(n) for s, n in sorted(initial.items())},
+        initial_state=initial,
         extras={
             "space": {
                 "dimensions": 2,
@@ -637,8 +657,6 @@ def _network(world: World, species: list[Species], initial: Counter, p) -> Netwo
                     "link_crossings": int(world.crossings["link"]),
                     "catalyst_crossings": int(world.crossings["catalyst"]),
                 },
-                "per_step": {k: [int(v) for v in series] for k, series in world.series.items()},
-                "enclosed_per_step": [bool(v) for v in enclosure],
             },
             "rules": _RULES,
         },

@@ -30,10 +30,11 @@ With these semantics the published ancestral cells of the three models work
 as designed: copiers make exact copies of genes (``0000 genotype 0011``) and
 constructors translate genes into phenotypes by removing the suppressors.
 
-method "closure" is the reaction closure of the ancestral cell (or of given
-strings) with chemart.expand.expand; method "soup" is a well-stirred run
-inside one cell with chemart.soup.soup. Cell division, age counters and the
-cell population live above a single network and are only recorded in extras.
+Two faces: `generate` is the reaction closure of the ancestral cell (or of
+given strings) with chemart.expand.expand; `evolve` is a well-stirred run
+inside one cell with chemart.soup.stir, a frame per (initial size) collisions.
+Cell division, age counters and the cell population live above a single
+network and are only recorded in extras.
 """
 
 from __future__ import annotations
@@ -44,7 +45,8 @@ from functools import lru_cache
 
 from chemart.expand import expand
 from chemart.network import Network, Reaction, Species
-from chemart.soup import soup
+from chemart.soup import Tally, stir
+from chemart.trajectory import Frame
 
 ALPHABET = ".0123'\"!?%*/\\&$MELR"
 _ONE = "!?%"
@@ -359,13 +361,8 @@ def _extras(p, seed, roles) -> dict:
 
 
 def generate(p, rng):
+    """The closure of the seed strings, cut off by max_species."""
     seed, roles = _seed(p)
-    if p.method == "closure":
-        return _closure(p, seed, roles)
-    return _soup(p, rng, seed, roles)
-
-
-def _closure(p, seed, roles):
     strings, found, status = expand(react, list(dict.fromkeys(seed)), arity=2,
                                     max_species=p.max_species, ordered=True)
     reactions = [Reaction.of([sid(s) for s in lhs], [sid(s) for s in rhs]) for lhs, rhs in found]
@@ -386,36 +383,31 @@ def _closure(p, seed, roles):
     )
 
 
-def _soup(p, rng, seed, roles):
+def evolve(p, rng):
+    """A well-stirred run inside one cell: a frame per (initial size) collisions."""
+    seed, roles = _seed(p)
     start = [s for s in seed for _ in range(p.copies)]
     if len(start) < 2:
         raise ValueError(f"the soup needs at least 2 strings, got {len(start)}")
-    pop, fired, seen = list(start), {}, dict.fromkeys(start)
-    size, trace, done = [len(pop)], [], 0
-    chunk = max(1, len(start))
-    while done < p.steps and len(pop) >= 2:
-        steps = min(chunk, p.steps - done)
-        part, pop = soup(react, pop, steps, rng, arity=2, dilution=p.dilution)
-        for lhs, rhs, count in part:
-            key = (frozenset(Counter(lhs).items()), frozenset(Counter(rhs).items()))
-            fired.setdefault(key, [lhs, rhs, 0])[2] += count
-            seen.update(dict.fromkeys(rhs))
-        done += steps
-        size.append(len(pop))
-        trace.append(max((membrane_m(s) for s in pop), default=0))
+    tally = Tally()
+    for step, pop, tally in stir(react, start, p.steps, rng, arity=2, dilution=p.dilution, tally=tally):
+        fired = [[[sid(s) for s in lhs], [sid(s) for s in rhs], n] for lhs, rhs, n in tally.flush()]
+        yield Frame(t=float(step), state={sid(s): float(c) for s, c in Counter(pop).items()}, fired=fired,
+                    observables={"max_membrane_M": max((membrane_m(s) for s in pop), default=0)})
+    events = tally.reactions()
+    seen = dict.fromkeys(start)
+    for _, rhs, _ in events:
+        seen.update(dict.fromkeys(rhs))
     final = Counter(pop)
     extras = _extras(p, seed, roles)
     extras["analysis"] = {
-        "chunk_steps": chunk,
-        "population_size": size,
-        "max_membrane_M": trace,
         "seed_copies_final": {sid(s): final.get(s, 0) for s in dict.fromkeys(seed)},
     }
     extras["final_state"] = {sid(s): c for s, c in final.most_common()}
     return Network(
         species=_species(seen),
         reactions=[Reaction.of([sid(s) for s in lhs], [sid(s) for s in rhs], count=c)
-                   for lhs, rhs, c in fired.values()],
+                   for lhs, rhs, c in events],
         status="observed",
         initial_state={sid(s): float(c) for s, c in Counter(start).items()},
         extras=extras,

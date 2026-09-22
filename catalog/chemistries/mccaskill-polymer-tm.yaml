@@ -19,6 +19,7 @@ chemistries:
   kind: generator
   constructive: true
   type: gas
+  clock: steps
   S:
     repr: "binary heteropolymers; species id p<bitstring>, structure the bitstring (first character = first monomer)"
     definition: implicit
@@ -50,17 +51,16 @@ chemistries:
       about 20); the book and the later hardware versions use a 2D reactor.
       Neither spatial domain is modelled here.
   params:
-    - {name: method, type: enum, default: closure, choices: [closure, soup], role: structural, meaning: "closure: every reaction reachable from `strings` over ordered processor/tape pairs, error-free (Chemart addition); soup: the report's stochastic collision algorithm, reactions that fired with counts (status observed)"}
     - {name: strings, type: list, default: ["0001111100111010111", "0000000100100010111"], range: "report section 4: the self-replicator 0001111100111010111 and its parasite 0000000100100010111", role: structural, meaning: "binary strings: the seed set of the closure, or the inoculum of the soup (each at inoculum_fraction of the population)"}
     - {name: recognition, type: enum, default: patterns, choices: [patterns, none], role: selection, meaning: "patterns: a reaction needs a recognizon collision (book eq. 10.14; the soup uses the report's pattern space); none: every ordered pair reacts (closure) or each drawn molecule is processed by a random partner (soup), a well-mixed limit without specificity (Chemart addition)"}
     - {name: R, type: int, default: 16, min: 1, max: 64, range: "report: R typically 16", role: structural, meaning: "maximum recognizon length in symbols (coding length 2R bits)"}
     - {name: max_steps, type: int, default: 1000, min: 1, max: 100000, role: structural, meaning: "cutoff on elementary processing steps; a process that has not halted by then releases nothing"}
-    - {name: max_species, type: int, default: 200, min: 1, max: 100000, role: structural, meaning: "closure only: species budget; status truncated when it cuts the closure off"}
-    - {name: error_rate, type: float, default: 0.0, min: 0.0, max: 1.0, role: stochastic, meaning: "soup only: probability that an elementary write step writes the wrong symbol (the report's single error rate for all elementary steps; acts as mutation)"}
-    - {name: population, type: int, default: 200, min: 2, max: 1000000, range: "report: 1000 strings", role: population, meaning: "soup only: number of molecules, kept constant"}
-    - {name: l, type: int, default: 19, min: 1, max: 256, range: "report section 4: random strings of length 19; about 30 on average in section 3", role: population, meaning: "soup only: length of the random background strings"}
-    - {name: inoculum_fraction, type: float, default: 0.1, min: 0.0, max: 1.0, range: "report section 4: 10% each of replicator and parasite", role: population, meaning: "soup only: fraction of the population given to each string in `strings`; the rest is random strings of length l"}
-    - {name: steps, type: int, default: 5000, min: 0, max: 100000000, range: "report section 4: 1.2 x 10^6 steps with 177104 recognition collisions", role: population, meaning: "soup only: number of draws of a molecule placing a pattern"}
+    - {name: max_species, type: int, default: 200, min: 1, max: 100000, role: structural, face: generate, meaning: "species budget of the closure; status truncated when it cuts the closure off"}
+    - {name: error_rate, type: float, default: 0.0, min: 0.0, max: 1.0, role: stochastic, face: evolve, meaning: "probability that an elementary write step writes the wrong symbol (the report's single error rate for all elementary steps; acts as mutation)"}
+    - {name: population, type: int, default: 200, min: 2, max: 1000000, range: "report: 1000 strings", role: population, face: evolve, meaning: "number of molecules, kept constant; a frame every `population` steps"}
+    - {name: l, type: int, default: 19, min: 1, max: 256, range: "report section 4: random strings of length 19; about 30 on average in section 3", role: population, face: evolve, meaning: "length of the random background strings"}
+    - {name: inoculum_fraction, type: float, default: 0.1, min: 0.0, max: 1.0, range: "report section 4: 10% each of replicator and parasite", role: population, face: evolve, meaning: "fraction of the population given to each string in `strings`; the rest is random strings of length l"}
+    - {name: steps, type: int, default: 5000, min: 0, max: 100000000, range: "report section 4: 1.2 x 10^6 steps with 177104 recognition collisions", role: population, face: evolve, meaning: "number of draws of a molecule placing a pattern"}
   provides: [topology, stoichiometry, catalysts, flow, initial-state, sequence-structure-function]
   fidelity: reconstructed
   sources:
@@ -69,6 +69,7 @@ chemistries:
     - "McCaskill, J. S., Maeke, T., Gemm, U., Schulte, L. & Tangen, U. (1997). NGEN: a massively parallel reconfigurable computer for biological simulation. LNCS 1259:260-276 (first pages only: 'networks of interacting molecular Turing machines', pairwise recognition plus unary processing). https://doi.org/10.1007/3-540-63173-9_52"
     - "Breyer, J., Ackermann, J. & McCaskill, J. S. (1998). Evolving reaction-diffusion ecosystems with self-assembling structures in thin films. Artificial Life 4(1):25-40 (book [136]; abstract only). https://doi.org/10.1162/106454698568422"
   decisions:
+    - "Two faces: generate_network returns every reaction reachable from `strings` over ordered processor/tape pairs, error-free (a Chemart addition; error_rate belongs to the evolve face); chemart.evolve runs the report's stochastic collision algorithm for `steps` draws, a frame every `population` steps (t counts steps), and returns the reactions that fired with counts (status observed)."
     - "The book gives only the scheme; the machine follows the 1988 report. Its doublet tables (section 3, items 4-5) are implemented verbatim. The report does not say where a rule starts relative to its initiator, where the heads start, the initial state or how the written tape is cut into strings. Of the literal choices tried (rule after or at the initiator, overlapping or not, forward or reversed, linear or circular, head at either end, initial state 0 or 1), exactly one family makes the published replicator replicate: a rule is the 12 bits starting at every occurrence of 111 (overlapping, the initiator bits included), both heads start at position 0 of their tapes, the state starts at 0 (1 works too), later rules overwrite earlier ones (the reverse order breaks replication), and released strings are the maximal non-blank runs of the written tape."
     - "With that decoding 0001111100111010111 does not copy itself in one step but through its complement: s + s -> s + s + c(s) and s + c(s) -> s + c(s) + s (two alternating rules write, per tape symbol, 1 and then the opposite of the read symbol). The WRITE code has no 'same as read symbol', so one-step copying needs two rules (24 bits), longer than the 19-bit string; the report's 'self-replicating' is taken as this plus/minus-strand replication. The parasite 0000000100100010111 has its only 111 at the end, encodes no rule, and is copied by the replicator the same way (report: replicated without replicating themselves)."
     - "Consequence of that framing (open doubt): the initiator 111 supplies READ = 11 (both) and the first bit of WRITE, so every rule reads both symbols and writes 1 or the opposite of the read symbol; the READ codes 0, 1, blank and the WRITE codes 0, blank are never used. The report says the initiator 'may be taken to be a particular triplet such as 111', so its C program may have used another marker; nothing else in the report pins it, and the framing is kept because it is the only literal one that makes the published replicator work."

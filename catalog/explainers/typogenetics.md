@@ -147,9 +147,12 @@ prefers A, and there is no A in `CGGC`.
 
 ## Using it
 
-The default call enumerates every reaction reachable from the seed strand
-(`method="closure"`): it applies each new daughter to itself in turn until
-nothing new appears. With `binding_tiebreak="all"`, every binding choice gives
+Typogenetics has two faces. `chemart.generate_network`, printed above,
+returns the *closure* of the seed strands; `chemart.evolve` runs a
+*population* of strands and returns a trajectory (see *A population* below).
+
+The default call enumerates every reaction reachable from the seed strand:
+it applies each new daughter to itself in turn until nothing new appears. With `binding_tiebreak="all"`, every binding choice gives
 its own reaction, so one strand can have several. The default seed closes
 after four species. Each species' `structure` gives the enzymes it codes and
 their preferred bases:
@@ -182,26 +185,31 @@ net = chemart.generate_network("typogenetics", seed=1,
 # CGACCCAACGATTTTTCAT -> ATTTTTCAT + CGACCCAACG + CGTTGGGT
 ```
 
-**A population.** `method="soup"` puts `copies` of each seed strand in a pot
+**A population.** `chemart.evolve` puts `copies` of each seed strand in a pot
 and draws a strand `steps` times; after each productive reaction a random
-molecule is removed, so the population stays the same size. It needs one
-outcome per draw, so choose `binding_tiebreak` `rightmost` (Varetto's rule),
-`leftmost` or `random`. With the rightmost rule the replicator takes over from
-the dud:
+molecule is removed, so the population stays the same size. A draw has one
+outcome, so `binding_tiebreak` picks one binding site: `rightmost` (Varetto's
+rule), `leftmost` or `random`; the default `all` is read as `random` here. The
+trajectory has a frame per generation, as many draws as the pot holds strands.
+With the rightmost rule the replicator takes over from the dud:
 
 ```python
-net = chemart.generate_network("typogenetics", seed=3, method="soup",
+traj = chemart.evolve("typogenetics", seed=3,
         strands=["CGATTCGAATCG", "CGGC"], binding_tiebreak="rightmost",
         copies=50, steps=3000)
+[f.state.get("CGATTCGAATCG", 0) for f in traj.frames][:7]
+# [50.0, 74.0, 87.0, 95.0, 96.0, 99.0, 100.0]
+net = traj.network
 net.extras["final_state"]   # {'CGATTCGAATCG': 100}
 # CGATTCGAATCG -> 2 CGATTCGAATCG  (x2910)
 ```
 
-With `binding_tiebreak="random"` and the same seed, the replicator binds its
-other two G sites two times out of three, and the final pot of 100 is
-`{'T': 62, 'CG': 17, 'CGATTCGAATCG': 12, 'CGAATCG': 9}`: `CGAATCG` keeps
-making `T`, which codes no enzyme and accumulates. Both runs take under two
-seconds.
+The frames come every 100 draws, and the replicator fills the pot after 600.
+With `binding_tiebreak="random"` (or the default) and the same seed, the
+replicator binds its other two G sites two times out of three, and the final
+pot of 100 is `{'T': 62, 'CG': 17, 'CGATTCGAATCG': 12, 'CGAATCG': 9}`:
+`CGAATCG` keeps making `T`, which codes no enzyme and accumulates. Both runs
+take under two seconds.
 
 **Other variants.** `code_table="varetto"` uses Varetto's code, which moves the
 four insert operations within row G; `reaction="pair"` lets every strand's
@@ -271,9 +279,9 @@ nondeterministic. The default network shows all three: one strand, three
 alternative reactions with two products each. The tests check that the
 default closure lists the three outcomes.
 
-**Beyond the book's system.** The soup and the `pair` reaction are Chemart
-additions, with no published counterpart. The tests check that in the soup
-the replicator ends above 90 of 100 molecules against the dud, and that in
+**Beyond the book's system.** The population run and the `pair` reaction are
+Chemart additions, with no published counterpart. The tests check that in the
+population the replicator ends above 90 of 100 molecules against the dud, and that in
 `pair` the gene strand survives every reaction.
 
 ## Further reading

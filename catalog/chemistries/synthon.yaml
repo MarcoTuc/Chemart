@@ -18,6 +18,7 @@ chemistries:
   kind: generator
   constructive: true
   type: generator
+  clock: s
   S:
     repr: >
       A synthon S(A) = <W, A, R, E>: atoms A (virtual atoms W are not used), explicitly modelled
@@ -56,12 +57,11 @@ chemistries:
     dilution: none
     notes: >
       Two generators, both from the papers (after Faulon & Sault 2001): the deterministic network
-      generator DNG (method=closure) grows every reaction object reachable from the initial species
-      under the size constraints N, es and ep; the MC-sampling generator MCNG (method=kinetic) runs
-      Gillespie's SSA over the molecules present and grows the network only from species that have a
-      non-zero amount, so the recorded network is the kinetically relevant part of the closure.
+      generator DNG (generate_network) grows every reaction object reachable from the initial
+      species under the size constraints N, es and ep; the MC-sampling generator MCNG (chemart.evolve)
+      runs Gillespie's SSA over the molecules present and grows the network only from species that
+      have a non-zero amount, so the recorded network is the kinetically relevant part of the closure.
   params:
-    - {name: method, type: enum, default: closure, choices: [closure, kinetic], role: structural, meaning: "closure: the deterministic network generator (DNG), every reaction object reachable from the initial species; kinetic: the MC-sampling generator (MCNG), Gillespie's SSA over the molecules present, returning the reactions that fired with their counts"}
     - {name: templates, type: enum, default: interstellar, choices: [interstellar, fig3], role: structural, meaning: "reaction classes: interstellar = the eleven classes G1-G11 of table 1 of the 2005 paper with the rate constants it takes from Duley & Williams (1984) p. 143; fig3 = the three reaction graphs drawn in its figure 3 (radiative association, charge transfer, dissociative recombination), for which no rates are published"}
     - {name: initial, type: list, default: ["H", "O"], range: "the published experiment starts from hydrogen and oxygen", role: population, meaning: "initial species as element symbols; each becomes the neutral free atom of that element (H -> H*, O -> O::**). Known elements: H, He, C, N, O, F, Ne, S, Cl, Ar"}
     - {name: allowed, type: list, default: ["H^+", "H", "H2", "H2^+", "H3^+", "O", "HO^+", "HO", "H2O", "O2", "H2O^+", "H3O^+", "e-"], range: "the default is the observational constraint of figure 4; [] removes it, and then max_atoms must be small (3 gives 110 species, 4 truncates)", role: structural, meaning: "the observational constraint of the paper: the chemical formulas a molecule may have. A reaction whose products fall outside is not generated. An empty list removes the constraint and the closure grows very fast"}
@@ -69,10 +69,10 @@ chemistries:
     - {name: max_pairs_species, type: int, default: 10, min: 1, max: 100, range: "the published experiment uses es = 10", role: structural, meaning: "constraint es: lone pairs or radicals per species"}
     - {name: max_pairs_atom, type: int, default: 7, min: 1, max: 20, range: "the published experiment uses ep = 7", role: structural, meaning: "constraint ep: lone pairs or radicals per atom"}
     - {name: max_charge, type: int, default: 1, min: 0, max: 10, role: structural, meaning: "largest absolute charge a species may carry; every molecule of the published network is neutral or singly charged, and without this bound the closure fills with species like O^6+ (a Chemart addition, see decisions)"}
-    - {name: max_species, type: int, default: 200, min: 1, max: 5000, role: structural, meaning: "species budget of the closure; reactions that would exceed it are dropped and the status becomes truncated"}
-    - {name: densities, type: list, default: [1000.0, 0.44], range: "Duley & Williams (1984): particle density n = 1000 cm^-3 with n(O) = 0.44 cm^-3, so n(H) = 1000 cm^-3", role: population, meaning: "initial density of each initial species, in cm^-3, one per entry of `initial`; it is the network's initial_state and, for method=kinetic, the proportion in which the molecules are drawn"}
-    - {name: molecules, type: int, default: 400, min: 2, max: 100000, range: "the paper calls it Mp and does not publish its value", role: population, meaning: "method=kinetic: number of molecules simulated; the initial species get at least one each, otherwise a share proportional to their density"}
-    - {name: steps, type: int, default: 2000, min: 1, max: 1000000, range: "the paper calls it Mc and does not publish its value", role: population, meaning: "method=kinetic: number of SSA reaction events"}
+    - {name: max_species, type: int, default: 200, min: 1, max: 5000, role: structural, face: generate, meaning: "species budget of the closure; reactions that would exceed it are dropped and the status becomes truncated"}
+    - {name: densities, type: list, default: [1000.0, 0.44], range: "Duley & Williams (1984): particle density n = 1000 cm^-3 with n(O) = 0.44 cm^-3, so n(H) = 1000 cm^-3", role: population, meaning: "initial density of each initial species, in cm^-3, one per entry of `initial`; it is the network's initial_state and, for chemart.evolve, the proportion in which the molecules are drawn"}
+    - {name: molecules, type: int, default: 400, min: 2, max: 100000, range: "the paper calls it Mp and does not publish its value", role: population, face: evolve, meaning: "number of molecules simulated by the SSA; the initial species get at least one each, otherwise a share proportional to their density"}
+    - {name: steps, type: int, default: 2000, min: 1, max: 1000000, range: "the paper calls it Mc and does not publish its value", role: population, face: evolve, meaning: "number of SSA reaction events; a frame after each (fewer if no reaction can fire)"}
   provides: [topology, stoichiometry, catalysts, rate-constants, mass-conservation, initial-state, sequence-structure-function]
   fidelity: reconstructed
   sources:
@@ -84,6 +84,7 @@ chemistries:
     - "Duley, W. W. & Williams, D. A. (1984). Interstellar Chemistry, Academic Press, p. 143: the reaction classes and rate constants of table 1, used here exactly as that table prints them. CONSULTED ONLY THROUGH table 1 of the 2005 paper."
     - "Weininger, D., Weininger, A. & Weininger, J. (1989). SMILES 2: algorithm for generation of unique SMILES notation. J. Chem. Inf. Comput. Sci. 29(2):97-101, doi:10.1021/ci00062a008. The canonicalisation the framework uses; Chemart canonicalises by invariant refinement plus a tie-breaking search, which is equivalent in effect for these small graphs."
   decisions:
+    - "Two faces, the papers' two generators: generate_network runs the deterministic network generator (DNG), the closure of the initial species under the constraints, with max_species as its budget; chemart.evolve runs the MC-sampling generator (MCNG), Gillespie's SSA over `molecules` molecules for `steps` reaction events, and returns the reactions that fired with their counts (status observed). The SSA stays inside the module because it grows the network as it runs: a pair of species is expanded only when both are present. It yields a frame after every event (frame 0 is the initial population), at the SSA time in seconds (the clock s), with the molecule counts as state and the one reaction that fired; chemart.evolve(..., every=k) keeps one frame in k. The former method parameter is gone."
     - "The Artificial Life 15(1) paper itself could not be obtained (see sources), so its two illustrative examples and its headline result - the partition of the molecule set into two mirror categories of reaction networks, the homochirality argument the book reports - are NOT reproduced and nothing in this entry claims them. Everything implemented comes from the authors' own 2005 description of the same framework, from Koca's and Ugi's abstracts, and from the book paragraph."
     - "Virtual atoms (the set W, standing for functional groups not active in a reaction) are not implemented: none of the published reaction classes uses them."
     - "Lone pairs are loops on an atom (a count), free electrons are explicit as the paper requires for radicals, and the free electron is the species e-. Charge is never stored, always derived: q = v - 2*lone_pairs - radicals - sum of covalent bond orders (Dugundji-Ugi), so 'HO::' is OH+ and 'HO::*' is OH."
@@ -96,7 +97,7 @@ chemistries:
     - "Rates are table 1's constants verbatim, as mass-action k, with the table's units recorded in the rate dict and in extras.reaction_classes (unimolecular classes are s^-1, bimolecular cm^3 s^-1). The grain of G11 is not modelled as a species: its density is folded into the published constant, as in Duley & Williams. When several classes give the same stoichiometric reaction their constants are summed and extras.reaction_classes_used names them."
     - "G1 and G2 are the same transformation and differ only in whether the reactant is a single atom or a molecule, as table 1 prints them; G10 is table 1's H2-specific photodissociation and G9 covers every other molecule."
     - "Kinetics: Gillespie's SSA (the paper's choice) in molecule counts with volume 1 cm^3, so counts and the paper's cm^-3 densities coincide; the initial molecules are apportioned from `densities` with at least one of each, since n(O) = 0.44 would otherwise round to zero. Mc (steps) and Mp (molecules) are not published, so they are parameters."
-    - "templates=fig3 carries no rates (figure 3 publishes none), so those reactions have rate None and method=kinetic refuses that set rather than inventing constants."
+    - "templates=fig3 carries no rates (figure 3 publishes none), so those reactions have rate None and chemart.evolve refuses that set rather than inventing constants."
     - "v1 parameters dropped: atom_types (matrix) is the element table, charge_model (callable) is the Dugundji-Ugi charge bookkeeping, and rate_model (callable) is the published per-class rate constants. The v1 entry's arity 2 became [1, 2]: cosmic-ray ionisation and photodissociation are unimolecular."
   phenomena:
     - "the eleven interstellar classes grow the H/O network of the 2005 paper's figure 4 from H and O alone: H, H+, H2, H2+, H3+, O, OH+, OH, H2O, O2, OH2+ and OH3+, plus the free electron"

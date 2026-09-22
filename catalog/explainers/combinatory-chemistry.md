@@ -139,43 +139,50 @@ fill up but not to see structures emerge. The network lists every distinct
 reaction that fired, with its count. `net.extras["reaction_kinds"]` gives the
 type of each reaction in the same order (`I`, `K`, `S`, `cleave`, `condense`,
 `assemblage`), and `extras["conservation"]` holds one conservation law per
-atom type.
+atom type. `extras["final_state"]` is the final soup.
+
+`generate_network` returns only the network of the whole run. To follow the
+soup over time, `chemart.evolve` returns a trajectory with a frame every
+`record_every` iterations (1,000 by default), the first being the initial
+atoms. Each frame holds the soup (`state`, the count of each expression), the
+reactions fired since the previous frame (`fired`) and four `observables`:
+`mean_length` (atoms per molecule), `reductions` (the share of iterations
+since the previous frame that reduced something), `free_atoms` (free `S`, `K`
+and `I`) and `top_reactants` (the five molecules most eaten by `S`-reactions
+since the previous frame, the paper's signal of emerging structures). The
+diversity, the number of distinct expressions, is the size of a frame's
+`state`.
 
 ```python
 from collections import Counter
-net = chemart.generate_network("combinatory-chemistry", seed=1)
-a = net.extras["analysis"]
-print(a["diversity"])
-print(a["reductions"][-3:])
-print(Counter(net.extras["reaction_kinds"]))
+traj = chemart.evolve("combinatory-chemistry", seed=1)
+print([len(f.state) for f in traj.frames])
+print(traj.series("reductions")[-3:])
+print(traj.frames[-1].observables)
+print(Counter(traj.network.extras["reaction_kinds"]))
 ```
 
 ```
 [3, 27, 45, 61, 63, 74, 71, 70, 70, 69, 67, 63, 70, 73, 70, 73, 77, 76, 81, 77, 72]
 [0.103, 0.115, 0.114]
+{'mean_length': 1.603, 'reductions': 0.114, 'free_atoms': {'S': 104, 'K': 131, 'I': 174}, 'top_reactants': {'K': 4, 'I': 3, 'KK': 2, 'SS': 2, 'KI': 1}}
 Counter({'condense': 463, 'cleave': 182, 'K': 146, 'I': 108, 'S': 102})
 ```
-
-`extras["analysis"]` samples the soup every `record_every` iterations:
-`diversity` (distinct expressions), `mean_length` (atoms per molecule),
-`reductions` (the share of iterations that reduced something, since the last
-sample), `free_atoms` (free `S`, `K` and `I`) and `top_reactants` (the five
-molecules most eaten by `S`-reactions since the last sample, the paper's
-signal of emerging structures). `extras["final_state"]` is the final soup.
 
 ### The paper's runs
 
 The paper runs 10,000 atoms for 10 million iterations. Chemart does about
 100,000 iterations a second on small expressions, and slows down as long
-expressions form. This F = 1 run took 160 seconds:
+expressions form. This F = 1 run, with a frame every 500,000 iterations,
+took about three minutes:
 
 ```python
-net = chemart.generate_network("combinatory-chemistry", seed=0,
-                               n_I=3334, n_K=3333, n_S=3333,
-                               iterations=10_000_000, F=1, record_every=500_000)
-a = net.extras["analysis"]
-print(a["diversity"])
-print(a["top_reactants"][4], a["top_reactants"][20])
+traj = chemart.evolve("combinatory-chemistry", seed=0,
+                      n_I=3334, n_K=3333, n_S=3333,
+                      iterations=10_000_000, F=1, record_every=500_000)
+print([len(f.state) for f in traj.frames])
+top = traj.series("top_reactants")
+print(top[4], top[20])
 ```
 
 ```

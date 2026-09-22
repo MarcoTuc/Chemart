@@ -7,7 +7,7 @@ from collections import Counter
 
 import pytest
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries import squirm3 as sq
 
 SEED = "e8-a1-b1-f1"
@@ -152,7 +152,7 @@ def test_the_replicator_copies_an_arbitrary_sequence(gene):
     # Hutton (2002) eq. 4: e8 {x1}* f1 + {x0}* -> 2 e8 {x1}* f1. Any string of
     # a1..d1 with e8 at one end and f1 at the other replicates in a soup of
     # atoms in state 0 (book fig. 11.17 uses e8-a1-b1-f1).
-    net = generate_network("squirm3", seed=3, seed_molecule=gene)
+    net = evolve("squirm3", seed=3, seed_molecule=gene).network
     assert net.status == "observed"
     splits = [r for r in net.reactions if r.products.get(gene) == 2]
     assert splits, f"{gene} never split into two copies of itself"
@@ -165,7 +165,7 @@ def test_the_replicator_copies_an_arbitrary_sequence(gene):
 
 @pytest.mark.slow
 def test_replication_consumes_the_soup_of_atoms_in_state_0():
-    net = generate_network("squirm3", seed=3)
+    net = evolve("squirm3", seed=3).network
     used = [r for r in net.reactions if any(s.endswith("0") and "-" not in s
                                             for s in r.reactants)]
     assert used, "no free atom in state 0 was ever built into a molecule"
@@ -174,14 +174,14 @@ def test_replication_consumes_the_soup_of_atoms_in_state_0():
 
 # --- conservation ----------------------------------------------------------------
 def test_every_reaction_conserves_every_atom_type():
-    net = generate_network("squirm3", seed=1)
-    for r in net.reactions:
-        assert atoms_in(r.reactants) == atoms_in(r.products), r.to_text()
+    for net in (evolve("squirm3", seed=1).network, generate_network("squirm3", seed=1)):
+        for r in net.reactions:
+            assert atoms_in(r.reactants) == atoms_in(r.products), r.to_text()
 
 
 def test_the_conservation_vectors_are_exact():
     # S^T m = 0 for the atom count of each type: the positive control
-    net = generate_network("squirm3", seed=1)
+    net = evolve("squirm3", seed=1).network
     ids, R, P = net.matrices()
     stoichiometry = (P - R).toarray()
     laws = {law["name"]: law for law in net.extras["conservation"]}
@@ -197,7 +197,7 @@ def test_the_conservation_vectors_are_exact():
 # --- the closure ------------------------------------------------------------------
 @pytest.mark.slow
 def test_closure_from_the_seed_molecule_finds_the_replication_path():
-    net = generate_network("squirm3", seed=1, method="closure", max_species=40)
+    net = generate_network("squirm3", seed=1, max_species=40)
     ids = {s.id for s in net.species}
     assert SEED in ids and {"e0", "a0", "b0", "f0"} <= ids
     # R1 joins a free e0 to the seed, the first step of fig. 11.17
@@ -207,15 +207,21 @@ def test_closure_from_the_seed_molecule_finds_the_replication_path():
         assert atoms_in(r.reactants) == atoms_in(r.products), r.to_text()
 
 
+def test_the_closure_starts_from_a_molecule_not_a_cell():
+    with pytest.raises(ValueError, match="not a cell"):
+        generate_network("squirm3", rules="membrane", n_states=38,
+                         seed_molecule="cell:e1-b1-c1-a1-f1")
+
+
 # --- the membrane chemistry --------------------------------------------------------
 @pytest.mark.slow
 def test_the_2007_cell_starts_dividing():
     # the starting cell of fig. 2: a membrane loop of a36 with two a37 anchors,
     # the gene string bonded to both. R1 (e1a37 -> e5a10) is the first rule to
     # fire, then R6 and R2 attach a second e atom to the membrane.
-    net = generate_network("squirm3", seed=5, rules="membrane", n_states=38,
-                           seed_molecule="cell:e1-b1-c1-a1-f1", space="lattice-moore",
-                           width=16, height=16, food=90, steps=400)
+    net = evolve("squirm3", seed=5, rules="membrane", n_states=38,
+                 seed_molecule="cell:e1-b1-c1-a1-f1", space="lattice-moore",
+                 width=16, height=16, food=90, steps=400).network
     cell = max(net.initial_state, key=lambda s: sum(atom_counts(s).values()))
     labels = Counter(sq._mol_from_id(cell).labels)
     assert labels[("a", 36)] == 18 and labels[("a", 37)] == 2     # the membrane loop
@@ -232,7 +238,7 @@ def test_the_2007_cell_starts_dividing():
 
 # --- the world and its parameters ---------------------------------------------------
 def test_flooding_dissolves_molecules_back_to_single_atoms():
-    net = generate_network("squirm3", seed=4, steps=1200, flood_period=300)
+    net = evolve("squirm3", seed=4, steps=1200, flood_period=300).network
     assert net.extras["floods"] == 3
     assert net.extras["dissolved_by_flood"] >= 1
     assert net.extras["space"]["model"] == "lattice-2d"
@@ -241,23 +247,34 @@ def test_flooding_dissolves_molecules_back_to_single_atoms():
 
 def test_cosmic_rays_start_the_chemistry_without_a_seed_in_an_excited_state():
     # Hutton (2002) experiment 3: randomising states lets molecules form
-    quiet = generate_network("squirm3", seed=6, seed_molecule="a0", steps=400)
-    assert not quiet.reactions
-    struck = generate_network("squirm3", seed=6, seed_molecule="a0", steps=400,
-                              cosmic_ray=0.01)
-    assert struck.reactions
+    quiet = evolve("squirm3", seed=6, seed_molecule="a0", steps=400)
+    assert not quiet.network.reactions and set(quiet.series("molecules")) == {0}
+    struck = evolve("squirm3", seed=6, seed_molecule="a0", steps=400, cosmic_ray=0.01)
+    assert struck.network.reactions and max(struck.series("molecules")) > 0
 
 
 def test_same_seed_same_network():
-    a = generate_network("squirm3", seed=11)
-    b = generate_network("squirm3", seed=11)
+    a = evolve("squirm3", seed=11)
+    b = evolve("squirm3", seed=11)
     assert a.to_dict() == b.to_dict()
-    assert generate_network("squirm3", seed=12).to_dict() != a.to_dict()
+    assert evolve("squirm3", seed=12).network.to_dict() != a.network.to_dict()
+
+
+def test_frames_follow_the_world():
+    traj = evolve("squirm3", seed=1)
+    assert traj.clock == "steps"
+    # the initial state, after the first step, every 3000 // 200 = 15 steps, and the end
+    assert traj.times()[:4] == [0.0, 1.0, 16.0, 31.0] and traj.times()[-1] == 3000.0
+    net = traj.network
+    assert traj.frames[0].state == net.initial_state and not traj.frames[0].fired
+    assert traj.frames[-1].state == {k: float(v) for k, v in net.extras["final_state"].items()}
+    assert sum(n for f in traj.frames for _, _, n in f.fired) == sum(r.count for r in net.reactions)
+    assert traj.series("molecules")[0] == 1
 
 
 def test_continuous_space_runs_the_same_chemistry():
-    net = generate_network("squirm3", seed=1, space="continuous", width=200,
-                           height=200, food=60, steps=200)
+    net = evolve("squirm3", seed=1, space="continuous", width=200,
+                 height=200, food=60, steps=200).network
     assert net.extras["space"]["model"] == "continuous-2d"
     assert net.extras["space"]["reaction_radius"] == 15.0
     assert net.extras["rule_counts"].get("R1")
@@ -271,6 +288,8 @@ def test_bad_parameters():
     with pytest.raises(ValueError, match="not an atom"):
         generate_network("squirm3", seed_molecule="e8-zz")
     with pytest.raises(ValueError, match="lattice holds"):
-        generate_network("squirm3", width=5, height=5, food=400)
+        evolve("squirm3", width=5, height=5, food=400)
+    with pytest.raises(ValueError, match="evolve face"):
+        generate_network("squirm3", steps=10)
     with pytest.raises(ValueError, match="n_types"):
         generate_network("squirm3", n_types=3, seed_molecule="e8-a1-f1")

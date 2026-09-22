@@ -100,8 +100,9 @@ becomes a differently wired cluster of the same nodes) or a *fragmentation*
 Take the five-node path `i–i–i–o–o`, nodes 0 to 4, and run 40 steps:
 
 ```python
-net = chemart.generate_network("nac", seed=1, polarities="iiioo",
-                               edges=[[0, 1], [1, 2], [2, 3], [3, 4]], steps=40)
+traj = chemart.evolve("nac", seed=1, polarities="iiioo",
+                      edges=[[0, 1], [1, 2], [2, 3], [3, 4]], steps=40)
+net = traj.network
 ```
 
 Three reactions fired:
@@ -132,43 +133,66 @@ changes nothing a species id can see, so it is not recorded.
 ### The reactor
 
 There are no rates. No source gives a time scale for a rewiring, so Chemart
-counts steps. Because A is a random *node*, a cluster is rewired in proportion
-to its size. Method `rewiring` runs the rule on one graph and returns the
-reactions that fired with their counts; method `closure` instead lists every
-cluster that can be reached from the starting clusters by single rewirings,
-without simulating anything.
+counts steps: the clock of a run is the number of attempted rewirings,
+cancelled and inert ones included. Because A is a random *node*, a cluster is
+rewired in proportion to its size. Chemart offers NAC in two ways.
+`chemart.evolve` runs the rule on one graph and returns the reactions that
+fired with their counts, as in the worked example. `chemart.generate_network`
+instead lists every cluster that can be reached from the starting clusters by
+single rewirings (the *closure*), without simulating anything.
 
 ## Using it
 
-The default run starts from a random graph of 12 nodes, six of each polarity,
-with 18 edges (mean degree 3), and makes 600 rewiring attempts. The first
-reaction printed above already sheds a lone `o` node from the one big starting
-cluster. What matters is in `net.extras`:
+The default call above builds the closure. It draws a random graph of 12
+nodes, six of each polarity, with 18 edges (mean degree 3); here all 12 nodes
+form one cluster, which is the seed of the closure
+(`net.extras["analysis"]["seed"]`). Every reaction printed is one rewiring of
+that 12-node cluster. The closure of a graph this size is far larger than the
+`max_species` budget of 100 clusters, so it stops with `status=truncated`: 92
+of its clusters are rewirings of the 12 nodes, 6 have 11 nodes and 2 are lone
+nodes (`net.extras["analysis"]["cluster_sizes"]`), and 12 of its 427
+reactions are fragmentations. `extras["conservation"]` holds the three
+conserved quantities (hydrophilic nodes, hydrophobic nodes, edges) per
+species, and `extras["space"]` the node polarities and edges of the starting
+graph.
+
+**Running the rule.** `chemart.evolve` runs 600 rewiring attempts on the same
+starting graph and records a frame every `n_nodes` attempts (here 12), and one
+at the end. Each frame holds the clusters present (`frame.state`) and four
+measures of the whole graph (`frame.observables`): the number of mixed `i`–`o`
+edges, the size of the largest all-hydrophilic cluster, and the clustering
+coefficient and mean path length (both defined under Results).
 
 ```python
-a = net.extras["analysis"]
-a["attempts"]
+traj = chemart.evolve("nac", seed=1)
+net = traj.network
+print(net.summary())
+net.extras["analysis"]["attempts"]
 # {'cancelled-polarity': 73, 'moved': 175, 'no-neighbour': 87, 'no-distance-two': 265}
-a["trace"][0]
-# {'mixed_edges': 8, 'clusters': 1, 'largest_hydrophilic_cluster': 0, 'clustering': 0.15, 'path_length': 2.136364}
-a["trace"][-1]
-# {'mixed_edges': 0, 'clusters': 4, 'largest_hydrophilic_cluster': 5, 'clustering': 0.777778, 'path_length': 1.1}
+traj.frames[0].observables
+# {'mixed_edges': 8, 'largest_hydrophilic_cluster': 0, 'clustering': 0.15, 'path_length': 2.136364}
+traj.frames[-1].observables
+# {'mixed_edges': 0, 'largest_hydrophilic_cluster': 5, 'clustering': 0.777778, 'path_length': 1.1}
 net.extras["final_state"]
 # {'iiiii:0-1.0-2.0-3.0-4.1-2.1-3.1-4.2-3.2-4.3-4': 1, 'ooooo:0-3.0-4.1-2.1-3.1-4.2-3.2-4.3-4': 1, 'i': 1, 'o': 1}
 ```
 
-`trace` samples the graph every `n_nodes` steps (`a["sampled_every"]`, here
-12). Its fields are the number of mixed `i`–`o` edges, the number of clusters,
-the size of the largest all-hydrophilic cluster, the clustering coefficient and
-the mean path length (both defined under Results). Here the eight mixed edges
-are gone by step 156, and the graph ends as a five-node hydrophilic
-cluster with every pair linked, a five-node hydrophobic cluster missing two of
-its ten possible links, and one stray node of each kind. The 18 edges are all
-still there (10 + 8). Once a cluster is fully linked nothing is at distance
-two, which is why most late attempts are `no-distance-two`: the run has
-frozen. `extras["space"]` holds the node polarities and the initial and final
-edge lists, and `extras["conservation"]` the three conserved quantities
-(hydrophilic nodes, hydrophobic nodes, edges) per species.
+```
+nac: 61 species, 64 reactions, status=observed
+provides: initial-state, mass-conservation, space, stoichiometry, topology
+seed: 1
+extras: analysis, conservation, final_state, space
+```
+
+`traj.series("mixed_edges")` gives one measure over the frames, and
+`traj.times()` the step of each frame. Here the eight mixed edges are gone by
+step 156, and the graph ends as a five-node hydrophilic cluster with every
+pair linked, a five-node hydrophobic cluster missing two of its ten possible
+links, and one stray node of each kind. The 18 edges are all still there
+(10 + 8). Once a cluster is fully linked nothing is at distance two, which is
+why most late attempts are `no-distance-two`: the run has frozen.
+`extras["space"]` holds the node polarities and the initial and final edge
+lists.
 
 **Switching the constraint off.** `polarity_constraint=False` is the plain
 acquaintance-network rule, a Chemart option rather than a published variant.
@@ -176,18 +200,18 @@ On the same seed nine mixed edges remain after 600 steps, and the largest
 cluster holds five `i` and three `o` nodes:
 
 ```python
-loose = chemart.generate_network("nac", seed=1, polarity_constraint=False)
-loose.extras["analysis"]["trace"][-1]["mixed_edges"]      # 9
+loose = chemart.evolve("nac", seed=1, polarity_constraint=False)
+loose.series("mixed_edges")[-1]      # 9
 ```
 
-**A larger graph.** With 40 nodes, mean degree 4 and 4,000 steps (about 5 s),
-mixed edges fall from 37 to 2 by step 400 and to 0 by step 1,000. The run ends
-with a 13-node hydrophilic cluster, a 15-node hydrophobic one and 12 isolated
-nodes (7 hydrophilic, 5 hydrophobic). Without the constraint (about 9 s) 42
-mixed edges remain at the end:
+**A larger graph.** With 40 nodes, mean degree 4 and 4,000 steps (a few
+seconds), mixed edges fall from 37 to 2 by step 400 and to 0 by step 840. The
+run ends with a 13-node hydrophilic cluster, a 15-node hydrophobic one and 12
+isolated nodes (7 hydrophilic, 5 hydrophobic). Without the constraint 42 mixed
+edges remain at the end:
 
 ```python
-net = chemart.generate_network("nac", seed=1, n_nodes=40, mean_degree=4, steps=4000)
+traj = chemart.evolve("nac", seed=1, n_nodes=40, mean_degree=4, steps=4000)
 ```
 
 Almost every event produces a new cluster shape here, so this run lists 2,918
@@ -219,11 +243,26 @@ rewirings  clustering  path length
 
 **Explicit graphs and the closure.** `polarities` and `edges` (see the
 parameter table) set the starting graph by hand, as in the worked example.
-`method="closure"` on that same path finds the same three reactions and stops,
-`status=complete`. On a random graph of 8 nodes and 6 edges
-(`n_nodes=8, mean_degree=1.5`) the closure is complete at 16 species and 24
-reactions; at 8 edges (`mean_degree=2.0`) it hits the `max_species` budget of
-300 in under a second and returns `status=truncated`.
+The closure of that same path finds the same three reactions and stops:
+
+```python
+net = chemart.generate_network("nac", seed=1, polarities="iiioo",
+                               edges=[[0, 1], [1, 2], [2, 3], [3, 4]])
+print(net.summary())
+```
+
+```
+nac: 4 species, 3 reactions, status=complete
+provides: initial-state, mass-conservation, space, stoichiometry, topology
+seed: 1
+extras: analysis, conservation, space
+```
+
+On a random graph of 8 nodes and 6 edges (`n_nodes=8, mean_degree=1.5`) the
+closure is complete at 16 species and 24 reactions. At 8 edges
+(`mean_degree=2.0`) it hits the default `max_species` budget of 100 (399
+reactions) and returns `status=truncated`; with `max_species=300` it stops at
+300 species and 1,919 reactions, still in well under a second.
 
 ## Results
 

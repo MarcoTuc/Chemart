@@ -125,49 +125,58 @@ per byte: the instructions as themselves, the zero byte as `0`, and any other
 byte b as the character U+0100 + b, following the authors' code. That is why
 random programs look like strings of accented letters.
 `extras["reaction_kinds"]` says whether each reaction is an `execution`
-(`A + B -> A' + B'`) or a `mutation` (`A -> A'`).
+(`A + B -> A' + B'`) or a `mutation` (`A -> A'`), and `extras["final_state"]`
+is the final soup.
+
+`generate_network` returns only the network of the whole run. To follow the
+soup over time, `chemart.evolve` returns a trajectory with one frame per
+epoch, the first being the initial soup. Each frame holds the soup itself
+(`state`, the number of copies of each program), the reactions of that epoch
+(`fired`) and four `observables`: `high_order_entropy`, `top_tape_count`
+(copies of the most common program), `ops_per_run` (instructions executed per
+pair in that epoch, no-ops not counted) and `zero_bytes`. Replicators loop
+until the step limit, so `ops_per_run` climbs towards 8192 when they spread.
 
 ```python
 from collections import Counter
-net = chemart.generate_network("bff", seed=1)
-a = net.extras["analysis"]
-print({k: v[-1] for k, v in a.items()})
-print(Counter(net.extras["reaction_kinds"]))
+traj = chemart.evolve("bff", seed=1)
+last = traj.frames[-1]
+print(last.t, last.observables, len(last.state))
+print(Counter(traj.network.extras["reaction_kinds"]))
 ```
 
 ```
-{'epoch': 16, 'high_order_entropy': -0.016, 'distinct_tapes': 128, 'top_tape_count': 1, 'ops_per_run': 29.67, 'zero_bytes': 30}
+16.0 {'high_order_entropy': -0.016, 'top_tape_count': 1, 'ops_per_run': 29.67, 'zero_bytes': 30} 128
 Counter({'execution': 609, 'mutation': 37})
 ```
 
-`extras["analysis"]` records the soup every `record_every` epochs:
-`high_order_entropy`, `distinct_tapes`, `top_tape_count` (copies of the most
-common program), `ops_per_run` (instructions executed per pair, no-ops not
-counted) and `zero_bytes`. Replicators loop until the step limit, so
-`ops_per_run` climbs towards 8192 when they spread. `extras["final_state"]`
-is the final soup.
+After 16 epochs all 128 programs are still distinct and the entropy is about
+zero: nothing has taken over.
 
 ### A seeded run
 
 The paper's "seeded" runs place one copy of the Figure 4 replicator in a
 random soup (`replicators=1`). With 64 programs and 100 epochs (about five
-seconds):
+seconds), keeping one frame in ten with `every=10`:
 
 ```python
-net = chemart.generate_network("bff", seed=8, tapes=64, epochs=100,
-                               replicators=1, record_every=10)
-a = net.extras["analysis"]
-print(a["top_tape_count"]); print(a["high_order_entropy"]); print(a["ops_per_run"])
+traj = chemart.evolve("bff", seed=8, tapes=64, epochs=100, replicators=1, every=10)
+print(traj.times())
+for name in ("top_tape_count", "high_order_entropy", "ops_per_run"):
+    print(traj.series(name))
 ```
 
 ```
+[0.0, 10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 90.0, 100.0]
 [1, 17, 30, 34, 42, 46, 60, 56, 34, 42, 31]
 [-0.0591, 1.5553, 2.5642, 2.233, 1.9313, 1.3853, 1.3162, 1.2657, 1.1285, 1.1707, 1.0997]
-[0.0, 2197.94, 3907.16, 4645.09, 6057.75, 7783.66, 8192.0, 8192.0, 8192.0, 8192.0, 8192.0]
+[0.0, 2197.94, 3907.16, 4645.09, 6057.75, 7783.66, 8192.0, 8192.0, 8192.0, 8192.0, 8128.0]
 ```
 
-By epoch 60 the replicator fills 60 of the 64 slots and every pair runs to the
-step limit. In this run the replicator reacted 682 times as `S + F -> 2 S`.
+A frame kept by `every` reports the observables of its own epoch, and its
+`fired` adds up the reactions of the ten epochs before it. At epoch 60 the
+replicator fills 60 of the 64 slots and every pair runs to the step limit. In
+this run the replicator reacted 682 times as `S + F -> 2 S`.
 Many seeds do not end like this: a replicator paired second is usually
 overwritten by its partner before it runs, so a single copy often dies out.
 

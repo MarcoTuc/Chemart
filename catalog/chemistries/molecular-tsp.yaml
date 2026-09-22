@@ -18,6 +18,7 @@ chemistries:
   kind: generator
   constructive: true
   type: gas
+  clock: generations
   S:
     repr: "data strings s = (s0, s1..sN): s0 = l(s) the tour length, s1..sN a permutation of the N cities; species id t<cities joined by dots> of the canonical cycle (starting at city 0, towards the smaller neighbour), structure '(l, s1, ..., sN)'; plus the machine molecules E-machine, C-machine, I-machine, R-machine"
     definition: implicit
@@ -64,7 +65,8 @@ chemistries:
     - "The run has a fixed length (generations). MolecularTSP.run also stops once the best length is below pi * 2N, the circle's circumference; for the ring layouts checked by enumeration (N = 6, 8, 10: second-best tours 44.78, 59.37, 72.95 against circumferences 37.70, 50.27, 62.83) that only happens at the optimal polygon, so it is reported instead as analysis.generation_optimum_found (optimum = the polygon perimeter 2 N^2 sin(pi/N)) together with generation_mean_within_10_percent, the stopping criterion of paper table 1."
     - "Paper eq. 4 is typeset as O = sum_ij (P^T)_ij (P)_ij / (M^2 N) with P the summed upper-half adjacency matrices; taken literally for an upper-triangular P the sum vanishes. It is read as sum_ij P_ij^2 / (M^2 N), which is 1 when all M tours coincide and 1/M when no edge is shared, matching 'percentage of overlapping edges' and the 90% threshold of fig. 4 and table 3b."
     - "Species are canonical cycles (a tour, its rotations and its reversal have the same length and are one species), while the soup stores the oriented strings the operators act on, as the reference code does. A collision whose released strings are the same species as its inputs is elastic and not recorded. No rate constants: t_j are frequencies of a serial algorithm, not mass-action constants; they are recorded in extras.time_scales."
-    - "Observed network: species are the active machines, the initial strings and every string released; initial_state has one molecule of each active machine and the initial strings; extras.analysis holds best_length, mean_length (the paper's <l>) and overlap per generation from generation 0, machine_successes (paper fig. 5's contributions, as totals), generation_size and, for the ring, the known optimum; extras.cities, tour_length, final_state, best_tour."
+    - "Observed network: species are the active machines, the initial strings and every string released; initial_state has one molecule of each active machine and the initial strings; extras.analysis holds machine_successes (paper fig. 5's contributions, as totals), generation_size and, for the ring, the known optimum with generation_optimum_found and generation_mean_within_10_percent; extras.cities, tour_length, final_state, best_tour."
+    - "chemart.evolve yields a frame per generation; frame 0 is the initial soup. A frame's state holds the machines (one each) and the strings as canonical tours, its fired the reactions of that generation, and its observables best_length, mean_length (the paper's <l>) and overlap (eq. 4). chemart.evolve(..., every=k) keeps one frame in k. generate_network runs to the end and returns the network."
     - "The v1 fitness_fn callable becomes the enum fitness with the single published choice tour-length. The paper's CPU times and generation counts (tables 1-4) are for N = 30-100 and are not reproduced numerically; the tests check their qualitative content on smaller instances."
   reference_impl: "PyCellChemistry src/MolecularTSP.py (Yamamoto 2014), used for book fig. 17.2"
   phenomena:

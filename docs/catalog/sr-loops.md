@@ -219,12 +219,32 @@ The default call above is Langton's loop replicating three times. The species'
 a = net.extras["analysis"]
 a["births"], a["deaths"], a["loops_final"]    # (3, 0, 4)
 a["ancestor_copy_steps"]                      # [151, 298, 302]
-a["population"]                               # snapshots: loops, their sizes, count per species
 net.extras["space"]["final"]                  # the final lattice, one string per row
 ```
 
+`generate_network` returns only the network of the whole run. To follow the
+colony over time, `chemart.evolve` returns the run as a trajectory of frames,
+one per look at the loops: step 0, then every step, or every `track_every`
+steps. A frame's `state` counts the loops of each species, its `fired` lists
+the births and deaths since the previous look, and its observable `cells`
+lists the sizes of the living loops:
+
+```python
+traj = chemart.evolve("sr-loops", seed=1)
+f = traj.frames[128]
+f.t, f.state, f.fired, f.observables
+# (128.0, {'L086aaa': 2.0}, [[['L086aaa'], ['L086aaa', 'L086aaa'], 1]], {'cells': [72, 73]})
+[f.t for f in traj.frames if f.fired]    # [128.0, 275.0, 279.0]
+```
+
+At step 128 the daughter already carries the name `L086aaa`, although it is
+identified as a copy only at step 151. A species is settled only when the run
+ends, so the frames are named then and all arrive at the end of the run.
+
 With `mode="micro"` the same run gives the cell-state network instead: 7
-species and 89 distinct transitions (6,347 firings) in 151 steps.
+species and 89 distinct transitions (6,347 firings) in 151 steps. There is a
+frame per step, whose `state` counts the cells in each state; after 151 steps
+it is `{'s1': 31.0, 's2': 122.0, 's4': 4.0, 's7': 14.0}`.
 
 The loop detector cannot tell two touching loops from one larger loop. When a
 colony packs the lattice, a loop that merges into a neighbour's group is
@@ -246,16 +266,18 @@ Eight Byl loops stand on the lattice at the end. With `rule="reggia-2"` the
 `L005aaa -> 2 L005aaa` come with touching artefacts such as `L005aaa -> ∅`.
 
 **Freezing against turn-over.** Langton's loop and the SDSR loop on a 100×100
-torus for 4,000 steps take 3 to 5 seconds each:
+torus for 4,000 steps take a few seconds each:
 
 ```python
-net = chemart.generate_network("sr-loops", rule="sdsr", grid=100, steps=4000,
-                               min_loop_cells=40, track_every=5)
+traj = chemart.evolve("sr-loops", rule="sdsr", grid=100, steps=4000,
+                      min_loop_cells=40, track_every=5)
+loops = [sum(f.state.values()) for f in traj.frames]    # living loops, every 5 steps
 ```
 
-The SDSR run records 274 `L086aaa -> 2 L086aaa` and 296 `L086aaa -> ∅`. In the
-recorded snapshots the number of loops first reaches 28 near step 900, then
-fluctuates between 8 and 28; 13 loops, all `L086aaa`, remain at the end.
+The SDSR run records 274 `L086aaa -> 2 L086aaa` and 296 `L086aaa -> ∅` in
+`traj.network`. The number of loops first reaches 28 at step 880; from step
+1,000 on it fluctuates between 8 and 33; 13 loops, all `L086aaa`, remain at
+the end.
 Short-lived species such as `L049aac` are pieces of dissolving loops. With
 `rule="langton"` the count settles at 13 by step 1,600, and between steps
 3,000 and 3,100 only 20 of 4,431 occupied cells change, against 1,255 of 1,507
@@ -276,7 +298,7 @@ on lattices up to 1000×1000, are possible but slow.
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `chemart.evolve` (or `generate_network`, which runs the process to the end). The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
@@ -288,13 +310,13 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 | `ancestors` | `int` | `1` | population | how many copies of the ancestor to place; one is centred, several are placed at random non-overlapping positions (this is the only use of the seed) <br>`1` … `1000` · *range:* Sayama's competition runs start two ancestors at opposite ends of the space |
 | `ancestor_pattern` | `str` | `` | structural | the seed loop as a Golly RLE string ('x = 4, y = 4, rule = ...' then the run-length-encoded rows, '.' = quiescent, A = state 1); empty means the published ancestor of the chosen rule |
 | `min_loop_cells` | `int` | `12` | structural | macro mode: the smallest connected group of non-quiescent cells that counts as a loop; smaller groups are debris and are ignored <br>`1` … `100000` · *range:* 12 = Byl's loop; use 4 for the Chou-Reggia loops, 20 or more to ignore the debris of dissolving loops |
-| `track_every` | `int` | `1` | population | macro mode: observe the loops every this many steps (higher is faster but misses loops that live shorter than one interval) <br>`1` … `100000` |
+| `track_every` | `int` | `1` | population | macro mode: observe the loops every this many steps, one frame per observation (higher is faster but misses loops that live shorter than one interval) <br>`1` … `100000` |
 
 ### Implementation decisions
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "14 decisions"
+??? note "15 decisions"
 
     - kind stays generator: the implementation runs the cellular automaton and returns the observed event network of the loops (macro) or of the cell states (micro).
     - Transition tables are not in the book and the original papers print them as figures; they are taken verbatim from Golly's rule files, whose provenance is Sayama's loops.java. Each table is verified by reproducing the published replication period of its ancestor (tests): Langton 151, Byl 25, Chou-Reggia 15 (5-cell loop), evoloop 363, SDSR = Langton's 151.
@@ -309,6 +331,7 @@ The sources leave gaps, and sometimes contradict each other or the book. Each su
     - The chemistry is deterministic: the CA, the ancestor and its position are fixed. The seed is used only to place several ancestors (ancestors &gt; 1) at random non-overlapping positions.
     - Boundary: periodic (Sayama's 'periodic space') by default; 'quiescent' treats everything outside the lattice as background. The unbounded plane of the original papers is not offered - bounded space is what makes the loops compete (book 10.7.2).
     - Dropped v1 parameters: n_states, neighbourhood, grid and seed_loop (types matrix) and dissolution. The number of states and the neighbourhood are properties of the chosen rule, not free knobs; grid becomes the lattice side; seed_loop becomes ancestor_pattern (a Golly RLE string); dissolution is what distinguishes rule=sdsr and rule=evoloop from rule=langton.
+    - chemart.evolve runs the automaton; the time is the step of the automaton. Macro: a frame per observation of the loops (step 0, then every track_every steps and the last step); its state counts the loops of each species, its fired lists the births and deaths since the previous observation, and its observable cells lists the sizes of the living loops. Because species are merged retrospectively (a loop is its mother's species once it shows her configuration), the names are settled only when the run ends, so the macro frames are all yielded then. Micro: a frame per step, its state the number of cells in each non-quiescent state and its fired the transitions of that step. The former extras.analysis.population (a thinned copy of the macro series) and extras.analysis.cells (micro) are gone; chemart.evolve(..., every=k) thins the frames. generate_network runs the automaton and returns the network.
     - Not implemented: the Tempesti (1995), Perrier (1996) and Sexyloop (2007) variants, and von Neumann's 29-state automaton [453]; the evoloop gene sequence (G/T/C) reading of Salzberg et al.; the loops' interaction with 'hostile' environments [739].
 
 ## Results
@@ -369,9 +392,9 @@ not read the G/T/C genome.
 **Islands, concentrations and robustness.** The book's Figure 10.13, from
 Sayama (1999), plots changing concentrations of loop species in a bounded
 space, and §8.2.3 says that in large spaces the species cluster into islands.
-Chemart records per-species counts in `extras["analysis"]["population"]` and
-the final lattice in `extras["space"]["final"]`, from which both can be drawn,
-but no test checks them. The book also credits dissolution with giving
+Chemart records per-species counts in the frames of `chemart.evolve` and the
+final lattice in `extras["space"]["final"]`, from which both can be drawn, but
+no test checks them. The book also credits dissolution with giving
 evoloops "some degree of robustness to underlying hardware errors"; Chemart
 has no way to inject such errors and does not test it. Not implemented: the
 study of evoloops under hostile pathogens and mass killings (book ref [739]),

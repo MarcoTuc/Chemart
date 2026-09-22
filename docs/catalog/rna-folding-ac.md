@@ -146,14 +146,14 @@ a site), 338 were cleavases and 94 ligases.
 
 ### Two reactors
 
-Chemart offers two ways to turn the rule into a network. In **closure** mode
-it starts from a pool of random sequences and applies every ribozyme to every
+Chemart offers two ways to turn the rule into a network. The **closure**
+starts from a pool of random sequences and applies every ribozyme to every
 possible substrate (one for a cleavage, two for a ligation), folds the
 products, and repeats until nothing new appears or the species budget
-`max_species` is reached. In **well-stirred** mode it simulates a pot of
+`max_species` is reached. The **well-stirred** run simulates a pot of
 molecules: at each of `steps` collisions three molecules meet at random, the
 first acts as the catalyst if it is one, and at most one reaction fires. In a
-cleavage the third molecule rides along unchanged. Neither mode has rate
+cleavage the third molecule rides along unchanged. Neither has rate
 constants: no published rates exist that Chemart could reproduce.
 
 ### Formal specification
@@ -166,7 +166,7 @@ Banzhaf and Yamamoto describe every artificial chemistry by three things (book �
 
 **A — reactor**: `well-stirred-multiset` (a well-stirred pot of discrete molecules that meet at random, with no notion of position); or `graph-rewrite` (graph rewriting: molecules are graphs and reactions rewrite them).
 
-*How the population is bounded:* closure mode is cut off by max_species; the well-stirred run optionally dilutes back to the initial population size
+*How the population is bounded:* the closure (generate_network) is cut off by max_species; the well-stirred run (chemart.evolve) optionally dilutes back to the initial population size
 
 ### Using it in Chemart
 
@@ -198,7 +198,11 @@ UACGCUUUCUAGCAGUUAUUCAUUCAACUC + UAAGUAGUUUAGUCACAAUGUUUCC -> UACGCUUUCUAGCAGUUA
 CCUGUAUUAAACCAUCUUAGUAACACCGGC + GGGGUUAAGUAGUUUAGUCACAAU -> CCUGUAUUAAACCAUCUUAGUAACACCGGC + GGGGU + UAAGUAGUUUAGUCACAAU
 ```
 
-The default run is closure mode on 8 random 30-base sequences. It is not a
+The chemistry has two faces. `chemart.generate_network`, printed above,
+returns the closure; `chemart.evolve` runs the well-stirred pot and returns a
+trajectory.
+
+The default call is the closure of 8 random 30-base sequences. It is not a
 published experiment. It completes with 21 species and 8 reactions, all of them
 cleavages. `net.extras` explains the network:
 
@@ -236,18 +240,23 @@ CGCACGCUCGUUCAGGUCCACGUUAGUCCU + GCUAUGCGCUUCCAGGUUUUUAACCUUCGG + GUGGCUUGCGGAAC
   -> CGCACGCUCGUUCAGGUCCACGUUAGUCCU + GUGGCUUGCGGAACGACAUGCUUCUUUGUAGCUAUGCGCUUCCAGGUUUUUAACCUUCGG
 ```
 
-**A pot of molecules.** `mode="well-stirred"` records only the reactions that
-actually fired, each with its count (`r.count`):
+**A pot of molecules.** `chemart.evolve` runs the well-stirred pot. Its
+network records only the reactions that actually fired, each with its count
+(`r.count`):
 
 ```python
-run = chemart.generate_network("rna-folding-ac", seed=1, mode="well-stirred",
-                               pool=12, steps=400)
+traj = chemart.evolve("rna-folding-ac", seed=1, pool=12, steps=400)
+run = traj.network
 # rna-folding-ac: 51 species, 20 reactions, status=observed
+len(traj.frames), traj.frames[1].t      # (35, 12.0)
 ```
 
-In this run each of the 20 reactions fired once. `dilution="constant"` removes
-molecules after every reaction to keep the population at its starting size.
-Well-stirred mode needs `pool` of at least 3.
+There is a frame every 12 collisions (the size of the starting pool); each
+frame's `state` is the pot at that moment and its `fired` the reactions of
+those collisions. In this run each of the 20 reactions fired once, and the
+pot grew from 12 to 30 molecules, since a cleavage makes two molecules out of
+one. `dilution="constant"` removes molecules after every reaction to keep the
+population at its starting size. The run needs `pool` of at least 3.
 
 Sequence length is `seq_length`; Flamm et al. (2010) used 100-base genes, and
 100-base sequences fold and map without trouble, but a closure over many of
@@ -256,16 +265,15 @@ the recognition word are in the parameter table below.
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `generate_network`, or to `chemart.evolve`; a parameter marked *evolve only* belongs to the process and one marked *generate only* to the network. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
 | `seq_length` | `int` | `30` | structural | length of each RNA sequence in the initial pool <br>`8` … `120` · *range:* Flamm et al. (2010) use tRNA-size genes of 100 nt carried on a 5000 nt genome |
-| `pool` | `int` | `8` | population | number of random RNA sequences the run starts from <br>`1` … `200` · *range:* well-stirred mode needs at least 3; paper-scale runs hold tens of ribozymes per cell |
-| `mode` | `enum` | `closure` | structural | closure: every reaction reachable from the pool; well-stirred: the reactions that fired in a multiset run, with counts <br>one of `closure`, `well-stirred` |
-| `max_species` | `int` | `60` | structural | species budget for the closure; the network is reported as truncated when it is reached <br>`2` … `5000` |
-| `steps` | `int` | `500` | population | number of collisions in the well-stirred run <br>`1` … `200000` |
-| `dilution` | `enum` | `none` | population | whether the well-stirred population is diluted back to its initial size after every reaction <br>one of `none`, `constant` |
+| `pool` | `int` | `8` | population | number of random RNA sequences the closure or the run starts from <br>`1` … `200` · *range:* chemart.evolve needs at least 3; paper-scale runs hold tens of ribozymes per cell |
+| `max_species` | `int` | `60` | structural | *generate only.* species budget for the closure; the network is reported as truncated when it is reached <br>`2` … `5000` |
+| `steps` | `int` | `500` | population | *evolve only.* number of collisions in the well-stirred run; a frame every (initial pool size) collisions <br>`1` … `200000` |
+| `dilution` | `enum` | `none` | population | *evolve only.* whether the well-stirred population is diluted back to its initial size after every reaction <br>one of `none`, `constant` |
 | `its_min` | `int` | `4` | structural | smallest ITS size (longest-loop cycle length) that is catalytic <br>`2` … `200` |
 | `its_max` | `int` | `12` | structural | largest ITS size that is catalytic; larger loops are treated as composite transition structures <br>`2` … `200` |
 | `min_recognition` | `int` | `3` | structural | length of the recognition word read off the loop sequence (level 4 of the ITS hierarchy, the atom types) <br>`1` … `50` |
@@ -275,14 +283,15 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "7 decisions"
+??? note "8 decisions"
 
     - The book describes this AC in prose only. The model is reconstructed from Flamm et al. (2010), which states the map verbatim: sequence -&gt; MFE structure (Vienna RNA) -&gt; the longest loop read as the ITS, with the ITS size given by the loop length, the stems fixing the arrangement of the electron re-ordering, and the sequence inside the loop fixing the atom types.
     - Loop length is implemented as the length of the loop cycle in the structure graph: unpaired bases plus the two bases of every delimiting pair. This is the cycle whose size Fujita counts as the number of atoms in the electron re-ordering; the exterior loop is not a cycle and is excluded.
     - Catalytic criterion: a mono-cyclic ITS of size 2n breaks n and forms n bonds alternately (Fujita 1986), so only even cycle sizes are catalytic, within [its_min, its_max]. Multiloops (three or more stems) are composite transition structures and are inert here.
     - Which concrete reaction each ITS class denotes is specified in Ullrich's Leipzig PhD thesis and in the paywalled CMSB/ECAL chapters, none of which could be obtained. Chemart therefore fixes the two canonical ribozyme reactions by stem count: hairpin loops (one stem) cleave, interior and bulge loops (two stems) ligate. This is Chemart's choice, not a published rule.
     - The original model rewrites ToyChem metabolite graphs and derives rate constants from activation energies (QSPR). ToyChem's extended-Huckel chemistry is out of scope here, so the ribozymes act on RNA sequences themselves: the recognition site is the Watson-Crick reverse complement of the first min_recognition bases of the loop sequence, cleavage cuts immediately 3' of that site, and ligation joins two molecules whose junction spells it. No rate constants are published that this implementation could reproduce, so every reaction carries rate None.
-    - Defaults are small (30 nt, 4 seed sequences, 60 species) so that the closure folds in well under a second; the paper's scale (100 nt genes, 5000 nt genomes, 100-1000 generations) is recorded in the params' range fields.
+    - Two faces: generate_network returns the closure of the initial pool (one substrate per cleavage, two per ligation), cut off by max_species; chemart.evolve runs the well-stirred multiset (chemart.soup.stir, three molecules per collision, the first as catalyst), a frame every (initial pool size) collisions, and returns the reactions that fired with counts. They replace the former mode parameter (closure | well-stirred).
+    - Defaults are small (30 nt, 8 seed sequences, 60 species) so that the closure folds in well under a second; the paper's scale (100 nt genes, 5000 nt genomes, 100-1000 generations) is recorded in the params' range fields.
     - Book table 18.1 gives two 60 nt sequences with their RNAfold structures. ViennaRNA 2.7.2 reproduces the second exactly (-7.10 kcal/mol); for the first it returns a different structure at -10.90 kcal/mol, while the book's structure evaluates to -9.80 and appears in the 1.5 kcal/mol suboptimal ensemble. The book's first structure is therefore suboptimal under current Turner parameters (identical under Turner 1999 and 2004); the tests record both facts.
 
 ## Results

@@ -22,11 +22,11 @@ doublet codes (report section 3, items 4-5):
 A collision processor + tape therefore gives s1 + s2 -> s1 + s2 + s3 (+ ...):
 both reactants survive and the released strings are new molecules.
 
-method "closure" returns every reaction reachable from the seed strings
-(chemart.expand.expand over ordered processor/tape pairs); method "soup" runs
-the report's collision algorithm (a pattern space filled by randomly drawn
-molecules, products displacing random molecules) and returns the reactions
-that fired.
+generate returns every reaction reachable from the seed strings
+(chemart.expand.expand over ordered processor/tape pairs); evolve runs the
+report's collision algorithm (a pattern space filled by randomly drawn
+molecules, products displacing random molecules), a frame every `population`
+steps, and returns the reactions that fired.
 """
 
 from __future__ import annotations
@@ -35,6 +35,8 @@ from collections import Counter
 
 from chemart.expand import expand
 from chemart.network import CONSTANT_TOTAL, Network, Reaction, Species
+from chemart.soup import Tally
+from chemart.trajectory import Frame
 
 INITIATOR = "111"
 RULE_BITS = 12
@@ -162,12 +164,13 @@ def _parse_strings(value) -> list[str]:
 
 
 def generate(p, rng):
-    strings = _parse_strings(p.strings)
-    if p.method == "closure":
-        if p.error_rate != 0:
-            raise ValueError("error_rate only applies to method 'soup'; the closure is the error-free chemistry")
-        return _closure(p, strings)
-    return _soup(p, strings, rng)
+    """Every reaction reachable from `strings` over ordered processor/tape pairs, error-free."""
+    return _closure(p, _parse_strings(p.strings))
+
+
+def evolve(p, rng):
+    """The report's collision algorithm for `steps` steps, a frame every `population` steps."""
+    return (yield from _soup(p, _parse_strings(p.strings), rng))
 
 
 def _reaction(lhs, rhs, count=None) -> Reaction:
@@ -210,7 +213,7 @@ def _soup(p, inoculum, rng):
     placed: dict[int, set[str]] = {}      # slot -> its patterns in the space
     rec_cache: dict[str, list[str]] = {}
     table_cache: dict[str, dict] = {}
-    fired: dict[tuple, list] = {}
+    tally = Tally()
     collisions = 0
 
     def clear(slot):
@@ -218,7 +221,9 @@ def _soup(p, inoculum, rng):
             if space.get(pat) == slot:
                 del space[pat]
 
-    for _ in range(p.steps):
+    def step():
+        """One draw: place a pattern, or collide and process."""
+        nonlocal collisions
         i = int(rng.integers(n))
         s = pop[i]
         if p.recognition == "none":        # well-mixed limit: a random partner, no pattern space
@@ -233,24 +238,22 @@ def _soup(p, inoculum, rng):
             if products:
                 for prod in products:
                     pop[int(rng.integers(n))] = prod
-                lhs, rhs = (proc, tape), (proc, tape, *products)
-                key = (frozenset(Counter(lhs).items()), frozenset(Counter(rhs).items()))
-                fired.setdefault(key, [lhs, rhs, 0])[2] += 1
-            continue
+                tally.add((proc, tape), (proc, tape, *products))
+            return
         recs = rec_cache.get(s)
         if recs is None:
             recs = rec_cache[s] = recognizons(s, p.R)
         if not recs:
-            continue
+            return
         cond = recs[int(rng.integers(len(recs)))]
         pat = "".join(c if c != "#" else ("1" if rng.random() < 0.5 else "0") for c in cond)
         j = space.get(pat)
         if j is None:
             space[pat] = i
             placed.setdefault(i, set()).add(pat)
-            continue
+            return
         if j == i:
-            continue
+            return
         collisions += 1
         proc, tape = pop[j], s
         clear(i)
@@ -260,20 +263,29 @@ def _soup(p, inoculum, rng):
             table = table_cache[proc] = _table(proc)
         products = process(proc, tape, p.max_steps, p.error_rate, rng, table=table)
         if not products:
-            continue
+            return
         for prod in products:              # Moran displacement: overwrite a random molecule
             k = int(rng.integers(n))
             clear(k)
             pop[k] = prod
-        lhs, rhs = (proc, tape), (proc, tape, *products)
-        key = (frozenset(Counter(lhs).items()), frozenset(Counter(rhs).items()))
-        entry = fired.setdefault(key, [lhs, rhs, 0])
-        entry[2] += 1
+        tally.add((proc, tape), (proc, tape, *products))
 
-    names = set(start).union(*(rhs for _, rhs, _ in fired.values()))
+    def frame(t):
+        fired = [[[species_id(x) for x in lhs], [species_id(x) for x in rhs], k] for lhs, rhs, k in tally.flush()]
+        return Frame(t=float(t), state={species_id(x): float(c) for x, c in sorted(Counter(pop).items())},
+                     fired=fired)
+
+    yield frame(0)
+    for done in range(1, p.steps + 1):
+        step()
+        if done % n == 0 or done == p.steps:
+            yield frame(done)
+
+    fired = tally.reactions()
+    names = set(start).union(*(rhs for _, rhs, _ in fired))
     return Network(
         species=_species(names),
-        reactions=[_reaction(lhs, rhs, count) for lhs, rhs, count in fired.values()],
+        reactions=[_reaction(lhs, rhs, count) for lhs, rhs, count in fired],
         status="observed",
         initial_state={species_id(s): c for s, c in sorted(Counter(start).items())},
         outflow=CONSTANT_TOTAL,

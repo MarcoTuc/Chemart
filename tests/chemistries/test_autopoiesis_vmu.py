@@ -9,7 +9,7 @@ paper omitted, restored by McMullin & Varela (1997). See the catalog sources.
 import numpy as np
 import pytest
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries import autopoiesis_vmu as A
 
 ID = "autopoiesis-vmu"
@@ -47,7 +47,7 @@ def repair_time(world, steps=60):
 # --- the reactions the chemistry defines -----------------------------------------
 def test_defined_network_is_the_books_three_reactions():
     # book 6.1.5 and figure 6.3: * + 2 O -> * + [O], links bond to links, [O] decays
-    net = generate_network(ID, mode="reactions")
+    net = generate_network(ID)
     assert net.status == "complete"
     text = {r.to_text() for r in net.reactions}
     assert "C + 2 S -> C + L0" in text                     # production, the catalyst is a catalyst
@@ -60,8 +60,17 @@ def test_defined_network_is_the_books_three_reactions():
     assert all(r.rate is None for r in net.reactions)
 
 
+def test_the_defined_network_takes_no_lattice_parameters():
+    assert generate_network(ID, seed=1).to_dict()["reactions"] == generate_network(ID, seed=2).to_dict()["reactions"]
+    with pytest.raises(ValueError, match="belongs to the evolve face"):
+        generate_network(ID, steps=10)
+    with pytest.raises(ValueError, match="is gone"):
+        generate_network(ID, mode="lattice")
+
+
 def test_observed_run_fires_those_reactions_with_counts():
-    net = generate_network(ID, seed=1)
+    traj = evolve(ID, seed=1)
+    net = traj.network
     assert net.status == "observed"
     events = net.extras["analysis"]["events"]
     (production,) = [r for r in net.reactions if r.reactants == {"C": 1, "S": 2}]
@@ -78,6 +87,21 @@ def test_observed_run_fires_those_reactions_with_counts():
     assert net.initial_state["C"] == 1.0 and net.initial_state["S"] == 899.0
 
 
+def test_a_frame_per_time_step():
+    traj = evolve(ID, seed=1, steps=30)
+    assert traj.clock == "steps" and [f.t for f in traj.frames] == [float(t) for t in range(31)]
+    assert traj.frames[0].state == traj.network.initial_state and not traj.frames[0].fired
+    for f in traj.frames:
+        # every site holds one particle: substrate, catalyst, a link (with or without
+        # an absorbed substrate) or a hole
+        assert f.state["C"] == 1.0 and sum(f.state.values()) <= 900
+        assert set(f.observables) == {"closed_chains", "membranes", "enclosed_catalysts"}
+    # a production fires in the first step: C + 2 S -> C + L0
+    first = {(tuple(lhs), tuple(rhs)): n for lhs, rhs, n in traj.frames[1].fired}
+    assert first.get((("C", "S", "S"), ("C", "L0"))) == 1
+    assert traj.frames[1].state["L0"] == 1.0
+
+
 # --- the published phenomena -------------------------------------------------------
 @pytest.mark.parametrize("seed", [0, 1, 2, 3, 4])
 def test_membrane_is_permeable_to_substrate_but_not_to_links_or_catalysts(seed):
@@ -86,11 +110,13 @@ def test_membrane_is_permeable_to_substrate_but_not_to_links_or_catalysts(seed):
     Substrate crosses by being absorbed and re-emitted on the other side; bonded
     links are immobile, so nothing else crosses.
     """
-    net = generate_network(ID, seed=seed, initial="cell", steps=120, **NO_DECAY)
+    traj = evolve(ID, seed=seed, initial="cell", steps=120, **NO_DECAY)
+    net = traj.network
     membrane = net.extras["analysis"]["membrane"]
     assert membrane["membranes"] == 1 and membrane["chain_lengths"] == [12]
     assert membrane["interior_sizes"] == [9]
     assert membrane["steps_enclosed"] == 121            # closed at every step
+    assert set(traj.series("enclosed_catalysts")) == {1} and set(traj.series("membranes")) == {1}
     crossings = net.extras["analysis"]["permeability"]
     assert crossings["substrate_crossings"] > 0
     assert crossings["link_crossings"] == 0
@@ -109,9 +135,11 @@ def test_boundary_is_repaired_after_one_of_its_links_decays():
 
     # and over a whole run with links decaying at the published rate, the cell is
     # repeatedly ruptured and repaired before it finally comes apart
-    net = generate_network(ID, seed=0, initial="cell", steps=120)
-    membrane = net.extras["analysis"]["membrane"]
+    traj = evolve(ID, seed=0, initial="cell", steps=120)
+    membrane = traj.network.extras["analysis"]["membrane"]
     assert membrane["ruptures"] > 0 and membrane["repairs"] > 0
+    enclosed = [n > 0 for n in traj.series("enclosed_catalysts")]
+    assert sum(a and not b for a, b in zip(enclosed, enclosed[1:])) == membrane["ruptures"]
 
 
 def test_a_closed_boundary_forms_spontaneously_around_the_catalyst():
@@ -137,15 +165,17 @@ def test_chain_based_bond_inhibition_keeps_the_links_inside_a_cell_free():
     Without it the free links inside a cell bond to each other and stop moving,
     so none is available to repair the membrane.
     """
+    def free_links_and_bonds(traj):
+        final = traj.frames[-1].state
+        return (final.get("L0", 0) + final.get("L0S", 0),
+                traj.network.extras["analysis"]["events"].get("bond", 0))
+
     free, bonded = [], []
     for seed in range(6):
-        with_rule = generate_network(ID, seed=seed, initial="cell", steps=80, **NO_DECAY)
-        without = generate_network(ID, seed=seed, initial="cell", steps=80,
-                                   bond_inhibition=False, **NO_DECAY)
-        free.append((with_rule.extras["analysis"]["per_step"]["free_links"][-1],
-                     with_rule.extras["analysis"]["events"].get("bond", 0)))
-        bonded.append((without.extras["analysis"]["per_step"]["free_links"][-1],
-                       without.extras["analysis"]["events"].get("bond", 0)))
+        free.append(free_links_and_bonds(
+            evolve(ID, seed=seed, initial="cell", steps=80, **NO_DECAY)))
+        bonded.append(free_links_and_bonds(
+            evolve(ID, seed=seed, initial="cell", steps=80, bond_inhibition=False, **NO_DECAY)))
     # with the rule the interior links stay free and hardly ever bond
     assert all(links >= 5 and bonds <= 2 for links, bonds in free), free
     # without it they bond into clusters and almost no free link is left
@@ -183,14 +213,14 @@ def test_a_closed_chain_encloses_its_interior_but_a_cluster_encloses_nothing():
 
 def test_reproducible_with_a_seed():
     kw = dict(width=12, height=12, steps=40)
-    assert generate_network(ID, seed=5, **kw).to_dict() == generate_network(ID, seed=5, **kw).to_dict()
-    assert generate_network(ID, seed=5, **kw).to_dict() != generate_network(ID, seed=6, **kw).to_dict()
+    assert evolve(ID, seed=5, **kw).to_dict() == evolve(ID, seed=5, **kw).to_dict()
+    assert evolve(ID, seed=5, **kw).network.to_dict() != evolve(ID, seed=6, **kw).network.to_dict()
 
 
 def test_parameters_are_checked():
     with pytest.raises(ValueError, match="unknown particle type"):
-        generate_network(ID, mobility={"proton": 0.5})
+        evolve(ID, mobility={"proton": 0.5})
     with pytest.raises(ValueError, match=r"mobility\['link'\]"):
-        generate_network(ID, mobility={"link": 2.0})
+        evolve(ID, mobility={"link": 2.0})
     with pytest.raises(ValueError, match="exceeds"):
-        generate_network(ID, width=5, height=5, n_catalysts=30, steps=0)
+        evolve(ID, width=5, height=5, n_catalysts=30, steps=0)

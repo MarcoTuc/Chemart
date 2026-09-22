@@ -146,7 +146,7 @@ becomes *truncated*, meaning that reactions exist beyond what is listed.
 ### The reactor
 
 Laing gave no dynamics, so Chemart offers two ways to turn the rules into a
-network. The **closure** starts from the seed machines and tapes, applies every
+network, its two faces: `generate_network` and `chemart.evolve`. The **closure** starts from the seed machines and tapes, applies every
 machine to every tape, adds the products, and repeats until nothing new
 appears or a limit is hit. It lists every reaction reachable, with no rates.
 The **soup** is a Chemart addition: a population of molecules from which random
@@ -248,44 +248,48 @@ tapes=["000"], max_length=3` the tape `t:000` has three reactions, to `t:100`,
 `t:010` and `t:001`, and the closure is all eight 3-bit tapes with 12
 reactions. `binding="random"` draws one attachment point per pair instead.
 
-**A soup.** `method="soup"` draws `steps` random pairs from `copies` copies of
-each seed molecule:
+**A soup.** `chemart.evolve` draws `steps` random pairs from `copies` copies of
+each seed molecule and returns a trajectory: a frame every generation (as many
+draws as molecules, here 40), with the population at that moment (`state`)
+and the reactions fired since the previous frame, and at the end the network
+of every reaction that fired:
 
 ```python
-net = chemart.generate_network("laing-molecular-machines", seed=2, method="soup",
-                               copies=20, steps=400, max_length=8)
-net.summary()                # 18 species, 16 reactions, status=observed
+traj = chemart.evolve("laing-molecular-machines", seed=2, copies=20, steps=400, max_length=8)
+net = traj.network
+net.summary().splitlines()[0]   # 'laing-molecular-machines: 18 species, 16 reactions, status=observed'
 net.extras["final_state"]
 # {'m:CT1.W1.H.TT1.W0.R.CT1.W1': 20, 't:011': 4, 't:0001': 3, 't:0101': 3,
 #  't:111': 2, 't:1001': 2, 't:1101': 2, 't:0011': 2, 't:00001': 1, 't:1111': 1}
 ```
 
-Each reaction carries a `count` of how often it fired. Here each of the 20
+Frame `t` counts pair draws (`traj.times()` is 0, 40, ..., 400). Each reaction
+carries a `count` of how often it fired. Here each of the 20
 tapes has been counted up from 0 to somewhere between 6 and 16, depending on
 how often it happened to meet a machine.
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `generate_network`, or to `chemart.evolve`; a parameter marked *evolve only* belongs to the process and one marked *generate only* to the network. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
-| `method` | `enum` | `closure` | structural | closure: every reaction reachable from the seed machines and tapes (status complete or truncated); soup: random pairs drawn from a population with chemart.soup, returning the reactions that fired with counts (status observed) <br>one of `closure`, `soup` |
 | `machines` | `list` | `['CT1.W1.H.TT1.W0.R.CT1.W1']` | structural | the active machine strings, instructions separated by '.'; every CT&lt;k&gt; needs exactly one TT&lt;k&gt;. The default adds 1 to a little-endian binary number (Chemart example) <br>*range:* any program over W0, W1, L, R, H, NOP, D, CT&lt;k&gt;, TT&lt;k&gt;; turing_program() compiles a 2-symbol Turing machine, e.g. the busy beavers of the tests |
 | `tapes` | `list` | `['0']` | structural | the passive seed tapes, strings over 0 and 1 |
-| `binding` | `enum` | `leftmost` | stochastic | the tape unit the machine attaches to: leftmost, every unit (each outcome a separate reaction; closure only), or one drawn with the generator (per pair in the closure, per collision in the soup) <br>one of `leftmost`, `all`, `random` |
+| `binding` | `enum` | `leftmost` | stochastic | the tape unit the machine attaches to: leftmost, every unit (each outcome a separate reaction; the closure only), or one drawn with the generator (per pair in the closure, per collision in the soup) <br>one of `leftmost`, `all`, `random` |
 | `max_length` | `int` | `4` | structural | longest tape kept; a run that grows a tape beyond it gives no reaction and the status becomes truncated <br>`1` … `10000` |
 | `max_steps` | `int` | `1000` | structural | instructions executed before a run is taken as non-halting; it then gives no reaction and the status becomes truncated <br>`1` … `10000000` |
-| `max_species` | `int` | `200` | structural | closure only: species budget; the status becomes truncated when it cuts the closure off <br>`1` … `100000` |
-| `copies` | `int` | `20` | population | soup only: copies of each seed machine and tape in the initial population, whose size the soup keeps constant <br>`1` … `100000` |
-| `steps` | `int` | `500` | stochastic | soup only: number of pair draws <br>`0` … `10000000` |
+| `max_species` | `int` | `200` | structural | *generate only.* species budget of the closure; the status becomes truncated when it cuts the closure off <br>`1` … `100000` |
+| `copies` | `int` | `20` | population | *evolve only.* copies of each seed machine and tape in the initial population, whose size the soup keeps constant; a frame every generation (as many pair draws as molecules) <br>`1` … `100000` |
+| `steps` | `int` | `500` | stochastic | *evolve only.* number of pair draws <br>`0` … `10000000` |
 
 ### Implementation decisions
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "11 decisions"
+??? note "12 decisions"
 
+    - Two faces: generate_network returns the closure of the seed machines and tapes (status complete or truncated); chemart.evolve runs a well-stirred soup of `copies` of each seed for `steps` pair draws (a Chemart addition, since Laing gave no dynamics), a frame every generation of as many draws as molecules, and returns the reactions that fired with counts (status observed).
     - Laing's papers [484-488] were not accessible: Elsevier and J. Cybernetics are paywalled, the University of Michigan Deep Blue copy of [488] and Laing's 1977 Binghamton dissertation 'Automaton self-reference' both returned 403 to automated downloads, and the Wayback Machine was offline. The machine is built from the book and the two secondary sources above, keeping only what they state; every other rule is listed here.
     - Instruction set: the book's fig. 10.5 set (W0, W1, L, R, NOP, CT, TT) plus H and D (detach) from Freitas & Merkle's list of Laing's 1975 constituents. Their 'synthesize' (turns a passive parts blank into a constituent) and Laing's 1977 activation, activate-and-detach and conversion primitives are not implemented, because no accessible source says which state or type they produce. So machines are never built: only tapes are created, and Laing's self-reproduction by self-description and self-inspection ([486-488]) is not reproduced.
     - CT/TT: the fold that brings a CT into contact with its TT is written as a shared label (CT1 ... TT1); several CTs may share one TT, and each label has exactly one TT. A CT transfers when the contacted tape constituent is 1 and falls through on 0, as in Wang's B-machine conditional transfer (the book names Wang's machine as the model). Execution continues after the TT, which is a no-op.

@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 from chemart.simulate import rhs
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries import ikegami_hashimoto as ih
 
 
@@ -82,7 +82,7 @@ def test_m1002_is_produced_by_the_largest_variety_of_machines():
 # --- networks ------------------------------------------------------------------
 def test_fig7_parasitic_chain():
     # [AL] fig. 7a-c: the loop M1002/T1 is exploited by M3006 (made by M1002 from T5), then by M1222 (from T3)
-    net = generate_network("ikegami-hashimoto", method="closure", machines=["1002", "3006", "1222"],
+    net = generate_network("ikegami-hashimoto", machines=["1002", "3006", "1222"],
                            tapes=["01", "05", "03"])
     assert net.status == "complete"
     got = {(tuple(sorted(r.reactants.items())), tuple(sorted(r.products.items()))) for r in net.reactions}
@@ -96,7 +96,7 @@ def test_fig7_parasitic_chain():
 
 
 def test_closure_products_are_translations():
-    net = generate_network("ikegami-hashimoto", seed=5, method="closure")
+    net = generate_network("ikegami-hashimoto", seed=5)
     assert net.status == "complete"
     tapes = [s for s in net.species if s.id.startswith("T")]
     assert len(tapes) <= 128
@@ -110,7 +110,7 @@ def test_closure_products_are_translations():
 def test_rate_equations_are_eqs_4_to_6():
     # continuous-time eqs. 4-6 with c = d, no noise or integer parts:
     # df_i = c (sum over reading (k, j, state) -> i of f_k f_j / 2  -  f_i W),  W = sum over reading pairs of f_k f_j
-    net = generate_network("ikegami-hashimoto", seed=2, method="closure", c=0.6)
+    net = generate_network("ikegami-hashimoto", seed=2, c=0.6)
     ids, f = rhs(net)
     rng = np.random.default_rng(0)
     x = rng.uniform(0.1, 1.0, len(ids))
@@ -137,20 +137,25 @@ def test_rate_equations_are_eqs_4_to_6():
 
 
 # --- population dynamics -------------------------------------------------------
+def n_machines(frame):
+    """Distinct machines in a frame (figs. 4-6)."""
+    return sum(1 for s in frame.state if s.startswith("M"))
+
+
 def test_minimal_loop_is_a_fixed_point_without_noise():
     # [AL] sec. 4, attractor 1: a minimal self-replicating loop with zero active mutation
-    net = generate_network("ikegami-hashimoto", machines=["1002"], tapes=["01"], noise=0.0, generations=30)
+    traj = evolve("ikegami-hashimoto", machines=["1002"], tapes=["01"], noise=0.0, generations=30)
+    net = traj.network
     assert net.status == "observed" and len(net.reactions) == 1
     (r,) = net.reactions
     assert r.to_text() == "M1002 + T01 -> 2 M1002 + 2 T01  [mass-action k=0.6 frame_length=4]  (x30)"
     assert net.extras["final_state"] == {"M1002": 1000, "T01": 1000}
-    a = net.extras["analysis"]
-    assert set(a["active_mutation"]) == {0.0} and set(a["reading_length"]) == {4.0}
+    assert set(traj.series("active_mutation")) == {0.0} and set(traj.series("reading_length")) == {4.0}
 
 
 def test_machine_without_description_tape_is_washed_out():
     # [AL] sec. 3: "a machine without description tape is unstable and smoothly removed"
-    net = generate_network("ikegami-hashimoto", machines=["1002", "3006"], tapes=["01"], noise=0.0, generations=12)
+    net = evolve("ikegami-hashimoto", machines=["1002", "3006"], tapes=["01"], noise=0.0, generations=12).network
     assert net.initial_state == {"M1002": 500, "M3006": 500, "T01": 1000}
     final = net.extras["final_state"]
     assert set(final) == {"M1002", "T01"} and final["M1002"] >= 995   # integer parts stop just below N
@@ -160,8 +165,8 @@ def test_machine_without_description_tape_is_washed_out():
 def test_noise_brings_the_published_parasites(seed):
     # [AL] fig. 2a / [ECAL] fig. 1a (noise 0.04): M3006 and M1222 with their tapes T5 and T3 invade the loop,
     # with bursts of active mutation
-    net = generate_network("ikegami-hashimoto", seed=seed, machines=["1002"], tapes=["01"], noise=0.04,
-                           generations=150)
+    traj = evolve("ikegami-hashimoto", seed=seed, machines=["1002"], tapes=["01"], noise=0.04, generations=150)
+    net = traj.network
     names = net.extras["paper_names"]
     made = {}   # parasite machine -> circular names of the tapes produced with it
     for r in net.reactions:
@@ -171,22 +176,23 @@ def test_noise_brings_the_published_parasites(seed):
                 (tape,) = [s for s in new if s.startswith("T")]   # the written tape is always one new copy
                 made.setdefault(m, set()).add(names[tape])
     assert made == {"M3006": {"T5"}, "M1222": {"T3"}}
-    assert max(net.extras["analysis"]["active_mutation"]) > 0
+    assert max(traj.series("active_mutation")) > 0
     for i in net.extras["noise_induced"]:
         assert net.reactions[i].rate is None
-    assert max(net.extras["analysis"]["distinct_machines"]) > 5
+    assert max(n_machines(f) for f in traj.frames) > 5
 
 
 def test_turning_noise_off_stops_innovation():
-    net = generate_network("ikegami-hashimoto", seed=0, machines=["1002"], tapes=["01"], noise=0.04,
-                           generations=120, noise_off=80)
-    a = net.extras["analysis"]
-    after = a["distinct_machines"][90:]
+    traj = evolve("ikegami-hashimoto", seed=0, machines=["1002"], tapes=["01"], noise=0.04,
+                  generations=120, noise_off=80)
+    after = [n_machines(f) for f in traj.frames][90:]
     assert all(x >= y for x, y in zip(after, after[1:])), "no new machines without noise"
 
 
 def test_observed_network_bookkeeping():
-    net = generate_network("ikegami-hashimoto", seed=3)
+    traj = evolve("ikegami-hashimoto", seed=3)
+    assert traj.clock == "generations" and traj.times() == [float(g) for g in range(151)]
+    net = traj.network
     assert net.status == "observed" and net.outflow == "constant-total"
     assert sum(n for s, n in net.initial_state.items() if s.startswith("M")) == 1000
     assert sum(n for s, n in net.initial_state.items() if s.startswith("T")) == 1000
@@ -208,4 +214,4 @@ def test_bad_parameters():
     with pytest.raises(ValueError, match="7-bit"):
         generate_network("ikegami-hashimoto", tapes=["80"])
     with pytest.raises(ValueError, match="noise_off"):
-        generate_network("ikegami-hashimoto", generations=10, noise_off=20)
+        evolve("ikegami-hashimoto", generations=10, noise_off=20)

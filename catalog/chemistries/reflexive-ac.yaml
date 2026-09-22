@@ -18,6 +18,7 @@ chemistries:
   kind: generator
   constructive: true
   type: gas
+  clock: collisions
   S:
     repr: >
       finite state machines (Mealy machines) drawn as labelled directed graphs: every node has at most one
@@ -39,17 +40,16 @@ chemistries:
       lattice of eqs. 3-4, and state spaces grow exponentially.
   A:
     reactor: [graph-rewrite, well-stirred-multiset]
-    dilution: "closure: none; soup: each reactive collision adds the product and removes a random molecule (population M constant)"
-    notes: "The source describes the reaction and its products, not a reactor; the flow-reactor soup is the book's standard AC reactor, a Chemart choice."
+    dilution: "the closure has none; the flow reactor (chemart.evolve) adds the product of each reactive collision and removes a random molecule (population M constant)"
+    notes: "The source describes the reaction and its products, not a reactor; the flow reactor is the book's standard AC reactor, a Chemart choice."
   params:
-    - {name: method, type: enum, default: closure, choices: [closure, soup], role: structural, meaning: "closure: every composition reachable from the seed machines (chemart.expand over ordered pairs), complete or cut off by max_species; soup: a stochastic flow reactor of M molecules, observed reactions with firing counts"}
     - {name: machines, type: list, default: ["M45"], range: "e.g. ['M45', 'M61'], ['M54'], ['0/0,1/1;1/1,0/1@1']; the arXiv:2505.07186 machines of interest are M7, M44, M45, M54, M60, M61", role: structural, meaning: "seed machines: elementary numbers M<n> (optionally @S0/@S1 for the pointer) or machine texts 'dest/out,...;...' with '-' for a missing link and optional '@j' pointer; all must share the alphabet. Empty: M random machines"}
-    - {name: M, type: int, default: 50, min: 2, max: 100000, role: population, meaning: "soup: reactor size (given machines are split equally); without machines, the number of random machines drawn (closure seeds or initial soup population)"}
+    - {name: M, type: int, default: 50, min: 2, max: 100000, role: population, meaning: "without machines, the number of random machines drawn (the closure's seeds or the reactor's initial population); in the reactor, its size (given machines are split equally)"}
     - {name: states, type: int, default: 2, min: 1, max: 1000, role: population, meaning: "random machines: number of states before trimming to the part reachable from state 0; links are uniform over states and outputs"}
     - {name: symbols, type: int, default: 2, min: 1, max: 16, range: "the sources use the binary alphabet {0, 1}", role: structural, meaning: "random machines: input/output alphabet size k"}
     - {name: max_states, type: int, default: 64, min: 1, max: 100000, role: structural, meaning: "largest product accepted: a composition with more reachable nodes is elastic"}
-    - {name: max_species, type: int, default: 100, min: 1, max: 100000, role: structural, meaning: "closure only: species budget; reactions that would add more are dropped and status becomes truncated"}
-    - {name: collisions, type: int, default: 2000, min: 0, max: 10000000, role: population, meaning: "soup only: number of collisions (elastic ones included)"}
+    - {name: max_species, type: int, default: 100, min: 1, max: 100000, role: structural, face: generate, meaning: "species budget of the closure; reactions that would add more are dropped and status becomes truncated"}
+    - {name: collisions, type: int, default: 2000, min: 0, max: 10000000, role: population, face: evolve, meaning: "number of collisions (elastic ones included); a frame every M collisions"}
   provides: [topology, stoichiometry, catalysts, flow, initial-state, sequence-structure-function]
   fidelity: reconstructed
   sources:
@@ -65,8 +65,9 @@ chemistries:
     - "Not modelled: the 2004 graph-constructing-graph machinery (xi-flows chosen by a decision tree over N-loops, translation of the output string by codons into construction-head instructions that grow and fold the graph). The 2025 restatement does not use it, and the 2004 paper leaves conflict resolution open."
     - "Elastic boundary: products with more than max_states reachable nodes (Chemart choice, since state counts multiply at every composition). No rates are published, so reactions carry rate None."
     - "Canonical id: breadth-first numbering from the pointer with links taken in input order; for accessible deterministic graphs this is a complete isomorphism invariant, so no general graph canonisation is needed."
-    - "Soup: chemart.soup with constant dilution draws an ordered pair (sender, receiver), adds the product and removes a random molecule; initial population: the given machines in equal copies, or M random machines (duplicates allowed). Random machines have uniform links over states and outputs, trimmed from state 0. These are Chemart choices; the defaults (closure from M45, M = 50, 2000 collisions, max_states 64, max_species 100) are small, not published values."
-    - "The v1 entry had no parameters; all parameters are new. v1 said 'dilution: none', which holds for the closure; the soup is an added reactor."
+    - "Two faces: generate_network returns the closure, every composition reachable from the seed machines (chemart.expand over ordered pairs), complete or cut off by max_species; chemart.evolve runs a stochastic flow reactor of M molecules, a frame every M collisions, and returns the reactions that fired with counts. The number of distinct species over time, formerly extras.analysis.distinct_species, is read off the frames' state."
+    - "Flow reactor: chemart.stir with constant dilution draws an ordered pair (sender, receiver), adds the product and removes a random molecule; initial population: the given machines in equal copies, or M random machines (duplicates allowed). Random machines have uniform links over states and outputs, trimmed from state 0. These are Chemart choices; the defaults (closure from M45, M = 50, 2000 collisions, max_states 64, max_species 100) are small, not published values."
+    - "The v1 entry had no parameters; all parameters are new. v1 said 'dilution: none', which holds for the closure; the flow reactor is an added one."
     - "Published numbers checked by computation: Table 1 encoding (M61 = 00111101, M45 = 00101101), 76 machines unique under complement and mirror, the Table 2 equivalents, transposition M45 <-> M54 and M60 -> M60 (fig. 17, footnote 3), M45 equal to rule 90 on even steps with the fig. 7 boundary inputs, M54 even steps as rule-90 preimages with the eqs. 6-7 inputs, M44 inverted by flipping the lattice. The fig. 12 caption's input sequence (0 up to t = 5, then 1, 1) was not reproduced: with the constraint algorithm as described, the run from two centred 1 cells needs input 1 at t = 0; the figure's step indexing cannot be recovered from the text. Likewise fig. 13's statement that M60 with the same initial states and boundary inputs has the same even rows as M54 did not hold when M60 was fed M54's inputs, so only M54's reversal is tested."
   phenomena:
     - "composition multiplies state spaces: repeated composition yields exponentially larger, self-similar state-space graphs (M45 gives 2, 4, 16, 32, 64 states)"
@@ -78,7 +79,7 @@ chemistries:
     - "of the 256 two-state two-symbol machines, 76 are unique under complement and mirror (Table 2)"
     - "Salzberg 2007 (abstract): continuous emergence of complex self-similar topologies, novel reaction pathways, seemingly open-ended diversity"
   notes: >
-    Chemart observation, not a published result: random soups of two-state machines usually collapse to one
+    Chemart observation, not a published result: random flow reactors of two-state machines usually collapse to one
     species within a few thousand collisions, a machine of tens of states that reproduces itself under
     self-composition (s o s = s). The module exports canonical, parse, compose, elementary and number for
     working with the machines directly.

@@ -26,9 +26,10 @@ Language implementation (technical report ALL-06-01, class BUnit):
 - '$' and '%' in the action without a counterpart in the condition, and
   unquoted '#' in the action, are ignored.
 
-method "closure" gives every reaction reachable from the seed strings
-(chemart.expand); method "soup" runs the thesis' single-reactor model with
-per-symbol mutation and returns the reactions that fired.
+Two faces: `generate` gives every reaction reachable from the seed strings
+(chemart.expand); `evolve` runs the thesis' single-reactor model with
+per-symbol mutation, a frame per generation of the initial population, and
+returns the reactions that fired.
 """
 
 from __future__ import annotations
@@ -38,6 +39,8 @@ from functools import lru_cache
 
 from chemart.expand import expand
 from chemart.network import CONSTANT_TOTAL, Network, Reaction, Species
+from chemart.soup import Tally
+from chemart.trajectory import Frame
 
 ALPHABET = "01*:#$%'"
 # Glyphs used in the thesis and papers -> ASCII symbols used by the book's text.
@@ -239,11 +242,9 @@ def _strings(p, rng) -> list[str]:
 
 
 def generate(p, rng):
+    """Every reaction reachable from the seed strings, cut off by max_species."""
     seeds = _strings(p, rng)
-    rules = Rules(p.max_length, p.self_replication)
-    if p.method == "closure":
-        return _closure(p, rules, seeds)
-    return _soup(p, rules, rng, seeds)
+    return _closure(p, Rules(p.max_length, p.self_replication), seeds)
 
 
 def _reaction(rules: Rules, a: str, b: str, product: str, count: int | None = None) -> Reaction:
@@ -284,32 +285,43 @@ def _closure(p, rules: Rules, seeds: list[str]) -> Network:
     return _network(found, reactions, status, seeds, p, {})
 
 
-def _soup(p, rules: Rules, rng, seeds: list[str]) -> Network:
+def evolve(p, rng):
+    """The thesis' single reactor (4.2.1): a frame per generation of the initial population.
+
+    The reactor is its own loop rather than chemart.soup.stir: below n_max the
+    product is added, at n_max it overwrites a random molecule other than the
+    two reactants in place, and the product is mutated before it enters.
+    """
+    seeds = _strings(p, rng)
+    rules = Rules(p.max_length, p.self_replication)
     pop = [s for s in seeds for _ in range(p.initial_copies)]
     if len(pop) < 2:
         raise ValueError("the soup needs at least 2 molecules (strings x initial_copies)")
     if len(pop) > p.n_max:
         raise ValueError(f"{len(pop)} initial molecules exceed the capacity n_max={p.n_max}")
+    size = len(pop)
     order = dict.fromkeys(pop)
-    fired: dict[tuple, list] = {}
+    tally = Tally()
     mutants = 0
-    for _ in range(p.steps):
+
+    def collide() -> None:
+        nonlocal mutants
         i = j = 0
         while i == j:
             i, j = (int(x) for x in rng.integers(len(pop), size=2))
         enzyme, substrate = pop[i], pop[j]
         cands = candidates(enzyme, substrate)
         if not cands:
-            continue
+            return
         product = cands[int(rng.integers(len(cands)))] if len(cands) > 1 else cands[0]
         if not rules.allowed(enzyme, substrate, product):
-            continue
+            return
         if p.p_s > 0:
             mutated = mutate(product, p.p_s, rng)
             mutants += mutated != product
             product = mutated
             if not product or len(product) > p.max_length:
-                continue
+                return
         if len(pop) < p.n_max:
             pop.append(product)
         else:   # displace a random molecule other than the two reactants
@@ -317,13 +329,25 @@ def _soup(p, rules: Rules, rng, seeds: list[str]) -> Network:
                 pass
             pop[x] = product
         order.setdefault(product)
-        key = (min(enzyme, substrate), max(enzyme, substrate), product)
-        fired.setdefault(key, [enzyme, substrate, product, 0])[3] += 1
+        tally.add((enzyme, substrate), (enzyme, substrate, product))
 
-    reactions = [_reaction(rules, a, b, prod, count) for a, b, prod, count in fired.values()]
+    def frame(step: int) -> Frame:
+        fired = [[[species_id(s) for s in lhs], [species_id(s) for s in rhs], n] for lhs, rhs, n in tally.flush()]
+        return Frame(t=float(step), state={species_id(s): float(n) for s, n in Counter(pop).items()}, fired=fired)
+
+    yield frame(0)
+    for done in range(1, p.steps + 1):
+        collide()
+        if done % size == 0 and done < p.steps:
+            yield frame(done)
+    if p.steps:
+        yield frame(p.steps)
+
+    fired = tally.reactions()
+    reactions = [_reaction(rules, a, b, rhs[2], count) for (a, b), rhs, count in fired]
     final = Counter(pop)
     return _network(list(order), reactions, "observed", seeds, p, {
         "final_state": {species_id(s): n for s, n in final.most_common()},
-        "analysis": {"collisions": p.steps, "productive": sum(f[3] for f in fired.values()),
+        "analysis": {"collisions": p.steps, "productive": sum(n for _, _, n in fired),
                      "mutant_products": mutants},
     })

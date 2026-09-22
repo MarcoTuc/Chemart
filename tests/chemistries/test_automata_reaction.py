@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 from chemart.simulate import rhs
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries.automata_reaction import automata, disassemble, make_react, word_id
 
 
@@ -111,7 +111,7 @@ def test_passive_and_active_replicators_are_common_and_rare():
     (["1e1ca260", "1e1ca261", "1e1ca264", "1011a261"], 1, False),                     # fig. 4
 ])
 def test_published_organizations_are_closed(words, table, forbid):
-    net = generate_network("automata-reaction", method="closure", words=words, code_table=table,
+    net = generate_network("automata-reaction", words=words, code_table=table,
                            forbid_exact_replication=forbid)
     assert net.status == "complete"
     assert {s.id for s in net.species} == {f"w{w}" for w in words}
@@ -121,7 +121,7 @@ def test_published_organizations_are_closed(words, table, forbid):
 def test_rates_give_the_catalytic_network_equation():
     # paper eqs. 1-2 on the fig. 3 organization: dx_k = sum_ij k_ij^k x_i x_j - x_k sum_ijk k_ij^k x_i x_j
     words = [0x7240A7EF, 0x7240A7EA, 0x7240A7EB, 0x7240A7EE]
-    net = generate_network("automata-reaction", method="closure", words=[f"{w:08x}" for w in words])
+    net = generate_network("automata-reaction", words=[f"{w:08x}" for w in words])
     ids, f = rhs(net)
     x = np.random.default_rng(0).uniform(0.1, 1.0, len(ids))
     x /= x.sum()
@@ -139,37 +139,41 @@ def test_rates_give_the_catalytic_network_equation():
 # --- the soup ------------------------------------------------------------------
 def test_and_reaction_goes_extinct():
     # fig. 2: the soup is exploited by the lethal string 00000000
-    net = generate_network("automata-reaction", seed=0, mechanism="and", M=1000, generations=10)
-    final = net.extras["final_state"]
+    traj = evolve("automata-reaction", seed=0, mechanism="and", M=1000, generations=10)
+    final = traj.network.extras["final_state"]
     assert final.get("w00000000", 0) >= 990
-    assert net.extras["analysis"]["diversity"][-1] <= 0.01
+    assert len(traj.frames[-1].state) / 1000 <= 0.01
 
 
 @pytest.mark.parametrize("seed", [0, 1, 2])
 def test_small_soup_converges_to_an_organization(seed):
     # fig. 3, M = 100: diversity and innovativity drop until a few strings dominate
-    net = generate_network("automata-reaction", seed=seed, M=100, generations=150)
-    a = net.extras["analysis"]
-    assert a["diversity"][0] > 0.9 and a["diversity"][-1] <= 0.1
-    assert sum(a["innovativity"][:10]) > 1.0 and sum(a["innovativity"][-10:]) == 0
+    traj = evolve("automata-reaction", seed=seed, M=100, generations=150)
+    net = traj.network
+    diversity = [len(f.state) / 100 for f in traj.frames]
+    innovativity = traj.series("innovativity")[1:]
+    assert len(diversity) == 151 and len(innovativity) == 150
+    assert diversity[0] > 0.9 and diversity[-1] <= 0.1
+    assert sum(innovativity[:10]) > 1.0 and sum(innovativity[-10:]) == 0
     top = [int(w[1:], 16) for w in list(net.extras["final_state"])[:2]]
     if len(top) == 2:
         assert bin(top[0] ^ top[1]).count("1") <= 8, "surviving strings are syntactically similar"
 
 
 def test_filter_f1_makes_replication_elastic():
-    net = generate_network("automata-reaction", seed=4, M=300, generations=5, code_table=2,
-                           forbid_exact_replication=True)
+    traj = evolve("automata-reaction", seed=4, M=300, generations=5, code_table=2,
+                  forbid_exact_replication=True)
+    net = traj.network
     for r in net.reactions:
         new =Counter(r.products) - Counter(r.reactants)
         assert sum(new.values()) == 1 and not set(new) & set(r.reactants)
-    assert all(p < 1.0 for p in net.extras["analysis"]["productivity"])
-    free = generate_network("automata-reaction", seed=4, M=300, generations=5, code_table=2)
-    assert all(p == 1.0 for p in free.extras["analysis"]["productivity"])
+    assert all(p < 1.0 for p in traj.series("productivity")[1:])
+    free = evolve("automata-reaction", seed=4, M=300, generations=5, code_table=2)
+    assert all(p == 1.0 for p in free.series("productivity")[1:])
 
 
 def test_observed_network_rates_count_ordered_pairs():
-    net = generate_network("automata-reaction", seed=2, M=200, generations=3)
+    net = evolve("automata-reaction", seed=2, M=200, generations=3).network
     assert net.status == "observed" and net.outflow == "constant-total"
     assert sum(net.initial_state.values()) == 200
     for r in net.reactions:

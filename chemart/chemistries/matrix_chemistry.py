@@ -8,10 +8,10 @@ sum_j P_ij s2_(j + k sqrt(N)) > Theta. The reaction s1 + s2 -> s1 + s2 + s3
 keeps both reactants; a product equal to the all-zero destructor s(0) is an
 elastic collision.
 
-method="closure" (default) returns the closure from the seed strings (book
-3.3), with mass-action constants that make the ODE with a constant-total
-outflow the book's eq. 3.24. method="soup" runs the book's algorithm (3.1)
-and returns the reactions that fired.
+generate returns the closure from the seed strings (book 3.3), with
+mass-action constants that make the ODE with a constant-total outflow the
+book's eq. 3.24. evolve runs the book's algorithm (3.1), a frame every M
+collisions, and returns the reactions that fired.
 """
 
 from collections import Counter
@@ -22,7 +22,8 @@ import numpy as np
 from chemart.expand import expand
 from chemart.helpers.params import apportion
 from chemart.network import CONSTANT_TOTAL, Network, Reaction, Species
-from chemart.soup import soup
+from chemart.soup import Tally, stir
+from chemart.trajectory import Frame
 
 FOLDINGS = (1, 2, 3, 4)
 TABLE_MAX_N = 9
@@ -113,74 +114,96 @@ def _seeds(p) -> list[int]:
     return list(seeds)
 
 
-def generate(p, rng):
-    side(p.N)
-    seeds = _seeds(p)
-    product = operation(p.N, p.folding, p.Theta)
+class _Chemistry:
+    """The reaction rule and reaction records shared by both faces."""
 
-    def react(a, b):
-        c = product(a, b)
-        if p.destructor_elastic and c == 0:
+    def __init__(self, p):
+        side(p.N)
+        self.p = p
+        self.product = operation(p.N, p.folding, p.Theta)
+
+    def react(self, a, b):
+        c = self.product(a, b)
+        if self.p.destructor_elastic and c == 0:
             return None
         return (a, b, c)
 
-    def multiplicity(a, b, c):
+    def multiplicity(self, a, b, c):
         """Ordered (operator, operand) pairs that give the multiset reaction a + b -> a + b + c."""
         if a == b:
             return 1
-        return sum(react(x, y) == (x, y, c) for x, y in ((a, b), (b, a)))
+        return sum(self.react(x, y) == (x, y, c) for x, y in ((a, b), (b, a)))
 
-    def species_id(s):
-        return f"s{s}"
-
-    def reaction(a, b, c, count=None):
-        k = multiplicity(a, b, c)
+    def reaction(self, a, b, c, count=None):
+        k = self.multiplicity(a, b, c)
         return Reaction.of([species_id(a), species_id(b)], [species_id(a), species_id(b), species_id(c)],
                            rate={"law": "mass-action", "k": float(k)}, count=count)
 
-    extras = {"encoding": "species sK is the string whose integer name is K; structure lists "
-                          "s_1..s_N, with s_1 the least significant bit"}
+    def network(self, strings, reactions, status, initial, analysis, **extras):
+        return Network(
+            species=[Species(species_id(s), structure=bitstring(s, self.p.N)) for s in strings],
+            reactions=reactions,
+            status=status,
+            initial_state=initial or None,
+            outflow=CONSTANT_TOTAL,
+            extras={"encoding": ENCODING, "analysis": analysis, **extras},
+        )
 
-    if p.method == "closure":
-        found, _, status = expand(react, seeds, arity=2, max_species=p.max_species, ordered=True)
-        strings = sorted(found)
-        known = set(strings)
-        reactions = {}
-        for a in strings:
-            for b in strings:
-                out = react(a, b)
-                if out is None or out[2] not in known:
-                    continue
-                key = (min(a, b), max(a, b), out[2])
-                if key not in reactions:
-                    reactions[key] = reaction(*key)
-        initial = {species_id(s): 1.0 / len(seeds) for s in seeds if s in known}
-        extras["analysis"] = {
-            "self_replicators": [species_id(s) for s in strings if react(s, s) == (s, s, s)],
-        }
-        reaction_list = list(reactions.values())
-    else:
-        counts = apportion(p.M, [1.0] * len(seeds))
-        population = [s for s, m in zip(seeds, counts) for _ in range(m)]
-        fired, final = soup(react, population, p.steps, rng, arity=2, dilution="constant")
-        status = "observed"
-        reaction_list = []
-        for lhs, rhs, count in fired:
-            a, b = sorted(lhs)
-            (c,) = (Counter(rhs) - Counter(lhs)).elements()
-            reaction_list.append(reaction(a, b, c, count))
-        strings = sorted({*seeds, *(s for lhs, rhs, _ in fired for s in rhs)})
-        initial = {species_id(s): int(m) for s, m in zip(seeds, counts) if m > 0}
-        extras["analysis"] = {
-            "steps": p.steps,
-            "final_population": {species_id(s): n for s, n in sorted(Counter(final).items())},
-        }
 
-    return Network(
-        species=[Species(species_id(s), structure=bitstring(s, p.N)) for s in strings],
-        reactions=reaction_list,
-        status=status,
-        initial_state=initial or None,
-        outflow=CONSTANT_TOTAL,
-        extras=extras,
-    )
+ENCODING = ("species sK is the string whose integer name is K; structure lists "
+            "s_1..s_N, with s_1 the least significant bit")
+
+
+def species_id(s: int) -> str:
+    return f"s{s}"
+
+
+def generate(p, rng):
+    """The closure from seed_species (book 3.3), cut off by max_species."""
+    chem = _Chemistry(p)
+    seeds = _seeds(p)
+    react = chem.react
+    found, _, status = expand(react, seeds, arity=2, max_species=p.max_species, ordered=True)
+    strings = sorted(found)
+    known = set(strings)
+    reactions = {}
+    for a in strings:
+        for b in strings:
+            out = react(a, b)
+            if out is None or out[2] not in known:
+                continue
+            key = (min(a, b), max(a, b), out[2])
+            if key not in reactions:
+                reactions[key] = chem.reaction(*key)
+    initial = {species_id(s): 1.0 / len(seeds) for s in seeds if s in known}
+    analysis = {"self_replicators": [species_id(s) for s in strings if react(s, s) == (s, s, s)]}
+    return chem.network(strings, list(reactions.values()), status, initial, analysis)
+
+
+def _ids(fired):
+    return [[[species_id(s) for s in lhs], [species_id(s) for s in rhs], n] for lhs, rhs, n in fired]
+
+
+def evolve(p, rng):
+    """The book's algorithm (3.1): M strings, `steps` collisions, a frame every M collisions."""
+    chem = _Chemistry(p)
+    seeds = _seeds(p)
+    counts = apportion(p.M, [1.0] * len(seeds))
+    population = [s for s, m in zip(seeds, counts) for _ in range(m)]
+    tally = Tally()
+    final = population
+    for step, final, tally in stir(chem.react, population, p.steps, rng, arity=2, dilution="constant",
+                                   tally=tally):
+        yield Frame(t=float(step), state={species_id(s): float(n) for s, n in sorted(Counter(final).items())},
+                    fired=_ids(tally.flush()))
+    fired = tally.reactions()
+    reactions = []
+    for lhs, rhs, count in fired:
+        a, b = sorted(lhs)
+        (c,) = (Counter(rhs) - Counter(lhs)).elements()
+        reactions.append(chem.reaction(a, b, c, count))
+    strings = sorted({*seeds, *(s for lhs, rhs, _ in fired for s in rhs)})
+    initial = {species_id(s): int(m) for s, m in zip(seeds, counts) if m > 0}
+    analysis = {"steps": p.steps,
+                "final_population": {species_id(s): n for s, n in sorted(Counter(final).items())}}
+    return chem.network(strings, reactions, "observed", initial, analysis)

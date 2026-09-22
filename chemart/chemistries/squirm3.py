@@ -33,12 +33,14 @@ with S the number of states, T the number of types, g,h the reactant states,
 j,k the product states, x,y the reactant types and b1,b2 the bond before and
 after. i is read off a gene of base atoms in base |bases| (2007 R37).
 
-Methods:
-  spatial  a 2D lattice (2002 CA physics) or continuous space (2007), with
-           optional periodic flooding; returns the reactions that fired, with
-           counts.
-  closure  chemart.expand.expand over molecules: every reaction reachable from
-           the seed molecule and the food atoms, without a spatial constraint.
+Faces:
+  generate  chemart.expand.expand over molecules: every reaction reachable from
+            the seed molecule and one food atom of each type, without a
+            spatial constraint (the closure).
+  evolve    a 2D lattice (2002 CA physics) or continuous space (2007), with
+            optional periodic flooding; yields a frame about every
+            steps // 200 steps and returns the reactions that fired, with
+            counts.
 """
 
 from __future__ import annotations
@@ -50,6 +52,8 @@ from dataclasses import dataclass
 
 from chemart.expand import expand
 from chemart.network import Network, Reaction, Species
+from chemart.soup import Tally
+from chemart.trajectory import Frame
 
 #: Atom types of the papers; |T| enters the enzyme encoding.
 ATOM_TYPES = "abcdef"
@@ -546,9 +550,11 @@ class World:
             self.by_state.setdefault(rule.states[0], []).append(rule)
         self.wildcard = self.by_state.get(-1, [])
         self.fired: dict[tuple, list] = {}
+        self.tally = Tally()            # the same firings, flushed into frames
         self.rule_counts: Counter = Counter()
         self.seen: dict[str, Mol] = {}
         self.floods = 0
+        self.dissolved = 0
 
     # -- construction --------------------------------------------------------
     def add(self, t: str, s: int, x: float, y: float) -> int:
@@ -760,6 +766,7 @@ class World:
         key = (frozenset(left.items()), frozenset(right.items()))
         entry = self.fired.setdefault(key, [left, right, 0, Counter()])
         entry[2] += 1
+        self.tally.add(tuple(left.elements()), tuple(right.elements()))
         entry[3][rule.name or _rule_text(rule)] += 1
         self.rule_counts[rule.name or _rule_text(rule)] += 1
 
@@ -879,23 +886,19 @@ class World:
         return len(dissolved)
 
     def run(self, steps: int, *, flood_period: int, flood_sectors: int,
-            cosmic_ray: float, samples: int = 200) -> dict:
+            cosmic_ray: float, samples: int = 200):
+        """Run `steps` time steps, yielding the index of the steps after which
+        to sample: the first one and every steps // samples from there."""
         every = max(1, steps // samples) if steps else 1
-        series = {"step": [], "molecules": [], "reactions": []}
-        floods = 0
         for step in range(steps):
             self.react_phase()
             self.move_phase()
             if cosmic_ray > 0.0:
                 self.cosmic_rays(cosmic_ray)
             if flood_period and step > 0 and step % flood_period == 0:
-                floods += self.flood(flood_sectors)
+                self.dissolved += self.flood(flood_sectors)
             if step % every == 0:
-                series["step"].append(step)
-                series["molecules"].append(
-                    sum(1 for m in self.population() if len(m.labels) > 1))
-                series["reactions"].append(sum(e[2] for e in self.fired.values()))
-        return {"series": series, "dissolved": floods, "floods": self.floods}
+                yield step
 
 
 # --- molecule-level reactions for the closure -----------------------------------
@@ -998,12 +1001,13 @@ def _cell_atoms(gene: Mol):
     return points, labels, bonds
 
 
-def generate(p, rng):
+def _setup(p, mutation_cases: int = 1000000):
+    """Validate the chemistry parameters: (types, bases, rules, cell?, seed molecule)."""
     if p.n_types < 2:
         raise ValueError(f"n_types must be at least 2, got {p.n_types}")
     types = ATOM_TYPES[:p.n_types]
     bases = types[:-2] if p.n_types > 2 else types
-    rules = rule_set(p.rules, p.rule_text, p.n_states, p.n_types, p.mutation_cases)
+    rules = rule_set(p.rules, p.rule_text, p.n_states, p.n_types, mutation_cases)
     # Ordinary states run 0..n_states-1; enzyme states start at n_states, so only
     # the states a rule matches on bound n_states (R36 *produces* the seed n_states).
     needed = max(s for r in rules for s in r.states if s >= 0)
@@ -1018,14 +1022,27 @@ def generate(p, rng):
             raise ValueError(f"seed_molecule uses type {t!r}, but n_types = {p.n_types}")
         if s >= p.n_states:
             raise ValueError(f"seed_molecule uses state {s}, but n_states = {p.n_states}")
-    rand = _Rand(rng)
-    if p.method == "closure":
-        if cell:
-            raise ValueError(
-                "method='closure' starts from a molecule, not a cell; drop the 'cell:' prefix"
-            )
-        return _closure(p, rules, seed, types, bases, rand)
-    return _spatial(p, rules, seed, types, bases, rand, cell)
+    return types, bases, rules, cell, seed
+
+
+def generate(p, rng):
+    """The closure: every molecule-level reaction reachable from the seed
+    molecule and one food atom of each type, cut off by max_species."""
+    # Rule probabilities (R35, R41) do not matter here: every outcome is a reaction.
+    types, bases, rules, cell, seed = _setup(p)
+    if cell:
+        raise ValueError(
+            "the closure starts from a molecule, not a cell; drop the 'cell:' prefix, "
+            "or run the cell with chemart.evolve"
+        )
+    return _closure(p, rules, seed, types, bases, _Rand(rng))
+
+
+def evolve(p, rng):
+    """The 2D world: a frame at the start, after the first step, every
+    steps // 200 steps from there, and at the end."""
+    types, bases, rules, cell, seed = _setup(p, p.mutation_cases)
+    return (yield from _spatial(p, rules, seed, types, bases, _Rand(rng), cell))
 
 
 def _conservation(species: list[Mol], types: str) -> list[dict]:
@@ -1060,10 +1077,25 @@ def _spatial(p, rules, seed, types, bases, rand, cell=False):
         reaction_radius=p.reaction_radius,
     )
     _place(world, _cell_atoms(seed) if cell else _chain_atoms(seed), types, p, rand, lattice)
-    initial = Counter(m.id for m in world.population())
-    info = world.run(p.steps, flood_period=p.flood_period,
-                     flood_sectors=2 if p.flood_sectors == "halves" else 4,
-                     cosmic_ray=p.cosmic_ray)
+
+    def frame(t: int) -> Frame:
+        # population() also records every molecule present as a species
+        mols = world.population()
+        return Frame(t=float(t), state={i: float(n) for i, n in Counter(m.id for m in mols).items()},
+                     fired=world.tally.flush(),
+                     observables={"molecules": sum(1 for m in mols if len(m.labels) > 1)})
+
+    first = frame(0)
+    initial = dict(first.state)
+    yield first
+    done = 0
+    for step in world.run(p.steps, flood_period=p.flood_period,
+                          flood_sectors=2 if p.flood_sectors == "halves" else 4,
+                          cosmic_ray=p.cosmic_ray):
+        done = step + 1
+        yield frame(done)
+    if done < p.steps:
+        yield frame(p.steps)
     final = Counter(m.id for m in world.population())
 
     reactions = [
@@ -1075,7 +1107,7 @@ def _spatial(p, rules, seed, types, bases, rand, cell=False):
         species=[Species(m.id, structure=m.id) for m in species],
         reactions=reactions,
         status="observed",
-        initial_state={i: float(n) for i, n in sorted(initial.items())},
+        initial_state={i: n for i, n in sorted(initial.items())},
         extras={
             "space": _space(p),
             "conservation": _conservation(species, types),
@@ -1087,9 +1119,8 @@ def _spatial(p, rules, seed, types, bases, rand, cell=False):
                 for left, right, count, by_rule in world.fired.values()
             ],
             "final_state": {i: n for i, n in sorted(final.items())},
-            "floods": info["floods"],
-            "dissolved_by_flood": info["dissolved"],
-            "analysis": info["series"],
+            "floods": world.floods,
+            "dissolved_by_flood": world.dissolved,
         },
     )
 
@@ -1160,13 +1191,13 @@ def _closure(p, rules, seed, types, bases, rand):
         max_species=p.max_species, ordered=False, alternatives=True,
     )
     species = [molecule(i) for i in ids]
+    kept = set(ids)                 # a budget below the seed count cuts seeds too
     return Network(
         species=[Species(m.id, structure=m.id) for m in species],
         reactions=[Reaction.of(left, right) for left, right in found],
         status=status,
-        initial_state={seed.id: 1.0, **{m.id: 1.0 for m in food}},
+        initial_state={m.id: 1.0 for m in seeds if m.id in kept},
         extras={
-            "space": _space(p),
             "conservation": _conservation(species, types),
             "rules": [r.to_text() for r in rules],
             "seed": [m.id for m in seeds],

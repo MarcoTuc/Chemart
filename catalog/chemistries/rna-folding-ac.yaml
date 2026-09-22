@@ -19,6 +19,7 @@ chemistries:
   kind: generator
   constructive: true
   type: gas
+  clock: collisions
   S:
     repr: "RNA sequences over AUGC, each folded by free-energy minimisation (Vienna RNA) into a secondary structure in dot-bracket notation; Species.structure holds 'sequence dot-bracket'"
     definition: implicit
@@ -35,14 +36,13 @@ chemistries:
       the Watson-Crick reverse complement of its loop sequence.
   A:
     reactor: [well-stirred-multiset, graph-rewrite]
-    dilution: "closure mode is cut off by max_species; the well-stirred run optionally dilutes back to the initial population size"
+    dilution: "the closure (generate_network) is cut off by max_species; the well-stirred run (chemart.evolve) optionally dilutes back to the initial population size"
   params:
     - {name: seq_length, type: int, default: 30, min: 8, max: 120, role: structural, meaning: "length of each RNA sequence in the initial pool", range: "Flamm et al. (2010) use tRNA-size genes of 100 nt carried on a 5000 nt genome"}
-    - {name: pool, type: int, default: 8, min: 1, max: 200, role: population, meaning: "number of random RNA sequences the run starts from", range: "well-stirred mode needs at least 3; paper-scale runs hold tens of ribozymes per cell"}
-    - {name: mode, type: enum, default: closure, choices: [closure, well-stirred], role: structural, meaning: "closure: every reaction reachable from the pool; well-stirred: the reactions that fired in a multiset run, with counts"}
-    - {name: max_species, type: int, default: 60, min: 2, max: 5000, role: structural, meaning: "species budget for the closure; the network is reported as truncated when it is reached"}
-    - {name: steps, type: int, default: 500, min: 1, max: 200000, role: population, meaning: "number of collisions in the well-stirred run"}
-    - {name: dilution, type: enum, default: none, choices: [none, constant], role: population, meaning: "whether the well-stirred population is diluted back to its initial size after every reaction"}
+    - {name: pool, type: int, default: 8, min: 1, max: 200, role: population, meaning: "number of random RNA sequences the closure or the run starts from", range: "chemart.evolve needs at least 3; paper-scale runs hold tens of ribozymes per cell"}
+    - {name: max_species, type: int, default: 60, min: 2, max: 5000, role: structural, face: generate, meaning: "species budget for the closure; the network is reported as truncated when it is reached"}
+    - {name: steps, type: int, default: 500, min: 1, max: 200000, role: population, face: evolve, meaning: "number of collisions in the well-stirred run; a frame every (initial pool size) collisions"}
+    - {name: dilution, type: enum, default: none, choices: [none, constant], role: population, face: evolve, meaning: "whether the well-stirred population is diluted back to its initial size after every reaction"}
     - {name: its_min, type: int, default: 4, min: 2, max: 200, role: structural, meaning: "smallest ITS size (longest-loop cycle length) that is catalytic"}
     - {name: its_max, type: int, default: 12, min: 2, max: 200, role: structural, meaning: "largest ITS size that is catalytic; larger loops are treated as composite transition structures"}
     - {name: min_recognition, type: int, default: 3, min: 1, max: 50, role: structural, meaning: "length of the recognition word read off the loop sequence (level 4 of the ITS hierarchy, the atom types)"}
@@ -62,7 +62,8 @@ chemistries:
     - "Catalytic criterion: a mono-cyclic ITS of size 2n breaks n and forms n bonds alternately (Fujita 1986), so only even cycle sizes are catalytic, within [its_min, its_max]. Multiloops (three or more stems) are composite transition structures and are inert here."
     - "Which concrete reaction each ITS class denotes is specified in Ullrich's Leipzig PhD thesis and in the paywalled CMSB/ECAL chapters, none of which could be obtained. Chemart therefore fixes the two canonical ribozyme reactions by stem count: hairpin loops (one stem) cleave, interior and bulge loops (two stems) ligate. This is Chemart's choice, not a published rule."
     - "The original model rewrites ToyChem metabolite graphs and derives rate constants from activation energies (QSPR). ToyChem's extended-Huckel chemistry is out of scope here, so the ribozymes act on RNA sequences themselves: the recognition site is the Watson-Crick reverse complement of the first min_recognition bases of the loop sequence, cleavage cuts immediately 3' of that site, and ligation joins two molecules whose junction spells it. No rate constants are published that this implementation could reproduce, so every reaction carries rate None."
-    - "Defaults are small (30 nt, 4 seed sequences, 60 species) so that the closure folds in well under a second; the paper's scale (100 nt genes, 5000 nt genomes, 100-1000 generations) is recorded in the params' range fields."
+    - "Two faces: generate_network returns the closure of the initial pool (one substrate per cleavage, two per ligation), cut off by max_species; chemart.evolve runs the well-stirred multiset (chemart.soup.stir, three molecules per collision, the first as catalyst), a frame every (initial pool size) collisions, and returns the reactions that fired with counts. They replace the former mode parameter (closure | well-stirred)."
+    - "Defaults are small (30 nt, 8 seed sequences, 60 species) so that the closure folds in well under a second; the paper's scale (100 nt genes, 5000 nt genomes, 100-1000 generations) is recorded in the params' range fields."
     - "Book table 18.1 gives two 60 nt sequences with their RNAfold structures. ViennaRNA 2.7.2 reproduces the second exactly (-7.10 kcal/mol); for the first it returns a different structure at -10.90 kcal/mol, while the book's structure evaluates to -9.80 and appears in the 1.5 kcal/mol suboptimal ensemble. The book's first structure is therefore suboptimal under current Turner parameters (identical under Turner 1999 and 2004); the tests record both facts."
   reference_impl: "Graph Grammar Library (GGL), http://www.tbi.univie.ac.at/software.html - the original toolchain (ToyChem + GGL), not ported here"
   phenomena:

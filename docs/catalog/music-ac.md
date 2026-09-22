@@ -304,6 +304,22 @@ net = chemart.generate_network("music-ac", seed=5, steps=3000, phrases=0)
 ```
 
 The fifth, Em, Dm, G, Em, is the chord sequence of the paper's Figure 3(2).
+
+**Following the run.** `generate_network` returns only the network of the
+whole run. `chemart.evolve` returns a trajectory with one frame per collision,
+the first being the starting pot. Each frame holds the pot (`state`), the
+reaction of that collision (`fired`, empty when a draw failed) and one
+observable, `phrases`: the number of distinct finished phrases in the pot, the
+quantity the run stops on. The paper reports no time courses, so these frames
+are the record of one Chemart run, not a published result. In the run above,
+the ten phrases were finished at these collisions:
+
+```python
+traj = chemart.evolve("music-ac", seed=5, steps=3000, phrases=0)
+ph = traj.series("phrases")
+[next(int(traj.frames[i].t) for i, n in enumerate(ph) if n >= k) for k in range(1, ph[-1] + 1)]
+# [675, 684, 1220, 1255, 1329, 2379, 2452, 2463, 2484, 2809]
+```
 Longer runs add little. With `seed=1, steps=20000, phrases=0` (about 10 s) all
 1,400 step tokens are used up, 167 bars are made, but only 12 phrases come out.
 Most of the remaining collisions are a futile cycle: a non-tonic bar is joined
@@ -334,7 +350,7 @@ ten seconds or more.
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `chemart.evolve` (or `generate_network`, which runs the process to the end). The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
@@ -351,7 +367,7 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "13 decisions"
+??? note "14 decisions"
 
     - Attribution: the v1 entry and the assignment named 'Miyamoto & Tominaga' and 'Tominaga et al.'; the book's bibliography has [592] T. Miura and K. Tominaga (GWAL-2006) and [854] K. Tominaga and M. Setomoto (EvoWorkshops 2008, LNCS 4974, pp. 463-472, doi 10.1007/978-3-540-78761-7_49). The bibliography is followed.
     - The book (16.4) describes the approach only qualitatively, so everything is reconstructed from the 2006 camera-ready paper, recovered from the Wayback Machine copy of the authors' site (tomilab.net no longer resolves). The paper's own artificial chemistry is Tominaga's pattern-matching-and-recombination chemistry, catalogued separately as tominaga-stacked-strings; the music system is re-implemented here in the 2006 paper's own notation (&lt;1&gt;, &lt;*1&gt;, &lt;1*&gt;, &lt;1..7&gt;), which that module's parser does not accept because music elements contain digits (C4, D2).
@@ -363,6 +379,7 @@ The sources leave gaps, and sometimes contradict each other or the book. Each su
     - Wildcard numbers are generated, not copied. For the default 8 notes per bar and 4 bars per phrase the generated rules (1), (2), (6), (7), (8), (9) and (10) come out character for character as printed in the paper (checked by a test); other bar sizes reuse the same scheme.
     - Reactor: the paper's simulator (Cocoa/Objective-C, random collision) is not available and the authors themselves state it 'lacks sufficient theoretical foundation for simulating quantitative behaviour' and report only the products, not time series. Chemart therefore samples a rule with a weight equal to its number of ordered reactant choices, draws reactants in proportion to their copies and one match uniformly, and records the reactions that fired with their firing counts. No rates are attached anywhere, and no time series is claimed.
     - Run length: the paper's runs produce three to five phrases in about an hour on a PowerPC G5 and have no terminating condition. Chemart stops after `phrases` finished phrases (default 1, reached in about 0.2 s), or after `steps` collisions; phrases=0 runs the whole budget. The published wall-clock times are not reproduced.
+    - chemart.evolve yields a frame per collision, failed draws included since they count toward steps; frame 0 is the initial pot. A frame's state is the pot, its fired the reaction of that collision (empty for a failed draw), and its one observable, phrases, the number of distinct finished phrases in the pot, the quantity the run stops on. The paper reports no time series, so the frames are the record of one Chemart run, not a published dynamics; chemart.evolve(..., every=k) keeps one frame in k. generate_network runs to the end and returns the network.
     - Initial counts are the published ones, which the paper calls 'somewhat arbitrary', chosen so that a few phrases appear in reasonable time; copies scales them uniformly.
     - v1 parameters: mode is kept with its single published choice, the callable harmony_filter becomes avoid_notes (the section 3.3 rules) together with the cadences choice (the section 3.4 filter), and the matrix seed_patterns becomes the published initial multiset with copies.
     - Rules conserve elements ('conserving elements just like a chemical reaction does', section 2), so extras.conservation carries one conservation vector per element kind; the tests check m^T (P - R) = 0 for each of them.

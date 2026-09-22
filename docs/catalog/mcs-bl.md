@@ -232,6 +232,11 @@ m_SD1CD0 + m_SD1CD1 -> 2 m_SD1CD0 + m_SD1CD1  [mass-action k=1.0]
 m_SD1CD1 + m_SD0CD1 -> m_SD1CD1 + 2 m_SD0CD1  [mass-action k=1.0]
 ```
 
+MCS.bl has two faces. `chemart.generate_network("mcs-bl")`, printed above,
+returns the *closure* of a set of strings: every reaction among the strings
+they can make. `chemart.evolve("mcs-bl")` runs the thesis' single *reactor*
+and returns a trajectory (see *The single reactor* below).
+
 The default call returns the closure of `c0`: the four strings and their six
 reactions, with `status=complete` meaning no new string can be made.
 `net.initial_state` gives 10 copies of each seed string, the amount the thesis
@@ -271,30 +276,48 @@ stops the closure: with `max_length=16` it ends at five strings of length 12
 to 16 and nine reactions; with the default `max_length=500` the species budget
 cuts it off (`max_species=200`, 10,100 reactions, `status=truncated`).
 
-**The single reactor.** `method="soup"` runs the reactor for `steps`
-collisions and returns the reactions that fired, with how often
-(`r.count`); `net.extras["final_state"]` holds the final population and
-`net.extras["analysis"]` counts collisions, productive ones and mutant
-products. The default soup, 10,000 collisions of `c0` with `p_s=1e-5` and
-capacity 1,000, takes about 2.5 s; 4,160 collisions were productive, and the
-population ended at 300, 294, 210 and 196 copies of `s1`, `s3`, `s2`, `s4`.
+**The single reactor.** `chemart.evolve("mcs-bl")` runs the reactor for
+`steps` collisions and returns a trajectory. It has a frame every time as many
+collisions have happened as the initial reactor held molecules (here 40: four
+strings × 10 copies); each frame's `state` is the population at that moment
+and its `fired` the reactions since the previous frame. `traj.network` lists
+the reactions that fired, with how often (`r.count`); its
+`extras["final_state"]` holds the final population and `extras["analysis"]`
+counts collisions, productive ones and mutant products. The default run,
+10,000 collisions of `c0` with `p_s=1e-5` and capacity 1,000, takes a fraction
+of a second:
+
+```python
+traj = chemart.evolve("mcs-bl", seed=1)
+[sum(f.state.values()) for f in traj.frames][:5], sum(traj.frames[-1].state.values())
+# ([40.0, 58.0, 75.0, 95.0, 109.0], 1000.0)
+net = traj.network
+net.extras["analysis"]      # {'collisions': 10000, 'productive': 4160, 'mutant_products': 0}
+net.extras["final_state"]   # {'m_SD0CD1': 300, 'm_SD1CD0': 294, 'm_SD0CD0': 210, 'm_SD1CD1': 196}
+```
+
+The population grows from 40 molecules to the capacity of 1,000 and stays
+there. It ended at 300, 294, 210 and 196 copies of `s1`, `s3`, `s2`, `s4`.
 
 To repeat the thesis' universal-copier experiment (§5.3: 100 copies of `*$:$`
 among 900 random strings of length 10, capacity 1,000, no mutation), repeat
 the string in the list and set one copy each:
 
 ```python
-net = chemart.generate_network("mcs-bl", method="soup", seed=0,
+traj = chemart.evolve("mcs-bl", seed=0,
         strings=["*$:$"] * 100, n_random=900, initial_copies=1,
         self_replication=True, p_s=0.0, steps=200000)
-net.extras["final_state"].get("m_SDCD", 0)     # 11
+[f.state.get("m_SDCD", 0.0) for f in traj.frames][::20]
+# [100.0, 81.0, 39.0, 31.0, 23.0, 20.0, 18.0, 11.0, 15.0, 10.0, 11.0]
+traj.network.extras["final_state"].get("m_SDCD", 0)     # 11
 ```
 
-After 200,000 collisions (7 to 11 s) the copier had fallen from 100 to 11, 15
-and 0 molecules for seeds 0, 1 and 2.
+Frames come every 1,000 collisions here, so the list samples the copier every
+20,000. After 200,000 collisions (2 to 3 s) the copier had fallen from 100 to
+11, 15 and 0 molecules for seeds 0, 1 and 2.
 
 For the catastrophe itself (§5.5), seed 100 copies of `*$0101:$0101` among 900
-random strings with `p_s=1e-3` and 100,000 collisions (7 to 11 s): for seeds 0
+random strings with `p_s=1e-3` and 100,000 collisions (about 8 s): for seeds 0
 and 1 the replicase was extinct by the end, and the mean string length had
 risen from about 10 to 391 and 380 symbols, against a limit of 500. Runs grow
 slower as strings lengthen; the thesis ran 5 million collisions per run, far
@@ -305,36 +328,36 @@ beyond a quick call here.
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `generate_network`, or to `chemart.evolve`; a parameter marked *evolve only* belongs to the process and one marked *generate only* to the network. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
-| `method` | `enum` | `closure` | structural | closure: every reaction among the strings reachable from the seeds (status complete or truncated); soup: the thesis' single-reactor model (4.2.1) for `steps` collisions with mutation, returning the reactions that fired with counts (status observed) <br>one of `closure`, `soup` |
 | `strings` | `list` | `['*$0:$1', '*$0:$0', '*$1:$0', '*$1:$1']` | structural | seed broadcast devices over {0,1,*,:,#,$,%,'} (thesis glyphs are accepted and translated). Default: cell type c0 of book table 11.2 (thesis table 7.1) <br>*range:* book table 11.2 cell types: c1 [*$0:$1, *$0:$0, *$#:$0, *$#:$1], c2 [*$0:$1, *$0:$0, *$#:$%0, *$#:$%1], c3 [*$0:$1, *$0:$0, *$%:$0, *$%:$1]; universal replicase [*$:$]; thesis table 5.2 replicases *$1:$1 .. *$0101:$0101 |
 | `self_replication` | `bool` | `False` | selection | allow reactions whose product is identical to both enzyme and substrate (s + s -&gt; 2s + s); false makes them elastic <br>*range:* true in thesis ch. 5-6 and book table 11.1; false in the table 11.2 experiment (thesis 7.2, ACS 2011, CEC 2009) |
 | `max_length` | `int` | `500` | structural | BDL_max: a reaction whose product is longer is not permitted (elastic); bounds the elongation catastrophe <br>`4` … `1000000` · *range:* thesis: BDL_max = 500 (ch. 6-7), 10^6 (5.5) |
-| `max_species` | `int` | `200` | structural | closure only: species budget; elongating chemistries are cut off by it (status truncated) <br>`1` … `100000` |
-| `initial_copies` | `int` | `10` | population | copies of each seed string (initial_state; initial soup) <br>`1` … `1000000` · *range:* thesis 7.2: 10 of each seed species; 5.3: 100 copies of the replicase |
+| `max_species` | `int` | `200` | structural | *generate only.* species budget of the closure; elongating chemistries are cut off by it (status truncated) <br>`1` … `100000` |
+| `initial_copies` | `int` | `10` | population | copies of each seed string (initial_state; the initial reactor) <br>`1` … `1000000` · *range:* thesis 7.2: 10 of each seed species; 5.3: 100 copies of the replicase |
 | `n_random` | `int` | `0` | population | extra seed strings drawn uniformly from the alphabet (each with initial_copies copies) <br>`0` … `1000000` · *range:* thesis 5.2: 100 random molecules; 5.3: 900 |
 | `random_length` | `int` | `10` | population | length of the random seed strings <br>`1` … `1000000` · *range:* thesis 5.2-5.3: 10 |
-| `n_max` | `int` | `1000` | population | soup only: reactor capacity; below it products are added, at it each product displaces a random molecule other than the reactants <br>`3` … `100000000` · *range:* thesis 5.2-5.3: 1000; cells in 7.2: 10^6 |
-| `steps` | `int` | `10000` | population | soup only: number of collisions (elastic ones included) <br>`0` … `1000000000` · *range:* thesis 5.2: 5x10^6 collisions per run; 7.2: over 4x10^7 per cell per hour |
-| `p_s` | `float` | `1e-05` | stochastic | soup only: per-symbol mutation probability of each product; a mutation is a flip to another symbol, an insertion of a random symbol after it, or a deletion, with equal probability <br>`0.0` … `1.0` · *range:* book fig. 11.3 / ACS 2011: 1e-5; thesis 5.2: 1e-3; D.1: 5e-5 |
+| `n_max` | `int` | `1000` | population | *evolve only.* reactor capacity; below it products are added, at it each product displaces a random molecule other than the reactants <br>`3` … `100000000` · *range:* thesis 5.2-5.3: 1000; cells in 7.2: 10^6 |
+| `steps` | `int` | `10000` | population | *evolve only.* number of collisions (elastic ones included); a frame every strings x initial_copies collisions <br>`0` … `1000000000` · *range:* thesis 5.2: 5x10^6 collisions per run; 7.2: over 4x10^7 per cell per hour |
+| `p_s` | `float` | `1e-05` | stochastic | *evolve only.* per-symbol mutation probability of each product; a mutation is a flip to another symbol, an insertion of a random symbol after it, or a deletion, with equal probability <br>`0.0` … `1.0` · *range:* book fig. 11.3 / ACS 2011: 1e-5; thesis 5.2: 1e-3; D.1: 5e-5 |
 
 ### Implementation decisions
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "12 decisions"
+??? note "13 decisions"
 
+    - Two faces: generate_network returns the closure, every reaction among the strings reachable from the seeds (status complete or truncated, cut off by max_species); chemart.evolve runs the thesis' single reactor (4.2.1) for steps collisions with mutation, a frame every generation of the initial reactor (strings x initial_copies collisions), and returns the reactions that fired with counts (status observed). The reactor is its own loop, not chemart.soup.stir: it grows to n_max and then overwrites a random non-reactant in place, and mutates the product before it enters, which stir's replace-and-dilute step cannot express; the bookkeeping uses chemart.soup.Tally.
     - Symbols: the book's extracted text prints the alphabet as {3, $, %, } and table 11.2 uses 3; comparing with thesis table 7.2 (glyphs), book 3/# is the diamond (single wildcard, any suffix when last), $ the reversed triangle (prefix/suffix wildcard that transposes), % the triangle (single wildcard that transposes) and the lost fourth symbol the quote. The book's table 11.1 also lost the quotes of the activation (*$1:'*$) and inhibition (*'*0$:0$) enzymes.
     - Matching semantics come from the thesis prose and examples plus the C++ source of the authors' earlier BL implementation (ALL-06-01); the MCS.bl C++ package (esignet.net/dokumente/upload/WP13...) is not archived. From the source: $ matches one or more symbols (regex .+), so it never matches an empty string; a symbol is quoted iff the preceding symbol is a quote; unquoted quotes are dropped; the $ value is positional (the other condition symbols take one character each); $ in the middle of a condition is ignored, and with $ at both ends the last is ignored; only the first % counts. The source's length arithmetic counts quote characters in the condition (a bug for quoted symbols after a leading $); here the matched string is computed from the pattern symbols.
     - # as the last condition symbol matches any non-empty suffix (thesis r13-r15); after a leading $ it can only take one symbol, since $ absorbs the rest (this is the thesis' statement that # and % act the same in *$#:$0 and *$%:$0, and gives c1-c3 nine reactions each).
     - Book table 11.1 / thesis table 4.2 / CEC table I / ACS table 2 activation row is inconsistent: *$1:'*$ on 0:1 gives *0: (not an active device) by the same rule the cleavage and concatenation rows use (*$1:$ on *0:1 gives *0:, so $ excludes the matched 1). The intended activation is reproduced by *$:'*$ on 0:1 -&gt; *0:1 (tested).
     - Several units: CEC 2009 (II-A) picks one satisfied unit at random. The closure lists every possible product; a reaction's rate weight is the fraction of the enzyme's satisfied units that give it.
     - Elastic collisions: no unit matches; the product is empty; the product is longer than max_length (ALife 2008: such reactions 'were simply not permitted'; truncation was a later, abandoned variant); or, with self_replication false, the product equals both reactants.
-    - Rates: thesis eq. 5.1-5.2 (catalytic network equation, alpha = 1 per ordered enzyme-substrate pair that yields the product) with dilution flow = outflow constant-total. Each multiset reaction {a, b} -&gt; {a, b, p} gets mass-action k = sum over the orders (a, b), (b, a) of the fraction of satisfied units giving p (1 or 2 for single-unit enzymes; one order when a = b). Soup reactions made by a mutation have no structural k and get rate None.
-    - Soup: two distinct molecules drawn at random, the first the enzyme (thesis 4.2.1, 5.3); below n_max the product is added, at n_max it replaces a random molecule other than the two reactants (thesis; ALife 2008 does not exclude them). Mutation (thesis 4.2.2) is applied to the product once per symbol with probability p_s, sampled as a binomial number of distinct positions; self-replication is filtered before mutation and length after. The thesis' spontaneous mutation (a fraction r_mut of the population every x timesteps, x not given) is not modelled; the table 11.2 experiment used r_mut = 0.
+    - Rates: thesis eq. 5.1-5.2 (catalytic network equation, alpha = 1 per ordered enzyme-substrate pair that yields the product) with dilution flow = outflow constant-total. Each multiset reaction {a, b} -&gt; {a, b, p} gets mass-action k = sum over the orders (a, b), (b, a) of the fraction of satisfied units giving p (1 or 2 for single-unit enzymes; one order when a = b). Evolved reactions made by a mutation have no structural k and get rate None.
+    - Reactor: two distinct molecules drawn at random, the first the enzyme (thesis 4.2.1, 5.3); below n_max the product is added, at n_max it replaces a random molecule other than the two reactants (thesis; ALife 2008 does not exclude them). Mutation (thesis 4.2.2) is applied to the product once per symbol with probability p_s, sampled as a binomial number of distinct positions; self-replication is filtered before mutation and length after. The thesis' spontaneous mutation (a fraction r_mut of the population every x timesteps, x not given) is not modelled; the table 11.2 experiment used r_mut = 0.
     - Multilevel cell selection is not part of one network and is not modelled: v1 params n_cells, cell_capacity and division_target are dropped (they size a population of reactors, not the chemistry); the model is described in A.notes. Division variants: thesis 6.4.2 divides when a cell is full and overwrites a random target cell; thesis 7.2 / ACS 2011 divide at n_target copies of s_T and remove a random other cell.
     - Book prose erratum (11.1.1): 'c1 consists of s1, s2, s3, s4, whereas c2 consists of s1, s2, s5, s6' is shifted by one; table 11.2 (and thesis table 7.2) give c0 = {s1..s4}, c1 = {s1, s2, s5, s6}. The book's 'one molecule (rather than the full number) was selected as cell division threshold' means one target species. The reaction counts 6 (c0) and 9 (c1) are from thesis 7.2.3 and ACS 2011 (three additional reactions).
     - Thesis errata found while testing: appendix D.2 lists s4 + s2 -&gt; s4 for s4 = *$0:$0, s2 = *$1:$0; the rule gives s2 (replication of the substrate), and the other 15 entries of that table agree; D.2 prints the species without the leading * (s1 = $0:$1) and s3 as $1:$ for *$1:$1. Section 5.5 prints s_R4 = *$0101:*$0101 with an unquoted * in the action, which would leave no unit; table 5.2 and the fig. 5.4 caption give *$0101:$0101, whose reactions reproduce 5.5 exactly (tested). Section 5.2 (and ALife 2008) count '4^8 (65,536)' molecules of length 4; with 8 symbols there are 8^4 = 4,096, of which only *$:$ self-replicates (tested).
@@ -382,7 +405,7 @@ molecular level, but long strings are hit by more mutations, which break
 their rules or make them so specific that nothing matches. Five changes to
 the model (limits on length, on the wildcard, on the supply of symbols) did not
 cure it (ALife 2008). Chemart's tests check this chain of reactions exactly,
-and that the maximum length bounds it; the soup runs above show the
+and that the maximum length bounds it; the reactor runs above show the
 replicase's extinction and the growth of string length.
 
 **Cells cure it.** With 32 cells of capacity 1,000, each seeded with 250

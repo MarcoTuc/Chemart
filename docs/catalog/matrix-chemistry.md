@@ -273,53 +273,63 @@ lets the all-zero string `s0` react like any other.
 511 species and 237,121 distinct reactions, in about 15 seconds. The budget
 `max_species` cuts a closure off; the status then says `truncated`.
 
-**The stochastic pot.** `method="soup"` runs the book's algorithm with `M`
-strings for `steps` collisions and returns only the reactions that fired, each
-with its `count`; the status is `observed`. The pot starts with `M` split
-equally among the seeds, and `net.extras["analysis"]["final_population"]`
-holds the counts at the end. It is slow: for N = 4 and M = 1,000, a run of
-10^6 collisions, the length of the book's figures, takes 35 to 45 seconds.
+**The stochastic pot.** `chemart.evolve("matrix-chemistry")` runs the book's
+algorithm with `M` strings for `steps` collisions and returns a trajectory.
+Each frame holds the pot's contents (`state`, counts per string) every `M`
+collisions, and the reactions that fired since the previous frame. The
+trajectory's `network` holds only the reactions that fired, each with its
+`count`; its status is `observed`. The pot starts with `M` split equally among
+the seeds, and `net.extras["analysis"]["final_population"]` holds the counts
+at the end. It is slow: for N = 4 and M = 1,000, a run of 10^6 collisions, the
+length of the book's figures, takes 35 to 45 seconds.
 
 ```python
-net = chemart.generate_network("matrix-chemistry", seed=1, N=4, seed_species=list(range(1, 16)),
-                               method="soup", M=1000, steps=1_000_000)
+traj = chemart.evolve("matrix-chemistry", seed=1, N=4, seed_species=list(range(1, 16)),
+                      M=1000, steps=1_000_000)
+traj.frames[100].state        # after 100,000 collisions
+# {'s1': 56.0, 's2': 82.0, 's3': 97.0, 's4': 52.0, 's5': 101.0, 's8': 75.0,
+#  's10': 136.0, 's12': 158.0, 's15': 243.0}
+next(f.t for f in traj.frames if len(f.state) == 1)          # 661000.0
+net = traj.network
 net.extras["analysis"]["final_population"]   # {'s15': 1000}
 max(net.reactions, key=lambda r: r.count).to_text()
 # '2 s15 -> 3 s15  [mass-action k=1.0]  (x512901)'
 ```
 
-In this run the all-ones self-replicator `s15` has taken the whole pot, and
-half of the million collisions were `s15` copying itself.
+After 100,000 collisions the pot holds the nine strings that the rate
+equations settle into (see Results). The all-ones self-replicator `s15` then
+takes over and holds the whole pot from collision 661,000 on; half of the
+million collisions were `s15` copying itself.
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `generate_network`, or to `chemart.evolve`; a parameter marked *evolve only* belongs to the process and one marked *generate only* to the network. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
 | `N` | `int` | `9` | structural | string length; \|S\| = 2^N - 1 <br>`1` … `100` · *range:* perfect square; the book uses 4 (3.2) and 9 (3.3), table 3.1 lists 1, 4, 9, 16, 25, 100 |
 | `folding` | `enum` | `1` | structural | how a string is laid out into the operator matrix: 1 row-major (eq. 3.16), 2 transposed (eq. 3.17), 3 row snake (odd rows reversed), 4 column snake (odd columns reversed). Changes the number of self-replications/replications (N=9: 14/12028, 122/21310, 18/11822, 94/16830, table 3.4) <br>one of `1`, `2`, `3`, `4` |
 | `Theta` | `float` | `0.0` | structural | threshold of the squashing function: an output bit is 1 iff the sum is strictly greater than Theta; Theta = 0 makes the operation purely Boolean |
-| `seed_species` | `list` | `[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,…` | population | integer names of the strings initially present; the closure starts from them and the initial state (or soup population) is split equally among them. The default is the book's s(1)..s(15) of figs. 3.7-3.8 |
+| `seed_species` | `list` | `[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,…` | population | integer names of the strings initially present; the closure starts from them and the initial state (or the vessel's M strings) is split equally among them. The default is the book's s(1)..s(15) of figs. 3.7-3.8 |
 | `destructor_elastic` | `bool` | `True` | selection | collisions producing the all-zero destructor s(0) are elastic (book 3.1); false makes s(0) an ordinary species, which then replicates with every string |
-| `method` | `enum` | `closure` | structural | closure: every reaction among the strings reachable from seed_species (book 3.3), status complete or truncated; soup: the book's stochastic algorithm (3.1) with M strings for `steps` collisions, returning the reactions that fired with counts (status observed) <br>one of `closure`, `soup` |
-| `max_species` | `int` | `1000` | structural | closure only: budget on the number of strings; the status becomes truncated when it cuts the closure off <br>`1` … `4096` · *range:* the full N = 9 system has 511 strings (261,121 reactions) |
-| `M` | `int` | `1000` | population | soup only: constant number of strings in the vessel <br>`2` … `1000000` · *range:* book: 1,000 and 100,000 |
-| `steps` | `int` | `10000` | stochastic | soup only: number of collisions (draws of an operator/string pair) <br>`0` … `10000000` · *range:* book figures run 10^6 to 10^7 iterations |
+| `max_species` | `int` | `1000` | structural | *generate only.* budget on the number of strings in the closure; the status becomes truncated when it cuts the closure off <br>`1` … `4096` · *range:* the full N = 9 system has 511 strings (261,121 reactions) |
+| `M` | `int` | `1000` | population | *evolve only.* constant number of strings in the vessel; a frame every M collisions <br>`2` … `1000000` · *range:* book: 1,000 and 100,000 |
+| `steps` | `int` | `10000` | stochastic | *evolve only.* number of collisions (draws of an operator/string pair) <br>`0` … `10000000` · *range:* book figures run 10^6 to 10^7 iterations |
 
 ### Implementation decisions
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "9 decisions"
+??? note "10 decisions"
 
+    - Two faces: generate_network returns the closure from seed_species (book 3.3), with mass-action constants that make its ODE eq. 3.24; chemart.evolve runs the book's stochastic algorithm (3.1) with M strings for `steps` collisions, a frame every M collisions, and returns the reactions that fired with counts (status observed).
     - Threshold is strict: an output bit is 1 iff sum_j P_ij s_j &gt; Theta. Book eq. 3.5 says &gt;=, which with Theta=0 maps every zero sum to 1 and contradicts table 3.3 (operator s(1) on s(2) yields s(0)). The strict form reproduces tables 3.3 and 3.5, the N=4 counts, table 3.4 and the 3.3 closure exactly. The original paper [63] (eq. 6) uses &gt;= with Theta fixed at 1, which for integer sums is the same as &gt; 0, so the book's Theta = 0 is a misprint.
     - Foldings for N &gt; 4 (book defers to [65]): 2 = transpose, 3 = row snake (odd rows reversed), 4 = column snake (odd columns reversed). These reproduce table 3.4 exactly for N=9: 14/12028, 122/21310, 18/11822, 94/16830 self-replications/replications. [64] and [65] (Biological Cybernetics) are not openly available; the author's page offers them only by email.
     - Organisations of the 4-bit system: table 12.3 lists 52 (IDs 0..51, including the empty and full sets); the prose of 12.5.2 says 54. The table's 52 entries are all correct, but the table is incomplete: since no reaction consumes anything, a set is an organisation under the dilution flow iff it is closed and every member is produced inside it, and that gives exactly 54, the 52 of the table plus {1,2,3,4,5,7,8,10,11,12,13,15} and {1,2,3,4,5,8,10,11,12,13,14,15} (tested). The same table has 122 closed sets including the empty one (the prose says '70+'). Table 12.2 is table 3.3 (first folding) with the destructor row/column added, although 12.5.2 calls it 'nontopological horizontal folding'.
     - Bit order: s(5) = (1,0,1,0), so component s_1 is the least significant bit of the integer name. Self-replication counts i with s(i)+s(i) -&gt; +s(i); replication counts ordered pairs i != j whose product is s(i) or s(j); the destructor s(0) is excluded and producing s(0) is an elastic collision.
     - Reactions are multisets: operator s(a) on s(b) and operator s(b) on s(a) giving the same product are one reaction. Its mass-action constant is the number of ordered (operator, string) pairs that give it (1 or 2), and outflow is constant-total, so the mass-action ODE is exactly eq. 3.24 with W_ijk = 1 and Phi of eq. 3.25 (tested). The book gives no other rate constants.
     - Default network: the closure from seed_species (the procedure of 3.3, via expand over ordered pairs), restricted to reactions whose product is in the found set. The initial state gives the seeds equal concentrations summing to 1, as in figs. 3.7-3.8 ('nearly equal initial distribution'). Defaults N = 9, seeds s(1)..s(15) give the book's 23-string closure.
-    - Soup mode follows the book's algorithm listing through chemart.soup with constant dilution: two distinct molecules are drawn as operator and string, and after a productive collision one random molecule is removed. The book draws s4 before inserting s3; here the removal happens after insertion, so the new string can itself be removed (an O(1/M) difference). The initial population is M split equally among the seeds.
+    - The evolve face follows the book's algorithm listing through chemart.soup with constant dilution: two distinct molecules are drawn as operator and string, and after a productive collision one random molecule is removed. The book draws s4 before inserting s3; here the removal happens after insertion, so the new string can itself be removed (an O(1/M) difference). The initial population is M split equally among the seeds.
     - The decay of eqs. 3.11-3.12 (p = (I/N)^n) is dropped with its exponent n: the book's algorithm listing does not use it. In [63] it is STEP 7 (a string is replaced by a random string with probability p), destructors are replaced by random strings (STEP 6), and the ODE (eq. 16) has matching D_i and A(t) terms; the book's eq. 3.24 omits them. Replacement by a random string is not a reaction, so none of this is represented. The mutation variants of 3.4 are not modelled either.
     - The prose of 3.3 lists the new strings made by s(10) on s(1)..s(15) as 's(16), s(17), s(17) s(19)' (garbled); table 3.7 row 10 gives s(16), s(17), s(18), s(19).
 

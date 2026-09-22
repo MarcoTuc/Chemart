@@ -160,8 +160,9 @@ are of order 10⁻⁴ or less.
 
 ### A worked example: the default run
 
-The default run starts from a well-mixed 24×24 lattice (576 cells): 48
-autocatalysts, 178 food particles, 350 water, no membrane. After 100 sweeps
+The default run, `chemart.evolve("ono-ikegami-protocell", seed=1)`, starts
+from a well-mixed 24×24 lattice (576 cells): 48 autocatalysts, 178 food
+particles, 350 water, no membrane. After 100 sweeps
 it holds 100 `A`, 99 `M_a`, 20 `X`, 7 `Y` and still 350 `W`. The reaction
 counts show how it got there:
 
@@ -209,37 +210,54 @@ print(net.summary())
 ```
 
 ```
-ono-ikegami-protocell: 5 species, 6 reactions, status=observed
-provides: catalysts, energies, initial-state, space, stoichiometry, topology
+ono-ikegami-protocell: 5 species, 6 reactions, status=complete
+provides: catalysts, stoichiometry, topology
 seed: 1
-extras: analysis, energies, space
+extras: reference_rates
 ```
 
 Its first reactions (`net.reactions`):
 
 ```
-A + X -> 2 A  (x158)
-A + X -> A + M_a  (x160)
-A -> Y  (x106)
-M_a -> Y  (x61)
-X -> Y  (x46)
-Y -> X  (x206)
+A + X -> 2 A
+A + X -> A + M_a
+A -> Y
+M_a -> Y
+X -> Y
+Y -> X
 ```
 
-The default run (about two seconds) is not a published experiment: the
-published parameters belong to a different reaction scheme (see Results), so
-the defaults were chosen to be small and fast. `mode="reactions"` returns just the six
+The model has two faces. The call printed above,
+`chemart.generate_network("ono-ikegami-protocell")`, returns just the six
 reactions of the scheme, each with `rate` set to `None`, since no source
-publishes a rate for it.
+publishes a rate for it. Its only parameter is `membrane`, which names the
+membrane species `M_a` or `M_i`. `chemart.evolve("ono-ikegami-protocell")`
+runs the lattice and returns a trajectory with a frame per sweep; every other
+parameter belongs to it.
 
-What a spatial run leaves in `net.extras`:
+The default run (under a second) is not a published experiment: the
+published parameters belong to a different reaction scheme (see Results), so
+the defaults were chosen to be small and fast. Each frame's `state` counts
+the particles of each species, and `fired` lists the reactions of that sweep:
+
+```python
+traj = chemart.evolve("ono-ikegami-protocell", seed=1)
+traj.frames[0].state    # {'A': 48.0, 'X': 178.0, 'W': 350.0}
+traj.frames[1].fired    # [[['A', 'X'], ['A', 'A'], 1], [['A', 'X'], ['A', 'M_a'], 1], [['X'], ['Y'], 2]]
+traj.frames[-1].state   # {'A': 100.0, 'M_a': 99.0, 'X': 20.0, 'Y': 7.0, 'W': 350.0}
+```
+
+`traj.network` holds the reactions that fired, with counts, and its
+`initial_state` the starting counts. What else a run leaves in
+`traj.network.extras`, all of it describing the final lattice:
 
 - `space["final"]`: the lattice as rows of `A`, `M`, `X`, `Y`, `W`, and
   `space["orientations"]` the direction (0–5) of each membrane particle. Rows
   are in axial hexagonal coordinates, so printed as a square grid the picture
   is sheared.
-- `analysis["counts"]` and `analysis["history"]`: the species counts at the
-  end and after every sweep.
+- `analysis["counts"]`: the species counts at the end, keyed by the lattice
+  codes `A`, `M`, `X`, `Y`, `W` (the counts after every sweep are the frames'
+  `state`).
 - The membrane's shape: `membrane_clusters`, `largest_membrane_cluster`,
   `mean_membrane_coordination` (membrane neighbours per membrane particle,
   about 5 inside a blob and about 2 along a thin filament) and
@@ -263,11 +281,11 @@ import chemart
 NOCHEM = dict(P_A=0.0, P_M=0.0, P_decay=0.0, X_supply=0.0)
 for seed in (1, 2):
     for membrane in ("anisotropic", "isotropic"):
-        a = chemart.generate_network(
+        a = chemart.evolve(
             "ono-ikegami-protocell", seed=seed, membrane=membrane,
             repulsion=5.0, relaxation=25, steps=60,
             M_fraction=0.12, A_fraction=0.0, X_fraction=0.20, **NOCHEM,
-        ).extras["analysis"]
+        ).network.extras["analysis"]
         print(seed, membrane, a["mean_membrane_coordination"],
               a["membrane_alignment"], a["largest_membrane_cluster"],
               a["membrane_clusters"])
@@ -284,7 +302,7 @@ Isotropic particles collapse into a few compact blobs (for seed 1, pieces of
 48 and 26 of the 75 particles) with about 4.7 membrane neighbours each.
 Anisotropic particles stay thin (1.3 to 1.7 neighbours) and line up along
 their axes (46–48% of contacts, against 11% at random), but in 20 to 34
-short pieces rather than closed walls. Each run takes one to three seconds.
+short pieces rather than closed walls. Each run takes about a second.
 
 ### A cell, fed and starved
 
@@ -295,18 +313,19 @@ depending on the energy source:
 
 ```python
 for supply in (0.30, 0.0):
-    a = chemart.generate_network(
+    traj = chemart.evolve(
         "ono-ikegami-protocell", seed=1, X_supply=supply,
         repulsion=5.0, relaxation=20, steps=100,
         initial="cell", cell_radius=5, width=24, height=24,
-    ).extras["analysis"]
-    h = a["history"]["A"]
+    )
+    a = traj.network.extras["analysis"]
+    h = [f.state.get("A", 0) for f in traj.frames]      # A in every frame
     print(supply, a["counts"], h[0], max(h), h[-1], a["protocells"])
 ```
 
 ```
-0.3 {'A': 96, 'M': 111, 'X': 37, 'Y': 5, 'W': 327} 31 96 96 0
-0.0 {'A': 48, 'M': 41, 'X': 1, 'Y': 159, 'W': 327} 31 83 48 0
+0.3 {'A': 96, 'M': 111, 'X': 37, 'Y': 5, 'W': 327} 31.0 96.0 96.0 0
+0.0 {'A': 48, 'M': 41, 'X': 1, 'Y': 159, 'W': 327} 31.0 83.0 48.0 0
 ```
 
 Fed, the autocatalyst grows from 31 to 96. Starved, food runs out, waste piles
@@ -317,42 +336,42 @@ largest membrane piece has 7 particles. Each run takes under two seconds.
 `mobility_ratio` slows the autocatalyst, as in the one-dimensional paper's
 dividing cells (which used 5), and `anisotropy=0` makes `M_a` behave like
 `M_i`. The lattice goes up to 200×200; cost grows with cells × `steps` ×
-`relaxation`, and 100×100 for 200 sweeps at the defaults takes about seven
+`relaxation`, and 100×100 for 200 sweeps at the defaults takes about six
 seconds.
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `generate_network`, or to `chemart.evolve`; a parameter marked *evolve only* belongs to the process and one marked *generate only* to the network. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
-| `mode` | `enum` | `spatial` | structural | 'reactions' returns the four-reaction network on its own; 'spatial' runs the lattice and returns the reactions that fired with their counts, plus the lattice, the energies and the protocell measurements <br>one of `spatial`, `reactions` |
 | `membrane` | `enum` | `anisotropic` | structural | whether membrane particles are the anisotropic M_a or the isotropic M_i; the book's central result is that only M_a sustains protocells at low food supply <br>one of `anisotropic`, `isotropic` |
-| `width` | `int` | `24` | spatial | lattice width in cells (axial r); the papers use a few hundred <br>`6` … `200` |
-| `height` | `int` | `24` | spatial | lattice height in cells (axial q) <br>`6` … `200` |
-| `steps` | `int` | `100` | population | lattice sweeps; each sweep does six Metropolis exchange passes, one rotation pass and one chemistry pass <br>`1` … `20000` |
-| `relaxation` | `int` | `12` | spatial | Metropolis exchange passes per chemistry pass; this is where the paper's separation between the mobility rates (7e-3) and the reaction rates (1e-4) enters, so particles demix long before they react <br>`1` … `200` |
-| `initial` | `enum` | `random` | population | 'random' is a well-mixed start (the papers' homogeneous experiment); 'cell' prepares a membrane ring around autocatalyst and food (their cell-like experiment) <br>one of `random`, `cell` |
-| `cell_radius` | `int` | `5` | spatial | radius in cells of the prepared membrane ring when initial = cell <br>`1` … `60` |
-| `A_fraction` | `float` | `0.08` | population | fraction of cells seeded with autocatalyst A when initial = random <br>`0` … `1` |
-| `X_fraction` | `float` | `0.3` | population | fraction of cells seeded with food X; the rest of the lattice is water W <br>`0` … `1` |
-| `M_fraction` | `float` | `0.0` | population | fraction of cells seeded with membrane M when initial = random; non-zero starts from dispersed membrane particles, so their self-assembly can be watched on its own <br>`0` … `1` |
-| `P_A` | `float` | `0.03` | kinetic | probability per sweep and per neighbouring A that a food particle replicates it (A + X -&gt; 2 A); the paper's reproduction rate of A <br>`0` … `1` |
-| `P_M` | `float` | `0.03` | kinetic | probability per sweep and per neighbouring A that a food particle becomes membrane (A + X -&gt; A + M); the paper's production rate of M <br>`0` … `1` |
-| `P_decay` | `float` | `0.01` | kinetic | probability per sweep that an A, M or X particle decays to waste Y; water never decays <br>`0` … `1` |
-| `X_supply` | `float` | `0.3` | kinetic | probability per sweep that waste is recycled to food (Y -&gt; X) by the external energy source; the decisive resource-supply parameter, low values being the regime where anisotropy pays off <br>`0` … `1` |
-| `anisotropy` | `float` | `2.4` | spatial | strength a of the directional part of the M_a repulsion field, F[k, o] = 1 + a cos(2 * 60deg * (k - o)): repulsion is strongest along the +-o axis and weakest on the four flanks, where it turns attractive once a &gt; 2, so a membrane particle wants membrane neighbours along its axis and water on both flanks; 0 makes M_a behave like M_i <br>`0` … `3` |
-| `repulsion` | `float` | `1.0` | thermodynamic | energy of one hydrophilic/hydrophobic neighbour pair, in units of the temperature <br>≥ `0` |
-| `neutral_coupling` | `float` | `0.25` | thermodynamic | energy of a neutral/hydrophobic pair as a fraction of `repulsion`; this weak coupling is what lets X and Y cross a membrane that holds A back <br>`0` … `1` |
-| `temperature` | `float` | `1.0` | thermodynamic | Metropolis temperature T in min(1, exp(-dE/T)) <br>≥ `0.01` |
-| `mobility_ratio` | `float` | `1.0` | spatial | the paper's m: exchanges involving A are attempted with probability 1/m, making the autocatalyst less mobile than membrane and food; the 1D paper needs m = 5 for a cell to divide <br>≥ `1` |
+| `width` | `int` | `24` | spatial | *evolve only.* lattice width in cells (axial r); the papers use a few hundred <br>`6` … `200` |
+| `height` | `int` | `24` | spatial | *evolve only.* lattice height in cells (axial q) <br>`6` … `200` |
+| `steps` | `int` | `100` | population | *evolve only.* lattice sweeps, a frame each; a sweep does `relaxation` Metropolis exchange passes, one rotation pass (M_a only) and one chemistry pass <br>`1` … `20000` |
+| `relaxation` | `int` | `12` | spatial | *evolve only.* Metropolis exchange passes per chemistry pass; this is where the paper's separation between the mobility rates (7e-3) and the reaction rates (1e-4) enters, so particles demix long before they react <br>`1` … `200` |
+| `initial` | `enum` | `random` | population | *evolve only.* 'random' is a well-mixed start (the papers' homogeneous experiment); 'cell' prepares a membrane ring around autocatalyst and food (their cell-like experiment) <br>one of `random`, `cell` |
+| `cell_radius` | `int` | `5` | spatial | *evolve only.* radius in cells of the prepared membrane ring when initial = cell <br>`1` … `60` |
+| `A_fraction` | `float` | `0.08` | population | *evolve only.* fraction of cells seeded with autocatalyst A when initial = random <br>`0` … `1` |
+| `X_fraction` | `float` | `0.3` | population | *evolve only.* fraction of cells seeded with food X; the rest of the lattice is water W <br>`0` … `1` |
+| `M_fraction` | `float` | `0.0` | population | *evolve only.* fraction of cells seeded with membrane M when initial = random; non-zero starts from dispersed membrane particles, so their self-assembly can be watched on its own <br>`0` … `1` |
+| `P_A` | `float` | `0.03` | kinetic | *evolve only.* probability per sweep and per neighbouring A that a food particle replicates it (A + X -&gt; 2 A); the paper's reproduction rate of A <br>`0` … `1` |
+| `P_M` | `float` | `0.03` | kinetic | *evolve only.* probability per sweep and per neighbouring A that a food particle becomes membrane (A + X -&gt; A + M); the paper's production rate of M <br>`0` … `1` |
+| `P_decay` | `float` | `0.01` | kinetic | *evolve only.* probability per sweep that an A, M or X particle decays to waste Y; water never decays <br>`0` … `1` |
+| `X_supply` | `float` | `0.3` | kinetic | *evolve only.* probability per sweep that waste is recycled to food (Y -&gt; X) by the external energy source; the decisive resource-supply parameter, low values being the regime where anisotropy pays off <br>`0` … `1` |
+| `anisotropy` | `float` | `2.4` | spatial | *evolve only.* strength a of the directional part of the M_a repulsion field, F[k, o] = 1 + a cos(2 * 60deg * (k - o)): repulsion is strongest along the +-o axis and weakest on the four flanks, where it turns attractive once a &gt; 2, so a membrane particle wants membrane neighbours along its axis and water on both flanks; 0 makes M_a behave like M_i <br>`0` … `3` |
+| `repulsion` | `float` | `1.0` | thermodynamic | *evolve only.* energy of one hydrophilic/hydrophobic neighbour pair, in units of the temperature <br>≥ `0` |
+| `neutral_coupling` | `float` | `0.25` | thermodynamic | *evolve only.* energy of a neutral/hydrophobic pair as a fraction of `repulsion`; this weak coupling is what lets X and Y cross a membrane that holds A back <br>`0` … `1` |
+| `temperature` | `float` | `1.0` | thermodynamic | *evolve only.* Metropolis temperature T in min(1, exp(-dE/T)) <br>≥ `0.01` |
+| `mobility_ratio` | `float` | `1.0` | spatial | *evolve only.* the paper's m: exchanges involving A are attempted with probability 1/m, making the autocatalyst less mobile than membrane and food; the 1D paper needs m = 5 for a cell to divide <br>≥ `1` |
 
 ### Implementation decisions
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "9 decisions"
+??? note "10 decisions"
 
+    - Two faces, replacing the former mode parameter. generate_network returns the book's reaction set (six reactions over A, M, X, Y, W), status complete; its only parameter is membrane, which names the membrane species M_a or M_i. chemart.evolve runs the lattice (every other parameter belongs to it) and yields a frame per sweep: the count of each species and the reactions fired in that sweep. Its network holds the reactions that fired with their counts, the final lattice in extras.space, the energies in extras.energies and measurements of the final lattice in extras.analysis. The former extras.analysis.history (species counts after every sweep) is the frames' state.
     - The book describes the two-dimensional hexagonal model of [639]/[641]; those papers, the BioSystems study [637] and the 3D extension [538] are all paywalled and were not obtainable (no open copy per OpenAlex/Unpaywall/Semantic Scholar, and the Internet Archive was offline during this work). The accessible primary source is the authors' 1D predecessor, Ono & Ikegami (2000), whose appendix A supplies the lattice algorithm reconstructed here.
     - That 1D model runs a different reaction scheme - it inserts an enzyme E (A + A -&gt; A + E, E + R -&gt; E + A, E + R -&gt; E + M) and its resource/waste are R and W, whereas the book's 2D model has A act directly and names the five species A, M, X, Y, W. The implemented reaction set is the book's; the 1D constants (P_E = 0.5e-6, P_A' = 2e-6, P_R = P_W = 100e-6, P_D = 7e-3, P_R0 = 5e-3, P_R1 = 0.5 P_R0, m = 1 or 5) therefore do NOT apply to it and are recorded, with the phase-diagram points of figures 4, 7 and 10, in extras.reference_rates rather than used as rate constants.
     - Consequently every reaction carries rate = None: no accessible source publishes a rate for this scheme. P_A, P_M, P_decay and X_supply are simulation probabilities per sweep whose defaults were chosen so the zero-argument run is small and fast, and are not published values.

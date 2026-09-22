@@ -30,9 +30,10 @@ unique and appears once in the rhs. Sources supply an object without limit;
 drains remove objects matched by a pattern. The dynamics is nondeterministic
 (apply a rule, operate a source, or operate a drain, in any order).
 
-method "closure" returns every reaction reachable from the initial pool and the
-sources (each rule applied to every tuple of known species); method "soup"
-samples one run of the nondeterministic process and returns the reactions that
+Two faces. `generate` returns every reaction reachable from the initial pool
+and the sources (each rule applied to every tuple of known species); `evolve`
+samples one run of the nondeterministic process, a frame per generation (as
+many events as the initial pool has objects), and returns the reactions that
 fired. Sources are reactions ∅ -> s, drains are reactions s -> ∅.
 """
 
@@ -44,6 +45,8 @@ from functools import lru_cache
 from itertools import product
 
 from chemart.network import Network, Reaction, Species
+from chemart.soup import Tally
+from chemart.trajectory import Frame
 
 SYSTEMS = (
     "benenson-automaton", "transcription", "fatty-acid-oxidation",
@@ -442,19 +445,32 @@ def closure(rules: list[Rule], seed: list[Molecule], max_species: int = 2000):
     return species, list(reactions.values()), "truncated" if truncated else "complete"
 
 
-def run(rules: list[Rule], pool: Counter, sources: list[Molecule], drains: list, steps: int, rng):
-    """One sampled run of the nondeterministic process.
+def _key(lhs, rhs) -> tuple:
+    return (frozenset(Counter(lhs).items()), frozenset(Counter(rhs).items()))
+
+
+def events(rules: list[Rule], pool: Counter, sources: list[Molecule], drains: list, steps: int, rng,
+           *, every: int | None = None, tally: Tally | None = None, labels: dict | None = None):
+    """One sampled run of the nondeterministic process, as a generator.
 
     Every step picks an event with probability proportional to its weight: a
     rule by the number of ordered reactant choices (product over its patterns
     of the copies matching that pattern), a source with weight 1, a drain by the
     number of copies it matches. Reactants are drawn in proportion to their
     copies and a match (displacement) uniformly; a draw that needs more copies
-    than exist does nothing.
+    than exist does nothing. The run stops early when no event is possible.
+
+    Yields (step, counts, tally) at step 0, every `every` steps (default: the
+    initial number of objects, one generation) and at the end; `tally` holds the
+    reactions fired since the previous yield and `labels` maps each reaction's
+    key to the label of the rule that first made it. Returns the species seen,
+    in order of appearance.
     """
     counts = Counter({m: c for m, c in pool.items() if c > 0})
+    every = every or max(sum(counts.values()), 1)
+    tally = tally if tally is not None else Tally()
+    labels = labels if labels is not None else {}
     cache: dict[Molecule, list] = {}
-    fired: dict[tuple, list] = {}
     seen = dict.fromkeys(list(counts) + list(sources))
 
     def matches(mol):
@@ -464,56 +480,87 @@ def run(rules: list[Rule], pool: Counter, sources: list[Molecule], drains: list,
         return cache[mol]
 
     def record(lhs, rhs, label):
-        key = (frozenset(Counter(lhs).items()), frozenset(Counter(rhs).items()))
-        fired.setdefault(key, [lhs, rhs, label, 0])[3] += 1
+        labels.setdefault(_key(lhs, rhs), label)
+        tally.add(lhs, rhs)
 
-    for _ in range(steps):
+    def event() -> bool:
+        """Operate one event; False when none is possible."""
         present = [m for m, c in counts.items() if c > 0]
-        events = []
+        options = []
         for j, r in enumerate(rules):
             per_pos = [[(m, counts[m]) for m in present if matches(m)[j][q]] for q in range(r.arity)]
             weight = 1
             for choices in per_pos:
                 weight *= sum(c for _, c in choices)
             if weight:
-                events.append((weight, "rule", j, per_pos))
+                options.append((weight, "rule", j, per_pos))
         for s in sources:
-            events.append((1, "source", s, None))
+            options.append((1, "source", s, None))
         for k in range(len(drains)):
             hit = [(m, counts[m]) for m in present if matches(m)[-1][k]]
             if hit:
-                events.append((sum(c for _, c in hit), "drain", k, hit))
-        total = sum(e[0] for e in events)
+                options.append((sum(c for _, c in hit), "drain", k, hit))
+        total = sum(e[0] for e in options)
         if not total:
-            break
+            return False
         x = rng.random() * total
-        for weight, kind, what, data in events:
+        for weight, kind, what, data in options:
             if x < weight:
                 break
             x -= weight
         if kind == "source":
             counts[what] += 1
             record((), (what,), "source")
-            continue
+            return True
         if kind == "drain":
             mol = _pick(data, rng)
             counts[mol] -= 1
             record((mol,), (), "drain")
-            continue
+            return True
         r = rules[what]
         lhs = tuple(_pick(choices, rng) for choices in data)
         if any(counts[m] < c for m, c in Counter(lhs).items()):
-            continue
+            return True
         bindings = [matches(m)[what][q] for q, m in enumerate(lhs)]
         choice = [b[int(rng.integers(len(b)))] for b in bindings]
         rhs = r.outcomes([[b] for b in choice])[0]
         if Counter(lhs) == Counter(rhs):
-            continue
+            return True
         counts.subtract(Counter(lhs))
         counts.update(Counter(rhs))
         seen.update(dict.fromkeys(rhs))
         record(lhs, rhs, r.label)
-    return list(fired.values()), +counts, list(seen)
+        return True
+
+    yield 0, counts, tally
+    done = last = 0
+    for step in range(1, steps + 1):
+        if not event():
+            break
+        done = step
+        if done % every == 0 and done < steps:
+            yield done, counts, tally
+            last = done
+    if done != last:
+        yield done, counts, tally
+    return list(seen)
+
+
+def run(rules: list[Rule], pool: Counter, sources: list[Molecule], drains: list, steps: int, rng):
+    """One sampled run of the nondeterministic process to the end (see `events`).
+
+    Returns (reactions [[lhs, rhs, rule label, count]], final counts, species seen).
+    """
+    tally, labels = Tally(), {}
+    stream = events(rules, pool, sources, drains, steps, rng, tally=tally, labels=labels)
+    while True:
+        try:
+            _, counts, _ = next(stream)
+        except StopIteration as stop:
+            seen = stop.value
+            break
+    fired = [[lhs, rhs, labels[_key(lhs, rhs)], n] for lhs, rhs, n in tally.reactions()]
+    return fired, +counts, seen
 
 
 def _pick(choices, rng):
@@ -534,7 +581,7 @@ def _ids(mols) -> list[str]:
     return [molecule_text(m) for m in mols]
 
 
-def generate(p, rng):
+def _setup(p):
     texts, pool_texts, source_texts, drain_texts = system(p)
     rules = [Rule(text, label) for label, text in texts]
     pool = Counter()
@@ -542,39 +589,63 @@ def generate(p, rng):
         pool[parse_molecule(text)] += c
     sources = [parse_molecule(s) for s in source_texts]
     drains = [parse_pattern(d) for d in drain_texts]
-
     extras = {
         "system": p.system,
         "rules": [f"{label}: {r.text}" for label, r in zip((t[0] for t in texts), rules)],
         "sources": _ids(sources),
         "drains": list(drain_texts),
     }
-    if p.method == "closure":
-        seed = list(pool) + sources
-        species, found, status = closure(rules, seed, p.max_species)
-        reactions = [Reaction.of(_ids(lhs), _ids(rhs)) for lhs, rhs, _ in found]
-        labels = [label for _, _, label in found]
-        for s in sources:
-            reactions.append(Reaction({}, {molecule_text(s): 1}))
-            labels.append("source")
-        for m in species:
-            if any(match(d, m) for d in drains):
-                reactions.append(Reaction({molecule_text(m): 1}, {}))
-                labels.append("drain")
-        initial = {molecule_text(m): float(c) for m, c in pool.items()}
-    else:
-        if p.copies > 1:
-            pool = Counter({m: c * p.copies for m, c in pool.items()})
-        fired, final, species = run(rules, pool, sources, drains, p.steps, rng)
-        reactions = [Reaction.of(_ids(lhs), _ids(rhs), count=c) for lhs, rhs, _, c in fired]
-        labels = [label for _, _, label, _ in fired]
-        status = "observed"
-        initial = {molecule_text(m): float(c) for m, c in pool.items()}
-        extras["final_state"] = {molecule_text(m): c for m, c in final.most_common()}
+    return rules, pool, sources, drains, extras
+
+
+def generate(p, rng):
+    """The closure of the initial pool and the sources, cut off by max_species."""
+    rules, pool, sources, drains, extras = _setup(p)
+    seed = list(pool) + sources
+    species, found, status = closure(rules, seed, p.max_species)
+    reactions = [Reaction.of(_ids(lhs), _ids(rhs)) for lhs, rhs, _ in found]
+    labels = [label for _, _, label in found]
+    for s in sources:
+        reactions.append(Reaction({}, {molecule_text(s): 1}))
+        labels.append("source")
+    for m in species:
+        if any(match(d, m) for d in drains):
+            reactions.append(Reaction({molecule_text(m): 1}, {}))
+            labels.append("drain")
     extras["reaction_rules"] = labels
-    extras["analysis"] = _analysis(p, {molecule_text(m) for m in species}, extras.get("final_state"))
+    extras["analysis"] = _analysis(p, {molecule_text(m) for m in species}, None)
     return Network(species=_species(species), reactions=reactions, status=status,
-                   initial_state=initial, extras=extras)
+                   initial_state={molecule_text(m): float(c) for m, c in pool.items()}, extras=extras)
+
+
+def _text_state(counts) -> dict[str, float]:
+    return {molecule_text(m): float(c) for m, c in counts.items() if c > 0}
+
+
+def evolve(p, rng):
+    """One sampled run of the process: a frame per generation of events."""
+    rules, pool, sources, drains, extras = _setup(p)
+    if p.copies > 1:
+        pool = Counter({m: c * p.copies for m, c in pool.items()})
+    tally, labels = Tally(), {}
+    stream = events(rules, pool, sources, drains, p.steps, rng, tally=tally, labels=labels)
+    while True:
+        try:
+            step, counts, _ = next(stream)
+        except StopIteration as stop:
+            species = stop.value
+            break
+        fired = [[_ids(lhs), _ids(rhs), n] for lhs, rhs, n in tally.flush()]
+        yield Frame(t=float(step), state=_text_state(counts), fired=fired)
+    fired = tally.reactions()
+    final = +counts
+    extras["final_state"] = {molecule_text(m): c for m, c in final.most_common()}
+    extras["reaction_rules"] = [labels[_key(lhs, rhs)] for lhs, rhs, _ in fired]
+    extras["analysis"] = _analysis(p, {molecule_text(m) for m in species}, extras["final_state"])
+    return Network(species=_species(species),
+                   reactions=[Reaction.of(_ids(lhs), _ids(rhs), count=c) for lhs, rhs, c in fired],
+                   status="observed", initial_state={molecule_text(m): float(c) for m, c in pool.items()},
+                   extras=extras)
 
 
 def _analysis(p, ids: set[str], final: dict | None) -> dict:

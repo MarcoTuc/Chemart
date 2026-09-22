@@ -5,7 +5,7 @@ from collections import Counter
 import numpy as np
 import pytest
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries.mccaskill_polymer_tm import (
     OPPOSITE, PARASITE, REPLICATOR, SAME, can_collide, complement, decode_rules, process, recognizons,
     species_id,
@@ -93,7 +93,7 @@ def test_closure_without_recognition_closes_the_plus_minus_cycle():
 
 
 def test_soup_products_are_processing_results():
-    net = generate_network("mccaskill-polymer-tm", seed=3, method="soup", steps=3000)
+    net = evolve("mccaskill-polymer-tm", seed=3, steps=3000).network
     assert net.status == "observed" and net.outflow == "constant-total"
     assert sum(net.initial_state.values()) == 200
     assert net.initial_state[species_id(REP)] == 20 and net.initial_state[species_id(PAR)] == 20
@@ -110,13 +110,13 @@ def test_soup_replication_fires_but_the_cycle_needs_recognition_none():
     # reconstructed recognizons the replicator never meets its complement, so it declines
     # (the report's survival is not reproduced; see decisions). Without recognition the
     # plus/minus reaction can fire (it does for seed 1; the replicator still dies out later).
-    net = generate_network("mccaskill-polymer-tm", seed=0, method="soup", steps=20000)
+    net = evolve("mccaskill-polymer-tm", seed=0, steps=20000).network
     found = {k: r.count for k, r in zip(reactions_of_list(net), net.reactions)}
     assert found.get(key((REP, REP), (REP, REP, complement(REP))), 0) >= 1
     assert key((REP, complement(REP)), (REP, complement(REP), REP)) not in found
     assert net.extras["final_state"].get(species_id(REP), 0) < net.initial_state[species_id(REP)]
 
-    free = generate_network("mccaskill-polymer-tm", seed=1, method="soup", steps=5000, recognition="none")
+    free = evolve("mccaskill-polymer-tm", seed=1, steps=5000, recognition="none").network
     fired = set(reactions_of_list(free))
     assert key((REP, REP), (REP, REP, complement(REP))) in fired
     assert key((REP, complement(REP)), (REP, complement(REP), REP)) in fired
@@ -132,4 +132,4 @@ def test_bad_parameters():
     with pytest.raises(ValueError, match="error_rate"):
         generate_network("mccaskill-polymer-tm", error_rate=0.01)
     with pytest.raises(ValueError, match="population"):
-        generate_network("mccaskill-polymer-tm", method="soup", population=10, inoculum_fraction=0.9)
+        evolve("mccaskill-polymer-tm", population=10, inoculum_fraction=0.9)

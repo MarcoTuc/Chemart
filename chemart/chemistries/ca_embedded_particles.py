@@ -19,9 +19,13 @@ site against the phases of each domain's spatial pattern over a window of the
 neighbourhood's width; sites that match nothing are walls; each maximal wall is
 a particle, named by the pair of domains it separates; particles are followed
 from step to step and every appearance/disappearance event is recorded as a
-reaction with its firing count (`reactions="observed"`, status ``observed``).
-With `reactions="published"` the network is instead the particle catalog's own
-interaction table, exactly as printed (status ``complete``).
+reaction with its firing count.
+
+Two faces. ``generate`` returns the particle catalog's own interaction table,
+exactly as printed (status ``complete``); nothing is run. ``evolve`` runs the
+automaton and yields a frame per CA iteration: the particles present, the
+interactions recorded in that iteration, and the density of 1s; it returns the
+interactions that fired with their counts (status ``observed``).
 
 Rules (`rule`), with the lookup tables embedded verbatim from their sources:
 
@@ -33,9 +37,10 @@ Rules (`rule`), with the lookup tables embedded verbatim from their sources:
                 walls are named by the same domain-pair convention
 
 extras["analysis"] holds the catalog (domains, particles, velocities, the
-published interaction table), the measured particle velocities, the observed
-interaction counts and the classification outcome; extras["space"] holds the
-lattice and the filtered space-time diagram.
+published interaction table) and, for a run, the measured particle velocities,
+the observed interaction counts and the classification outcome;
+extras["space"] holds the rule and, for a run, the lattice and the filtered
+space-time diagram.
 """
 
 from __future__ import annotations
@@ -45,6 +50,7 @@ from collections import Counter
 import numpy as np
 
 from chemart.network import Network, Reaction, Species
+from chemart.trajectory import Frame
 
 #: CA radius of every rule here: neighbourhood = 2r + 1 = 7 cells.
 RADIUS = 3
@@ -385,9 +391,9 @@ class Run:
         self.window = window
         self.domains = list(self.spec["domains"])
         self.events: Counter = Counter()
+        self.recent: Counter = Counter()      # events recorded since the last flush()
         self.seen: Counter = Counter()
         self.condensation: int | None = None
-        self.history: list[dict] = []
         self.filtered: list[str] = []
         self.open: list[_Event] = []
         self.tracks: dict[int, dict] = {}     # one particle followed over time
@@ -414,8 +420,6 @@ class Run:
             self.condensation = t
         self.seen.update(name for _c, name in particles)
         self.filtered.append("".join("." if v >= 0 else "#" for v in labels))
-        self.history.append({"step": t, "particles": len(particles),
-                             "by_type": dict(Counter(n for _c, n in particles))})
         return sorted(particles)
 
     # -- follow the particles from one step to the next --------------------
@@ -527,6 +531,13 @@ class Run:
         right = tuple(sorted(event.products.elements()))
         if left or right:
             self.events[(left, right)] += 1
+            self.recent[(left, right)] += 1
+
+    def flush(self) -> list[list]:
+        """The events recorded since the last flush, as a frame's `fired`; then forget them."""
+        out = [[list(lhs), list(rhs), n] for (lhs, rhs), n in self.recent.items()]
+        self.recent = Counter()
+        return out
 
     def finish(self) -> None:
         self.close(float("inf"))
@@ -535,21 +546,6 @@ class Run:
 # ---------------------------------------------------------------------------
 # The chemistry
 # ---------------------------------------------------------------------------
-def _published_network(p, spec, space) -> Network:
-    """The particle catalog's own interaction table, as a complete network."""
-    if not spec["interactions"]:
-        raise ValueError(
-            f"no particle interaction table is published for rule {p.rule!r}; "
-            "use reactions='observed' to record the interactions of a run"
-        )
-    species = [Species(name, structure=_structure(name, spec))
-               for name in ORDER if name in spec["particles"]]
-    reactions = [Reaction(dict(Counter(lhs)), dict(Counter(rhs)))
-                 for _kind, lhs, rhs, _left in spec["interactions"]]
-    return Network(species=species, reactions=reactions, status="complete",
-                   extras={"space": space, "analysis": _analysis(p, spec)})
-
-
 def _structure(name: str, spec) -> str:
     """A species' structure: the wall it is, and its published velocity if any."""
     if name in spec["particles"]:
@@ -588,37 +584,59 @@ def _analysis(p, spec) -> dict:
     }
 
 
-def generate(p, rng):
-    if p.rule not in RULES:
-        raise ValueError(f"unknown rule {p.rule!r}; known: {', '.join(RULES)}")
-    spec = RULES[p.rule]
-    table = lookup(spec["hex"])
-    n = p.lattice
-    if n < 4 * RADIUS:
-        raise ValueError(f"lattice must hold a few neighbourhoods; got {n} < {4 * RADIUS}")
-
-    lattice = initial_lattice(n, p.density, rng)
-    space = {
-        "dimensions": 1, "shape": [n], "boundary": "periodic", "states": 2,
+def _space(p, spec) -> dict:
+    return {
+        "dimensions": 1, "boundary": "periodic", "states": 2,
         "radius": RADIUS, "neighbourhood": 2 * RADIUS + 1, "rule": p.rule,
         "lookup_hex": spec["hex"],
         "lookup_convention": "hex digits left to right give the 128 output bits in "
                              "lexicographic order of neighbourhood; the leftmost bit "
                              "is the output for neighbourhood 0000000",
-        "initial": "".join(str(v) for v in lattice),
     }
-    if p.reactions == "published":
-        return _published_network(p, spec, space)
+
+
+def generate(p, rng):
+    """The rule's published particle interaction table, as a complete network."""
+    spec = RULES[p.rule]
+    if not spec["interactions"]:
+        raise ValueError(
+            f"no particle interaction table is published for rule {p.rule!r}; "
+            "use chemart.evolve to record the interactions of a run"
+        )
+    species = [Species(name, structure=_structure(name, spec))
+               for name in ORDER if name in spec["particles"]]
+    reactions = [Reaction(dict(Counter(lhs)), dict(Counter(rhs)))
+                 for _kind, lhs, rhs, _left in spec["interactions"]]
+    return Network(species=species, reactions=reactions, status="complete",
+                   extras={"space": _space(p, spec), "analysis": _analysis(p, spec)})
+
+
+def evolve(p, rng):
+    """Run the automaton: a frame per CA iteration."""
+    spec = RULES[p.rule]
+    table = lookup(spec["hex"])
+    n = p.lattice
+    if n < 4 * RADIUS:
+        raise ValueError(f"lattice must hold a few neighbourhoods; got {n} < {4 * RADIUS}")
     if not spec["runnable"]:
         raise ValueError(
             f"the published look-up table of rule {p.rule!r} does not reproduce its "
             f"published behaviour (see the catalog entry's decisions), so only its "
-            f"particle catalog is offered: use reactions='published'"
+            f"particle catalog is offered: use chemart.generate_network"
         )
+
+    lattice = initial_lattice(n, p.density, rng)
+    space = {**_space(p, spec), "shape": [n], "initial": "".join(str(v) for v in lattice)}
+
+    def frame(t, particles):
+        return Frame(t=float(t), state={name: float(k) for name, k in
+                                        sorted(Counter(name for _c, name in particles).items())},
+                     fired=run.flush(), observables={"density": float(lattice.mean())})
 
     run = Run(p.rule, p.filter_window)
     before = run.observe(lattice, 0)
     at_condensation = before if run.condensation == 0 else None
+    yield frame(0, before)
     for t in range(1, p.steps + 1):
         lattice = step(lattice, table)
         after = run.observe(lattice, t)
@@ -626,7 +644,9 @@ def generate(p, rng):
         before = after
         if run.condensation == t and at_condensation is None:
             at_condensation = after
-    run.finish()
+        if t == p.steps:
+            run.finish()                       # the events still open end with the run
+        yield frame(t, after)
 
     start = at_condensation if at_condensation is not None else before
     names = sorted({name for _kind, lhs, rhs, _l in spec["interactions"] for name in lhs + rhs}
@@ -636,7 +656,6 @@ def generate(p, rng):
     reactions = [Reaction(dict(Counter(lhs)), dict(Counter(rhs)), count=count)
                  for (lhs, rhs), count in sorted(run.events.items(),
                                                  key=lambda kv: (-kv[1], kv[0]))]
-    measured = run.velocities()
     analysis = _analysis(p, spec)
     analysis.update({
         "steps": p.steps,
@@ -644,12 +663,11 @@ def generate(p, rng):
         "condensation_time": run.condensation,
         "classification": classify(lattice, p.density),
         "particles_seen": dict(run.seen),
-        "measured_velocities": measured,
+        "measured_velocities": run.velocities(),
         "interactions_observed": [
             {"reaction": " + ".join(lhs) + " -> " + (" + ".join(rhs) or "∅"), "count": count}
             for (lhs, rhs), count in sorted(run.events.items(), key=lambda kv: (-kv[1], kv[0]))
         ],
-        "population": run.history[:: max(1, len(run.history) // 50)],
     })
     space["final"] = "".join(str(v) for v in lattice)
     space["filtered"] = run.filtered[:: max(1, len(run.filtered) // 200)]

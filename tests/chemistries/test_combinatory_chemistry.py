@@ -10,7 +10,7 @@ from collections import Counter
 import numpy as np
 import pytest
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries.combinatory_chemistry import (
     Pool, Reactor, atom_counts, cleave, parse, reduce_at, redexes, show,
 )
@@ -157,10 +157,19 @@ def atoms(multiset):
 
 
 def test_starts_from_atoms_and_diversity_explodes():
-    net = generate_network("combinatory-chemistry", seed=0)
-    assert set(net.initial_state) == {"S", "K", "I"}
-    diversity = net.extras["analysis"]["diversity"]
+    traj = evolve("combinatory-chemistry", seed=0)
+    assert set(traj.network.initial_state) == {"S", "K", "I"}
+    diversity = [len(f.state) for f in traj.frames]
     assert diversity[0] == 3 and max(diversity) > 50
+
+
+def test_a_frame_every_record_every_iterations():
+    traj = evolve("combinatory-chemistry", seed=0, iterations=2500, record_every=1000)
+    assert traj.clock == "iterations" and traj.times() == [0.0, 1000.0, 2000.0, 2500.0]
+    first = traj.frames[0]
+    assert first.fired == [] and first.state == {"I": 334.0, "K": 333.0, "S": 333.0}
+    assert first.observables["free_atoms"] == {"S": 333, "K": 333, "I": 334}
+    assert traj.frames[-1].state == {s: float(n) for s, n in traj.network.extras["final_state"].items()}
 
 
 def test_reaction_kinds_are_recorded():
@@ -175,12 +184,11 @@ def test_paper_scale_diversity_and_sii_autopoiesis():
     # Fig. 4a: 10,000 atoms, diversity explodes to a few hundred within ~200k reactions;
     # Fig. 4c: reductions are 10-35% of reactions;
     # Fig. 5a: SII is consumed above binary reactants because SII(SII) structures emerge.
-    net = generate_network("combinatory-chemistry", seed=0, n_I=3334, n_K=3333, n_S=3333,
-                           iterations=2_000_000, record_every=500_000)
-    a = net.extras["analysis"]
-    assert 200 <= a["diversity"][1] <= 500          # after the first 500,000 iterations
-    assert all(0.08 <= r <= 0.35 for r in a["reductions"][1:])
-    late = a["top_reactants"][-1]
+    traj = evolve("combinatory-chemistry", seed=0, n_I=3334, n_K=3333, n_S=3333,
+                  iterations=2_000_000, record_every=500_000)
+    assert 200 <= len(traj.frames[1].state) <= 500   # after the first 500,000 iterations
+    assert all(0.08 <= r <= 0.35 for r in traj.series("reductions")[1:])
+    late = traj.series("top_reactants")[-1]
     binary = max(late.get(x, 0) for x in ("KI", "KK", "II", "SI", "SK", "IK", "IS", "KS", "SS"))
     assert late.get("SII", 0) > binary
-    assert net.extras["final_state"].get("SII(SII)", 0) >= 1
+    assert traj.network.extras["final_state"].get("SII(SII)", 0) >= 1

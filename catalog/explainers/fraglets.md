@@ -122,7 +122,7 @@ version in which B has part of the protocol pre-installed as a second
 
 Chemart can turn a Fraglets program into a network in two ways.
 
-- **Closure** (the default) starts from the distinct fraglets of the program
+- **Closure** (`chemart.generate_network`) starts from the distinct fraglets of the program
   and applies every transformation and every possible match, again and again,
   until no new fraglet appears. The result is every reaction the program can
   ever take, without kinetics. It ignores how many copies of each fraglet
@@ -130,7 +130,7 @@ Chemart can turn a Fraglets program into a network in two ways.
   say) it can list reactions no single run would take. A program whose
   strings keep growing never closes; Chemart then stops at a species budget
   and marks the network *truncated*.
-- **SSA** runs the program. SSA stands for *stochastic simulation algorithm*,
+- **SSA** (`chemart.evolve`) runs the program. SSA stands for *stochastic simulation algorithm*,
   Gillespie's method for simulating chemical reactions as random events.
   Chemart ports the scheduler of PyCellChemistry, the Python package that
   accompanies the book. Transformations are treated as instantaneous: before
@@ -139,7 +139,9 @@ Chemart can turn a Fraglets program into a network in two ways.
   copies times the number of passive copies (mass action with rate constant
   1). The run stops after a given number of matches, or earlier when no match
   is possible (the nodes are *inert*). The result lists the reactions that
-  actually happened, with their counts.
+  actually happened, with their counts, and the run is recorded as frames:
+  the contents of every node after each match. The clock counts matches;
+  no continuous time is drawn.
 
 Tschudin's own interpreter did not work this way. According to the book it
 ran "in a maximally parallel way, executing as many reaction rules as
@@ -193,22 +195,33 @@ The `program` parameter takes the text format of the upstream interpreter:
 omitted), `a node segment` attaches a node to a segment, `#` starts a comment.
 Symbols are separated by spaces, or by `:` as in the 2003 paper.
 
-**Running the CDP.** With five messages and `method="ssa"`, all five are
-delivered and acknowledged, and the program survives:
+**Running the CDP.** `chemart.evolve` runs a program and returns a
+trajectory: the observed network plus one frame per match. With five
+messages, all five are delivered and acknowledged, and the program survives:
 
 ```python
 from chemart.chemistries import fraglets as fr
 prog = fr.CDP.replace("f a[cdp data]", "f a[cdp data]5")
-net = chemart.generate_network("fraglets", program=prog, method="ssa", seed=3)
+traj = chemart.evolve("fraglets", program=prog, seed=3)
+net = traj.network
 net.extras["final_state"]
 # {'a[matchp,cdp,send,b,split,send,a,ack,*]': 1, 'b[data]': 5, 'a[ack]': 5}
 net.extras["bimolecular_events"], net.extras["inert"]      # (5, True)
+traj.clock, traj.times()     # ('steps', [0.0, 1.0, 2.0, 3.0, 4.0, 5.0])
+traj.frames[1].state
+# {'a[matchp,cdp,send,b,split,send,a,ack,*]': 1.0, 'a[cdp,data]': 4.0,
+#  'b[data]': 1.0, 'a[ack]': 1.0}
 ```
 
 `final_state` is the contents of all nodes at the end, `bimolecular_events`
 the number of matches, and `inert` says whether the run stopped because
 nothing could react any more. Each reaction's `count` says how often it fired
-(here 5 each).
+(here 5 each). The first frame is the program as written; each later frame
+holds the nodes after one match and the transformations it set off, and its
+`fired` lists those reactions: in frame 1, the match of the program with one
+message and the three transformations that carry the message to `b` and the
+acknowledgement back to `a`. When the program's transformations fire before
+the first match, an extra frame at time 0 holds the settled state.
 
 **Integer programs** need `dialect="fraglets-2007"`. The 2007 tutorial's
 recursive counter, which counts the symbols of a fraglet without using the
@@ -222,14 +235,13 @@ f [matchp cnt pop cnt1]
 f [matchp cnt1 split match counter incr counter * count]
 f [matchp incr exch sum 1]
 f [count a b c]"""
-net = chemart.generate_network("fraglets", program=prog, dialect="fraglets-2007",
-                               method="ssa", seed=0)
+net = chemart.evolve("fraglets", program=prog, dialect="fraglets-2007", seed=0).network
 # final_state without the program fraglets: {'[total,3]': 1}, after 18 matches
 ```
 
 The closure of the same program is `truncated` at 200 species and 192
 reactions: without counts, nothing stops the counter from incrementing for
-ever. Use `method="ssa"` for programs like this.
+ever. Use `chemart.evolve` for programs like this.
 
 **Self-replicating code.** The PyCellChemistry quine closes on four species
 and three reactions, and the last reaction rebuilds the fraglet the first one
@@ -250,12 +262,12 @@ way on four species and three reactions.
 
 **Growing tails.** `f [split matchp a dup a * a a]` produces ever longer
 `[a a ... a]` strings. With `max_species=30` the closure is truncated at 30
-species; an SSA run of 20 matches ends with one catalyst `[matchp a dup a]`
-and a single string of 22 `a`s.
+species; a run of 20 matches (`chemart.evolve(..., steps=20)`) ends with
+one catalyst `[matchp a dup a]` and a single string of 22 `a`s.
 
 Every run on this page takes well under a second. Programs that elongate or
-count make closures run into `max_species`, and a very large `steps` in SSA
-is the only setting that grows the run time appreciably.
+count make closures run into `max_species`, and a very large `steps` in
+`chemart.evolve` is the only setting that grows the run time appreciably.
 
 **What is not supported.** Instructions that need time (`wait`, `delay`),
 create nodes (`newnode`), print, broadcast or call the host application are

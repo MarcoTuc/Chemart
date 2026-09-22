@@ -5,7 +5,7 @@ import itertools
 import numpy as np
 import pytest
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries.proof_ac import (
     EMPTY, PROBLEMS, Chemistry, binary_resolvents, canonical, factors, parse_clauses,
 )
@@ -214,9 +214,12 @@ def test_closure_truncates_on_budget():
 
 # --- the reactor ------------------------------------------------------------------------
 def test_soup_follows_algorithms_3_1_and_3_3():
-    net = generate_network(ID, method="soup", seed=3)
+    traj = evolve(ID, seed=3)
+    net = traj.network
     a = net.extras["analysis"]
     assert net.status == "observed"
+    assert traj.times()[0] == 0.0 and traj.times()[-1] == a["collisions"]   # frames every 160 collisions
+    assert all(t == 160.0 * i for i, t in enumerate(traj.times()[:-1]))
     assert net.initial_state == {c: 20.0 for c in net.extras["axioms"] + net.extras["goal"]}
     assert sum(net.extras["final_state"].values()) == 160           # educt replacement: size fixed
     assert a["productive_collisions"] == sum(r.count for r in net.reactions)
@@ -234,7 +237,7 @@ def test_soup_follows_algorithms_3_1_and_3_3():
 def test_soup_proof_times_fig_6_3():
     """Thesis fig. 6.3: table 6.1, elastic inflow, multiplicity 20: most runs need at most
     8500 collisions (the first class; the class mean is 0.36)."""
-    times = [generate_network(ID, method="soup", seed=s).extras["analysis"]["collisions_to_proof"]
+    times = [evolve(ID, seed=s).network.extras["analysis"]["collisions_to_proof"]
              for s in range(20)]
     assert sum(t is not None for t in times) >= 18
     assert sum(t is not None and t <= 8500 for t in times) >= 12
@@ -242,35 +245,36 @@ def test_soup_proof_times_fig_6_3():
 
 def test_reactor_size_matters_figs_6_1_6_2():
     """Thesis figs. 6.1-6.2: a too-small reactor can prevent the proof."""
-    tiny = [generate_network(ID, method="soup", seed=s, multiplicity=1, max_collisions=8500)
-            .extras["analysis"]["proved"] for s in range(12)]
-    normal = [generate_network(ID, method="soup", seed=s, max_collisions=8500)
-              .extras["analysis"]["proved"] for s in range(12)]
+    tiny = [evolve(ID, seed=s, multiplicity=1, max_collisions=8500)
+            .network.extras["analysis"]["proved"] for s in range(12)]
+    normal = [evolve(ID, seed=s, max_collisions=8500)
+              .network.extras["analysis"]["proved"] for s in range(12)]
     assert sum(tiny) < sum(normal)
 
 
 def test_free_replacement_and_rate_inflow():
-    net = generate_network(ID, method="soup", seed=1, replacement="free")
+    net = evolve(ID, seed=1, replacement="free").network
     assert sum(net.extras["final_state"].values()) == 160
     for r in net.reactions:
         assert sum(r.reactants.values()) == 2 and sum(r.products.values()) in (2, 3)
-    net = generate_network(ID, method="soup", seed=1, elastic_inflow=False, inflow_rate=0.5, max_collisions=40)
+    net = evolve(ID, seed=1, elastic_inflow=False, inflow_rate=0.5, max_collisions=40).network
     a = net.extras["analysis"]
     assert a["inflows"] == a["collisions"] // 2
 
 
 @pytest.mark.parametrize(
-    "given, message",
+    "run, given, message",
     [
-        (dict(clauses="p"), "only read when problem is custom"),
-        (dict(problem="custom"), "needs clauses"),
-        (dict(problem="custom", clauses="p(X"), "cannot parse"),
-        (dict(target="p; q"), "exactly one clause"),
-        (dict(problem="custom", clauses="p; ~p", strategy="set-of-support"), "need goal clauses"),
-        (dict(method="soup", inflow_rate=0.5), "elastic_inflow=false"),
-        (dict(method="soup", problem="custom", clauses="p", multiplicity=1), "at least 2 molecules"),
+        (generate_network, dict(clauses="p"), "only read when problem is custom"),
+        (generate_network, dict(problem="custom"), "needs clauses"),
+        (generate_network, dict(problem="custom", clauses="p(X"), "cannot parse"),
+        (generate_network, dict(target="p; q"), "exactly one clause"),
+        (generate_network, dict(problem="custom", clauses="p; ~p", strategy="set-of-support"), "need goal clauses"),
+        (evolve, dict(clauses="p"), "only read when problem is custom"),
+        (evolve, dict(inflow_rate=0.5), "elastic_inflow=false"),
+        (evolve, dict(problem="custom", clauses="p", multiplicity=1), "at least 2 molecules"),
     ],
 )
-def test_rejects_inconsistent_parameters(given, message):
+def test_rejects_inconsistent_parameters(run, given, message):
     with pytest.raises(ValueError, match=message):
-        generate_network(ID, **given)
+        run(ID, **given)

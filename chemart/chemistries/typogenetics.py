@@ -14,10 +14,10 @@ done the rows fall apart into single strands, the daughters.
 The machine follows the unambiguous specification of Snare (1999, Monash
 honours thesis, chapter 2 and its Typogenetics.py), except that an inserting
 amino acid moves the enzyme onto the inserted base, which is what Hofstadter's
-worked example (GEB p. 508; see the tests) needs. method "closure" returns
-every reaction reachable from the seed strands (chemart.expand.expand);
-method "soup" draws molecules at random (chemart.soup.soup) and returns the
-reactions that fired.
+worked example (GEB p. 508; see the tests) needs. Two faces: `generate`
+returns every reaction reachable from the seed strands (chemart.expand.expand);
+`evolve` draws molecules at random from a population (chemart.soup.stir), a
+frame per generation, and returns the reactions that fired.
 """
 
 from __future__ import annotations
@@ -29,7 +29,8 @@ from itertools import product as cartesian
 
 from chemart.expand import expand
 from chemart.network import CONSTANT_TOTAL, Network, Reaction, Species
-from chemart.soup import soup
+from chemart.soup import Tally, stir
+from chemart.trajectory import Frame
 
 BASES = "ACGT"
 COMPLEMENT = {"A": "T", "T": "A", "C": "G", "G": "C"}
@@ -306,24 +307,22 @@ class _Chemistry:
                 for s in ids]
 
 
-def generate(p, rng) -> Network:
+def _seed_strands(p, rng) -> list[str]:
     strands = _check_strands(p.strands)
     if not strands:
         strands = ["".join(BASES[int(i)] for i in rng.integers(4, size=p.strand_length))
                    for _ in range(p.n_random)]
     if any(len(s) > p.max_length for s in strands):
         raise ValueError(f"seed strands must not be longer than max_length={p.max_length}")
+    return strands
+
+
+def generate(p, rng) -> Network:
+    """The closure of the seed strands, cut off by max_species."""
+    strands = _seed_strands(p, rng)
     chem = _Chemistry(p, rng)
     arity = 1 if p.reaction == "self" else 2
-    if p.method == "closure":
-        return _closure(p, chem, strands, arity)
-    if p.binding_tiebreak == "all":
-        raise ValueError("method 'soup' needs one outcome per collision: use binding_tiebreak "
-                         "random, leftmost or rightmost (or method 'closure' for 'all')")
-    return _soup(p, chem, strands, arity, rng)
 
-
-def _closure(p, chem, strands, arity) -> Network:
     def discover(*lhs):
         found = [s for rhs in chem.results(lhs) for s in rhs]
         return tuple(dict.fromkeys(found)) if found else None
@@ -345,7 +344,19 @@ def _closure(p, chem, strands, arity) -> Network:
                    extras={"seed": seed})
 
 
-def _soup(p, chem, strands, arity, rng) -> Network:
+def evolve(p, rng):
+    """Random draws from a population of constant size: a frame per generation.
+
+    A soup draws one outcome per collision, so binding_tiebreak all is read as
+    random here.
+    """
+    strands = _seed_strands(p, rng)
+    if p.binding_tiebreak == "all":
+        p.binding_tiebreak = "random"
+    p.max_branches = 1          # one binding choice per enzyme: a single complex is ever followed
+    chem = _Chemistry(p, rng)
+    arity = 1 if p.reaction == "self" else 2
+
     def react(*lhs):
         found = chem.results(lhs, fresh=p.binding_tiebreak == "random")
         return found[0] if found else None
@@ -353,7 +364,10 @@ def _soup(p, chem, strands, arity, rng) -> Network:
     start = [s for s in strands for _ in range(p.copies)]
     if len(start) < arity:
         raise ValueError(f"the soup needs at least {arity} molecules, got {len(start)}")
-    fired, final = soup(react, start, p.steps, rng, arity=arity, dilution="constant")
+    tally = Tally()
+    for step, pop, tally in stir(react, start, p.steps, rng, arity=arity, dilution="constant", tally=tally):
+        yield Frame(t=float(step), state={s: float(n) for s, n in Counter(pop).items()}, fired=tally.flush())
+    fired = tally.reactions()
     ids = list(dict.fromkeys([*start, *(s for _, rhs, _ in fired for s in rhs)]))
     return Network(
         species=chem.species(ids),
@@ -361,5 +375,5 @@ def _soup(p, chem, strands, arity, rng) -> Network:
         status="observed",
         initial_state={s: c for s, c in Counter(start).items()},
         outflow=CONSTANT_TOTAL,
-        extras={"final_state": dict(Counter(final).most_common())},
+        extras={"final_state": dict(Counter(pop).most_common())},
     )

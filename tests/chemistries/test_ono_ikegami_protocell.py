@@ -9,7 +9,7 @@ filaments).
 
 import pytest
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries.ono_ikegami_protocell import JTB2000, anisotropy_field
 
 SMALL = dict(width=12, height=12, steps=8, relaxation=4)
@@ -17,14 +17,14 @@ NOCHEM = dict(P_A=0.0, P_M=0.0, P_decay=0.0, X_supply=0.0)
 
 
 def analysis(**kw):
-    return generate_network("ono-ikegami-protocell", **kw).extras["analysis"]
+    return evolve("ono-ikegami-protocell", **kw).network.extras["analysis"]
 
 
 # --------------------------------------------------------------------------
 # The reaction set (book 6.3.2)
 # --------------------------------------------------------------------------
 def test_reaction_set_is_the_book_s_four_reactions():
-    net = generate_network("ono-ikegami-protocell", seed=1, mode="reactions")
+    net = generate_network("ono-ikegami-protocell", seed=1)
     assert net.status == "complete"
     assert [s.id for s in net.species] == ["A", "M_a", "X", "Y", "W"]
     written = {r.to_text() for r in net.reactions}
@@ -41,14 +41,13 @@ def test_reaction_set_is_the_book_s_four_reactions():
 
 
 def test_isotropic_membrane_is_a_distinct_species():
-    net = generate_network("ono-ikegami-protocell", seed=1, mode="reactions",
-                           membrane="isotropic")
+    net = generate_network("ono-ikegami-protocell", seed=1, membrane="isotropic")
     assert [s.id for s in net.species] == ["A", "M_i", "X", "Y", "W"]
 
 
 def test_no_rate_constant_is_invented():
     """No accessible source publishes rates for this 2D scheme, so every rate is None."""
-    net = generate_network("ono-ikegami-protocell", seed=1, mode="reactions")
+    net = generate_network("ono-ikegami-protocell", seed=1)
     assert all(r.rate is None for r in net.reactions)
     assert "rate-constants" not in net.provides
 
@@ -139,12 +138,15 @@ def test_isotropic_membranes_form_droplets_and_anisotropic_ones_form_filaments()
 def test_metabolism_collapses_without_recycling_of_waste():
     """The external energy source is what keeps the cell alive: with Y -> X
     switched off every particle ends up as waste and the metabolism dies."""
-    fed = analysis(seed=1, X_supply=0.30, repulsion=5.0, relaxation=20, steps=100,
-                   initial="cell", cell_radius=5, width=24, height=24)
-    starved = analysis(seed=1, X_supply=0.0, repulsion=5.0, relaxation=20, steps=100,
-                       initial="cell", cell_radius=5, width=24, height=24)
+    common = dict(seed=1, repulsion=5.0, relaxation=20, steps=100,
+                  initial="cell", cell_radius=5, width=24, height=24)
+    fed_run = evolve("ono-ikegami-protocell", X_supply=0.30, **common)
+    starved_run = evolve("ono-ikegami-protocell", X_supply=0.0, **common)
+    fed, starved = (run.network.extras["analysis"] for run in (fed_run, starved_run))
 
-    a_fed, a_starved = fed["history"]["A"], starved["history"]["A"]
+    # the A count after each sweep
+    a_fed = [f.state.get("A", 0) for f in fed_run.frames[1:]]
+    a_starved = [f.state.get("A", 0) for f in starved_run.frames[1:]]
     # Fed: food is recycled, so the autocatalyst grows and holds.
     assert fed["counts"]["X"] > 15
     assert a_fed[-1] > 2 * a_fed[0]
@@ -157,8 +159,9 @@ def test_metabolism_collapses_without_recycling_of_waste():
 
 @pytest.mark.slow
 def test_spatial_run_reports_the_lattice_energies_and_measurements():
-    net = generate_network("ono-ikegami-protocell", seed=1)
-    assert net.status == "observed"
+    traj = evolve("ono-ikegami-protocell", seed=1)
+    net = traj.network
+    assert net.status == "observed" and traj.clock == "sweeps"
     assert all(r.count is not None and r.count > 0 for r in net.reactions)
     assert {"space", "energies", "analysis"} <= set(net.extras)
 
@@ -177,8 +180,30 @@ def test_spatial_run_reports_the_lattice_energies_and_measurements():
     assert energies["hydrophobic"] == ["M_a"]
 
 
+def test_a_frame_per_sweep_counts_the_lattice():
+    traj = evolve("ono-ikegami-protocell", seed=3, **SMALL)
+    net = traj.network
+    assert [f.t for f in traj.frames] == [float(t) for t in range(SMALL["steps"] + 1)]
+    assert traj.frames[0].state == {s: n for s, n in net.initial_state.items() if n}
+    assert all(sum(f.state.values()) == 144 for f in traj.frames)      # one particle per cell
+    counts = net.extras["analysis"]["counts"]                           # keyed by lattice code
+    assert traj.frames[-1].state == {("M_a" if c == "M" else c): float(n) for c, n in counts.items() if n}
+    # the counts change exactly as the fired reactions say
+    ids, _, _ = net.matrices()
+    for before, after in zip(traj.frames, traj.frames[1:]):
+        change = {s: after.state.get(s, 0) - before.state.get(s, 0) for s in ids}
+        net_change = dict.fromkeys(ids, 0)
+        for lhs, rhs, n in after.fired:
+            for s in lhs:
+                net_change[s] -= n
+            for s in rhs:
+                net_change[s] += n
+        assert change == net_change
+
+
 def test_same_seed_gives_the_same_lattice():
     kw = dict(seed=5, **SMALL)
+    assert evolve("ono-ikegami-protocell", **kw).to_dict() == evolve("ono-ikegami-protocell", **kw).to_dict()
     assert analysis(**kw) == analysis(**kw)
     assert analysis(seed=6, **SMALL) != analysis(**kw)
 
@@ -188,11 +213,18 @@ def test_same_seed_gives_the_same_lattice():
 # --------------------------------------------------------------------------
 def test_rejects_a_cell_too_big_for_its_lattice():
     with pytest.raises(ValueError, match="does not fit"):
-        generate_network("ono-ikegami-protocell", seed=1, initial="cell",
-                         cell_radius=20, width=24, height=24)
+        evolve("ono-ikegami-protocell", seed=1, initial="cell",
+               cell_radius=20, width=24, height=24)
 
 
 def test_rejects_an_overfull_initial_composition():
     with pytest.raises(ValueError, match="exceeds 1"):
-        generate_network("ono-ikegami-protocell", seed=1, A_fraction=0.6,
-                         X_fraction=0.6, **SMALL)
+        evolve("ono-ikegami-protocell", seed=1, A_fraction=0.6,
+               X_fraction=0.6, **SMALL)
+
+
+def test_the_reaction_set_takes_no_lattice_parameters():
+    with pytest.raises(ValueError, match="belongs to the evolve face"):
+        generate_network("ono-ikegami-protocell", steps=10)
+    with pytest.raises(ValueError, match="is gone"):
+        generate_network("ono-ikegami-protocell", mode="spatial")

@@ -175,14 +175,24 @@ larger ones: `C16KEAB_d33a` is the autotroph body at the start, and
 `C19KEAB_7460` is the same body at the end of the run after it had bonded
 three more carbons.
 
-The trophic summary counts each step of the cycle:
+The trophic summary counts each step of the cycle over the whole run. To
+follow the world step by step, `chemart.evolve` returns a trajectory with one
+frame per time step, the first being the seeded grid. Each frame holds the
+molecules present (`state`), the bond events of that step (`fired`) and four
+`observables`: the `sugar_bonds` (`A-B`), `biomass_bonds` (`C-C`) and
+`inorganic_bonds` (`A-O` plus `B-O`) present, and the `free_atoms`, atoms
+with no bond. Its network is the one `generate_network` returns:
 
 ```python
+traj = chemart.evolve("dorin-korb-ecosystem", seed=1)
+net = traj.network
 a = net.extras["analysis"]
 a["trophic"]["sugar_made"], a["trophic"]["sugar_respired"]         # (13, 7)
 a["trophic"]["biomass_built"], a["trophic"]["biomass_decomposed"]  # (12, 5)
 a["trophic"]["inorganic_split"]                                    # 146
-a["history"]["sugar_bonds"]      # A-B bonds present after each step (at most 5 here)
+max(traj.series("sugar_bonds"))  # 5: A-B bonds present at once, at most
+traj.frames[-1].observables
+# {'sugar_bonds': 0, 'biomass_bonds': 23, 'inorganic_bonds': 33, 'free_atoms': 63}
 net.extras["energies"]["ledger"]
 # {'consumed': 271, 'dissipated': 246, 'light_incident': 62014, 'light_lost': 61797,
 #  'light_spent': 217, 'released': 300, 'balanced': True}

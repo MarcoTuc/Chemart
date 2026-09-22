@@ -104,9 +104,10 @@ and the other states are signals that travel along the molecule.
 
 ### Worked example: one full copy
 
-This is the complete replication of `e8-a1-b1-f1`, taken from a default-sized
-run (`seed=6`). A species name lists the atoms of a molecule. For a simple
-chain it is the chain itself, read from the end that sorts first. For any
+This is the complete replication of `e8-a1-b1-f1`, taken from a run of the
+default world (`chemart.evolve("squirm3", seed=6)`). A species name lists the
+atoms of a molecule. For a simple chain it is the chain itself, read from the
+end that sorts first. For any
 other shape, such as the ladder a half-copied chain forms, the atoms are listed
 in a fixed order and followed by the bonds, as pairs of positions counted from
 0. Each line gives the rule that fired and the molecule-level reaction.
@@ -211,44 +212,95 @@ print(net.summary())
 ```
 
 ```
-squirm3: 74 species, 67 reactions, status=observed
-provides: initial-state, mass-conservation, space, stoichiometry, topology
+squirm3: 60 species, 98 reactions, status=truncated
+provides: initial-state, mass-conservation, stoichiometry, topology
 seed: 1
-extras: analysis, conservation, dissolved_by_flood, final_state, floods, reaction_rules, rule_counts, rules, space
+extras: conservation, note, rules, seed
 ```
 
 Its first reactions (`net.reactions`):
 
 ```
-e8-a1-b1-f1 + e0 -> e3-e4-a1-b1-f1  (x9)
-e3-e4-a1-b1-f1 -> e3-e2-a5-b1-f1  (x9)
-e3-e2-a5-b1-f1 + a0 -> a6-a7-b1-e2-e3-f1/0.1,1.2,1.3,2.5,3.4  (x7)
-a6-a7-b1-e2-e3-f1/0.1,1.2,1.3,2.5,3.4 -> a3-a7-b1-e2-e2-f1/0.1,0.3,1.2,1.4,2.5,3.4  (x6)
-a3-a7-b1-e2-e2-f1/0.1,0.3,1.2,1.4,2.5,3.4 -> a3-a4-b1-e2-e2-f1/0.1,0.3,1.2,1.4,2.5,3.4  (x6)
-a3-a4-b1-e2-e2-f1/0.1,0.3,1.2,1.4,2.5,3.4 -> a2-a3-b5-e2-e2-f1/0.1,0.2,0.3,1.4,2.5,3.4  (x6)
-a2-a3-b5-e2-e2-f1/0.1,0.2,0.3,1.4,2.5,3.4 + b0 -> a2-a3-b6-b7-e2-e2-f1/0.1,0.3,0.4,1.5,2.3,3.6,4.5  (x6)
-a2-a3-b6-b7-e2-e2-f1/0.1,0.3,0.4,1.5,2.3,3.6,4.5 -> a2-a2-b3-b7-e2-e2-f1/0.1,0.2,0.4,1.3,1.5,2.3,3.6,4.5  (x5)
-… and 59 more
+e8-a1-b1-f1 + e0 -> e3-e4-a1-b1-f1
+e3-e4-a1-b1-f1 -> e3-e2-a5-b1-f1
+a0 + e3-e2-a5-b1-f1 -> a6-a7-b1-e2-e3-f1/0.1,1.2,1.3,2.5,3.4
+a6-a7-b1-e2-e3-f1/0.1,1.2,1.3,2.5,3.4 -> a3-a7-b1-e2-e2-f1/0.1,0.3,1.2,1.4,2.5,3.4
+e3-e4-a1-b1-f1 + a6-a7-b1-e2-e3-f1/0.1,1.2,1.3,2.5,3.4 -> a1-a3-a7-b1-b1-e2-e2-e3-e4-f1-f1/0.3,0.8,1.2,1.5,2.4,2.6,3.9,4.10,5.8,6.7
+e3-e2-a5-b1-f1 + a6-a7-b1-e2-e3-f1/0.1,1.2,1.3,2.5,3.4 -> a3-a5-a7-b1-b1-e2-e2-e2-e3-f1-f1/0.2,0.5,1.3,1.6,2.4,2.7,3.9,4.10,5.6,7.8
+2 a6-a7-b1-e2-e3-f1/0.1,1.2,1.3,2.5,3.4 -> a3-a6-a7-a7-b1-b1-e2-e2-e2-e3-f1-f1/0.2,0.6,1.3,2.4,2.8,3.5,3.7,4.10,5.11,6.7,8.9
+a3-a7-b1-e2-e2-f1/0.1,0.3,1.2,1.4,2.5,3.4 -> a3-a4-b1-e2-e2-f1/0.1,0.3,1.2,1.4,2.5,3.4
+… and 90 more
 ```
 
-The default run is Hutton's experiment 1 set-up with the book's example
-molecule: `e8-a1-b1-f1` on a 20×20 grid with 75 loose atoms of random type,
-for 3,000 steps. Species are named as in the worked example. The reactions are
-the molecule-level events that happened, with how often (`count`) but no rate
+Squirm3 has two faces. `chemart.generate_network`, called above, returns the
+*closure*: it ignores the grid, lets any molecules meet, and collects every
+molecule-level reaction reachable from the seed molecule and one loose atom of
+each type. `chemart.evolve` runs the world itself and records what actually
+happens in it.
+
+**The closure.** The default network above starts along the replication path:
+its first four reactions are the first four steps of the worked example (R1 to
+R4), and the next three already join two half-copied molecules into one. Such
+tangles multiply, so the closure never completes and stops at
+`max_species` molecules (default 60, status `truncated`). It takes about a
+second, and the time grows faster than the budget: 100 molecules take about
+five seconds. Its reactions carry no counts, since nothing is run. The closure
+takes a molecule as its seed, not a `cell:`, and the world's parameters (the
+grid, the food, the steps, floods and cosmic rays) belong to `chemart.evolve`
+only.
+
+**The world.** The default world is Hutton's experiment 1 set-up with the
+book's example molecule: `e8-a1-b1-f1` on a 20×20 grid with 75 loose atoms of
+random type, for 3,000 steps. It takes under a second.
+
+```python
+traj = chemart.evolve("squirm3", seed=1)
+net = traj.network
+print(net.summary())
+print(net.extras["rule_counts"])
+```
+
+```
+squirm3: 74 species, 67 reactions, status=observed
+provides: initial-state, mass-conservation, space, stoichiometry, topology
+seed: 1
+extras: conservation, dissolved_by_flood, final_state, floods, reaction_rules, rule_counts, rules, space
+{'R7': 34, 'R2': 25, 'R3': 25, 'R4': 23, 'R5': 23, 'R8': 14, 'R1': 9, 'R6': 7}
+```
+
+Species are named as in the worked example. The reactions are the
+molecule-level events that happened, with how often (`count`) but no rate
 constants, since rates come from collisions in the world. In `net.extras`:
 
-- `rule_counts`: how often each rule fired. In the default run:
-  `{'R7': 34, 'R2': 25, 'R3': 25, 'R4': 23, 'R5': 23, 'R8': 14, 'R1': 9, 'R6': 7}`.
+- `rule_counts`: how often each rule fired.
 - `reaction_rules`: each reaction with the rule or rules behind it.
 - `final_state` and `net.initial_state`: the molecules at the end and at the
   start, with counts.
 - `conservation`: one exact conservation law per atom type, plus the total
   atom count.
-- `analysis`: the number of multi-atom molecules and of reactions so far, at
-  200 sample times; `floods` and `dissolved_by_flood` count the floods.
+- `space`: the geometry of the world; `floods` and `dissolved_by_flood` count
+  the floods and the molecules they dissolved.
 
-In the default run the seed splits into two copies four times, but at step
-3,000 every copy is busy copying itself again or tangled with another.
+The run is also a sequence of frames, `traj.frames`, with time in steps: the
+start, after the first step, every `steps // 200` steps from there (15 in the
+default run) and the end. Each frame holds the molecules present, the
+reactions that fired since the previous frame and, as
+`traj.series("molecules")`, the number of molecules of more than one atom.
+
+```python
+print(len(traj.frames), traj.times()[:4], traj.times()[-1])
+print(traj.frames[2].fired)
+```
+
+```
+202 [0.0, 1.0, 16.0, 31.0] 3000.0
+[[['e8-a1-b1-f1', 'e0'], ['e3-e4-a1-b1-f1'], 1], [['e3-e4-a1-b1-f1'], ['e3-e2-a5-b1-f1'], 1], [['e3-e2-a5-b1-f1', 'a0'], ['a6-a7-b1-e2-e3-f1/0.1,1.2,1.3,2.5,3.4'], 1]]
+```
+
+Between steps 1 and 16 the seed took the first three steps of the worked
+example: R1, R2 and R3. Over the whole run it splits into two copies four
+times, but at step 3,000 every copy is busy copying itself again or tangled
+with another.
 
 **The 2002 experiment 1 molecule.** Hutton started from `e8-a1-b1-c1-f1` and
 showed the world after 3,544 steps. The same settings, over five seeds:
@@ -256,7 +308,7 @@ showed the world after 3,544 steps. The same settings, over five seeds:
 ```python
 g = "e8-a1-b1-c1-f1"
 for s in range(1, 6):
-    net = chemart.generate_network("squirm3", seed=s, seed_molecule=g, steps=3544)
+    net = chemart.evolve("squirm3", seed=s, seed_molecule=g, steps=3544).network
     splits = sum(r["count"] for r in net.extras["reaction_rules"]
                  if r["products"].get(g) == 2)
     print(s, splits, net.extras["final_state"].get(g, 0))
@@ -268,23 +320,10 @@ for s in range(1, 6):
 # 5 5 0
 ```
 
-Each run takes a second or two. Floods (`flood_period`, `flood_sectors`),
+Each run takes about a second. Floods (`flood_period`, `flood_sectors`),
 cosmic rays (`cosmic_ray`) and a 100×100 world set up experiments 2 and 3,
 with the published values in the parameter table; at tens or hundreds of
 thousands of steps, those runs take minutes to hours.
-
-**Every reaction without space.** `method="closure"` ignores the grid and lets
-any molecules meet, collecting every molecule-level reaction reachable from
-the seed and one loose atom of each type:
-
-```python
-net = chemart.generate_network("squirm3", seed=1, method="closure", max_species=40)
-print(net.summary().splitlines()[0])   # squirm3: 40 species, 58 reactions, status=truncated
-```
-
-It starts along the replication path, but tangles between half-copied
-molecules multiply, so it stops at `max_species` (`truncated`). It is slow:
-with the default `max_species=120` it did not finish in five minutes.
 
 **The 2007 cell.** `rules="membrane"` loads the 41 rules of Hutton (2007),
 which need `n_states` of at least 38. The seed prefixed with `cell:` becomes
@@ -292,50 +331,51 @@ the gene of the paper's starting cell: a loop of 18 membrane atoms `a36` with
 two anchors `a37`, one bonded to each end of the gene.
 
 ```python
-net = chemart.generate_network("squirm3", seed=5, rules="membrane", n_states=38,
-                               seed_molecule="cell:e1-b1-c1-a1-f1",
-                               space="lattice-moore", width=16, height=16,
-                               food=90, steps=400)
+net = chemart.evolve("squirm3", seed=5, rules="membrane", n_states=38,
+                     seed_molecule="cell:e1-b1-c1-a1-f1",
+                     space="lattice-moore", width=16, height=16,
+                     food=90, steps=400).network
 print(net.extras["rule_counts"])
 # {'R35': 11, 'R6': 3, 'R4': 3, 'R5': 2, 'R7': 2, 'R8': 2, 'R9': 2, 'R1': 1, 'R2': 1, 'R3': 1}
 ```
 
-This takes about ten seconds. R1, R6, R2 and R3 are the opening moves the
-paper describes (a second `e` atom joins the membrane), R4 to R9 copy bases,
-and R35 lets the membrane gain and lose atoms. 2,500 steps on a 20×20 grid
-take about half a minute. Finally, `rules="custom"` with `rule_text` runs your
-own pair rules, written in the notation above.
+This takes about a second. R1, R6, R2 and R3 are the opening moves the paper
+describes (a second `e` atom joins the membrane), R4 to R9 copy bases, and R35
+lets the membrane gain and lose atoms. 2,500 steps on a 20×20 grid with 150
+loose atoms take about ten seconds. Finally, `rules="custom"` with `rule_text`
+runs your own pair rules, written in the notation above, in either face.
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `generate_network`, or to `chemart.evolve`; a parameter marked *evolve only* belongs to the process and one marked *generate only* to the network. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
-| `method` | `enum` | `spatial` | structural | spatial: run the 2D world and return the reactions that fired, with counts; closure: every molecule-level reaction reachable from the seed molecule and the food atoms, with no spatial constraint <br>one of `spatial`, `closure` |
 | `rules` | `enum` | `replicator` | structural | replicator: the eight rules of Hutton (2002) table 1 = book table 11.5; membrane: the 41 rules of Hutton (2007) for self-reproducing cells; custom: the pair rules in rule_text <br>one of `replicator`, `membrane`, `custom` |
 | `rule_text` | `str` | `` | structural | rules='custom': one pair rule per line in the papers' notation, 'R1: e8 + e0 -&gt; e4e3', where juxtaposition (or '-') means bonded and ' + ' means not bonded; x, y, z are type variables and '#' starts a comment |
-| `seed_molecule` | `str` | `e8-a1-b1-f1` | population | the molecule the world starts with, as a chain of atoms 'type state' joined by '-'. Prefixed with 'cell:' it becomes the gene string of the 2007 cell (fig. 2): a membrane loop of a36 with two a37 anchors, one bonded to each end of the gene <br>*range:* any e8 {x1}* f1 chain replicates; the 2002 experiments used e8-a1-b1-c1-f1 and chains of seven atoms; 'cell:e1-b1-c1-a1-f1' is the 2007 starting cell |
-| `food` | `int` | `75` | population | free atoms in state 0, of random type, scattered over the world <br>`0` … `100000` · *range:* 2002 experiment 1: 75 atoms in a 20x20 world; experiment 3 fills a 100x100 world |
-| `space` | `enum` | `lattice-vn` | spatial | lattice-vn: the 2002 CA (move into the Moore neighbourhood, react in the von Neumann one, bond range 1); lattice-moore: the 2007 lattice (react over the Moore neighbourhood, bond range 2); continuous: the 2007 continuous-space physics <br>one of `lattice-vn`, `lattice-moore`, `continuous` |
-| `width` | `int` | `20` | spatial | world width (lattice points, or length units in continuous space) <br>`4` … `1000` · *range:* 2002: 20x20 for experiment 1, 100x100 for experiments 2 and 3; the 2007 C++ uses 400x300 continuous |
-| `height` | `int` | `20` | spatial | world height <br>`4` … `1000` |
-| `steps` | `int` | `3000` | population | time steps; each is one reaction phase and one movement phase <br>`0` … `10000000` · *range:* 2002 experiment 1 ran 3544 iterations for 11 copies; the 2007 runs reach 10^6-10^7 |
-| `flood_period` | `int` | `0` | selection | dissolve one sector of the world back to single atoms in state 0 every this many steps - the selection pressure; 0 turns flooding off <br>`0` … `10000000` · *range:* 2002: T = 2000, 10000 and 20000; 2007: 50000 and 200000 |
-| `flood_sectors` | `enum` | `halves` | selection | flood alternating halves (2002) or rotate through quarters (2005, 2007) <br>one of `halves`, `quarters` |
-| `cosmic_ray` | `float` | `0.0` | stochastic | probability per atom per step that an atom's state is randomised, leaving its type and bonds <br>`0.0` … `1.0` · *range:* 2002 experiment 3: 0.00001, which lets replicators appear spontaneously |
-| `reaction_radius` | `float` | `2.5` | spatial | space='continuous': reaction radius in atom radii <br>`0.1` … `20.0` · *range:* the 2007 C++ uses 2.5 atom radii for reactions and 2 for physical forces |
+| `seed_molecule` | `str` | `e8-a1-b1-f1` | population | the molecule the world (or the closure) starts with, as a chain of atoms 'type state' joined by '-'. Prefixed with 'cell:' it becomes the gene string of the 2007 cell (fig. 2): a membrane loop of a36 with two a37 anchors, one bonded to each end of the gene; the closure takes molecules only <br>*range:* any e8 {x1}* f1 chain replicates; the 2002 experiments used e8-a1-b1-c1-f1 and chains of seven atoms; 'cell:e1-b1-c1-a1-f1' is the 2007 starting cell |
+| `food` | `int` | `75` | population | *evolve only.* free atoms in state 0, of random type, scattered over the world <br>`0` … `100000` · *range:* 2002 experiment 1: 75 atoms in a 20x20 world; experiment 3 fills a 100x100 world |
+| `space` | `enum` | `lattice-vn` | spatial | *evolve only.* lattice-vn: the 2002 CA (move into the Moore neighbourhood, react in the von Neumann one, bond range 1); lattice-moore: the 2007 lattice (react over the Moore neighbourhood, bond range 2); continuous: the 2007 continuous-space physics <br>one of `lattice-vn`, `lattice-moore`, `continuous` |
+| `width` | `int` | `20` | spatial | *evolve only.* world width (lattice points, or length units in continuous space) <br>`4` … `1000` · *range:* 2002: 20x20 for experiment 1, 100x100 for experiments 2 and 3; the 2007 C++ uses 400x300 continuous |
+| `height` | `int` | `20` | spatial | *evolve only.* world height <br>`4` … `1000` |
+| `steps` | `int` | `3000` | population | *evolve only.* time steps; each is one reaction phase and one movement phase. A frame after the first step and every steps // 200 steps from there <br>`0` … `10000000` · *range:* 2002 experiment 1 ran 3544 iterations for 11 copies; the 2007 runs reach 10^6-10^7 |
+| `flood_period` | `int` | `0` | selection | *evolve only.* dissolve one sector of the world back to single atoms in state 0 every this many steps - the selection pressure; 0 turns flooding off <br>`0` … `10000000` · *range:* 2002: T = 2000, 10000 and 20000; 2007: 50000 and 200000 |
+| `flood_sectors` | `enum` | `halves` | selection | *evolve only.* flood alternating halves (2002) or rotate through quarters (2005, 2007) <br>one of `halves`, `quarters` |
+| `cosmic_ray` | `float` | `0.0` | stochastic | *evolve only.* probability per atom per step that an atom's state is randomised, leaving its type and bonds <br>`0.0` … `1.0` · *range:* 2002 experiment 3: 0.00001, which lets replicators appear spontaneously |
+| `reaction_radius` | `float` | `2.5` | spatial | *evolve only.* space='continuous': reaction radius in atom radii <br>`0.1` … `20.0` · *range:* the 2007 C++ uses 2.5 atom radii for reactions and 2 for physical forces |
 | `n_states` | `int` | `10` | structural | number of atom states \|S\|; it is the offset of the enzyme states and enters the enzyme encoding. rules='membrane' needs at least 38 <br>`2` … `1000` · *range:* 2002: 10 states; the 2004 ALife IX system: 18; the 2007 cells: 38 |
 | `n_types` | `int` | `6` | structural | number of atom types \|T\|, the first n of a..f; the last two are the start and end markers and the rest are gene bases <br>`2` … `6` · *range:* the papers always use 6; lowering it reproduces the 2002 count of 5n^2 + 21n + 24 rules for n = n_types - 2 bases |
-| `mutation_cases` | `int` | `1000000` | stochastic | rules='membrane': R41 inserts or removes an atom in a chain of atoms in state 1 with probability 1 in this many matches - the mutation rate the paper leaves to the user <br>`1` … `1000000000` · *range:* the 2004 paper uses p = 1e-7 per atom per time step |
-| `max_species` | `int` | `120` | structural | method='closure': molecule budget; the status becomes 'truncated' when it is reached <br>`1` … `100000` |
+| `mutation_cases` | `int` | `1000000` | stochastic | *evolve only.* rules='membrane': R41 inserts or removes an atom in a chain of atoms in state 1 with probability 1 in this many matches - the mutation rate the paper leaves to the user <br>`1` … `1000000000` · *range:* the 2004 paper uses p = 1e-7 per atom per time step |
+| `max_species` | `int` | `60` | structural | *generate only.* molecule budget of the closure; the status becomes 'truncated' when it is reached <br>`1` … `100000` |
 
 ### Implementation decisions
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "12 decisions"
+??? note "14 decisions"
 
+    - Two faces: generate_network returns the closure, every molecule-level reaction reachable from the seed molecule and one food atom of each type with no spatial constraint; chemart.evolve runs the 2D world (lattice or continuous space) and returns the reactions that fired, with counts. The world yields a frame at step 0, after the first step and every steps // 200 steps from there (the sampling points of the former analysis series), and at the end; each frame's observable 'molecules' counts the molecules of more than one atom. The closure has no world, so the world's parameters (food, space, width, height, steps, floods, cosmic rays, reaction_radius, mutation_cases) belong to the evolve face and the closure no longer carries extras.space.
+    - max_species defaults to 60 (formerly 120): the closure of the replicator never completes, because half-copied molecules tangle into ever larger ones, and 120 molecules took 6 to 7.5 s, over the catalog's 5 s limit for default parameters; 60 molecules take about a second. The time grows faster than the budget (100 molecules: about 5 s).
     - The book's formula 11.15 is correct as printed; the extracted text only lost the bars of |T| and |S|. Hutton (2007) prints it as i = 2(2(T(T(S(S(Sg + h) + j) + k) + x) + y) + b1) + b2 + S and says 'S is the number of states (38) and T is the number of types (6)', so the trailing '+ S' is the state offset |S|, not a state variable. Verified against the two worked enzymes of the 2004 paper, which both round-trip exactly: d5731 = e0 + a0 -&gt; e2a3 and d6740227 = a8 + a0 -&gt; a8a7 with S = 18, T = 6.
     - The book's genetic-string example 'ebdcaf translates into i = 13204 + |S|' is 1320 base 4 = 120, plus the offset: the extraction lost the subscript 4. Hutton (2007) gives the same example as part of ebcafbdcaf -&gt; enzymes 62 (= 120 base 4 + 38) and 158 (= 1320 base 4 + 38), and the read-out rule j = 4(i - 38) + val(x) + 38 with val(a) = 0 .. val(d) = 3, implemented as gene_to_enzyme.
     - Erratum in Hutton (2002): the paper says 5n^2 + 21n + 4 of the 200(n + 2)^2 possible reactions are needed, but expanding R1-R8 over n + 2 types gives 2 + (n + 2) + 5(n + 2)^2 = 5n^2 + 21n + 24, which for n = 4 is the 188 the same paragraph states. The constant is 24, not 4; the test checks both the 188 and the general formula.
@@ -346,7 +386,7 @@ The sources leave gaps, and sometimes contradict each other or the book. Each su
     - Bond crossing is not prevented. Hutton (2002) does not mention it; Hutton (2007) forbids crossed bonds on the lattice. It matters only for membranes, not for the replicator, and is recorded here rather than implemented.
     - The 2007 rules R1-R34 and R39-R41 are transcribed from the paper's table 1 and figures 11-15. R36, R37 and R38 are given in the paper only as diagrams, so their bond patterns are taken from the analogous rules e1-e4 in the author's C++ SquirmGrid.cpp, while their states and the base-4 formula follow the paper; the released C++ uses a different state numbering (membrane 39/40, enzymes from 41) and a hard-coded base-3 read-out, so the paper's numbering (membrane 36/37, enzymes from 38) is used throughout. R37 and R40 are state-parametric families and are implemented as rule kinds rather than as rule text.
     - The v1 parameters are migrated: T becomes n_types (the types are always a..f), S becomes n_states, the callable rules becomes the enum rules plus rule_text, the matrix seed_molecule becomes a string, space keeps its three choices, and reaction_radius and flood_period are kept. n_states defaults to 10 (the 2002 system); rules='membrane' needs at least 38.
-    - The closure method lets any molecules meet, with no spatial constraint, and returns one reaction per distinct outcome (expand with alternatives=True and arity 1 and 2). It is bounded by max_species because two replicators can bond into ever larger tangles - the crossover the 2002 paper reports.
+    - The closure lets any molecules meet, with no spatial constraint, and returns one reaction per distinct outcome (expand with alternatives=True and arity 1 and 2). It is bounded by max_species because two replicators can bond into ever larger tangles - the crossover the 2002 paper reports. Rule probabilities (the 1-in-N chances of R35 and R41) play no part in it: every possible outcome is a reaction.
     - No rate law is published: reaction rates follow from collisions in the world, so every reaction's rate is None and the counts carry the observed frequencies.
 
 ## Results

@@ -234,75 +234,122 @@ print(net.summary())
 ```
 
 ```
-ikegami-hashimoto: 164 species, 1482 reactions, status=observed
-provides: catalysts, flow, initial-state, rate-constants, stoichiometry, topology
+ikegami-hashimoto: 266 species, 3970 reactions, status=complete
+provides: catalysts, flow, rate-constants, stoichiometry, topology
 seed: 1
-extras: analysis, final_state, noise_induced, paper_names
+extras: paper_names, seed
 ```
 
 Its first reactions (`net.reactions`):
 
 ```
-M7922 + T22 -> M7922 + 2 T22 + M0aa1  (x2)
-M7922 + T22 -> M7922 + T22 + M2ee5 + T72  (x2)
-M7922 + T22 -> M7922 + 2 T22 + M2885  (x2)
-M7922 + T22 -> M7922 + T22 + M0cc1 + T14  (x2)
-M7922 + T22 -> M7922 + T22 + M0881 + T02  (x1)
-M7922 + T22 -> M7922 + T22 + M2aa5 + T49  [mass-action k=0.3 frame_length=3]  (x5)
-M7922 + T22 -> M7922 + T22 + M0ee1 + T52  [mass-action k=0.3 frame_length=3]  (x5)
-M24e7 + T6f -> M24e7 + T6f + M2ee5 + T72  (x2)
-… and 1474 more
+M7922 + T22 -> M7922 + T22 + M2aa5 + T26  [mass-action k=0.3 frame_length=3]
+M7922 + T22 -> M7922 + T22 + M0ee1 + T2a  [mass-action k=0.3 frame_length=3]
+M7922 + T11 -> M7922 + T11 + M588b + T31  [mass-action k=0.3 frame_length=4]
+M7922 + T11 -> M7922 + T11 + Md55a + T59  [mass-action k=0.3 frame_length=4]
+M7922 + T48 -> M7922 + T48 + Mc558 + T58  [mass-action k=0.3 frame_length=4]
+M7922 + T48 -> M7922 + T48 + Madd5 + T6c  [mass-action k=0.3 frame_length=4]
+M7922 + T09 -> M7922 + T09 + M544a + T19  [mass-action k=0.3 frame_length=3]
+M7922 + T09 -> M7922 + T09 + M1cc3 + T29  [mass-action k=0.3 frame_length=3]
+… and 3962 more
 ```
 
-The default run is not one of the published figures, but it uses the papers'
-starting point: 10 random machines and 3 random tapes, each pool of 1,000
-objects shared equally among the seeds, external noise 0.05, for 150
-generations. The papers ran up to 3,000 generations. In the run above, the
-population ended with 61 kinds of machine and 19 kinds of tape. The records are in `net.extras`:
+Chemart runs this chemistry in two ways. `generate_network`, the call above,
+builds the noise-free network: every machine and tape that can be reached
+from the seeds by exact reactions, with every reaction between them. This is
+a Chemart addition, not something the papers compute, and it is useful for
+analysing a set of machines without running the population dynamics.
+`chemart.evolve` runs the papers' population dynamics and records what
+happens, one frame per generation. In the parameter table below, `N`,
+`noise`, `generations`, `noise_off` and `source` belong to `chemart.evolve`
+only, `max_species` to `generate_network` only; the others are shared.
+
+**The network of the seeds.** The default call starts from the papers' seed
+sizes, 10 random machines and 3 random tapes (listed in `net.extras["seed"]`),
+and the network it returns is complete: exact reactions starting from these
+13 seeds reach 138 machines and all 128 possible tapes. The closure has no
+population, so the 7 readings of one ring stay separate species; the 128
+tapes are the papers' 20 rings (`net.extras["paper_names"]` maps each tape to
+its ring). Each pair of a machine and a tape it can read gives one reaction
+per distinct outcome, with the mass-action rate constant `k` = 0.6 when both
+starting states give the same products and 0.3 each when they differ, and the
+frame length `L`. The first reactions printed above are pairs of this second
+kind: `M7922` reading `T22` makes `M2aa5` and `T26` from one starting state
+and `M0ee1` and `T2a` from the other.
+
+**The population dynamics.** `chemart.evolve` uses the same seeds, each pool
+of 1,000 objects shared equally among them, external noise 0.05, for 150
+generations. The papers ran up to 3,000 generations. It returns a trajectory:
+`traj.network` lists every reaction that fired, and `traj.frames` holds the
+populations after each generation (`frame.state`), the reactions that fired
+in that generation (`frame.fired`) and two quantities computed from the
+populations (`frame.observables`):
+
+```python
+traj = chemart.evolve("ikegami-hashimoto", seed=1)
+net = traj.network
+print(net.summary())
+```
+```
+ikegami-hashimoto: 164 species, 1482 reactions, status=observed
+provides: catalysts, flow, initial-state, rate-constants, stoichiometry, topology
+seed: 1
+extras: final_state, noise_induced, paper_names
+```
+
+The population ended with 61 kinds of machine and 19 kinds of tape:
 
 ```python
 net.extras["final_state"]          # populations at the end, largest first
 # {'Mbff7': 265, 'Meddd': 164, 'M3ee7': 146, 'M666c': 94, ...}
-a = net.extras["analysis"]         # one entry per generation
-a["distinct_machines"][::15]       # [10, 54, 58, 67, 59, 55, 53, 61, 59, 57, 61]
-a["distinct_tapes"][::15]          # [3, 18, 19, 19, 19, 19, 19, 19, 19, 19, 19]
-a["active_mutation"][::15]         # ⟨μA⟩: 0.17 at the start, then about 0.05-0.07
-a["reading_length"][::15]          # ⟨L⟩: 3.3 at the start, then about 4.9
+len(traj.frames)                   # 151: the initial state, then one per generation
+machines = [sum(s.startswith("M") for s in f.state) for f in traj.frames]
+machines[::15]                     # [10, 54, 58, 67, 59, 55, 53, 61, 59, 57, 61]
+tapes = [sum(s.startswith("T") for s in f.state) for f in traj.frames]
+tapes[::15]                        # [3, 18, 19, 19, 19, 19, 19, 19, 19, 19, 19]
+traj.series("active_mutation")[::15]   # ⟨μA⟩: 0.17 at the start, then about 0.05-0.07
+traj.series("reading_length")[::15]    # ⟨L⟩: 3.33 at the start, then about 4.9
 len(net.extras["noise_induced"])   # 766
 ```
 
 The network lists every reaction that fired at least once, with `(x n)` the
 number of generations in which it fired. Reactions that a machine performs
-on its own carry a mass-action rate constant `k` (0.6 if both starting states
-give the same products, 0.3 each if they differ) and the frame length `L`.
-Reactions that happened only through a noise error have no rate; their
-indices are in `extras["noise_induced"]`. That is why the first reactions
-printed above, such as `M7922 + T22 -> M7922 + 2 T22 + M0aa1`, have no
-bracket: the written tape was mutated back into `T22`, and the machine
-translated from it is not the one `M7922` makes on its own.
+on its own carry the rate constant `k` and the frame length `L`, as in the
+closure. Reactions that happened only through a noise error have no rate;
+their indices are in `extras["noise_induced"]`. The first reactions of this
+run are of that kind:
 
-With `method="closure"` Chemart instead builds the noise-free network: every
-machine and tape that can be reached from the seeds by exact reactions, with
-every reaction between them. This is a Chemart addition, useful for
-analysing a set of machines without running the population dynamics.
+```python
+for r in net.reactions[:3]:
+    print(r.to_text())
+```
+```
+M7922 + T22 -> M7922 + 2 T22 + M0aa1  (x2)
+M7922 + T22 -> M7922 + T22 + M2ee5 + T72  (x2)
+M7922 + T22 -> M7922 + 2 T22 + M2885  (x2)
+```
+
+In the first and third, the written tape was mutated back into `T22`, and the
+machine translated from it is not one `M7922` makes on its own.
 
 **The minimal loop.** Seeded with `M1002` and `T01` and no noise, the pair
 fills both pools and nothing else ever happens:
 
 ```python
-net = chemart.generate_network("ikegami-hashimoto", machines=["1002"], tapes=["01"],
-                               noise=0.0, generations=30)
-net.reactions[0].to_text()
+traj = chemart.evolve("ikegami-hashimoto", machines=["1002"], tapes=["01"],
+                      noise=0.0, generations=30)
+traj.network.reactions[0].to_text()
 # 'M1002 + T01 -> 2 M1002 + 2 T01  [mass-action k=0.6 frame_length=4]  (x30)'
-net.extras["final_state"]          # {'M1002': 1000, 'T01': 1000}
+traj.network.extras["final_state"]   # {'M1002': 1000, 'T01': 1000}
+set(traj.series("active_mutation"))  # {0.0}
 ```
 
 **A machine without its tape.** Add `M3006`, whose tape is not present. It
 starts with half the machine pool and is gone within 12 generations:
 
 ```python
-net = chemart.generate_network("ikegami-hashimoto", machines=["1002", "3006"], tapes=["01"],
-                               noise=0.0, generations=12)
+net = chemart.evolve("ikegami-hashimoto", machines=["1002", "3006"], tapes=["01"],
+                     noise=0.0, generations=12).network
 net.initial_state                  # {'M1002': 500, 'M3006': 500, 'T01': 1000}
 net.extras["final_state"]          # {'M1002': 999, 'T01': 1000}
 ```
@@ -311,8 +358,10 @@ net.extras["final_state"]          # {'M1002': 999, 'T01': 1000}
 with the tapes `T01`, `T05` and `T03` is the chain of the papers' Figure 7a–c:
 
 ```python
-net = chemart.generate_network("ikegami-hashimoto", method="closure",
+net = chemart.generate_network("ikegami-hashimoto",
                                machines=["1002", "3006", "1222"], tapes=["01", "05", "03"])
+for r in net.reactions:
+    print(r.to_text())
 ```
 ```
 M1002 + T01 -> 2 M1002 + 2 T01  [mass-action k=0.6 frame_length=4]
@@ -328,8 +377,8 @@ live off the loop.
 Figure 2a, the loop is invaded. Over 150 generations (under a second):
 
 ```python
-net = chemart.generate_network("ikegami-hashimoto", seed=0, machines=["1002"], tapes=["01"],
-                               noise=0.04, generations=150)
+traj = chemart.evolve("ikegami-hashimoto", seed=0, machines=["1002"], tapes=["01"],
+                      noise=0.04, generations=150)
 ```
 
 With seeds 0 and 2, `M1002` stays the most common machine (412 and 502 copies
@@ -341,47 +390,51 @@ its tape `T7f`, another exact self-replicator.
 **Long runs and core networks.** The papers' core-network experiments run for
 3,000 generations with the noise turned off at generation 2,000 (`noise_off`).
 A run from random seeds takes 5 to 50 seconds, depending on how many kinds of
-machine the noise keeps alive:
+machine the noise keeps alive. This one took about 30 seconds:
 
 ```python
-net = chemart.generate_network("ikegami-hashimoto", seed=0, noise=0.055,
-                               generations=3000, noise_off=2000)
+traj = chemart.evolve("ikegami-hashimoto", seed=0, noise=0.055,
+                      generations=3000, noise_off=2000)
+last = traj.frames[-1]
+sum(s.startswith("M") for s in last.state)   # 59 kinds of machine
+sum(s.startswith("T") for s in last.state)   # 20 kinds of tape
+last.observables["active_mutation"]          # 0.66 (rounded)
 ```
 
 What such runs give is described under Results.
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `generate_network`, or to `chemart.evolve`; a parameter marked *evolve only* belongs to the process and one marked *generate only* to the network. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
-| `method` | `enum` | `dynamics` | structural | dynamics: the papers' population dynamics, observed reactions with firing counts; closure: the noise-free reaction network reachable from the seed machines and tapes (Chemart addition) <br>one of `dynamics`, `closure` |
 | `machines` | `list` | `[]` | structural | seed machines as 16-bit hex strings (T' column, M' column, head, tail); empty draws n_machines random machines <br>*range:* e.g. the minimal self-replicating loop [1002] with tapes [01] |
 | `tapes` | `list` | `[]` | structural | seed tapes as 7-bit hex strings read from the source; empty draws n_tapes random tapes <br>*range:* e.g. [01]; the papers' T1 read from another source is 04, 10, ... |
 | `n_machines` | `int` | `10` | population | number of random seed machines when machines is empty <br>`0` … `65536` · *range:* papers: about 10 |
 | `n_tapes` | `int` | `3` | population | number of random seed tapes when tapes is empty <br>`0` … `128` · *range:* papers: 2 or 3 |
-| `N` | `int` | `1000` | population | dynamics only: capacity of each population (machines, tapes); seeds share it equally <br>`1` … `10000000` · *range:* not stated in the papers |
+| `N` | `int` | `1000` | population | *evolve only.* capacity of each population (machines, tapes); seeds share it equally <br>`1` … `10000000` · *range:* not stated in the papers |
 | `c` | `float` | `0.6` | kinetic | fraction of each population replaced by reaction products per generation (c = d_m = d_t); also the rate scale of eq. 4 <br>`0.0` … `1.0` · *range:* papers: c = d = 0.6 |
-| `noise` | `float` | `0.05` | stochastic | dynamics only: external noise mu_P, bit-flip probability per bit of the reading frame <br>`0.0` … `1.0` · *range:* papers: 0.04 (minimal loop), 0.055 (oscillation), 0.07-0.08 (core networks), scans 0-0.1 |
-| `generations` | `int` | `150` | population | dynamics only: number of generations <br>`0` … `100000` · *range:* papers: 1600-3000 |
-| `noise_off` | `int` | `-1` | stochastic | dynamics only: generation at which external noise is turned off; -1 keeps it on <br>`-1` … `100000` · *range:* papers: 2000 |
-| `source` | `enum` | `random` | stochastic | dynamics only: source of a tape whose circular pattern is new to the population: random site (papers) or the site it was written from <br>one of `random`, `inherit` |
-| `max_species` | `int` | `400` | structural | closure only: species budget (the noise-free closure has at most 128 tapes and 128 + seed machines) <br>`2` … `100000` |
+| `noise` | `float` | `0.05` | stochastic | *evolve only.* external noise mu_P, bit-flip probability per bit of the reading frame <br>`0.0` … `1.0` · *range:* papers: 0.04 (minimal loop), 0.055 (oscillation), 0.07-0.08 (core networks), scans 0-0.1 |
+| `generations` | `int` | `150` | population | *evolve only.* number of generations; a frame every generation <br>`0` … `100000` · *range:* papers: 1600-3000 |
+| `noise_off` | `int` | `-1` | stochastic | *evolve only.* generation at which external noise is turned off; -1 keeps it on <br>`-1` … `100000` · *range:* papers: 2000 |
+| `source` | `enum` | `random` | stochastic | *evolve only.* source of a tape whose circular pattern is new to the population: random site (papers) or the site it was written from <br>one of `random`, `inherit` |
+| `max_species` | `int` | `400` | structural | *generate only.* species budget of the closure (the noise-free closure has at most 128 tapes and 128 + seed machines) <br>`2` … `100000` |
 
 ### Implementation decisions
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "10 decisions"
+??? note "11 decisions"
 
+    - Two faces: generate_network returns the noise-free closure, every machine and tape reachable from the seeds by exact reactions with every reaction between them (a Chemart addition, not in the papers); chemart.evolve runs the papers' population dynamics, a frame per generation (clock: generations). Each frame carries the populations, the reactions that fired in that generation (count 1 each) and the observables active_mutation and reading_length computed from that frame's populations.
     - Bit layout from paper fig. 1, not from the prose. The prose says head and tail come first and translation starts at the reading frame; the figure translates the rewritten tape [1110110] from its source into M ebbd with the table columns in bits 0-7 (T', M' alternating) and head/tail in bits 8-15 (alternating). That layout reproduces fig. 1 exactly, gives the machines of the published pairs (M1002 &lt;- T1, M3006 &lt;- T5, M1222 &lt;- T3), makes the five self-replicating pairs of sec. 4 self-replicate, and makes M1002 the machine produced by the largest number of machines (sec. 5).
     - The rewrite runs over sites h .. tail-1 (fig. 1: head at site 3, tail at site 2, six steps), so L is 1-6 (the &lt;L&gt; axis of figs. 2-3 ends at 6). The tail is searched from h + 1 and may overlap the head.
     - Tapes are strings read from their source, so the 7 rotations of a circular tape are different species (one tape encodes different machines). In the dynamics, rotations share one source ('every translational invariant tape has the same source'): a product whose circular pattern is present is merged into that rotation; a new pattern gets a random source (source: random) as in the papers. Translation of the product machine is from the source of the tape that was read, as in fig. 1. The closure has no population, so it keeps rotations apart.
     - Normalisation: the Artificial Life text makes c N new machines and tapes per generation, the book says the population is kept constant, while ECAL eq. 4 divides by the sum over all pairs (so non-reading pairs waste production). Chemart follows the book and the Artificial Life text: the c N products are shared among reading pairs, d = c, and populations stay at N (up to integer parts). Each network reaction gets mass-action k = c/2 per initial state producing it (c when both states give the same products), and outflow constant-total: the rate equations are the continuous-time version of eqs. 4-6 without noise and integer parts, up to a rescaling of time by the sum of f_M f_T over reading pairs (checked in tests).
     - Noise: the reaction terms are multiplied by 1 - eps with eps = 1 - (1 - mu_P)^L (eq. 7), and eps times the flux of each reaction and state becomes mutants, rounded stochastically to an integer ('at most eps c N mutant populations', Monte Carlo). A mutant flips each frame bit of the rewritten tape with probability mu_P conditioned on at least one flip, and its machine is translated from the mutated tape. The papers do not say whether the error hits the read or the written bit; Chemart flips the written tape.
     - Integer parts: populations are floored after each generation (so objects below one copy, f &lt; 1/N, are removed); mutants are whole objects. Seeds share N equally; the papers do not give initial populations or N (default 1000).
-    - Observed network: every reaction that fired, with count = number of generations in which it fired. Error-free reactions carry the mass-action rate above and frame_length L (the noise factor (1 - mu_P)^L is not folded in, since noise_off changes it); reactions produced only by noise have no rate and are listed by index in extras.noise_induced. extras.analysis records per generation the distinct machines and tapes (figs. 4-6), the active mutation rate &lt;mu_A&gt; of eq. 9 (w/L averaged over reading pairs with weights m_i t_j and over both initial states) and the average frame length &lt;L&gt;.
+    - Observed network: every reaction that fired, with count = number of generations in which it fired. Error-free reactions carry the mass-action rate above and frame_length L (the noise factor (1 - mu_P)^L is not folded in, since noise_off changes it); reactions produced only by noise have no rate and are listed by index in extras.noise_induced. Each frame of chemart.evolve reports the active mutation rate &lt;mu_A&gt; of eq. 9 (observable active_mutation: w/L averaged over reading pairs with weights m_i t_j and over both initial states) and the average frame length &lt;L&gt; (reading_length); the numbers of distinct machines and tapes of figs. 4-6 are counted from the frame's state.
     - Dropped v1 params: tape_len and machine_len (the encoding is only defined for 7-bit tapes and 16-bit machines); compartments (the cell model of [420] is not implemented: the ALife V paper is not openly available).
     - Paper errata: sec. 4 lists the self-replicating pair 'Mbdd1 with T37', but bdd1's tail 0001 cannot bind T37 (two zeros); Mbdd7 is the self-replicator of T37. It also writes 'T9dd3' for M9dd3. Fig. 1 calls the rewritten tape [1110110] Te6; its value is 76 hex (T37 as a circular tape). ECAL fig. 1 names M1222's tape T41, a rotation of T3.
     - Sec. 4 says there are 5 possible self-replicating pairs (M1002/T1, M2004/T1, Mdffb/T3f, M9dd3/T1d, Mbdd7/T37). With this encoding all five self-replicate from initial state 1, but so do 10 more (e.g. M0000/T0, Mffff/T7f, M3446/Td); the papers do not say how the five were selected.
@@ -424,7 +477,7 @@ all-ones pair `Mffff`/`T7f` and `Mbff7`/`T3f`. The paper does not say how its
 five were chosen. In Chemart's runs from random seeds these other
 self-replicators are what the population usually collapses to: in the 35
 long runs of the scan below, the pairs left at the end were `Mbff7`/`T3f`,
-`Mffff`/`T7f` and `M0000`/`T0`, never `M1002`. In the default run above
+`Mffff`/`T7f` and `M0000`/`T0`, never `M1002`. In the default evolve run above
 `Mbff7` is the most common machine.
 
 ### Higher noise: parasites and oscillations

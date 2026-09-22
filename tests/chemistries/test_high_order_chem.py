@@ -9,7 +9,7 @@ from statistics import mean
 import numpy as np
 import pytest
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries import high_order_chem as hoc
 
 ID = "high-order-chem"
@@ -40,7 +40,7 @@ def assert_division(reaction):
 # --- the book's example: divrule re-implements the prime number chemistry ------------
 def test_divrule_closure_equals_prime_number_chemistry():
     """Appendix: 'The results should be the same as the original NumberChem implementation'."""
-    mine = generate_network(ID, method="closure", data=[12, 2, 3])
+    mine = generate_network(ID, data=[12, 2, 3])
     assert mine.status == "complete"
     as_sets = {(frozenset(r.reactants.items()), frozenset(r.products.items())) for r in mine.reactions}
     assert (frozenset({RULE: 1, "n2": 1, "n12": 1}.items()),
@@ -49,16 +49,17 @@ def test_divrule_closure_equals_prime_number_chemistry():
             frozenset({RULE: 1, "n3": 1, "n4": 1}.items())) in as_sets
     for numbers, seed in (([12, 2, 3], None), (None, 3)):
         kwargs = dict(numbers=numbers) if numbers else {}
-        ref = generate_network("prime-number-chemistry", method="closure", seed=seed, **kwargs)
+        ref = generate_network("prime-number-chemistry", seed=seed, **kwargs)
         kwargs = dict(data=numbers) if numbers else {}
-        net = generate_network(ID, method="closure", seed=seed, **kwargs)
+        net = generate_network(ID, seed=seed, **kwargs)
         # same rng stream: M = 100 draws from [2, 1000] in both chemistries
         assert {s.id for s in net.species} - {RULE} == {s.id for s in ref.species}
         assert {without_rules(r) for r in net.reactions} == {without_rules(r) for r in ref.reactions}
 
 
 def test_rules_are_catalysts():
-    net = generate_network(ID, seed=1)
+    traj = evolve(ID, seed=1)
+    net = traj.network
     assert net.status == "observed" and net.reactions
     assert net.species[0].id == RULE and net.species[0].structure == "divrule(m1, m2)"
     for r in net.reactions:
@@ -66,6 +67,7 @@ def test_rules_are_catalysts():
         assert_division(r)
     assert net.initial_state[RULE] == net.extras["final_state"][RULE] == 4
     assert net.extras["analysis"]["rule_draws"] == {RULE: 10000}
+    assert all(f.state[RULE] == 4 for f in traj.frames)
 
 
 @pytest.mark.slow
@@ -74,7 +76,8 @@ def test_divrule_soup_behaves_like_numberchem():
     only composites are consumed, primes accumulate, and the final prime fraction matches."""
     mine, ref = [], []
     for seed in range(6):
-        net = generate_network(ID, seed=seed)
+        traj = evolve(ID, seed=seed)
+        net = traj.network
         a = net.extras["analysis"]
         assert sum(net.initial_state.values()) - 4 == 100
         assert sum(net.extras["final_state"].values()) - 4 == 100     # divrule returns 2 for 2
@@ -83,13 +86,12 @@ def test_divrule_soup_behaves_like_numberchem():
         for r in net.reactions:
             assert_division(r)
             assert not any(hoc.is_prime(value(s)) for s in consumed(r))
-        fraction = a["prime_fraction"]
+        fraction = traj.series("prime_fraction")
         assert len(fraction) == 10000 // 100 + 1
         assert all(b >= a_ for a_, b in zip(fraction, fraction[1:]))   # primes are never consumed
         assert fraction[-1] > fraction[0]
         mine.append(fraction[-1])
-        ref.append(generate_network("prime-number-chemistry", seed=seed)
-                   .extras["analysis"]["prime_fraction"][-1])
+        ref.append(evolve("prime-number-chemistry", seed=seed).series("prime_fraction")[-1])
     assert mean(mine) > 0.95
     assert abs(mean(mine) - mean(ref)) < 0.05
 
@@ -124,12 +126,12 @@ def test_binding_sites_are_counted_like_the_reference():
     assert hoc.binding_sites("self.recombinationMachine(%s,%s)") == 2   # MolecularTSP.py
     assert hoc.binding_sites("bimolecular(m1, m2)") == 2           # book example
     assert hoc.binding_sites("self.fold(m)") == 1
-    net = generate_network(ID, rules={"self.divrule(%d,%d)": 1, "divrule": 1}, iterations=10, seed=0)
+    net = evolve(ID, rules={"self.divrule(%d,%d)": 1, "divrule": 1}, iterations=10, seed=0).network
     assert net.initial_state[RULE] == 2                            # both spellings are one rule
 
 
 def test_rules_are_drawn_in_proportion_to_multiplicity():
-    net = generate_network(ID, rules={"a: x -> x": 3, "b: x -> x": 1}, iterations=4000, seed=2)
+    net = evolve(ID, rules={"a: x -> x": 3, "b: x -> x": 1}, iterations=4000, seed=2).network
     draws = net.extras["analysis"]["rule_draws"]
     assert draws["rule:a"] + draws["rule:b"] == 4000
     assert abs(draws["rule:a"] / 4000 - 0.75) < 0.03
@@ -138,8 +140,8 @@ def test_rules_are_drawn_in_proportion_to_multiplicity():
 
 def test_rules_compete_for_substrate():
     """Destroying substrate with one rule starves the other (book: 'look at how rules compete')."""
-    kept = generate_network(ID, rules={"divrule": 1}, seed=5, iterations=3000)
-    eaten = generate_network(ID, rules={"divrule": 1, "eat: x ->": 1}, seed=5, iterations=3000)
+    kept = evolve(ID, rules={"divrule": 1}, seed=5, iterations=3000).network
+    eaten = evolve(ID, rules={"divrule": 1, "eat: x ->": 1}, seed=5, iterations=3000).network
     assert sum(eaten.extras["final_state"].values()) - 2 == 0
     assert eaten.extras["analysis"]["idle_draws"] > 0
     div = lambda n: sum(r.count for r in n.reactions if RULE in r.reactants)
@@ -149,8 +151,8 @@ def test_rules_compete_for_substrate():
 # --- expression rules ----------------------------------------------------------------
 def test_expression_rule_reproduces_divrule():
     expr = "div: x, y -> max(x, y) / min(x, y), min(x, y) if x != y and max(x, y) % min(x, y) == 0"
-    a = generate_network(ID, method="closure", seed=4)
-    b = generate_network(ID, method="closure", seed=4, rules={expr: 1})
+    a = generate_network(ID, seed=4)
+    b = generate_network(ID, seed=4, rules={expr: 1})
     assert b.species[0].id == "rule:div"
     assert {s.id for s in a.species[1:]} == {s.id for s in b.species[1:]}
     assert {without_rules(r) for r in a.reactions} == {without_rules(r) for r in b.reactions}
@@ -171,7 +173,7 @@ def test_expression_semantics():
 
 
 def test_closure_truncates_on_budget():
-    net = generate_network(ID, method="closure", rules={"x, y -> x + y": 1}, data=[1], max_species=5)
+    net = generate_network(ID, rules={"x, y -> x + y": 1}, data=[1], max_species=5)
     assert net.status == "truncated"
     assert [s.id for s in net.species] == ["rule:expr1", "n1", "n2", "n3", "n4", "n5"]
 
@@ -192,7 +194,7 @@ def test_closure_truncates_on_budget():
 def test_unknown_rules_are_rejected_not_executed(rule, message, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     with pytest.raises(ValueError, match=message):
-        generate_network(ID, rules={rule: 1}, iterations=10)
+        evolve(ID, rules={rule: 1}, iterations=10)
     assert list(tmp_path.iterdir()) == []
 
 
@@ -220,7 +222,7 @@ def test_ring_graph_follows_moleculartsp():
 
 def test_tsp_machines_only_release_better_tours():
     rules = {"exchangeMachine": 100, "cutMachine": 100, "invertMachine": 100, "recombinationMachine": 1}
-    net = generate_network(ID, rules=rules, init="tours", M=9, cities=10, iterations=3000, seed=3)
+    net = evolve(ID, rules=rules, init="tours", M=9, cities=10, iterations=3000, seed=3).network
     g = hoc.TourGraph(10)
     tour = lambda s: tuple(int(c) for c in s.strip("[]").split(","))
     for r in net.reactions:
@@ -248,7 +250,7 @@ def test_tsp_machines_only_release_better_tours():
     (dict(rules={}), "non-empty"),
     (dict(rules={"divrule": 0}), "positive integer"),
     (dict(rules={"divrule": 1, "divrule: x, y -> x": 1}), "duplicate"),
-    (dict(rules={"cutMachine": 1}, method="closure"), "deterministic"),
+    (dict(rules={"cutMachine": 1}), "deterministic"),
     (dict(rules={"cutMachine": 1}, data=[[0, 1, 1]], cities=3), "permutations"),
 ])
 def test_rejects_inconsistent_parameters(given, message):

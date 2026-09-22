@@ -128,7 +128,7 @@ becomes *truncated*, meaning that reactions exist beyond what is listed.
 ### The reactor
 
 Laing gave no dynamics, so Chemart offers two ways to turn the rules into a
-network. The **closure** starts from the seed machines and tapes, applies every
+network, its two faces: `generate_network` and `chemart.evolve`. The **closure** starts from the seed machines and tapes, applies every
 machine to every tape, adds the products, and repeats until nothing new
 appears or a limit is hit. It lists every reaction reachable, with no rates.
 The **soup** is a Chemart addition: a population of molecules from which random
@@ -185,19 +185,23 @@ tapes=["000"], max_length=3` the tape `t:000` has three reactions, to `t:100`,
 `t:010` and `t:001`, and the closure is all eight 3-bit tapes with 12
 reactions. `binding="random"` draws one attachment point per pair instead.
 
-**A soup.** `method="soup"` draws `steps` random pairs from `copies` copies of
-each seed molecule:
+**A soup.** `chemart.evolve` draws `steps` random pairs from `copies` copies of
+each seed molecule and returns a trajectory: a frame every generation (as many
+draws as molecules, here 40), with the population at that moment (`state`)
+and the reactions fired since the previous frame, and at the end the network
+of every reaction that fired:
 
 ```python
-net = chemart.generate_network("laing-molecular-machines", seed=2, method="soup",
-                               copies=20, steps=400, max_length=8)
-net.summary()                # 18 species, 16 reactions, status=observed
+traj = chemart.evolve("laing-molecular-machines", seed=2, copies=20, steps=400, max_length=8)
+net = traj.network
+net.summary().splitlines()[0]   # 'laing-molecular-machines: 18 species, 16 reactions, status=observed'
 net.extras["final_state"]
 # {'m:CT1.W1.H.TT1.W0.R.CT1.W1': 20, 't:011': 4, 't:0001': 3, 't:0101': 3,
 #  't:111': 2, 't:1001': 2, 't:1101': 2, 't:0011': 2, 't:00001': 1, 't:1111': 1}
 ```
 
-Each reaction carries a `count` of how often it fired. Here each of the 20
+Frame `t` counts pair draws (`traj.times()` is 0, 40, ..., 400). Each reaction
+carries a `count` of how often it fired. Here each of the 20
 tapes has been counted up from 0 to somewhere between 6 and 16, depending on
 how often it happened to meet a machine.
 

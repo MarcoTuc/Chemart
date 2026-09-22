@@ -5,7 +5,7 @@ from itertools import combinations
 
 import pytest
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries.ccm import coloring_god, coloring_lod, queens_god, queens_lod, usa_mainland_edges
 
 ID = "ccm"
@@ -42,12 +42,15 @@ def valid_queens(cols):
     return queens_god(cols) == len(cols) * (len(cols) - 1) // 2
 
 
-def assert_observed_run(net, problem, strict_monotone=False, frustration=False):
+def assert_observed_run(traj, problem, strict_monotone=False, frustration=False):
+    net = traj.network
     a = net.extras["analysis"]
     assert net.status == "observed"
     assert sum(r.count for r in net.reactions) == a["reactions"]
-    assert len(a["god"]) == a["reactions"] + 1
-    assert a["god"][-1] == a["god_final"]
+    # a frame per accepted reaction after the initial one, and one at the last test if it failed
+    assert [len(f.fired) for f in traj.frames[1:] if f.fired] == [1] * a["reactions"]
+    assert traj.times()[-1] == a["tests"]
+    assert traj.series("god")[0] == a["god_initial"] and traj.series("god")[-1] == a["god_final"]
     ids = {s.id for s in net.species}
     assert set(net.initial_state) <= ids
     for r in net.reactions:
@@ -105,41 +108,55 @@ def test_six_queens_local_maximum_of_fig_12():
 # ---------------------------------------------------------------------------
 def test_default_run_solves_eight_queens():
     """HICSS-27 sec. 4: the single-catalyst swap rule from queens on the diagonal reaches a solution and stops."""
-    net = generate_network(ID, seed=1)
+    traj = evolve(ID, seed=1)
+    net = traj.network
     a = net.extras["analysis"]
     assert a["solved"] and a["terminated"]
     assert a["god_initial"] == 0 and a["god_max"] == 28
     assert valid_queens(net.extras["final_assignment"])
     assert net.initial_state == {f"q{i}={i}": 1.0 for i in range(8)}
     assert all(len(r.catalysts) == 1 and len(r.reactants) == 3 for r in net.reactions)
-    assert_observed_run(net, "n-queens", frustration=True)
+    assert_observed_run(traj, "n-queens", frustration=True)
+
+
+def test_frames_follow_the_working_memory():
+    traj = evolve(ID, seed=1)
+    assert traj.clock == "tests"
+    first, last = traj.frames[0], traj.frames[-1]
+    assert first.t == 0.0 and first.fired == [] and first.state == traj.network.initial_state
+    assert last.state == {f"q{r}={c}": 1.0 for r, c in enumerate(traj.network.extras["final_assignment"])}
+    for f in traj.frames:
+        cols = [c for _, c in sorted(tuple(map(int, sid[1:].split("="))) for sid in f.state)]
+        assert len(cols) == 8 and f.observables["god"] == queens_god(cols)
 
 
 def test_eight_queens_never_fail():
     """HICSS-27 sec. 4.2: 'the problems never fail to be solved' (original CCM, random and diagonal layouts)."""
     for seed in range(4):
         for initial in ("ordered", "random"):
-            net = generate_network(ID, seed=seed, frustration=False, initial=initial)
+            traj = evolve(ID, seed=seed, frustration=False, initial=initial)
+            net = traj.network
             assert net.extras["analysis"]["solved"], (seed, initial)
             assert valid_queens(net.extras["final_assignment"])
-            assert_observed_run(net, "n-queens")
+            assert_observed_run(traj, "n-queens")
 
 
 def test_conflicting_system_god_is_not_monotone():
     """HICSS-27 fig. 8 and sec. 5.2: N queens is a conflicting system; GOD falls although no reaction lowers its IOD."""
     drops = 0
     for seed in range(4):
-        a = generate_network(ID, seed=seed, frustration=False).extras["analysis"]
-        assert a["uphill_reactions"] == 0
-        drops += sum(y < x for x, y in zip(a["god"], a["god"][1:]))
+        traj = evolve(ID, seed=seed, frustration=False)
+        assert traj.network.extras["analysis"]["uphill_reactions"] == 0
+        god = traj.series("god")
+        drops += sum(y < x for x, y in zip(god, god[1:]))
     assert drops > 0
 
 
 def test_strict_acceptance_is_the_books_criterion():
     """Book 17.2.2: a rule applies if the LHS LOD sum is smaller than the RHS sum (HICSS-27 footnote 3 variant)."""
-    net = generate_network(ID, seed=2, frustration=False, acceptance="increasing")
-    assert net.extras["analysis"]["solved"]
-    assert_observed_run(net, "n-queens", strict_monotone=True)
+    traj = evolve(ID, seed=2, frustration=False, acceptance="increasing")
+    assert traj.network.extras["analysis"]["solved"]
+    assert_observed_run(traj, "n-queens", strict_monotone=True)
 
 
 def test_rule_without_catalyst_never_stops():
@@ -167,12 +184,13 @@ def test_usa_map_is_colored_in_every_run():
     edges = usa_mainland_edges()
     for rule in ("single-catalyst", "variable-catalyst"):
         for seed in range(3):
-            net = generate_network(ID, seed=seed, problem="graph-coloring", rule=rule)
+            traj = evolve(ID, seed=seed, problem="graph-coloring", rule=rule)
+            net = traj.network
             colors = net.extras["final_assignment"]
             assert net.extras["analysis"]["solved"] and all(colors[a] != colors[b] for a, b in edges)
             assert set(colors) <= {0, 1, 2, 3}
             assert net.initial_state == {f"v{i}=c0": 1.0 for i in range(48)}
-            assert_observed_run(net, "graph-coloring", frustration=True)
+            assert_observed_run(traj, "graph-coloring", frustration=True)
             if rule == "variable-catalyst":
                 v_links = {v: {b for a, b in edges if a == v} | {a for a, b in edges if b == v} for v in range(48)}
                 for r in net.reactions:

@@ -191,7 +191,7 @@ Binding: Smith-Waterman alignment of the complement of the initiating molecule (
 
 *How the population is bounded:* constant per-step decay of every molecule; population held by the balance of energy influx and decay (about 350 molecules in ALife XII)
 
-Container (method container): at every time step all molecules are visited in random order; each may decay, or (if energy is left) try to bind a random unbound molecule with propensity 1-(1-a/c)^n, or execute one instruction of its complex. energy_per_step units are added after each step. Methods soup and closure are Chemart additions.
+Container (chemart.evolve, reactor container): at every time step all molecules are visited in random order; each may decay, or (if energy is left) try to bind a random unbound molecule with propensity 1-(1-a/c)^n, or execute one instruction of its complex. energy_per_step units are added after each step. The soup reactor and the closure (generate_network) are Chemart additions.
 
 ### Using it in Chemart
 
@@ -204,48 +204,69 @@ print(net.summary())
 ```
 
 ```
-stringmol: 1 species, 1 reactions, status=observed
-provides: catalysts, flow, initial-state, stoichiometry, topology
+stringmol: 1 species, 1 reactions, status=complete
+provides: catalysts, stoichiometry, topology
 seed: 1
-extras: aborted, active_counts, analysis, decayed, epochs, extinct, final_state, in_progress, time_steps
+extras: non_terminating, seed
 ```
 
 Its first reactions (`net.reactions`):
 
 ```
-2 OOGEOLHHHRLUEUOBBBRBXUUUDYGRHBLROOREsBLUBOtBmCscimssBLUBOxeOYHOB -> 3 OOGEOLHHHRLUEUOBBBRBXUUUDYGRHBLROOREsBLUBOtBmCscimssBLUBOxeOYHOB  (x101)
+2 OOGEOLHHHRLUEUOBBBRBXUUUDYGRHBLROOREsBLUBOtBmCscimssBLUBOxeOYHOB -> 3 OOGEOLHHHRLUEUOBBBRBXUUUDYGRHBLROOREsBLUBOtBmCscimssBLUBOxeOYHOB
 ```
 
-The default run puts 100 seed replicases in the container for 3,000 steps at
-the settings of the specification and the ALife XII paper (25 energy units
-per step, decay probability 1/65² per step, substitution rate 10⁻⁵). The only
-reaction is self-copying, `R + R → 3 R`, completed 101 times; no mutant
-appeared. Species names are the sequences with the function codes written as
-lower-case letters (`$ s`, `> m`, `^ t`, `? i`, `= c`, `% x`, `} e`);
-`species.structure` holds the real sequence. The rest of the run is in
-`net.extras`:
+Stringmol has two faces. `chemart.generate_network`, whose default call is
+printed above, returns the *closure* of a set of molecules: the network of
+every reaction they and their products can take part in, with copying made
+exact. `chemart.evolve` runs a reactor and returns a trajectory: a list of
+frames, each with the time, the molecules present and the reactions completed
+since the previous frame, plus the network of all reactions observed. The
+reactor is the container described above by default, or a simpler soup with
+`reactor="soup"`. Species names are the sequences with the function codes
+written as lower-case letters (`$ s`, `> m`, `^ t`, `? i`, `= c`, `% x`,
+`} e`); `species.structure` holds the real sequence.
+
+The default closure starts from the seed replicase alone. It finds a single
+reaction, self-copying `R + R → 3 R`, and nothing else, because with exact
+copying no other molecule can ever be made.
+
+**The container.** The default run puts 100 seed replicases in the container
+for 3,000 steps at the settings of the specification and the ALife XII paper
+(25 energy units per step, decay probability 1/65² per step, substitution rate
+10⁻⁵):
 
 ```python
+traj = chemart.evolve("stringmol", seed=1)
+net = traj.network
 ex = net.extras
+net.reactions[0].count      # 101  the only reaction, R + R → 3 R
 ex["final_state"]           # {seed: 98}   unbound molecules at the end
 ex["decayed"]               # {seed: 65}   unbound molecules that decayed
 ex["aborted"][0]["count"]   # 6    reactions cut short because a molecule decayed
 len(ex["in_progress"])      # 13   complexes still bound at the end
-ex["analysis"]["population"][-1], ex["analysis"]["energy"][-1]   # (123, 49174)
+last = traj.frames[-1]
+last.t, sum(last.state.values()), last.observables
+# (3000.0, 124.0, {'energy': 49254, 'complexes': 13})
 ```
 
-The population grew from 100 to 123 while unspent energy piled up: with the
-default container radius molecules rarely meet, so binding, not energy, limits
-the chemistry. `ex["analysis"]` samples population, distinct strings and energy
-about 500 times; the string count includes half-built copies, one per bound
-complex, which is why it ends at 13. `ex["epochs"]` records every change of the
-most abundant species (the papers' sweeps), and `ex["active_counts"]` how often
-each reactant was the enzyme. Reactions and extras balance exactly against the
-initial and final populations.
+No mutant appeared. The clock counts time steps: `traj.times()` starts
+`[0.0, 1.0, 7.0, 13.0]`, one frame after the first step and then every
+`steps // 500` steps (here 6), 502 frames in all. A frame's state counts every
+molecule, and a bound molecule under the sequence it had when it bound, so the
+98 free molecules and the 13 complexes make 124. Each frame also reports the
+energy left after the step's influx and the number of bound complexes
+(`traj.series("energy")`, `traj.series("complexes")`). The population grew
+from 100 to 124 while unspent energy piled up: with the default container
+radius molecules rarely meet, so binding, not energy, limits the chemistry.
+`ex["epochs"]` records every change of the most abundant species (the papers'
+sweeps) at the frame times, and `ex["active_counts"]` how often each reactant
+was the enzyme. Reactions and extras balance exactly against the initial and
+final populations.
 
-**The ALife XII cascade.** `method="closure"` does not simulate a container:
-it takes a set of molecules, reacts every ordered pair once in isolation (the
-first molecule initiates the bind), copies exactly, and repeats on the products.
+**The ALife XII cascade.** The closure does not simulate a container: it takes
+a set of molecules, reacts every ordered pair once in isolation (the first
+molecule initiates the bind), copies exactly, and repeats on the products.
 Given species 9 of the ALife XII paper and its single-point mutant 29, it finds
 the paper's cascade within seconds:
 
@@ -253,8 +274,7 @@ the paper's cascade within seconds:
 from chemart.chemistries import stringmol as sm
 sp9 = sm.ALIFE12_SPECIES_9
 sp29 = sp9.replace("$BLUBO^", "$BLUBP^")            # the single point mutation
-net = chemart.generate_network("stringmol", method="closure",
-                               molecules={sp9: 1, sp29: 1}, max_species=8)
+net = chemart.generate_network("stringmol", molecules={sp9: 1, sp29: 1}, max_species=8)
 ```
 
 ```
@@ -272,15 +292,16 @@ matters: the alignment starts from the initiator's complement, so `9 + 29` and
 
 **Mutation and collapse.** Raise the substitution rate into the range of the
 authors' configuration files and shrink the container so that molecules meet
-often, and a run shows sweeps and a collapse (this one takes 15–30 seconds):
+often, and a run shows sweeps and a collapse (this one takes about 10 to 30 seconds):
 
 ```python
-net = chemart.generate_network("stringmol", seed=1, cell_radius=100, steps=40000,
-                               substitution_rate=1e-3, indel_rate=1e-4)
+traj = chemart.evolve("stringmol", seed=1, cell_radius=100, steps=40000,
+                      substitution_rate=1e-3, indel_rate=1e-4)
+net = traj.network
 ex = net.extras
 print(net.summary().splitlines()[0])
 print("extinct:", ex["extinct"], "after", ex["time_steps"], "steps")
-print("population:", ex["analysis"]["population"][::50])
+print("population:", [int(sum(f.state.values())) for f in traj.frames[::50]])
 length = {s.id: len(s.structure) for s in net.species}
 for t, sid in ex["epochs"][:3]:          # time, length and name of each new leader
     print(t, length[sid], sid)
@@ -289,13 +310,14 @@ for t, sid in ex["epochs"][:3]:          # time, length and name of each new lea
 ```
 stringmol: 106 species, 371 reactions, status=observed
 extinct: True after 34593 steps
-population: [100, 278, 419, 452, 201, 79, 32, 12, 4]
-0 64 OOGEOLHHHRLUEUOBBBRBXUUUDYGRHBLROOREsBLUBOtBmCscimssBLUBOxeOYHOB
-8160 22 tBmCscimssBLUBOxeOYHOB
-8560 42 OOGEOLHHHRLUEUOBBBRBXUUUDYGRHBLROOREsOYHOB
+population: [100, 282, 410, 459, 208, 80, 33, 12, 4]
+1 64 OOGEOLHHHRLUEUOBBBRBXUUUDYGRHBLROOREsBLUBOtBmCscimssBLUBOxeOYHOB
+8161 22 tBmCscimssBLUBOxeOYHOB
+8561 42 OOGEOLHHHRLUEUOBBBRBXUUUDYGRHBLROOREsOYHOB
 ```
 
-After about 8,500 steps the seed replicase loses first place to a 42-symbol
+The population is printed every 50th frame, that is every 4,000 steps. After
+about 8,500 steps the seed replicase loses first place to a 42-symbol
 molecule: its binding regions followed directly by `$OYHOB`, with the copy
 program deleted. In isolated reactions this molecule is copied when a replicase
 acts on it but copies nothing itself, and it is shorter, so it is copied faster.
@@ -303,37 +325,41 @@ It spreads, the replicases decline, and the container empties. The ALife XII
 paper describes this end in words; this run is a small, fast analogue at 100
 times its mutation rate, not a reproduction.
 
-`method="soup"` draws pairs from a constant-size population and runs each
-reaction to completion at once, with no energy or decay. Container runs of the
-papers' length (about 350 molecules for 10⁵ to 10⁷ steps) are far too slow in
-pure Python.
+`reactor="soup"` draws pairs from a constant-size population and runs each
+reaction to completion at once, with no energy or decay; its clock counts
+collisions, with a frame every generation (as many collisions as there are
+molecules). In the parameter table below, `reactor`, `steps`, the container's
+energy, radii and decay and the two mutation rates are for `chemart.evolve`,
+and `max_species` is for the closure. Container runs of the papers' length
+(about 350 molecules for 10⁵ to 10⁷ steps) are far too slow in pure Python.
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `generate_network`, or to `chemart.evolve`; a parameter marked *evolve only* belongs to the process and one marked *generate only* to the network. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
-| `method` | `enum` | `container` | structural | container: the authors' time-stepped container with energy and decay, observed bind-execute-dissociate events with counts; soup: chemart.soup.soup with instantaneous pair reactions (bind test, program run to the end) and constant population; closure: all reactions reachable from the distinct seed molecules, with exact copying (Chemart additions) <br>one of `container`, `soup`, `closure` |
-| `molecules` | `dict` | `{'OOGEOLHHHRLUEUOBBBRBXUUUDYGRHBLROORE$BLUBO^B>…` | population | initial multiset {sequence: count} (closure: the distinct sequences form the seed set) <br>*range:* seed replicase of spec v0.2 app. B.1 (default); upstream configs use WWGEWLHHHRLUEUWJJJRJXUUUDYGRHJLRWWRE$BLUBO^B&gt;C$=?&gt;$$BLUBO%}OYHOB x 150; ALife XII species 9 is OBEQBXUUUDYGRHBBOSEOLHHHRLUEUOBLROORE$BLUBO^B&gt;C$=?&gt;$$BLUBO%}OYHOB |
-| `steps` | `int` | `3000` | population | container: time steps; soup: collisions (elastic ones included); ignored by closure <br>`0` … `100000000` · *range:* ALife XII: until extinction, modal 750000 and up to about 15e6 time steps |
-| `energy_per_step` | `int` | `25` | kinetic | energy units added to the container after every time step (container only); binding and each instruction cost one unit <br>≥ `0` · *range:* ALife XII paper: 25; upstream default ESTEP 20; later spatial configs 2500 |
-| `cell_radius` | `float` | `2500.0` | spatial | container radius; bind propensity 1-(1-(agent_radius/cell_radius)^2)^n with n unbound molecules not yet visited in the step (container only) <br>≥ `0.001` · *range:* upstream CELLRAD 2500; spatial configs 1 |
-| `agent_radius` | `float` | `10.0` | spatial | molecule radius in the bind propensity (container only); must not exceed cell_radius <br>≥ `0.0` · *range:* upstream AGRAD 10 |
-| `decay` | `float` | `0.00023668639` | kinetic | probability per time step that a visited molecule is deleted; a decaying bound molecule takes its partner with it (container only) <br>`0.0` … `1.0` · *range:* spec v0.2 and ALife XII: 1/65^2; upstream configs 0.0005-0.0015 |
-| `substitution_rate` | `float` | `1e-05` | stochastic | per-copy probability that '=' writes a neighbour of the read symbol in the symbol loop instead of the symbol <br>`0.0` … `1.0` · *range:* ALife XII: 1e-5; upstream configs (MUTATE) 1e-4-2e-3, with indel_rate equal to it |
-| `indel_rate` | `float` | `3.06125e-08` | stochastic | per-copy probability of an insertion (the copy plus a random symbol) or a deletion (the symbol is skipped), 50:50 <br>`0.0` … `1.0` · *range:* upstream ALife XII default 3.06125e-8 (paper: p_s/(10 n) = 3.03e-8) |
+| `reactor` | `enum` | `container` | structural | *evolve only.* container: the authors' time-stepped container with energy and decay, observed bind-execute-dissociate events with counts; soup: chemart.soup with instantaneous pair reactions (bind test, program run to the end) and constant population (a Chemart addition) <br>one of `container`, `soup` |
+| `molecules` | `dict` | `{'OOGEOLHHHRLUEUOBBBRBXUUUDYGRHBLROORE$BLUBO^B>…` | population | initial multiset {sequence: count} of the reactor; the closure takes the distinct sequences as its seed set <br>*range:* seed replicase of spec v0.2 app. B.1 (default); upstream configs use WWGEWLHHHRLUEUWJJJRJXUUUDYGRHJLRWWRE$BLUBO^B&gt;C$=?&gt;$$BLUBO%}OYHOB x 150; ALife XII species 9 is OBEQBXUUUDYGRHBBOSEOLHHHRLUEUOBLROORE$BLUBO^B&gt;C$=?&gt;$$BLUBO%}OYHOB |
+| `steps` | `int` | `3000` | population | *evolve only.* container: time steps, a frame about every steps/500 of them; soup: collisions (elastic ones included), a frame per generation (as many collisions as molecules) <br>`0` … `100000000` · *range:* ALife XII: until extinction, modal 750000 and up to about 15e6 time steps |
+| `energy_per_step` | `int` | `25` | kinetic | *evolve only.* energy units added to the container after every time step (container only); binding and each instruction cost one unit <br>≥ `0` · *range:* ALife XII paper: 25; upstream default ESTEP 20; later spatial configs 2500 |
+| `cell_radius` | `float` | `2500.0` | spatial | *evolve only.* container radius; bind propensity 1-(1-(agent_radius/cell_radius)^2)^n with n unbound molecules not yet visited in the step (container only) <br>≥ `0.001` · *range:* upstream CELLRAD 2500; spatial configs 1 |
+| `agent_radius` | `float` | `10.0` | spatial | *evolve only.* molecule radius in the bind propensity (container only); must not exceed cell_radius <br>≥ `0.0` · *range:* upstream AGRAD 10 |
+| `decay` | `float` | `0.00023668639` | kinetic | *evolve only.* probability per time step that a visited molecule is deleted; a decaying bound molecule takes its partner with it (container only) <br>`0.0` … `1.0` · *range:* spec v0.2 and ALife XII: 1/65^2; upstream configs 0.0005-0.0015 |
+| `substitution_rate` | `float` | `1e-05` | stochastic | *evolve only.* per-copy probability that '=' writes a neighbour of the read symbol in the symbol loop instead of the symbol (the closure copies exactly) <br>`0.0` … `1.0` · *range:* ALife XII: 1e-5; upstream configs (MUTATE) 1e-4-2e-3, with indel_rate equal to it |
+| `indel_rate` | `float` | `3.06125e-08` | stochastic | *evolve only.* per-copy probability of an insertion (the copy plus a random symbol) or a deletion (the symbol is skipped), 50:50 (the closure copies exactly) <br>`0.0` … `1.0` · *range:* upstream ALife XII default 3.06125e-8 (paper: p_s/(10 n) = 3.03e-8) |
 | `max_length` | `int` | `2000` | structural | maximum string length: a copy with R or W at this index ends the reaction <br>`2` … `100000` · *range:* ALife XII and upstream MAXLEN: 2000; ECAL 2009: 512 |
 | `traceback` | `enum` | `matrix` | structural | Smith-Waterman traceback: matrix is the proper trace matrix (spec v0.2, SmithWatermanV2); highest-neighbour walks back through the largest neighbouring cell (the v0.1 implementation, spec app. B.1) <br>one of `matrix`, `highest-neighbour` |
-| `max_exec_steps` | `int` | `20000` | structural | soup and closure only: instructions after which an isolated reaction that has not ended counts as non-terminating (no reaction); the seed replicase needs a few hundred <br>≥ `1` |
-| `max_species` | `int` | `100` | structural | closure only: species budget (status truncated when exceeded) <br>≥ `1` |
+| `max_exec_steps` | `int` | `20000` | structural | closure and soup reactor (not the container): instructions after which an isolated reaction that has not ended counts as non-terminating (no reaction); the seed replicase needs a few hundred <br>≥ `1` |
+| `max_species` | `int` | `100` | structural | *generate only.* species budget of the closure (status truncated when exceeded) <br>≥ `1` |
 
 ### Implementation decisions
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "14 decisions"
+??? note "15 decisions"
 
+    - Two faces: generate_network returns the closure of the distinct seed sequences (exact copying); chemart.evolve runs a reactor, chosen by reactor: container (the authors' time-stepped container, default) or soup (a Chemart addition). Both reactors are gas dynamics of the same molecules, so the choice is a parameter of the evolve face rather than a face of its own. The clock is steps: container time steps, or soup collisions. Container frames come at step 0, after steps 1, 1 + k, 1 + 2k, ... with k = max(1, steps // 500) (the sampling points of the former extras.analysis) and at the end or at extinction; soup frames every generation (as many collisions as there are molecules). A frame's state counts every molecule, a bound one as the sequence it had when it bound (so the state names only species of the network and sums to the population); container frames report the observables energy (units left after the step's influx) and complexes (bound pairs), soup frames the running count non_terminating.
     - The machine is a line-by-line port of the upstream C++ source, including its single-precision float arithmetic and the order in which random numbers are drawn. Compiled upstream with rand0to1 replaced by a shared LCG, it and the port agree on the substitution table, on 1503 alignments (score, start and end of both tracebacks, bind probability) and step by step (every molecule, pointer, toggle and the energy after every time step) on 7 container runs: ALife XII parameters (150 seed replicases, 3000 steps), dense binding with high mutation rates, random molecules with many function codes (3 seeds), max_length 130, and species 9 with mutant 29. Upstream crashes for max_length &lt; 128 (HSearch clears 128 bytes of a max_length buffer); the port has no such limit.
     - Where the spec (and the book figure copied from it) and the source disagree, the source wins, since it produced the published runs: (1) symbol order of the substitution matrix and mutation loop is ABC$DEF%GH^IJK?LMN}OPQ&gt;RST=UVWXYZ (default_table, ALXII.mtx), not the spec's ABC$DEF&gt;GHIJ^KLM=NOP?QRS}TUV%WXYZ; complements are the same in both; (2) mismatch scores are -d*33/272 printed to 3 decimals (eq. 8 as written); spec table 3 (-0.12, -0.25, ...) comes from an integer division in table_from_string, which the source does not use; (3) P(bind) is 0 for aligned length l &lt;= 2 (spec: l &lt;= 3) and uses m = 1.124 in eq. 13; (4) the bind propensity uses radii, (agent_radius/cell_radius)^2 = 1.6e-5 with CELLRAD 2500 and AGRAD 10, where spec eq. 1 uses the areas 10/2500, and n counts the unbound molecules not yet visited in the current step.
     - Spec erratum: eq. 18 makes M_A active when its bind site starts nearer the string start, contradicting the prose (the executing string is the one whose bind site is furthest from its start); the source (set_exec) and the ALife XII paper follow the prose, and on ties the molecule that initiated the bind is active.
@@ -343,9 +369,9 @@ The sources leave gaps, and sometimes contradict each other or the book. Each su
     - Energy: nothing but decay happens while energy &lt;= 0; each successful bind and each instruction (including '}') costs one unit; the container starts with 0 energy and energy_per_step is added after each step (SmPm_AlifeXII). The ALife XII paper says 25 units per step; the source's default ESTEP is 20; 25 is the default.
     - Seed replicase: the ALife XII figure's 65-symbol seed is only an image. The default is the 64-symbol seed that spec app. B.1 gives for the matrix traceback (OOGEOL...). ALife XII species 9, printed in the paper's fig. 7, is kept as a constant for the tests. The v1 catalog parameters complement_offset (fixed at 13 in AlphaComp), bind_probability (it follows from the alignment) and capacity (the population follows from energy and decay) are dropped; seed_replicase becomes molecules.
     - Traceback option: spec app. B.1 says v0.1 walked back through the highest neighbouring cell and v0.2 uses the trace matrix; both are in the source and both are offered. The ALife XII fig. 7 reactions (29 + 9 -&gt; 30 + 9 and 30 + 9 -&gt; 30 + 9 + 31) come out the same with both.
-    - Observed network (container): one reaction per complete event, reactants = the two sequences at binding, products = the two sequences at dissociation plus every molecule cleaved off during the event; reactions are deduplicated as multisets, with firing counts; extras.active_counts gives, per reaction, how often each reactant species was the active one. Events cut short by decay are not reactions: extras.aborted lists them (reactants, molecules already released, count); extras.decayed counts deletions of unbound molecules; extras.in_progress lists complexes still bound at the end; extras.final_state counts the unbound molecules. Then initial_state + sum(count * (products - reactants)) + sum over aborted and in_progress of (released - reactants) - decayed = final_state exactly. outflow is the per-step decay probability (a first-order removal of every species). extras.analysis samples population, distinct species and energy (about 500 samples); extras.epochs lists when the most abundant species changes (sweeps).
+    - Observed network (container): one reaction per complete event, reactants = the two sequences at binding, products = the two sequences at dissociation plus every molecule cleaved off during the event; reactions are deduplicated as multisets, with firing counts; extras.active_counts gives, per reaction, how often each reactant species was the active one. Events cut short by decay are not reactions: extras.aborted lists them (reactants, molecules already released, count); extras.decayed counts deletions of unbound molecules; extras.in_progress lists complexes still bound at the end; extras.final_state counts the unbound molecules. Then initial_state + sum(count * (products - reactants)) + sum over aborted and in_progress of (released - reactants) - decayed = final_state exactly. outflow is the per-step decay probability (a first-order removal of every species). The frames sample the population and energy; extras.epochs lists, at the frame times, when the most abundant species changes (sweeps).
     - Rates: none. Binding probability depends on the alignment and reaction duration on the program and energy, so no mass-action constant is published or implied.
-    - Soup and closure are Chemart additions for sampling the reaction space without the container: an isolated reaction runs the pair's program to the end with unlimited energy and no decay; the first molecule initiates the bind (soup draws pairs in random order). Soup tests the bind with its probability and mutates on copy; closure takes every bind with P &gt; 0 and copies exactly, but still draws '$' and '?' outcomes at random once per ordered pair. A reaction still running after max_exec_steps instructions counts as non-terminating (no reaction; counted in extras.non_terminating).
+    - The soup reactor and the closure are Chemart additions for sampling the reaction space without the container: an isolated reaction runs the pair's program to the end with unlimited energy and no decay; the first molecule initiates the bind (soup draws pairs in random order). Soup tests the bind with its probability and mutates on copy; closure takes every bind with P &gt; 0 and copies exactly, but still draws '$' and '?' outcomes at random once per ordered pair. A reaction still running after max_exec_steps instructions counts as non-terminating (no reaction; counted in extras.non_terminating).
     - Undefined behaviour in the source, fixed choices: an alignment against an empty string (the C result is uninitialised) scores 0; reads beyond the string buffer return the terminator.
     - The v1 reactor lattice-2d is removed: the book calls the topology dispensable, [379]-[381] use the aspatial container, and the later spatial Stringmol (smspatial.cpp, GRIDX/GRIDY) is not implemented.
 

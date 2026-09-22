@@ -19,6 +19,7 @@ chemistries:
   kind: framework
   constructive: true
   type: gas
+  clock: time
   S:
     repr: >
       elementary molecules (EM): spheres with a mass, a radius and a diffusion coefficient,
@@ -106,6 +107,7 @@ chemistries:
     - "Species identity: the canonical text of the complex (colour refinement, then the least breadth-first text over the refined roots, sites grouped by name and bonds numbered by appearance), so isomorphic complexes are one species and components with the same name are interchangeable, as in BNGL. The refinement is exact for the complexes these models build; texts longer than 120 characters are replaced by formula#hash to keep species ids readable."
     - "v1 parameters agent_rules (callable) and geometry (matrix) became the model choice plus the custom molecule_types/rules/init, in JSON and in the rule mini-language. The reactor, the tolerances and the force constants are exposed with the values the published input files use."
     - "The network has status 'observed': it is the set of complex-level reactions that fired, with counts. Nothing is enumerated in advance - that is the point of rule-based modelling - so the network is a sample of an unbounded species set, and the rule set itself is kept in extras.rules and extras.bngl."
+    - "chemart.evolve yields a frame per molecular-dynamics step; frame 0 is the initial placement. The clock is the simulated time (step x dt), the unit the network's rate constants are given in, so a frame can be set beside an ODE or SSA run of the observed network. A frame's state counts the complexes and its fired lists the complex-level reactions of that step; there are no observables, since the assembly statistics of extras.analysis are whole-run results (final counts and means over the second half of the run). generate_network runs the simulation and returns the network."
   phenomena:
     - "geometry decides the reachable species: paper fig. 3 shows rods from a 180-degree monomer and closed squares from a 90-degree one; Chemart's tests add that with 60 degrees triangles close and with 120 degrees no small ring can close at all"
     - "scaffold proteins co-localise their ligands: binding A to the scaffold roughly doubles the phosphorylated A in the spatial simulation while the well-mixed simulation of the same rules shows no increase (paper figs. 5-6)"

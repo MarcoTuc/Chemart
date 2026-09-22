@@ -141,6 +141,8 @@ def param_rows(c) -> list[str]:
             notes.append(f"*range:* {esc(p.range)}")
 
         what = esc(p.meaning) or "—"
+        if p.face:
+            what = f"*{p.face} only.* " + what
         if notes:
             what += " <br>" + " · ".join(notes)
         rows.append(f"| `{p.name}` | `{p.type}` | `{default}` | {p.role} | {what} |")
@@ -298,7 +300,14 @@ def parameters(c) -> list[str]:
     L = ["#### Parameters", ""]
     if not c.params:
         return L + ["This chemistry takes no parameters.", ""]
-    L.append("Pass any of these as keyword arguments to `generate_network`. The *role* "
+    if any(p.face for p in c.params):
+        where = ("`generate_network`, or to `chemart.evolve`; a parameter marked *evolve only* "
+                 "belongs to the process and one marked *generate only* to the network")
+    elif _gas_only(c):
+        where = "`chemart.evolve` (or `generate_network`, which runs the process to the end)"
+    else:
+        where = "`generate_network`"
+    L.append(f"Pass any of these as keyword arguments to {where}. The *role* "
              "column says what a parameter controls: `structural` (which molecules and "
              "reactions exist), `kinetic` (rates), `thermodynamic` (energies, "
              "temperature), `population` (sizes, budgets, initial state), `spatial`, "
@@ -309,6 +318,12 @@ def parameters(c) -> list[str]:
     L.append("|---|---|---|---|---|")
     L += param_rows(c)
     return L + [""]
+
+
+def _gas_only(c) -> bool:
+    from chemart.api import faces
+
+    return faces(c) == ["evolve"]
 
 
 def decisions(c) -> list[str]:

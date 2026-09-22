@@ -23,7 +23,7 @@ from collections import Counter
 import numpy as np
 import pytest
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries import synthon as S
 
 ID = "synthon"
@@ -196,8 +196,9 @@ def test_species_budget_truncates_the_closure():
 
 def test_kinetics_prunes_the_network_and_H_and_H2_dominate():
     """MCNG (figures 5 and 6): few reactions fire, and H and H2 are the dominant species."""
-    net = generate_network(ID, method="kinetic", steps=2000, seed=3)
-    assert net.status == "observed"
+    traj = evolve(ID, steps=2000, seed=3)
+    net = traj.network
+    assert traj.clock == "s" and net.status == "observed"
     assert all(r.count is not None and r.count > 0 for r in net.reactions)
     assert sum(r.count for r in net.reactions) == 2000
     # the observed network is much smaller than the closure it is drawn from
@@ -207,6 +208,11 @@ def test_kinetics_prunes_the_network_and_H_and_H2_dominate():
         counts[net.extras["formulas"][species]] += n
     assert [f for f, _ in counts.most_common(2)] == ["H", "H2"]
     assert net.extras["elapsed_time"] > 0
+    # a frame per event: the initial molecules, then one reaction each, at increasing SSA times
+    assert len(traj.frames) == 2001 and not traj.frames[0].fired
+    assert all(sum(n for _, _, n in f.fired) == 1 for f in traj.frames[1:])
+    assert traj.frames[-1].t == net.extras["elapsed_time"]
+    assert traj.frames[-1].state == {s: float(n) for s, n in net.extras["final_state"].items()}
 
 
 def test_figure_3_classes_have_no_published_rates():
@@ -217,7 +223,7 @@ def test_figure_3_classes_have_no_published_rates():
     # radiative association A + B -> AB builds H2, OH, H2O and O2 from the atoms
     assert {"H2", "HO", "H2O", "O2"} <= formulas(net)
     with pytest.raises(ValueError, match="publishes none"):
-        generate_network(ID, templates="fig3", method="kinetic")
+        evolve(ID, templates="fig3")
 
 
 @pytest.mark.slow
@@ -243,3 +249,7 @@ def test_bad_parameters():
         generate_network(ID, initial=["H", "N"])
     with pytest.raises(ValueError, match="densities"):
         generate_network(ID, densities=[1.0])
+    with pytest.raises(ValueError, match="evolve face"):
+        generate_network(ID, molecules=100)             # the SSA's population, not the closure's
+    with pytest.raises(ValueError, match="generate face"):
+        evolve(ID, max_species=10)

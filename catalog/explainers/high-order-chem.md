@@ -78,7 +78,8 @@ single-tour machines and one copy of the two-tour recombination machine.
 
 `divrule` takes two integers. If the larger is a multiple of the smaller, the
 larger is replaced by the quotient; otherwise both come back unchanged. The
-first reaction of the default run (printed below, under *Using it in Chemart*) is
+first reaction of the default run of the reactor (`chemart.evolve`, under
+*Using it*) is
 
 ```
 rule:divrule + n261 + n87 -> rule:divrule + n3 + n87  (x1)
@@ -91,7 +92,7 @@ divisor, never the number divided, so primes are never consumed, and over time
 the soup fills with them.
 
 With the three numbers 12, 2 and 3, and taking every possible collision rather
-than a random run (`method="closure"`, below), the whole reaction network is
+than a random run (the closure, below), the whole reaction network is
 seven reactions (`net.to_text()`):
 
 ```
@@ -139,24 +140,35 @@ plus products", and A is the loop above.
 
 ## Using it
 
+The chemistry has two faces. `chemart.generate_network("high-order-chem")`,
+printed above, returns the *closure*: every reaction reachable from the
+distinct starting numbers, here the 100 random numbers of the default run (see
+*Every reaction, not one run* below). `chemart.evolve("high-order-chem")` runs
+the book's algorithm and returns a trajectory: a frame every *generation* of M
+iterations (here 100) with the contents of the vessel, and at the end the
+network of the effective reactions that fired, each with its count.
+
 The default run is `NumberChemHO.py`, the reference re-implementation of the
 prime number chemistry: four copies of `divrule`, 100 numbers drawn uniformly
-from 2 to 1000, and 10,000 iterations. It takes a few seconds. Of the 10,000
-iterations, 180 were effective collisions, which gave the 154 distinct
-reactions of the summary; the rest were elastic. The run's record is in
-`net.extras`:
+from 2 to 1000, and 10,000 iterations. It takes about a second. Of the 10,000
+iterations, 180 were effective collisions, which gave 154 distinct reactions;
+the rest were elastic:
 
 ```python
+traj = chemart.evolve("high-order-chem", seed=1)
+net = traj.network
+net.summary().splitlines()[0]    # 'high-order-chem: 198 species, 154 reactions, status=observed'
 a = net.extras["analysis"]
 a["effective_collisions"], a["idle_draws"]   # (180, 0)
 a["rule_draws"]                              # {'rule:divrule': 10000}
-pf = a["prime_fraction"]                     # fraction of primes, every 100 iterations
+pf = traj.series("prime_fraction")           # fraction of primes, every 100 iterations
 pf[0], pf[10], pf[50], pf[-1]                # (0.14, 0.28, 0.92, 0.99)
 net.extras["rules"]                          # {'rule:divrule': 'divrule(m1, m2)'}
 ```
 
-`prime_fraction` is measured once per *generation* of M iterations (here 100)
-and is only recorded when `divrule` is the sole rule. `idle_draws` counts
+Frame `t` counts iterations, and each frame's `state` holds the data molecules
+and the rule molecules. `prime_fraction` is an observable of every frame, and
+is only reported when `divrule` is the sole rule. `idle_draws` counts
 iterations in which the drawn rule found too few data molecules to bind.
 `rule_draws` says how often each rule was drawn. `net.initial_state` and
 `net.extras["final_state"]` give the counts of every molecule at the start and
@@ -164,13 +176,13 @@ end, rule molecules included; both hold 4 copies of `rule:divrule` and 100
 numbers, since division returns two numbers for two. The network holds each
 distinct effective reaction once, with its firing count.
 
-**Every reaction, not one run.** `method="closure"` ignores randomness and
+**Every reaction, not one run.** `generate_network` ignores randomness and
 lists every reaction reachable from the distinct starting numbers, as in the
 12, 2, 3 example above. It is a Chemart addition and only works for
 deterministic rules, so the tour machines are refused.
 
 ```python
-net = chemart.generate_network("high-order-chem", method="closure", data=[12, 2, 3])
+net = chemart.generate_network("high-order-chem", data=[12, 2, 3])
 print(net.summary())   # high-order-chem: 6 species, 7 reactions, status=complete
 ```
 
@@ -182,17 +194,16 @@ closure, which then reports `status="truncated"`.
 
 ```python
 expr = "div: x, y -> max(x, y) / min(x, y), min(x, y) if x != y and max(x, y) % min(x, y) == 0"
-net = chemart.generate_network("high-order-chem", method="closure", data=[12, 2, 3],
-                               rules={expr: 1})
+net = chemart.generate_network("high-order-chem", data=[12, 2, 3], rules={expr: 1})
 ```
 
 **Rules competing for substrate.** Add a rule that destroys whatever it binds,
 `eat: x ->`, with one copy of each rule and 3,000 iterations:
 
 ```python
-kept  = chemart.generate_network("high-order-chem", rules={"divrule": 1}, seed=5, iterations=3000)
-eaten = chemart.generate_network("high-order-chem", rules={"divrule": 1, "eat: x ->": 1},
-                                 seed=5, iterations=3000)
+kept  = chemart.evolve("high-order-chem", rules={"divrule": 1}, seed=5, iterations=3000).network
+eaten = chemart.evolve("high-order-chem", rules={"divrule": 1, "eat: x ->": 1},
+                       seed=5, iterations=3000).network
 ```
 
 Alone, `divrule` makes 151 effective collisions. With `eat` beside it the two
@@ -201,7 +212,7 @@ rules are drawn about equally (1,510 and 1,490 times), `eat` empties the soup,
 data is left.
 
 **Rule multiplicity sets the odds.** With `rules={"a: x -> x": 3, "b: x -> x": 1}`
-and 4,000 iterations (seed 2), `a` was drawn 2,993 times and `b` 1,007, close to
+and 4,000 iterations (`chemart.evolve`, seed 2), `a` was drawn 2,993 times and `b` 1,007, close to
 3:1. Both rules return what they take, so the network has no reactions.
 
 **The molecular TSP machines.** The settings of `MolecularTSP.py`: nine random
@@ -210,11 +221,11 @@ tours of ten cities on a ring, and its machine weights.
 ```python
 rules = {"exchangeMachine": 100, "cutMachine": 100, "invertMachine": 100,
          "recombinationMachine": 1}
-net = chemart.generate_network("high-order-chem", rules=rules, init="tours",
-                               M=9, cities=10, iterations=3000, seed=3)
+net = chemart.evolve("high-order-chem", rules=rules, init="tours",
+                     M=9, cities=10, iterations=3000, seed=3).network
 ```
 
-This takes a few seconds. The nine starting tours have lengths from 110.2 to
+This takes under a second. The nine starting tours have lengths from 110.2 to
 184.6; after 3,000 iterations all nine have length 61.8, the perimeter of the
 ten-city polygon, which is the shortest tour on a ring. (The nine are different
 lists, the same round trip started at different cities or run backwards.) The
@@ -235,7 +246,7 @@ allows, and each is checked in Chemart's tests.
 **Divrule reproduces the prime number chemistry.** The book's one concrete
 claim is that `divrule` in `HighOrderChem` gives "the same" results as the
 original NumberChem program. Chemart's tests check this two ways. With
-`method="closure"`, the network from the numbers 12, 2, 3, and from a random
+the closure (`generate_network`), the network from the numbers 12, 2, 3, and from a random
 soup of 100 numbers, has exactly the reactions of the
 [prime-number-chemistry](prime-number-chemistry.md) entry once the rule
 molecule is removed. In a slower test over six random runs of the default

@@ -39,8 +39,13 @@ Two readings of "what is a molecule" are exported (book 10.7.2), as `mode`:
 
   which is the book's reading of movement and reaction as state transitions.
 
-The grid is in extras["space"] and the population time series in
-extras["analysis"].
+The chemistry is a gas with one face, ``evolve``. In macro mode a frame is
+an observation of the loops (every `track_every` steps): its state counts the
+loops of each species. The frames are yielded when the run ends, because a
+loop's species is settled only then (two loops are one species if they ever
+show the same configuration). In micro mode a frame is one step of the
+automaton and its state counts the cells in each state. The grid is in
+extras["space"] and the whole-run statistics in extras["analysis"].
 """
 
 from __future__ import annotations
@@ -53,6 +58,8 @@ import numpy as np
 from scipy import ndimage
 
 from chemart.network import Network, Reaction, Species
+from chemart.soup import Tally
+from chemart.trajectory import Frame
 
 #: 8-connectivity: a loop is one connected blob of non-quiescent cells.
 _STRUCT8 = np.ones((3, 3), dtype=int)
@@ -198,7 +205,7 @@ def step(grid: np.ndarray, table: np.ndarray, n_states: int, periodic: bool = Tr
     return np.where(out < 0, grid, out).astype(np.int8)
 
 
-def evolve(grid: np.ndarray, table: np.ndarray, n_states: int, steps: int,
+def run_ca(grid: np.ndarray, table: np.ndarray, n_states: int, steps: int,
            periodic: bool = True):
     """Yield the lattice after each of `steps` updates."""
     for _ in range(steps):
@@ -285,6 +292,7 @@ class Colony:
         self.ancestor_seen: dict[int, int] = {}   # loop -> step it showed that configuration
         self.next_loop = 1
         self.events: dict[tuple, list] = {}
+        self.window: list[tuple[list[int], list[int]]] = []   # events since the last observation
         self.births: list[dict] = []
         self.history: list[dict] = []
         self.deaths = 0
@@ -392,7 +400,9 @@ class Colony:
             "step": t, "loops": len(alive),
             "cells": sorted(int(sizes[b]) for b in alive.values()),
             "species": Counter(self.root(self.loops[i]["species"]) for i in alive),
+            "fired": self.window,
         })
+        self.window = []
 
     def record(self, reactants: list[int], products: list[int]) -> None:
         key = (tuple(sorted(reactants)), tuple(sorted(products)))
@@ -400,6 +410,7 @@ class Colony:
         if entry is None:
             self.events[key] = entry = [list(reactants), list(products), 0]
         entry[2] += 1
+        self.window.append((list(reactants), list(products)))
 
     # -- the network -----------------------------------------------------
     def name_species(self) -> dict[int, str]:
@@ -453,7 +464,8 @@ def start(p, rng) -> np.ndarray:
     return grid
 
 
-def generate(p, rng):
+def evolve(p, rng):
+    """Run the automaton: macro, a frame per observation of the loops; micro, a frame per step."""
     if p.rule not in RULE_TABLES:
         raise ValueError(f"unknown rule {p.rule!r}; known: {', '.join(RULE_TABLES)}")
     n_states, table, n_transitions = rule(p.rule)
@@ -467,8 +479,8 @@ def generate(p, rng):
         "ancestor": _grid_rows(ancestor(p)),
     }
     if p.mode == "micro":
-        return _micro(p, grid, table, n_states, periodic, space)
-    return _macro(p, grid, table, n_states, periodic, space)
+        return (yield from _micro(p, grid, table, n_states, periodic, space))
+    return (yield from _macro(p, grid, table, n_states, periodic, space))
 
 
 def _macro(p, grid, table, n_states, periodic, space):
@@ -498,6 +510,16 @@ def _macro(p, grid, table, n_states, periodic, space):
         entry = merged.setdefault(key, [dict(left), dict(right), 0])
         entry[2] += count
     reactions = [Reaction(left, right, count=count) for left, right, count in merged.values()]
+    # a species is settled only at the end of the run, so the frames come now
+    tally = Tally()
+    for h in colony.history:
+        for lhs, rhs in h["fired"]:
+            tally.add([names[s] for s in lhs], [names[s] for s in rhs])
+        state: Counter = Counter()
+        for s, c in h["species"].items():
+            state[names[s]] += c
+        yield Frame(t=float(h["step"]), state={n: float(c) for n, c in state.items()},
+                    fired=tally.flush(), observables={"cells": h["cells"]})
     final = colony.history[-1]
     analysis = {
         "steps": p.steps,
@@ -518,11 +540,6 @@ def _macro(p, grid, table, n_states, periodic, space):
                                       if i not in colony.initial_loops)[:20],
         "ancestor_recurrence": sorted(t for i, t in colony.ancestor_seen.items()
                                       if i in colony.initial_loops)[:20],
-        "population": [
-            {"step": h["step"], "loops": h["loops"], "cells": h["cells"],
-             "by_species": {names[s]: c for s, c in h["species"].items()}}
-            for h in colony.history[:: max(1, len(colony.history) // 50)]
-        ],
         "final_population": {names[s]: c for s, c in final["species"].items()},
     }
     space["final"] = _grid_rows(grid)
@@ -541,8 +558,10 @@ def _micro(p, grid, table, n_states, periodic, space):
     """Every state transition that fires, as a reaction with the neighbours as catalysts."""
     initial_cells = Counter(grid[grid > 0].tolist())
     fired: Counter = Counter()
-    states = Counter()
-    history = []
+    present = set(initial_cells)
+    sides: dict[int, tuple[list[str], list[str]]] = {}
+    tally = Tally()
+    yield Frame(t=0.0, state={f"s{k}": float(v) for k, v in sorted(initial_cells.items())})
     for t in range(1, p.steps + 1):
         north, east, south, west = neighbours(grid, periodic)
         after = step(grid, table, n_states, periodic)
@@ -556,30 +575,25 @@ def _micro(p, grid, table, n_states, periodic, space):
             key = key * n_states + after[changed]
             values, counts = np.unique(key, return_counts=True)
             fired.update(dict(zip(values.tolist(), counts.tolist())))
+            for value, count in zip(values.tolist(), counts.tolist()):
+                if value not in sides:
+                    sides[value] = _micro_sides(value, n_states)
+                tally.add(*sides[value], count)
         grid = after
-        if t % max(1, p.steps // 50) == 0 or t == p.steps:
-            cells = Counter(grid[grid > 0].tolist())
-            history.append({"step": t, "cells": {f"s{k}": int(v) for k, v in sorted(cells.items())}})
-        states.update(grid[grid > 0].tolist())
+        cells = Counter(grid[grid > 0].tolist())
+        present.update(cells)
+        yield Frame(t=float(t), state={f"s{k}": float(v) for k, v in sorted(cells.items())},
+                    fired=tally.flush())
 
     reactions = []
     seen = set()
     for key, count in sorted(fired.items()):
-        rest, out = divmod(key, n_states)
-        hood = []
-        for _ in range(4):
-            rest, value = divmod(rest, n_states)
-            hood.append(value)
-        before = rest
-        lhs = [before] + hood
-        rhs = [out] + hood
-        seen.update(v for v in lhs + rhs if v)
-        reactions.append(Reaction(
-            dict(Counter(f"s{v}" for v in lhs if v)),
-            dict(Counter(f"s{v}" for v in rhs if v)),
-            count=int(count)))
+        lhs, rhs = _micro_sides(key, n_states)
+        seen.update(int(v[1:]) for v in lhs + rhs)
+        reactions.append(Reaction(dict(Counter(lhs)), dict(Counter(rhs)), count=int(count)))
+    # a state that never takes part in a transition is still a species of the soup
     species = [Species(f"s{v}", structure=STATE_MEANING.get(v, "signal"))
-               for v in sorted(seen)]
+               for v in sorted(seen | present)]
     space["final"] = _grid_rows(grid)
     return Network(
         species=species,
@@ -588,11 +602,22 @@ def _micro(p, grid, table, n_states, periodic, space):
         initial_state={f"s{v}": float(c) for v, c in sorted(initial_cells.items()) if v},
         extras={"space": space,
                 "analysis": {"steps": p.steps, "transitions_fired": len(reactions),
-                             "firings": int(sum(fired.values())), "cells": history},
+                             "firings": int(sum(fired.values()))},
                 "events": "a cell in state C with neighbours N,E,S,W becomes C': the "
                           "neighbours are catalysts, the quiescent state is the absence "
                           "of a molecule"},
     )
+
+
+def _micro_sides(key: int, n_states: int) -> tuple[list[str], list[str]]:
+    """The reaction of a transition key: C + N + E + S + W -> C' + N + E + S + W, quiescent cells left out."""
+    rest, out = divmod(key, n_states)
+    hood = []
+    for _ in range(4):
+        rest, value = divmod(rest, n_states)
+        hood.append(value)
+    lhs, rhs = [rest] + hood, [out] + hood
+    return [f"s{v}" for v in lhs if v], [f"s{v}" for v in rhs if v]
 
 
 # --------------------------------------------------------------------------

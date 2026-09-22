@@ -138,7 +138,7 @@ version in which B has part of the protocol pre-installed as a second
 
 Chemart can turn a Fraglets program into a network in two ways.
 
-- **Closure** (the default) starts from the distinct fraglets of the program
+- **Closure** (`chemart.generate_network`) starts from the distinct fraglets of the program
   and applies every transformation and every possible match, again and again,
   until no new fraglet appears. The result is every reaction the program can
   ever take, without kinetics. It ignores how many copies of each fraglet
@@ -146,7 +146,7 @@ Chemart can turn a Fraglets program into a network in two ways.
   say) it can list reactions no single run would take. A program whose
   strings keep growing never closes; Chemart then stops at a species budget
   and marks the network *truncated*.
-- **SSA** runs the program. SSA stands for *stochastic simulation algorithm*,
+- **SSA** (`chemart.evolve`) runs the program. SSA stands for *stochastic simulation algorithm*,
   Gillespie's method for simulating chemical reactions as random events.
   Chemart ports the scheduler of PyCellChemistry, the Python package that
   accompanies the book. Transformations are treated as instantaneous: before
@@ -155,7 +155,9 @@ Chemart can turn a Fraglets program into a network in two ways.
   copies times the number of passive copies (mass action with rate constant
   1). The run stops after a given number of matches, or earlier when no match
   is possible (the nodes are *inert*). The result lists the reactions that
-  actually happened, with their counts.
+  actually happened, with their counts, and the run is recorded as frames:
+  the contents of every node after each match. The clock counts matches;
+  no continuous time is drawn.
 
 Tschudin's own interpreter did not work this way. According to the book it
 ran "in a maximally parallel way, executing as many reaction rules as
@@ -196,7 +198,7 @@ Rules only read the front symbols, like packet-header processing. A fraglet whos
 
 *How the population is bounded:* none
 
-The original interpreter ran maximally parallel; mass-action scheduling (Gillespie SSA, next reaction method) across a network of vessels was introduced later [575, 580]. Method ssa ports the PyCellChemistry scheduler: all transformations fire instantly, matches are drawn with propensity n_active * n_passive over all nodes. Method closure is the Chemart generating operator over the program fraglets.
+The original interpreter ran maximally parallel; mass-action scheduling (Gillespie SSA, next reaction method) across a network of vessels was introduced later [575, 580]. chemart.evolve ports the PyCellChemistry scheduler: all transformations fire instantly, matches are drawn with propensity n_active * n_passive over all nodes. generate_network returns the Chemart generating operator (the closure) over the program fraglets.
 
 ### Using it in Chemart
 
@@ -249,22 +251,33 @@ The `program` parameter takes the text format of the upstream interpreter:
 omitted), `a node segment` attaches a node to a segment, `#` starts a comment.
 Symbols are separated by spaces, or by `:` as in the 2003 paper.
 
-**Running the CDP.** With five messages and `method="ssa"`, all five are
-delivered and acknowledged, and the program survives:
+**Running the CDP.** `chemart.evolve` runs a program and returns a
+trajectory: the observed network plus one frame per match. With five
+messages, all five are delivered and acknowledged, and the program survives:
 
 ```python
 from chemart.chemistries import fraglets as fr
 prog = fr.CDP.replace("f a[cdp data]", "f a[cdp data]5")
-net = chemart.generate_network("fraglets", program=prog, method="ssa", seed=3)
+traj = chemart.evolve("fraglets", program=prog, seed=3)
+net = traj.network
 net.extras["final_state"]
 # {'a[matchp,cdp,send,b,split,send,a,ack,*]': 1, 'b[data]': 5, 'a[ack]': 5}
 net.extras["bimolecular_events"], net.extras["inert"]      # (5, True)
+traj.clock, traj.times()     # ('steps', [0.0, 1.0, 2.0, 3.0, 4.0, 5.0])
+traj.frames[1].state
+# {'a[matchp,cdp,send,b,split,send,a,ack,*]': 1.0, 'a[cdp,data]': 4.0,
+#  'b[data]': 1.0, 'a[ack]': 1.0}
 ```
 
 `final_state` is the contents of all nodes at the end, `bimolecular_events`
 the number of matches, and `inert` says whether the run stopped because
 nothing could react any more. Each reaction's `count` says how often it fired
-(here 5 each).
+(here 5 each). The first frame is the program as written; each later frame
+holds the nodes after one match and the transformations it set off, and its
+`fired` lists those reactions: in frame 1, the match of the program with one
+message and the three transformations that carry the message to `b` and the
+acknowledgement back to `a`. When the program's transformations fire before
+the first match, an extra frame at time 0 holds the settled state.
 
 **Integer programs** need `dialect="fraglets-2007"`. The 2007 tutorial's
 recursive counter, which counts the symbols of a fraglet without using the
@@ -278,14 +291,13 @@ f [matchp cnt pop cnt1]
 f [matchp cnt1 split match counter incr counter * count]
 f [matchp incr exch sum 1]
 f [count a b c]"""
-net = chemart.generate_network("fraglets", program=prog, dialect="fraglets-2007",
-                               method="ssa", seed=0)
+net = chemart.evolve("fraglets", program=prog, dialect="fraglets-2007", seed=0).network
 # final_state without the program fraglets: {'[total,3]': 1}, after 18 matches
 ```
 
 The closure of the same program is `truncated` at 200 species and 192
 reactions: without counts, nothing stops the counter from incrementing for
-ever. Use `method="ssa"` for programs like this.
+ever. Use `chemart.evolve` for programs like this.
 
 **Self-replicating code.** The PyCellChemistry quine closes on four species
 and three reactions, and the last reaction rebuilds the fraglet the first one
@@ -306,12 +318,12 @@ way on four species and three reactions.
 
 **Growing tails.** `f [split matchp a dup a * a a]` produces ever longer
 `[a a ... a]` strings. With `max_species=30` the closure is truncated at 30
-species; an SSA run of 20 matches ends with one catalyst `[matchp a dup a]`
-and a single string of 22 `a`s.
+species; a run of 20 matches (`chemart.evolve(..., steps=20)`) ends with
+one catalyst `[matchp a dup a]` and a single string of 22 `a`s.
 
 Every run on this page takes well under a second. Programs that elongate or
-count make closures run into `max_species`, and a very large `steps` in SSA
-is the only setting that grows the run time appreciably.
+count make closures run into `max_species`, and a very large `steps` in
+`chemart.evolve` is the only setting that grows the run time appreciably.
 
 **What is not supported.** Instructions that need time (`wait`, `delay`),
 create nodes (`newnode`), print, broadcast or call the host application are
@@ -321,29 +333,29 @@ which the 2007 tutorial marks as "never implemented?".
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `generate_network`, or to `chemart.evolve`; a parameter marked *evolve only* belongs to the process and one marked *generate only* to the network. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
 | `program` | `str` | `a a net a b net f a[matchp cdp send b split sen…` | population | the Fraglets program: initial fraglets per node (with multiplicities) and the network topology <br>*range:* any .fra text: 'f node[symbols]mult' fraglet lines, 'a node segment' attachment lines, '#' comments, 'e' end; symbols separated by spaces or ':'. Default: the active confirmed delivery protocol of AINS 2003 sec. IV.B / book fig. 16.10 |
 | `dialect` | `enum` | `pycellchem` | structural | instruction set and edge cases: pycellchem = book table 16.1 and the book's reference interpreter (send dest tail); fraglets-2007 = upstream C interpreter fraglets0.32 and its 2007 instruction set (send seg dest tail, logic and arithmetic) <br>one of `pycellchem`, `fraglets-2007` |
-| `method` | `enum` | `closure` | structural | closure: every reaction reachable from the program fraglets (complete/truncated); ssa: a PyCellChemistry-scheduled run from the program multiset, observed reactions with counts <br>one of `closure`, `ssa` |
-| `max_species` | `int` | `200` | structural | closure only: species budget; status truncated when exceeded (elongating programs never close) <br>≥ `1` |
-| `steps` | `int` | `1000` | population | ssa only: number of match reactions to schedule (the run stops earlier when the nodes are inert) <br>`0` … `10000000` |
+| `max_species` | `int` | `200` | structural | *generate only.* species budget of the closure; status truncated when exceeded (elongating programs never close) <br>≥ `1` |
+| `steps` | `int` | `1000` | population | *evolve only.* number of match reactions to schedule, a frame after each (the run stops earlier when the nodes are inert) <br>`0` … `10000000` |
 
 ### Implementation decisions
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "8 decisions"
+??? note "9 decisions"
 
+    - Two faces: generate_network returns the closure of the distinct program fraglets, cut off by max_species; chemart.evolve runs the PyCellChemistry scheduler from the program multiset and returns the observed reactions with their counts. The clock is steps, the number of matches scheduled; no continuous time is drawn. The first frame is the program as written; if transformations fire before the first match, a second frame at t = 0 holds the settled state; then there is a frame after every match and the transformations it sets off. The scheduler grows the set of species as it runs and stays private to the module; the frames report its state.
     - Two dialects instead of one: the book's table 16.1 and its reference code use 'n[send m tail] -&gt; m[tail]' and the ten PyCellChemistry opcodes; the upstream interpreter and the 2007 instruction set use 'send seg dest tail' and add logic and arithmetic. The dialects also differ on short fraglets: PyCellChemistry turns [dup a] into [a], [exch a b] into [a b], [pop a] or [pop a b] into [a], and [fork a] into [a], and never stores a one-symbol instruction fraglet; frag.c drops all of these (and [pop a b] gives [a]). Each dialect follows its source exactly.
     - Symbols: PyCellChemistry encodes each symbol as one character (its parser keeps only the first letter of a symbol, marked TMP in the source); whole symbols are used here, as in the book and frag.c. The PyCellChemistry CDP example 'matchp c send b split send a k *' is the book's 'matchp cdp send b split send a ack *' with abbreviated symbols.
     - Topology: PyCellChemistry connects nodes explicitly (add_cnx); here both dialects read the upstream 'a node segment' lines, and in the pycellchem dialect a node can send to every other node attached to one of its segments (NetFraglets' CDP connects a-&gt;b and b-&gt;a, not a-&gt;a).
     - fraglets-2007 numbers: a symbol starting with a digit (or '-' and a digit) is an integer, as in frag.c name_add (atol, so '007' and '7x' both read 7). Arithmetic uses Python integers (frag.c: C int, overflow not modelled); div and mod truncate toward zero like C; div/mod by 0, a negative exponent and 0^0 drop the fraglet. Matching numbers is by exact symbol: frag.c's number matching path is unfinished ('stopped here!').
     - fraglets-2007 instructions that need time (delay, wait), node creation (newnode, inject, expel), printing (printsym; send stdout/stderr simply removes the fraglet), broadcast/anycast, splitat, newname or the host application ('_' trigger, out) are not ported; a program using them is rejected. The upstream examples cdp.fra and acdp.fra depend on the '_' trigger of sys-send-deliver and are therefore not reproduced; the AINS 2003 versions of both CDPs are.
-    - Scheduling: the upstream C reactor (maximally parallel 'min' algorithm) is not ported; method ssa uses the PyCellChemistry scheduler for both dialects. Transformations are instantaneous, so no finite rate can be written for them and all reaction rates are None; extras.scheduling states the propensity n_active * n_passive (k = 1) of matches. The mass-action rate constants of Meyer et al. [575, 580] are per-program choices not given in the book, so the v1 rate_constants parameter is dropped, as are the v1 matrix-typed topology/seed_code (now the program text) and scheduler (maximal-parallel and next-reaction are not implemented).
-    - ssa details: PyCellChemistry computes the propensities node by node, so a fraglet sent to an already-visited node waits one step; here all transformations in all nodes are settled before every draw and once more after the last one. Injection of new input during the run (NetFraglets adds a data fraglet every 4 iterations) is not modelled: all input is in the program. A transformation that reproduces itself (e.g. [dup dup dup]) would loop forever in both interpreters; it is left inert and listed in extras.elastic. extras.final_state, bimolecular_events, inert and stopped describe the run.
+    - Scheduling: the upstream C reactor (maximally parallel 'min' algorithm) is not ported; chemart.evolve uses the PyCellChemistry scheduler for both dialects. Transformations are instantaneous, so no finite rate can be written for them and all reaction rates are None; extras.scheduling states the propensity n_active * n_passive (k = 1) of matches. The mass-action rate constants of Meyer et al. [575, 580] are per-program choices not given in the book, so the v1 rate_constants parameter is dropped, as are the v1 matrix-typed topology/seed_code (now the program text) and scheduler (maximal-parallel and next-reaction are not implemented).
+    - Scheduler details: PyCellChemistry computes the propensities node by node, so a fraglet sent to an already-visited node waits one step; here all transformations in all nodes are settled before every draw and once more after the last one. Injection of new input during the run (NetFraglets adds a data fraglet every 4 iterations) is not modelled: all input is in the program. A transformation that reproduces itself (e.g. [dup dup dup]) would loop forever in both interpreters; it is left inert and listed in extras.elastic. extras.final_state, bimolecular_events, inert and stopped describe the run.
     - Closure: chemart.expand.expand with arity 1 and 2 over ordered pairs, from the distinct program fraglets; a match needs the active and passive fraglets in the same node. Closure ignores multiplicities, so data-dependent recursions (counters) can show reactions no single run takes.
 
 ## Results

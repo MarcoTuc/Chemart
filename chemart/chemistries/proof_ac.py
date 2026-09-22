@@ -15,13 +15,14 @@ separated by ';', literals by ',' (or '|'), negation is '~' (also '-' or
 predicates, functions and constants start with a lower-case letter or a
 digit. `[]` is the empty clause. Example: "~dog(X), howls(X); has(john,s)".
 
-method "closure" is the level-saturation closure of the start clauses (thesis
-1.3.3 and 6.1): every resolvent of every pair, level by level, truncated by
-`max_species`. Premises survive (a theory only grows), so a reaction is
-a + b -> a + b + r. method "soup" is RESAC's reactor (thesis algorithms
-3.1-3.3): `multiplicity` copies of each start clause, random collisions,
-educt or free replacement, optional inflow of start clauses, stopped when the
-target appears.
+Two faces. `generate` is the level-saturation closure of the start clauses
+(thesis 1.3.3 and 6.1): every resolvent of every pair, level by level,
+truncated by `max_species`. Premises survive (a theory only grows), so a
+reaction is a + b -> a + b + r. `evolve` is RESAC's reactor (thesis
+algorithms 3.1-3.3): `multiplicity` copies of each start clause, random
+collisions, educt or free replacement, optional inflow of start clauses,
+stopped when the target appears; a frame per generation (one collision per
+molecule of the reactor).
 """
 
 from __future__ import annotations
@@ -32,6 +33,8 @@ from itertools import permutations, product
 from math import factorial
 
 from chemart.network import Network, Reaction, Species
+from chemart.soup import Tally
+from chemart.trajectory import Frame
 
 EMPTY = "[]"
 
@@ -374,10 +377,9 @@ class Chemistry:
         return True
 
 
-def generate(p, rng):
+def _setup(p):
+    """The chemistry, the start clauses (axioms + goal), the target and the support flags."""
     axioms_text, goal_text = _problem(p)
-    if p.method == "soup" and p.inflow_rate > 0 and p.elastic_inflow:
-        raise ValueError("choose one inflow: set elastic_inflow=false to use inflow_rate > 0")
     chem = Chemistry(p.factoring, p.max_length, p.strategy)
     axioms = list(dict.fromkeys(chem.add(c) for c in parse_clauses(axioms_text)))
     goal = list(dict.fromkeys(chem.add(c) for c in parse_clauses(goal_text)))
@@ -391,11 +393,12 @@ def generate(p, rng):
     if "set-of-support" in p.strategy and not goal:
         raise ValueError("the set-of-support strategies need goal clauses (the negated theorem)")
     support = {c: c in goal for c in start}
-    if p.method == "closure":
-        return _closure(p, chem, start, axioms, goal, target, support)
-    if len(start) * p.multiplicity < 2:
-        raise ValueError("the soup needs at least 2 molecules: raise multiplicity or add clauses")
-    return _soup(p, rng, chem, start, axioms, goal, target, support)
+    return chem, start, axioms, goal, target, support
+
+
+def generate(p, rng):
+    """The level-saturation closure of the start clauses, cut off by max_species."""
+    return _closure(p, *_setup(p))
 
 
 def _problem(p) -> tuple[str, str]:
@@ -510,15 +513,32 @@ def _closure(p, chem, start, axioms, goal, target, support):
     )
 
 
-def _soup(p, rng, chem, start, axioms, goal, target, support):
+def evolve(p, rng):
+    """RESAC's reactor (thesis algorithms 3.1-3.3): a frame per generation, stopped at the target.
+
+    The reactor is its own loop rather than chemart.soup.stir: the resolvent
+    overwrites one reactant or a random position in place, and start clauses
+    flow in between collisions.
+    """
+    if p.inflow_rate > 0 and p.elastic_inflow:
+        raise ValueError("choose one inflow: set elastic_inflow=false to use inflow_rate > 0")
+    chem, start, axioms, goal, target, support = _setup(p)
+    if len(start) * p.multiplicity < 2:
+        raise ValueError("the soup needs at least 2 molecules: raise multiplicity or add clauses")
     size = len(start) * p.multiplicity
     pop = [start[int(i)] for i in rng.permutation(size) % len(start)]
     seen = dict.fromkeys(start)
     producer: dict[str, tuple[str, str]] = {}
-    fired: dict[tuple, list] = {}
+    tally = Tally()
     period = round(1 / p.inflow_rate) if p.inflow_rate > 0 else 0
     collisions = productive = inflows = 0
     proved_at = 0 if target in seen else None
+
+    def frame() -> Frame:
+        return Frame(t=float(collisions), state={c: float(n) for c, n in Counter(pop).items()},
+                     fired=tally.flush())
+
+    yield frame()
     while collisions < p.max_collisions and proved_at is None:
         i = int(rng.integers(size))
         j = int(rng.integers(size))
@@ -546,14 +566,18 @@ def _soup(p, rng, chem, start, axioms, goal, target, support):
             if support[a] or support[b]:
                 support[r] = True
             support.setdefault(r, False)
-            entry = fired.setdefault(_key(lhs, rhs), [lhs, rhs, 0])
-            entry[2] += 1
+            tally.add(lhs, rhs)
             if r == target:
                 proved_at = collisions
         if (p.elastic_inflow and not options) or (period and collisions % period == 0):
             inflows += 1
             pop[int(rng.integers(size))] = start[int(rng.integers(len(start)))]
-    reactions = [Reaction.of(lhs, rhs, count=count) for lhs, rhs, count in fired.values()]
+        if collisions % size == 0 and collisions < p.max_collisions and proved_at is None:
+            yield frame()
+    if collisions:
+        yield frame()
+
+    reactions = [Reaction.of(lhs, rhs, count=count) for lhs, rhs, count in tally.reactions()]
     final = Counter(pop)
     return Network(
         species=_species(chem, seen),

@@ -258,10 +258,12 @@ species are the pool, and `net.extras["conservation"]` holds the seven
 conservation laws, one per atom type. Species names are combinators in normal
 form; each species' `structure` gives the same combinator fully parenthesised.
 
-`method="closure"` is how you look at an organisation: give its generating
-molecules as `molecules` and the closure finds everything they make.
-`method="soup"` runs the reactor and returns the reactions that actually fired,
-each with its count. Molecules you pass must be in normal form.
+The chemistry has two faces. `generate_network` computes closures, which is
+how you look at an organisation: give its generating molecules as `molecules`
+and the closure finds everything they make. `chemart.evolve` runs the reactor
+and returns a trajectory: a frame per generation with the contents of the
+soup, and at the end the network of the reactions that actually fired, each
+with its count. Molecules you pass must be in normal form.
 
 **A single reaction.** The reduction machinery can be called directly:
 
@@ -315,22 +317,25 @@ net = chemart.generate_network("combinator-chemistry", molecules=[ALPHA],
 # ALPHA, K, KK, K(ALPHA) ... K(K(K(ALPHA))), K(KK) ... K(K(K(K(K(KK)))))
 ```
 
-**A reactive soup.** `method="soup"` with the defaults runs 20 generations of a
-reactive soup of about 100 random molecules, with 200 atoms of each type. It
-takes under two seconds, and with seed 1 the population falls from 103 to 5
-molecules: most reactions turn two molecules into one, and the inflow adds only
-one molecule per generation. The history is in `net.extras["analysis"]`
-(`population`, `diversity` and `free_atoms` per generation), and the end state
-in `net.extras["final_state"]` and `net.extras["final_free_atoms"]`.
+**A reactive soup.** `chemart.evolve("combinator-chemistry")` with the defaults
+runs 20 generations of a reactive soup of about 100 random molecules, with 200
+atoms of each type. It takes under two seconds, and with seed 1 the population
+falls from 103 to 5 molecules: most reactions turn two molecules into one, and
+the inflow adds only one molecule per generation. Frame `t` counts
+generations. Each frame's `state` holds the molecules and the free atoms
+(`free:X`), so the population size, the diversity and the pool over time are
+read from the frames; the end state is also in `net.extras["final_state"]` and
+`net.extras["final_free_atoms"]`.
 
 Organisations take thousands of generations to appear. With 600 atoms per type
 (the thesis figure 6.7) and 3,000 generations:
 
 ```python
-net = chemart.generate_network("combinator-chemistry", seed=2, method="soup",
-                               generations=3000, atoms_per_type=600)
-a = net.extras["analysis"]
-a["population"][::500]   # [100, 13, 196, 218, 226, 222, 230]
+traj = chemart.evolve("combinator-chemistry", seed=2, generations=3000, atoms_per_type=600)
+def population(frame):   # molecules only, leaving out the free:X pool
+    return int(sum(n for s, n in frame.state.items() if not s.startswith("free:")))
+[population(f) for f in traj.frames][::500]   # [100, 13, 196, 218, 226, 222, 230]
+net = traj.network
 list(net.extras["final_state"].items())[:2]
 # [('B(SIR)(R(B(SIR)))', 176), ('C(B(SWW)(S(SWW)))(WW)', 6)]
 net.extras["final_free_atoms"]
@@ -348,9 +353,8 @@ generations; at that scale pure Python is slow.
 **A level-1 catalytic soup.**
 
 ```python
-L1 = dict(method="soup", reaction="catalytic", atoms="BCIKSW",
-          max_size=15, max_react_size=15, max_depth=7)
-net = chemart.generate_network("combinator-chemistry", seed=4, M=100, generations=5000, **L1)
+L1 = dict(reaction="catalytic", atoms="BCIKSW", max_size=15, max_react_size=15, max_depth=7)
+net = chemart.evolve("combinator-chemistry", seed=4, M=100, generations=5000, **L1).network
 net.extras["final_state"]   # {'WK': 100}
 ```
 
@@ -373,34 +377,34 @@ each `WRy` becomes `Ryy`, which gives `y` and releases another `y`.
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `generate_network`, or to `chemart.evolve`; a parameter marked *evolve only* belongs to the process and one marked *generate only* to the network. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
-| `method` | `enum` | `closure` | structural | closure: every reaction reachable from the seed molecules (chemart.expand; finite because of the size limits); soup: the well-stirred flow reactor, observed reactions with firing counts <br>one of `closure`, `soup` |
 | `reaction` | `enum` | `reactive` | structural | reactive: reactants are used up and atoms are conserved through a pool of free atoms; catalytic: reactants are kept, atoms are unlimited, the population is diluted back to its size <br>one of `reactive`, `catalytic` · *range:* thesis level 1 (and AlChemy): catalytic; 2000 paper, ECAL 2001, thesis level 3 and ch. 7: reactive |
 | `atoms` | `str` | `BCIKRSW` | structural | the atom types available (distinct letters of BCIKRSW); random molecules and seed molecules use only these <br>*range:* 2000 paper and thesis levels 1-2: BCIKSW; ECAL 2001, thesis level 3 and ch. 7: BCIKRSW |
 | `k_action` | `enum` | `destroy` | structural | what K does with its second argument: destroy it (back to free atoms) or release it as a separate molecule <br>one of `destroy`, `release` · *range:* 2000 paper [790]: release; ECAL 2001 and thesis [791]: destroy |
 | `filter_reproduction` | `bool` | `False` | selection | a reaction whose products contain one of its reactants is elastic <br>*range:* thesis 6.3.2 (Fontana's filter): true |
-| `molecules` | `list` | `[]` | structural | combinator strings in normal form: the seed set (closure; empty = the single atoms of the basis) or the initial multiset (soup; empty = M random molecules) <br>*range:* e.g. the L1 organisation seed [BKK, BK(BKK)] (thesis fig. 6.5), the 2000 organisation seed [C(C(K(CKK))(WC))(C(K(CKK))(WC))] |
+| `molecules` | `list` | `[]` | structural | combinator strings in normal form: the seed set of the closure (empty = the single atoms of the basis) or the initial multiset of the reactor (empty = M random molecules) <br>*range:* e.g. the L1 organisation seed [BKK, BK(BKK)] (thesis fig. 6.5), the 2000 organisation seed [C(C(K(CKK))(WC))(C(K(CKK))(WC))] |
 | `max_reductions` | `int` | `100` | structural | maxreductiontime: atom reductions allowed per reaction (shared by the released molecules) before it is elastic <br>≥ `1` · *range:* thesis table 6.4 and fig. 6.4: 100 |
 | `max_react_size` | `int` | `50` | structural | maxreactsize: largest number of atoms a combinator may hold during a reduction <br>≥ `1` · *range:* thesis table 6.4: 50; fig. 6.4 (level 1): 15; ECAL 2001 and ch. 7: 100 |
 | `max_size` | `int` | `20` | structural | maxsize: largest number of atoms of a product <br>≥ `1` · *range:* thesis table 6.4: 20; fig. 6.4: 15; ECAL 2001 and ch. 7: 100 |
 | `max_depth` | `int` | `5` | structural | maxdepth: most nested parentheses in a product <br>≥ `0` · *range:* thesis table 6.4: 5; fig. 6.4: 7; ECAL 2001 and ch. 7: 20 |
-| `max_species` | `int` | `100` | structural | closure only: species budget; above it the closure is cut off (status truncated) <br>≥ `1` |
-| `M` | `int` | `100` | population | soup only: number of random molecules assembled at the start (ignored when molecules is given) <br>`2` … `100000` · *range:* ECAL 2001: 300; thesis ch. 7: 150 |
-| `generations` | `int` | `20` | population | soup only: physical generations (collisions = population size per generation, elastic included) <br>`0` … `1000000` · *range:* thesis fig. 6.7: 10^4; ECAL 2001: 10^4 and 3x10^4; 2000 paper: 300 |
-| `atoms_per_type` | `int` | `200` | population | reactive soup only: atoms of each type in the reactor (bound in molecules plus free) <br>≥ `0` · *range:* thesis table 6.4 and ECAL 2001: 2000; fig. 6.7: 600; ch. 7: 1000 |
-| `prob_destroy` | `float` | `0.00015` | kinetic | reactive soup only: probdest, probability per generation that a molecule decays into free atoms <br>`0.0` … `1.0` · *range:* thesis table 6.4: 0.00015; ch. 7: 0.01; ECAL 2001: 0 |
-| `min_molecules` | `int` | `30` | kinetic | reactive soup only: minmolecules, population at or below which a random molecule is inserted with probability 1 per generation <br>≥ `0` · *range:* thesis table 6.4: 30; ECAL 2001: 50; ch. 7: 25 |
-| `half_add_prob` | `float` | `100.0` | kinetic | reactive soup only: halfaddprob, the insertion probability halves for every half_add_prob molecules above min_molecules <br>≥ `1.0` · *range:* thesis table 6.4: 100 |
+| `max_species` | `int` | `100` | structural | *generate only.* species budget of the closure; above it the closure is cut off (status truncated) <br>≥ `1` |
+| `M` | `int` | `100` | population | *evolve only.* number of random molecules assembled at the start (ignored when molecules is given) <br>`2` … `100000` · *range:* ECAL 2001: 300; thesis ch. 7: 150 |
+| `generations` | `int` | `20` | population | *evolve only.* physical generations (collisions = population size per generation, elastic included); a frame per generation <br>`0` … `1000000` · *range:* thesis fig. 6.7: 10^4; ECAL 2001: 10^4 and 3x10^4; 2000 paper: 300 |
+| `atoms_per_type` | `int` | `200` | population | *evolve only.* reactive reactor only: atoms of each type in the reactor (bound in molecules plus free) <br>≥ `0` · *range:* thesis table 6.4 and ECAL 2001: 2000; fig. 6.7: 600; ch. 7: 1000 |
+| `prob_destroy` | `float` | `0.00015` | kinetic | *evolve only.* reactive reactor only: probdest, probability per generation that a molecule decays into free atoms <br>`0.0` … `1.0` · *range:* thesis table 6.4: 0.00015; ch. 7: 0.01; ECAL 2001: 0 |
+| `min_molecules` | `int` | `30` | kinetic | *evolve only.* reactive reactor only: minmolecules, population at or below which a random molecule is inserted with probability 1 per generation <br>≥ `0` · *range:* thesis table 6.4: 30; ECAL 2001: 50; ch. 7: 25 |
+| `half_add_prob` | `float` | `100.0` | kinetic | *evolve only.* reactive reactor only: halfaddprob, the insertion probability halves for every half_add_prob molecules above min_molecules <br>≥ `1.0` · *range:* thesis table 6.4: 100 |
 
 ### Implementation decisions
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "14 decisions"
+??? note "15 decisions"
 
+    - Two faces: generate_network returns the closure of the seed molecules (the single atoms of the basis by default), cut off by max_species; chemart.evolve runs the well-stirred flow reactor for `generations` physical generations, a frame per generation (t counts generations). In the catalytic reactor a generation is as many collisions as the initial population; in the reactive one it is as many collisions as the current population. A reactive frame's state includes the free atoms (free:X), so the pool and population size over time are read from the frames.
     - The book only names the chemistry (9.8) and says a reaction may yield a multiset and the population may vary (12.x); everything else is from the sources above. The thesis is taken as the reference (atoms, reduction order, limits, flow), since it is [791] and the latest description.
     - Redex: the thesis pseudo-code says an atom is reducible when followed by 'more combinators than its arity', but its own examples (BBBB -&gt; B(BB)) and table 6.1 need 'at least arity'; the examples win.
     - Reduction order (table 6.3): all marked K redexes, else all marked B, C, R, I redexes, else the most external S or W redex; redexes in one pass are reduced innermost first (they only move or delete subterms, so the result equals any order), and among S/W redexes at the same depth the leftmost is taken. The table 6.3 order reproduces the 2000 pool trace, the ECAL WR * SKI example and 20 of the 25 entries of the thesis ch. 7 reaction tables; innermost S/W reduction matches fewer (it gives b + g -&gt; 3g instead of 4g).
@@ -522,7 +526,7 @@ between generations 5,000, 7,000 and 9,000. Another run (figure 6.2) found its
 first organisation at physical generation 2,357 and moved to a second at
 10,212, which uses a different set of atoms. Not every run moves: some stay in
 one organisation for the whole experiment. Chemart implements this level (the
-default soup) but its tests only check that atoms are conserved and the
+default of `chemart.evolve`) but its tests only check that atoms are conserved and the
 population varies. The runs under *Using it* show the qualitative picture of a
 settled population, dominated by few molecules and limited by an exhausted
 atom type, and in one case a collapse and regrowth, but no systematic

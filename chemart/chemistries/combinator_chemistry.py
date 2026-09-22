@@ -28,9 +28,9 @@ atoms (species ``free:X``), so every reaction conserves atoms. reaction
 "catalytic" (thesis level 1, AlChemy): a + b -> a + b + c1 + ... + cn with an
 unlimited supply of atoms and a dilution that keeps the population constant.
 
-method "closure" returns every reaction reachable from the seed molecules
-(chemart.expand.expand); method "soup" runs the well-stirred flow reactor and
-returns the reactions that fired.
+generate returns every reaction reachable from the seed molecules
+(chemart.expand.expand); evolve runs the well-stirred flow reactor, a frame
+per generation, and returns the reactions that fired.
 """
 
 from __future__ import annotations
@@ -39,7 +39,8 @@ from collections import Counter
 
 from chemart.expand import expand
 from chemart.network import CONSTANT_TOTAL, Network, Reaction, Species
-from chemart.soup import soup
+from chemart.soup import Tally, stir
+from chemart.trajectory import Frame
 
 ATOMS = "BCIKRSW"
 ARITY = {"B": 3, "C": 3, "I": 1, "K": 2, "R": 2, "S": 3, "W": 2}
@@ -320,18 +321,27 @@ def _molecules(p, chem: Chemistry, basis: str) -> list[str]:
     return out
 
 
-def generate(p, rng):
+def _setup(p) -> tuple[str, Chemistry, list[str]]:
     basis = _basis(p.atoms)
     if p.max_size > p.max_react_size:
         raise ValueError(f"max_size ({p.max_size}) cannot exceed max_react_size ({p.max_react_size})")
     chem = Chemistry(p.k_action == "release", p.max_reductions, p.max_react_size, p.max_size,
                      p.max_depth, p.filter_reproduction)
-    molecules = _molecules(p, chem, basis)
-    if p.method == "closure":
-        return _closure(p, chem, basis, molecules or list(basis))
+    return basis, chem, _molecules(p, chem, basis)
+
+
+def generate(p, rng):
+    """Every reaction reachable from the seed molecules (or the single atoms), cut off by max_species."""
+    basis, chem, molecules = _setup(p)
+    return _closure(p, chem, basis, molecules or list(basis))
+
+
+def evolve(p, rng):
+    """The well-stirred flow reactor for `generations` generations, a frame per generation."""
+    basis, chem, molecules = _setup(p)
     if p.reaction == "catalytic":
-        return _catalytic_soup(p, chem, basis, molecules, rng)
-    return _reactive_soup(p, chem, basis, molecules, rng)
+        return (yield from _catalytic_soup(p, chem, basis, molecules, rng))
+    return (yield from _reactive_soup(p, chem, basis, molecules, rng))
 
 
 # --- network building -----------------------------------------------------------
@@ -362,11 +372,20 @@ def _conservation(species: list[Species], basis: str) -> list[dict]:
     return out
 
 
-def _reaction(lhs, rhs, reactive, count=None) -> Reaction:
+def _sides(lhs, rhs, reactive) -> tuple[list[str], list[str]]:
+    """Reactants and products of a reaction, with the free atoms it takes and returns if reactive."""
     if reactive:
         taken, returned = _free_balance(lhs, rhs)
-        return Reaction.of([*lhs, *taken], [*rhs, *returned], count=count)
-    return Reaction.of(lhs, rhs, count=count)
+        return [*lhs, *taken], [*rhs, *returned]
+    return list(lhs), list(rhs)
+
+
+def _reaction(lhs, rhs, reactive, count=None) -> Reaction:
+    return Reaction.of(*_sides(lhs, rhs, reactive), count=count)
+
+
+def _fired(window, reactive) -> list[list]:
+    return [[*_sides(lhs, rhs, reactive), n] for lhs, rhs, n in window]
 
 
 def _closure(p, chem: Chemistry, basis: str, seed: list[str]) -> Network:
@@ -439,7 +458,7 @@ def _random_molecule(rng, chem: Chemistry, basis: str, pool: Counter | None):
     return None
 
 
-def _catalytic_soup(p, chem: Chemistry, basis: str, molecules: list[str], rng) -> Network:
+def _catalytic_soup(p, chem: Chemistry, basis: str, molecules: list[str], rng):
     start: list[str] = list(molecules)
     if not start:
         while len(start) < p.M:
@@ -454,7 +473,14 @@ def _catalytic_soup(p, chem: Chemistry, basis: str, molecules: list[str], rng) -
         out = chem.react(a, b)
         return None if out is None else (a, b, *out[0])
 
-    fired, pop = soup(react, start, p.generations * len(start), rng, arity=2, dilution="constant")
+    size = len(start)
+    tally = Tally()
+    pop = start
+    for step, pop, tally in stir(react, start, p.generations * size, rng, arity=2, dilution="constant",
+                                 tally=tally):
+        yield Frame(t=float(step // size), state={m: float(n) for m, n in sorted(Counter(pop).items())},
+                    fired=_fired(tally.flush(), False))
+    fired = tally.reactions()
     found = list(start) + [m for _, rhs, _ in fired for m in rhs]
     species = _species(sorted(set(found)), basis, False)
     final = Counter(pop)
@@ -469,7 +495,7 @@ def _catalytic_soup(p, chem: Chemistry, basis: str, molecules: list[str], rng) -
     )
 
 
-def _reactive_soup(p, chem: Chemistry, basis: str, molecules: list[str], rng) -> Network:
+def _reactive_soup(p, chem: Chemistry, basis: str, molecules: list[str], rng):
     pool = Counter({x: p.atoms_per_type for x in basis})
     pop: list[str] = []
     for m in molecules:
@@ -490,11 +516,8 @@ def _reactive_soup(p, chem: Chemistry, basis: str, molecules: list[str], rng) ->
     initial = Counter(pop)
     initial_pool = Counter(pool)
 
-    fired: dict[tuple, list] = {}
-
-    def record(lhs, rhs):
-        key = (frozenset(Counter(lhs).items()), frozenset(Counter(rhs).items()))
-        fired.setdefault(key, [tuple(lhs), tuple(rhs), 0])[2] += 1
+    tally = Tally()
+    record = tally.add
 
     def remove(i):
         pop[i] = pop[-1]
@@ -511,9 +534,13 @@ def _reactive_soup(p, chem: Chemistry, basis: str, molecules: list[str], rng) ->
             pop.extend(made)
             record((), made)
 
+    def frame(t):
+        state = {m: float(c) for m, c in sorted(Counter(pop).items())}
+        state.update({FREE + x: float(pool[x]) for x in basis if pool[x] > 0})
+        return Frame(t=float(t), state=state, fired=_fired(tally.flush(), True))
+
     seen = set(pop)
-    analysis = {"population": [len(pop)], "diversity": [len(set(pop))],
-                "free_atoms": {x: [pool[x]] for x in basis}}
+    yield frame(0)
     t, generation = 0.0, 0
     while t < p.generations:
         n = len(pop)
@@ -547,25 +574,22 @@ def _reactive_soup(p, chem: Chemistry, basis: str, molecules: list[str], rng) ->
             t += 1.0 / n
         while generation + 1 <= t and generation < p.generations:
             generation += 1
-            analysis["population"].append(len(pop))
-            analysis["diversity"].append(len(set(pop)))
-            for x in basis:
-                analysis["free_atoms"][x].append(pool[x])
+            yield frame(generation)
 
-    names = sorted(seen | set(initial) | {m for lhs, rhs, _ in fired.values() for m in (*lhs, *rhs)})
+    fired = tally.reactions()
+    names = sorted(seen | set(initial) | {m for lhs, rhs, _ in fired for m in (*lhs, *rhs)})
     species = _species(names, basis, True)
     initial_state = {m: float(c) for m, c in sorted(initial.items())}
     initial_state.update({FREE + x: float(initial_pool[x]) for x in basis})
     final = Counter(pop)
     return Network(
         species=species,
-        reactions=[_reaction(lhs, rhs, True, count) for lhs, rhs, count in fired.values()],
+        reactions=[_reaction(lhs, rhs, True, count) for lhs, rhs, count in fired],
         status="observed",
         initial_state=initial_state,
         extras={
             "conservation": _conservation(species, basis),
             "final_state": {m: c for m, c in final.most_common()},
             "final_free_atoms": {x: int(pool[x]) for x in basis},
-            "analysis": analysis,
         },
     )

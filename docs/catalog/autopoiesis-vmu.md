@@ -160,8 +160,9 @@ and the `m` at the top right of the right grid were made that way.
 
 ### A worked example: reading the reactions
 
-A run records every reaction that fired, with a count. These are from the
-default run below:
+A run of the lattice records every reaction that fired, with a count. These
+are from the default run, `chemart.evolve("autopoiesis-vmu", seed=1)`
+(see *Using it*):
 
 ```
 C + 2 S -> C + L0  (x39)
@@ -180,10 +181,8 @@ substrates. Species on both sides of a reaction are the bond states of the
 links involved, which is why one physical event can appear as several
 different reactions.
 
-One recording error affects this list: when two links of the *same* species
-bond, the reaction is stored with one of each instead of two. The default run
-contains `L1S -> L2S (x7)`, which is really `2 L1S -> 2 L2S`, and likewise
-`L1 -> L2`, `L0 -> L1` and `L0S -> L1S`. The lattice itself is not affected.
+When two links of the *same* species bond, both appear on each side: the
+default run contains `2 L1S -> 2 L2S (x7)`.
 
 ### What the formal specification below means
 
@@ -222,45 +221,74 @@ print(net.summary())
 ```
 
 ```
-autopoiesis-vmu: 8 species, 33 reactions, status=observed
-provides: catalysts, initial-state, space, stoichiometry, topology
+autopoiesis-vmu: 8 species, 16 reactions, status=complete
+provides: catalysts, stoichiometry, topology
 seed: 1
-extras: analysis, rules, space
+extras: rules
 ```
 
 Its first reactions (`net.reactions`):
 
 ```
-C + 2 S -> C + L0  (x39)
-L0 + S -> L0S  (x45)
-L0 + L0S -> L1 + L1S  (x5)
-L1S -> L1 + S  (x46)
-L1 + S -> L1S  (x52)
-L1 + L0 -> L2 + L1  (x5)
-L0S + L1 -> L1S + L2  (x5)
-L2 + S -> L2S  (x49)
-… and 25 more
+C + 2 S -> C + L0
+2 L0 -> 2 L1
+L0 + L1 -> L1 + L2
+2 L1 -> 2 L2
+L0 -> 2 S
+L0S -> 3 S
+L0 + S -> L0S
+L0S -> L0 + S
+… and 8 more
 ```
+
+The model has two faces. The call printed above,
+`chemart.generate_network("autopoiesis-vmu")`, returns the reaction list
+alone: the 16 reactions the chemistry defines (production, three bonding
+reactions between unloaded links, and disintegration, absorption and emission
+for each link species), with no lattice run and no parameters.
+`chemart.evolve("autopoiesis-vmu")` runs the lattice and returns a trajectory
+with a frame per time step; every parameter in the table belongs to it.
 
 The default run is the book's figure 6.3 at the start: one catalyst in the
 centre of a 30 × 30 world full of substrate. It runs 120 steps, enough to see
 the elementary reactions but not a cell; with seed 1 the only closed chain at
-the end is a three-link cluster. Everything about the run is in `net.extras`:
+the end is a three-link cluster.
 
 ```python
-a = net.extras["analysis"]
+traj = chemart.evolve("autopoiesis-vmu", seed=1)
+traj.frames[0].state      # {'C': 1.0, 'S': 899.0}
+traj.frames[1].fired      # [[['C', 'S', 'S'], ['C', 'L0'], 1]]
+traj.frames[-1].state
+# {'C': 1.0, 'L0': 2.0, 'L0S': 2.0, 'L1': 1.0, 'L1S': 5.0, 'L2S': 8.0, 'S': 832.0}
+traj.frames[-1].observables
+# {'closed_chains': 1, 'membranes': 0, 'enclosed_catalysts': 0}
+```
+
+A frame's `state` counts the particles of each species on the lattice (holes
+are not a species), and `fired` lists the reactions of that time step
+(reactants, products, count). The observables measure the membranes at that
+step: `closed_chains`, `membranes` (closed chains of six links or more, the
+threshold of Von Kamp 2002) and `enclosed_catalysts`. A catalyst counts as
+*enclosed* when some closed chain cuts it off from the rest of the torus.
+`traj.series("enclosed_catalysts")` gives one of them over the whole run.
+
+`traj.network` is the network of the reactions that fired, with counts. Its
+`extras` hold the final lattice and whole-run measurements:
+
+```python
+a = traj.network.extras["analysis"]
 a["events"]        # {'absorption': 146, 'bond': 36, 'disintegration': 21, 'emission': 116,
                    #  'motion': 2851, 'production': 39, 'substrates_released': 41}
 a["membrane"]      # closed_chains, chain_lengths, membranes (6+ links), clusters,
                    # enclosed_catalysts, first_enclosure_step, steps_enclosed, ruptures, repairs
 a["permeability"]  # substrate / link / catalyst crossings of the cell boundary
-a["per_step"]      # series: substrates, links, free_links, chain_links, closed_chains, ...
-net.extras["space"]["grid"]    # the final lattice as strings, legend in space["legend"]
+traj.network.extras["space"]["grid"]    # the final lattice as strings, legend in space["legend"]
 ```
 
-A catalyst counts as *enclosed* when some closed chain cuts it off from the
-rest of the torus. `ruptures` counts the steps at which enclosure is lost,
-`repairs` the steps at which it is regained after the first enclosure.
+`membrane` describes the final lattice, except `first_enclosure_step`,
+`steps_enclosed`, `ruptures` (the steps at which enclosure is lost) and
+`repairs` (the steps at which it is regained after the first enclosure),
+which count over the run.
 
 **Start from a cell.** `initial="cell"` places a ready-made membrane of twelve
 links around the catalyst, enclosing a 3 × 3 interior (the cell of Von Kamp's
@@ -268,13 +296,16 @@ figure 2). With a 15 × 15 world and `disintegration_probability=0.001` this is
 close to the set-up of McMullin and Varela (1997) described under Results:
 
 ```python
-net = chemart.generate_network("autopoiesis-vmu", seed=1, initial="cell",
-                               width=15, height=15, steps=2000,
-                               disintegration_probability=0.001)
-net.extras["analysis"]["membrane"]["steps_enclosed"]   # 111
-net.extras["analysis"]["permeability"]
+traj = chemart.evolve("autopoiesis-vmu", seed=1, initial="cell",
+                      width=15, height=15, steps=2000,
+                      disintegration_probability=0.001)
+sum(n > 0 for n in traj.series("enclosed_catalysts"))       # 111
+traj.network.extras["analysis"]["permeability"]
 # {'substrate_crossings': 32, 'link_crossings': 0, 'catalyst_crossings': 0}
 ```
+
+The catalyst is enclosed at 111 of the 2,001 frames (`steps_enclosed` in the
+analysis gives the same count).
 
 **Switch off the missing rule.** Add `bond_inhibition=False` to reproduce the
 failure of the published algorithm; the grids above show what it does. The
@@ -286,12 +317,12 @@ threshold, while the default 1 is SCL's.
 steps. On a 14 × 14 world with `steps=2000`, every one of seeds 0–5 closed a
 chain around the catalyst at some point, first at steps 90 to 1,443. On the
 default 30 × 30 world, seed 1 with `steps=3000` first encloses the catalyst at
-step 374.
+step 374:
 
-**The reaction list alone.** `mode="reactions"` returns the 16 reactions the
-chemistry defines, without running the lattice: production, three bonding
-reactions between unloaded links, and disintegration, absorption and emission
-for each link species.
+```python
+traj = chemart.evolve("autopoiesis-vmu", seed=1, steps=3000)
+next(f.t for f in traj.frames if f.observables["enclosed_catalysts"])   # 374.0
+```
 
 All of these are fast: about a second per thousand steps on the 30 × 30
 lattice, less on smaller ones. Disintegration does not always conserve
@@ -300,31 +331,30 @@ matter: when a decaying link has no hole next to it, the second substrate
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `generate_network`, or to `chemart.evolve`; a parameter marked *evolve only* belongs to the process and one marked *generate only* to the network. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
-| `mode` | `enum` | `lattice` | structural | lattice: run the lattice and return the reactions that fired, with counts (status observed), the grid in extras.space and the membrane measurements in extras.analysis; reactions: the reactions the chemistry defines, as a complete network <br>one of `lattice`, `reactions` |
-| `initial` | `enum` | `substrate` | structural | substrate: the book's figure 6.3 at t = 0, a catalyst surrounded by substrate; cell: start from a ready-made cell, the twelve-link closed membrane around the catalyst of Von Kamp (2002) figure 2 <br>one of `substrate`, `cell` |
-| `width` | `int` | `30` | spatial | lattice width (toroidal) <br>`5` … `400` · *range:* Von Kamp (2002) figure 2 uses a 30 x 30 world |
-| `height` | `int` | `30` | spatial | lattice height (toroidal) <br>`5` … `400` · *range:* Von Kamp (2002) figure 2 uses a 30 x 30 world |
-| `steps` | `int` | `120` | population | time steps; in each one every particle moves and acts once <br>`0` … `1000000` · *range:* spontaneous formation of a cell from a bare catalyst takes thousands of steps; Von Kamp's runs go to 50,000 |
-| `n_catalysts` | `int` | `1` | population | catalysts; the first is placed at the centre of the lattice, any others at random <br>`0` … `1000` · *range:* the book's figure 6.3 starts from a single catalyst |
-| `substrate_density` | `float` | `1.0` | population | fraction of the non-catalyst sites that start as substrate; the rest start as holes. Holes are also produced by the catalysis reaction <br>`0.0` … `1.0` |
-| `production_probability` | `float` | `1.0` | kinetic | probability per time step that a catalyst turns two neighbouring substrates into a link and a hole (Von Kamp 2002, table 1: 1.0) <br>`0.0` … `1.0` |
-| `disintegration_probability` | `float` | `0.01` | kinetic | probability per time step that a link spontaneously disintegrates (Von Kamp 2002, table 1: 0.01) <br>`0.0` … `1.0` |
-| `bond_probability` | `float` | `1.0` | kinetic | probability that an admissible bond between two neighbouring links is formed; not published, see decisions <br>`0.0` … `1.0` |
-| `absorption_probability` | `float` | `0.5` | kinetic | probability per time step that a link tries to absorb a neighbouring substrate (Von Kamp 2002, table 1: 0.5) <br>`0.0` … `1.0` |
-| `emission_probability` | `float` | `0.5` | kinetic | probability per time step that a link tries to emit its absorbed substrate into a neighbouring hole (Von Kamp 2002, table 1: 0.5) <br>`0.0` … `1.0` |
-| `bond_inhibition` | `bool` | `True` | structural | chain-based bond inhibition: a free link may not bond while chain links are in its neighbourhood. This is the rule omitted from the 1974 publication and restored by McMullin & Varela (1997); false reproduces the failure of the published algorithm |
-| `chain_inhibit_count` | `int` | `1` | structural | how many chain links in the neighbourhood of a free link suppress bond formation <br>`1` … `8` · *range:* Von Kamp (2002) table 1: chainInhibitBondCount = 1, turned off at the neighbourhood size |
-| `mobility` | `dict` | `{'substrate': 0.5, 'catalyst': 0.1, 'link': 0.1…` | spatial | mobility factor per particle type (Von Kamp 2002, table 1); two neighbours swap with probability sqrt(m_i m_j), and a link with one or two bonds is immobile whatever its factor |
+| `initial` | `enum` | `substrate` | structural | *evolve only.* substrate: the book's figure 6.3 at t = 0, a catalyst surrounded by substrate; cell: start from a ready-made cell, the twelve-link closed membrane around the catalyst of Von Kamp (2002) figure 2 <br>one of `substrate`, `cell` |
+| `width` | `int` | `30` | spatial | *evolve only.* lattice width (toroidal) <br>`5` … `400` · *range:* Von Kamp (2002) figure 2 uses a 30 x 30 world |
+| `height` | `int` | `30` | spatial | *evolve only.* lattice height (toroidal) <br>`5` … `400` · *range:* Von Kamp (2002) figure 2 uses a 30 x 30 world |
+| `steps` | `int` | `120` | population | *evolve only.* time steps; in each one every particle moves and acts once <br>`0` … `1000000` · *range:* spontaneous formation of a cell from a bare catalyst takes thousands of steps; Von Kamp's runs go to 50,000 |
+| `n_catalysts` | `int` | `1` | population | *evolve only.* catalysts; the first is placed at the centre of the lattice, any others at random <br>`0` … `1000` · *range:* the book's figure 6.3 starts from a single catalyst |
+| `substrate_density` | `float` | `1.0` | population | *evolve only.* fraction of the non-catalyst sites that start as substrate; the rest start as holes. Holes are also produced by the catalysis reaction <br>`0.0` … `1.0` |
+| `production_probability` | `float` | `1.0` | kinetic | *evolve only.* probability per time step that a catalyst turns two neighbouring substrates into a link and a hole (Von Kamp 2002, table 1: 1.0) <br>`0.0` … `1.0` |
+| `disintegration_probability` | `float` | `0.01` | kinetic | *evolve only.* probability per time step that a link spontaneously disintegrates (Von Kamp 2002, table 1: 0.01) <br>`0.0` … `1.0` |
+| `bond_probability` | `float` | `1.0` | kinetic | *evolve only.* probability that an admissible bond between two neighbouring links is formed; not published, see decisions <br>`0.0` … `1.0` |
+| `absorption_probability` | `float` | `0.5` | kinetic | *evolve only.* probability per time step that a link tries to absorb a neighbouring substrate (Von Kamp 2002, table 1: 0.5) <br>`0.0` … `1.0` |
+| `emission_probability` | `float` | `0.5` | kinetic | *evolve only.* probability per time step that a link tries to emit its absorbed substrate into a neighbouring hole (Von Kamp 2002, table 1: 0.5) <br>`0.0` … `1.0` |
+| `bond_inhibition` | `bool` | `True` | structural | *evolve only.* chain-based bond inhibition: a free link may not bond while chain links are in its neighbourhood. This is the rule omitted from the 1974 publication and restored by McMullin & Varela (1997); false reproduces the failure of the published algorithm |
+| `chain_inhibit_count` | `int` | `1` | structural | *evolve only.* how many chain links in the neighbourhood of a free link suppress bond formation <br>`1` … `8` · *range:* Von Kamp (2002) table 1: chainInhibitBondCount = 1, turned off at the neighbourhood size |
+| `mobility` | `dict` | `{'substrate': 0.5, 'catalyst': 0.1, 'link': 0.1…` | spatial | *evolve only.* mobility factor per particle type (Von Kamp 2002, table 1); two neighbours swap with probability sqrt(m_i m_j), and a link with one or two bonds is immobile whatever its factor |
 
 ### Implementation decisions
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "8 decisions"
+??? note "9 decisions"
 
     - The book (6.1.5 and figure 6.3) gives the three reactions and the phenomena but no algorithm, so the lattice model is McMullin's SCL reconstruction. Variant implemented: the *original* SCL (self-maintenance by repair with spontaneously disintegrating links), not the later SCL-DIV of Von Kamp (2002) (lifetime units, membrane growth by displacement, catalyst autocatalysis, fission) and not SCL-GRO (McMullin & Gross 2001).
     - Neither McMullin (1997) nor McMullin & Varela (1997) could be retrieved: elm.eeng.dcu.ie and www.eeng.dcu.ie are offline or have an invalid certificate, the Santa Fe Institute working-paper files 404, and the CiteSeerX and Internet Archive mirrors are unreachable from here. The rule set and every published number therefore come from Von Kamp (2002), a DCU thesis built on McMullin's SCL 0.05.11 that documents the original system, together with the abstract of McMullin & Varela (1997) and section 6.4 of McMullin (2000) for chain-based bond inhibition. The 1974 paper itself is open only at repositorio.uchile.cl, behind a proof-of-work wall.
@@ -332,7 +362,8 @@ The sources leave gaps, and sometimes contradict each other or the book. Each su
     - Neighbourhoods: the sources do not state them for the square lattice of original SCL. Interactions use the 8-cell Moore neighbourhood and motion the 4 von Neumann neighbours, so an 8-connected closed chain of links separates the lattice for 4-connected motion and a membrane is genuinely closed. Von Kamp (2002, section 4.2) moved to a hexagonal lattice precisely because the rectangular one makes such choices ambiguous.
     - Disintegration stoichiometry: the book writes the decay as [O] -&gt; O, but production consumes two substrates and leaves a link plus a hole, and the caption of Von Kamp (2002) figure 2 (a 30 x 30 world with a twelve-link membrane and one catalyst, '591 substrates in total ... if all links and catalysts disintegrated, there would be 619 substrates', i.e. 2 x 12 + 4) implies a link disintegrates into two substrates. A disintegrating link therefore becomes a substrate and puts a second substrate (and its absorbed one, if any) into an adjacent hole when there is one; both L -&gt; 2 S and L -&gt; S appear among the observed reactions.
     - Only chain-based bond inhibition is implemented. The catalyst-based bond inhibition that Von Kamp (2002, section 4.8) parameterises as catInhibitBondCount, bond decay (present in McMullin's SCL, absent in Varela et al. 1974) and all SCL-DIV mechanisms are not implemented; no probability is published for the first two.
-    - Network: status observed. Species carry the bond state (L0, L1, L2) and the absorbed substrate (L0S, L1S, L2S), because both change what a link can do; holes are empty space and not a species, so production reads C + 2 S -&gt; C + L0 as in the book. Reactions carry no rate: the probabilities are per-particle update probabilities of the lattice algorithm, not rate constants, and no rate law is published. Motion is not a reaction. Mode 'reactions' returns the same species with the reactions the chemistry defines, status complete.
+    - Two faces, replacing the former mode parameter. generate_network returns the reactions the chemistry defines (book 6.1.5: production, bonding for every pair of bond states, disintegration and the absorption and emission of substrate), status complete; it takes no parameters. chemart.evolve runs the lattice (every parameter here belongs to it) and yields a frame per time step: the species counts on the lattice, the reactions fired in the step, and three membrane measurements, closed_chains (closed chains of links), membranes (those of six links or more) and enclosed_catalysts (catalysts inside one). Its network holds the reactions that fired with their counts, the final grid in extras.space and whole-run measurements in extras.analysis (event counts; closed chains, ruptures and repairs; crossings of the membrane). The former per-step series of substrates, links, free links and chain links are read from the frames' species counts.
+    - Observed network: status observed. Species carry the bond state (L0, L1, L2) and the absorbed substrate (L0S, L1S, L2S), because both change what a link can do; holes are empty space and not a species, so production reads C + 2 S -&gt; C + L0 as in the book. Reactions carry no rate: the probabilities are per-particle update probabilities of the lattice algorithm, not rate constants, and no rate law is published. Motion is not a reaction.
     - Dropped v1 parameters: grid (a matrix type) becomes width, height, substrate_density and initial; p_bond and p_decay become bond_probability and disintegration_probability, joined by the other published probabilities and the mobility factors. Defaults are small: a 30 x 30 world (Von Kamp's figure 2) for 120 steps, which shows the elementary reactions; spontaneous closure around a bare catalyst needs thousands of steps, and initial=cell starts from a formed cell instead.
 
 ## Results

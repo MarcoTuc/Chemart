@@ -175,7 +175,7 @@ Enzymes of one strand run in translation order, each binding in the stretch wher
 
 **A — reactor**: `sequential-vm` (a virtual machine that executes molecules as programs, one instruction at a time); or `well-stirred-multiset` (a well-stirred pot of discrete molecules that meet at random, with no notion of position).
 
-*How the population is bounded:* closure: none; soup: a random molecule is removed after each productive event, keeping the population size constant (Chemart addition)
+*How the population is bounded:* closure: none; evolve: a random molecule is removed after each productive event, keeping the population size constant (Chemart addition)
 
 The book's system interprets strands one at a time (10.5.2). Varetto's simulations with limited resources and a lethal factor are not reproduced
 
@@ -205,9 +205,12 @@ CGATTCGAATCG -> 2 CGATTCGAATCG
 CGAATCG -> CGAATCG + T
 ```
 
-The default call enumerates every reaction reachable from the seed strand
-(`method="closure"`): it applies each new daughter to itself in turn until
-nothing new appears. With `binding_tiebreak="all"`, every binding choice gives
+Typogenetics has two faces. `chemart.generate_network`, printed above,
+returns the *closure* of the seed strands; `chemart.evolve` runs a
+*population* of strands and returns a trajectory (see *A population* below).
+
+The default call enumerates every reaction reachable from the seed strand:
+it applies each new daughter to itself in turn until nothing new appears. With `binding_tiebreak="all"`, every binding choice gives
 its own reaction, so one strand can have several. The default seed closes
 after four species. Each species' `structure` gives the enzymes it codes and
 their preferred bases:
@@ -240,26 +243,31 @@ net = chemart.generate_network("typogenetics", seed=1,
 # CGACCCAACGATTTTTCAT -> ATTTTTCAT + CGACCCAACG + CGTTGGGT
 ```
 
-**A population.** `method="soup"` puts `copies` of each seed strand in a pot
+**A population.** `chemart.evolve` puts `copies` of each seed strand in a pot
 and draws a strand `steps` times; after each productive reaction a random
-molecule is removed, so the population stays the same size. It needs one
-outcome per draw, so choose `binding_tiebreak` `rightmost` (Varetto's rule),
-`leftmost` or `random`. With the rightmost rule the replicator takes over from
-the dud:
+molecule is removed, so the population stays the same size. A draw has one
+outcome, so `binding_tiebreak` picks one binding site: `rightmost` (Varetto's
+rule), `leftmost` or `random`; the default `all` is read as `random` here. The
+trajectory has a frame per generation, as many draws as the pot holds strands.
+With the rightmost rule the replicator takes over from the dud:
 
 ```python
-net = chemart.generate_network("typogenetics", seed=3, method="soup",
+traj = chemart.evolve("typogenetics", seed=3,
         strands=["CGATTCGAATCG", "CGGC"], binding_tiebreak="rightmost",
         copies=50, steps=3000)
+[f.state.get("CGATTCGAATCG", 0) for f in traj.frames][:7]
+# [50.0, 74.0, 87.0, 95.0, 96.0, 99.0, 100.0]
+net = traj.network
 net.extras["final_state"]   # {'CGATTCGAATCG': 100}
 # CGATTCGAATCG -> 2 CGATTCGAATCG  (x2910)
 ```
 
-With `binding_tiebreak="random"` and the same seed, the replicator binds its
-other two G sites two times out of three, and the final pot of 100 is
-`{'T': 62, 'CG': 17, 'CGATTCGAATCG': 12, 'CGAATCG': 9}`: `CGAATCG` keeps
-making `T`, which codes no enzyme and accumulates. Both runs take under two
-seconds.
+The frames come every 100 draws, and the replicator fills the pot after 600.
+With `binding_tiebreak="random"` (or the default) and the same seed, the
+replicator binds its other two G sites two times out of three, and the final
+pot of 100 is `{'T': 62, 'CG': 17, 'CGATTCGAATCG': 12, 'CGAATCG': 9}`:
+`CGAATCG` keeps making `T`, which codes no enzyme and accumulates. Both runs
+take under two seconds.
 
 **Other variants.** `code_table="varetto"` uses Varetto's code, which moves the
 four insert operations within row G; `reaction="pair"` lets every strand's
@@ -269,29 +277,28 @@ and `max_species=30`) gives 242 reactions among 30 species.
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `generate_network`, or to `chemart.evolve`; a parameter marked *evolve only* belongs to the process and one marked *generate only* to the network. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
-| `method` | `enum` | `closure` | structural | closure: every reaction reachable from the seed strands (status complete or truncated); soup: random draws from a population with chemart.soup, returning the reactions that fired with counts (status observed) <br>one of `closure`, `soup` |
 | `reaction` | `enum` | `self` | structural | self: a strand's enzymes act on the strand itself (book 10.5.2, Hofstadter's puzzle); pair: the enzymes of the first strand act on the second, which is consumed, while the gene strand is a catalyst (Chemart addition) <br>one of `self`, `pair` |
 | `code_table` | `enum` | `hofstadter` | structural | duplet -&gt; amino acid table: hofstadter (GEB p. 510, book table 10.1 left) or varetto (Varetto 1993 p. 187 as given by Snare table 2.1b: GA inc, GC ing, GG int, GT ina, kinks s, r, r, l stay with the columns) <br>one of `hofstadter`, `varetto` |
 | `fold` | `enum` | `hofstadter` | structural | binding preference from the kinks: hofstadter counts the kinks of all amino acids but the first and last (GEB p. 511); morris counts every kink (Morris 1989, Varetto 1993, book fig. 10.6). Last segment relative to the first: straight A, up (left turn) C, down (right turn) G, back T <br>one of `hofstadter`, `morris` |
-| `binding_tiebreak` | `enum` | `all` | stochastic | which unit an enzyme binds when several hold its base: all lists every outcome as its own reaction (closure only), random draws one with the generator, leftmost/rightmost take the first/last in the bound strand's reading direction <br>one of `all`, `random`, `leftmost`, `rightmost` · *range:* Hofstadter and Morris: any matching unit (all or random); Varetto: rightmost |
-| `strands` | `list` | `['CGATTCGAATCG']` | structural | seed strands (closure) or the strand types of the initial population (soup); an empty list draws n_random random strands of strand_length bases <br>*range:* Snare's self-replicators CGATTCGAATCG and CGATTAATTAATCG; GEB's TAGATCCAGTCCATCGA |
+| `binding_tiebreak` | `enum` | `all` | stochastic | which unit an enzyme binds when several hold its base: all lists every outcome of the closure as its own reaction (chemart.evolve reads it as random), random draws one with the generator, leftmost/rightmost take the first/last in the bound strand's reading direction <br>one of `all`, `random`, `leftmost`, `rightmost` · *range:* Hofstadter and Morris: any matching unit (all or random); Varetto: rightmost |
+| `strands` | `list` | `['CGATTCGAATCG']` | structural | seed strands of the closure and strand types of the evolved population; an empty list draws n_random random strands of strand_length bases <br>*range:* Snare's self-replicators CGATTCGAATCG and CGATTAATTAATCG; GEB's TAGATCCAGTCCATCGA |
 | `n_random` | `int` | `4` | population | number of random seed strands when strands is empty <br>`1` … `1000` |
 | `strand_length` | `int` | `12` | structural | length of the random seed strands when strands is empty <br>`1` … `200` |
-| `max_length` | `int` | `24` | structural | longest daughter strand kept; an outcome with a longer daughter is dropped (closure status truncated, elastic in the soup) <br>`1` … `1000` |
-| `max_species` | `int` | `200` | structural | closure only: species budget; the status becomes truncated when it cuts the closure off <br>`1` … `100000` |
-| `max_branches` | `int` | `1000` | structural | binding_tiebreak all: most distinct intermediate complexes followed while enumerating binding choices for one reactant; beyond it that reactant's reactions are dropped and the status becomes truncated <br>`1` … `1000000` |
-| `copies` | `int` | `50` | population | soup only: copies of each seed strand in the initial population, whose size the soup keeps constant <br>`1` … `100000` |
-| `steps` | `int` | `2000` | stochastic | soup only: number of draws (one strand for self, an ordered gene/target pair for pair) <br>`0` … `10000000` |
+| `max_length` | `int` | `24` | structural | longest daughter strand kept; an outcome with a longer daughter is dropped (closure status truncated, elastic when evolving) <br>`1` … `1000` |
+| `max_species` | `int` | `200` | structural | *generate only.* species budget of the closure; the status becomes truncated when it cuts the closure off <br>`1` … `100000` |
+| `max_branches` | `int` | `1000` | structural | *generate only.* binding_tiebreak all: most distinct intermediate complexes followed while enumerating binding choices for one reactant; beyond it that reactant's reactions are dropped and the status becomes truncated <br>`1` … `1000000` |
+| `copies` | `int` | `50` | population | *evolve only.* copies of each seed strand in the initial population, whose size stays constant <br>`1` … `100000` |
+| `steps` | `int` | `2000` | stochastic | *evolve only.* number of draws (one strand for self, an ordered gene/target pair for pair), elastic ones included; a frame every generation (as many draws as the initial population has strands) <br>`0` … `10000000` |
 
 ### Implementation decisions
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "12 decisions"
+??? note "13 decisions"
 
     - GEB itself, Morris [597, 598] (the UBC thesis page blocked downloads), Varetto [882, 883] and Kvasnicka et al. [482] (author links dead, not in the Wayback Machine) were not accessible. The machine follows Snare's specification, checked against the book's fig. 10.6 and against GEB's worked example as reproduced by three independent implementations.
     - Code table: Hofstadter's table agrees in book table 10.1, Snare table 2.1a and all four implementations (kinks included). Book table 10.1 prints the same table twice although the caption says the right one is Varetto's (erratum); the varetto choice uses Snare table 2.1b, which only permutes the insert amino acids of row G and keeps the kinks with the columns. Its only source here is Snare.
@@ -300,11 +307,12 @@ The sources leave gaps, and sometimes contradict each other or the book. Each su
     - An inserting amino acid (ina/inc/ing/int) puts the base to the right of the bound unit and moves the enzyme onto it, with the complementary base opposite in copy mode and a gap otherwise; this reproduces GEB's worked example (products ATG and TAGATCCAGTCCACATCGA). Snare's code keeps the enzyme on the old unit, which gives GTT and TAGATCCAGTCCAACTCGA instead.
     - Other semantics as in Snare: cut severs both rows right of the bound unit and the enzyme continues on the left part (fig. 10.6); del leaves a gap (keeping the rows aligned, unlike Morris' shifting del) and moves right; mvr/mvl/swi into a gap or off the end stop the enzyme; rpy/rpu/lpy/lpu cross a gap in one row but not in both, and bases filled in by copy mode on the way do not end the search (fig. 10.6 needs this); on the upper strand left and right are reversed.
     - Self-application (Snare 2.6): enzymes run in translation order; each binds in the gap-free stretch of the row where the previous enzyme stopped, and copy mode is reset between enzymes. An enzyme with no site is skipped and the next one starts from the same position (Snare's code resets the position to 0 there).
-    - binding_tiebreak all enumerates every binding choice of every enzyme and gives one reaction per distinct multiset of daughters; with random the closure samples one outcome per reactant (fixed by the seed), the soup a fresh one per draw. leftmost/rightmost are in the bound strand's reading direction; rightmost is Varetto's rule (Snare 2.4).
+    - binding_tiebreak all enumerates every binding choice of every enzyme and gives one reaction per distinct multiset of daughters; with random the closure samples one outcome per reactant (fixed by the seed), chemart.evolve a fresh one per draw. leftmost/rightmost are in the bound strand's reading direction; rightmost is Varetto's rule (Snare 2.4).
     - Stoichiometry: in self the strand is consumed and its daughters are produced (a self-replicator is s -&gt; 2 s, so s shows as a catalyst); in pair the gene strand is translated without being consumed and appears on both sides. The book's fig. 10.6 caption ('enzymes coded by the strand operate on a copy of the same strand') fits pair with g = s, whose reaction is 2 s -&gt; s + daughters. No rates are published, so rates are None.
     - Species are single strands; double-stranded complexes are intermediate states inside a reaction and always separate at the end, as in GEB's puzzle and Snare's extractstrands. The v1 strand_length is kept only for random seeds; lethal_factor is dropped because Varetto's definition was not accessible.
     - Truncation: strands can grow by insertion, so max_length drops outcomes with longer daughters and max_branches bounds the enumeration of binding choices; either makes the closure status truncated.
-    - Soup (Chemart addition): chemart.soup with constant dilution; a random molecule is removed after each productive event, so outflow is constant-total. Hofstadter's generational puzzle (every strand replaced by its daughters each generation) is not a separate method.
+    - Two faces: generate_network returns the closure of the seed strands; chemart.evolve runs a well-stirred population (formerly method soup, a Chemart addition) with chemart.soup.stir and constant dilution: a random molecule is removed after each productive event, so outflow is constant-total. A frame comes every generation, as many draws as the initial population has strands (copies x seed strands). Hofstadter's generational puzzle (every strand replaced by its daughters each generation) is not modelled as a run.
+    - A population draws one outcome per collision, so chemart.evolve reads binding_tiebreak all (the default, which lists every outcome in the closure) as random: each draw picks a binding site at random. The former soup method refused all instead; with random it gives the same runs as before.
 
 ## Results
 
@@ -368,9 +376,9 @@ nondeterministic. The default network shows all three: one strand, three
 alternative reactions with two products each. The tests check that the
 default closure lists the three outcomes.
 
-**Beyond the book's system.** The soup and the `pair` reaction are Chemart
-additions, with no published counterpart. The tests check that in the soup
-the replicator ends above 90 of 100 molecules against the dud, and that in
+**Beyond the book's system.** The population run and the `pair` reaction are
+Chemart additions, with no published counterpart. The tests check that in the
+population the replicator ends above 90 of 100 molecules against the dud, and that in
 `pair` the gene strand survives every reaction.
 
 ## References

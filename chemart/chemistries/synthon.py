@@ -47,14 +47,15 @@ Reaction classes (`templates`):
 - "fig3": the three classes drawn in its figure 3 (radiative association, charge
   transfer, dissociative recombination), for which no rates are published.
 
-Methods (`method`):
+The two faces are the papers' two network generators:
 
-- "closure" is the deterministic network generator (DNG): every reaction object
+- `generate` is the deterministic network generator (DNG): every reaction object
   reachable from the initial species under the size constraints N (atoms per
   species), es (lone pairs or radicals per species) and ep (per atom);
-- "kinetic" is the MC-sampling generator (MCNG): Gillespie's SSA over the
+- `evolve` is the MC-sampling generator (MCNG): Gillespie's SSA over the
   molecules present, with the network grown from the species that actually have
-  a non-zero amount, returning the reactions that fired with their counts.
+  a non-zero amount. It yields a frame after every reaction event, at the SSA
+  time in seconds, and returns the reactions that fired with their counts.
 """
 
 from __future__ import annotations
@@ -66,8 +67,9 @@ from itertools import permutations
 
 from chemart.expand import expand
 from chemart.network import Network, Reaction, Species
+from chemart.soup import Tally
+from chemart.trajectory import Frame
 
-METHODS = ("closure", "kinetic")
 TEMPLATE_SETS = ("interstellar", "fig3")
 
 #: The molecules of figure 4 of the 2005 paper, in the notation of its caption
@@ -738,9 +740,9 @@ def _reaction_table(p):
     return table, set(table)
 
 
-def generate(p, rng):
-    if p.method not in METHODS:
-        raise ValueError(f"method must be one of {METHODS}, got {p.method!r}")
+def _setup(p):
+    """What both generators share: the seeds, their amounts, the reaction classes and
+    `react`, which records the rate and classes of every reaction object in `found`."""
     if p.templates not in TEMPLATE_SETS:
         raise ValueError(f"templates must be one of {TEMPLATE_SETS}, got {p.templates!r}")
     seeds = _seeds(p)
@@ -777,9 +779,7 @@ def generate(p, rng):
             found[(left, key)] = (rate, list(labels))
         return [entry[0] for entry in outcomes.values()]
 
-    if p.method == "closure":
-        return _closure(p, seeds, amounts, react, found, table)
-    return _kinetic(p, rng, seeds, amounts, react, found, table)
+    return seeds, amounts, react, found, table
 
 
 def _rate(table, labels) -> dict | None:
@@ -809,7 +809,6 @@ def _network(p, species, reactions, status, amounts, seeds, table, extra) -> Net
         status=status,
         initial_state=initial or None,
         extras={
-            "method": p.method,
             "templates": p.templates,
             "reaction_classes": [
                 {"class": name, "name": cls, "template": text, "k": k, "units": units}
@@ -831,7 +830,9 @@ def _network(p, species, reactions, status, amounts, seeds, table, extra) -> Net
     )
 
 
-def _closure(p, seeds, amounts, react, found, table) -> Network:
+def generate(p, rng):
+    """The deterministic network generator (DNG): the closure of the initial species."""
+    seeds, amounts, react, found, table = _setup(p)
     species, pairs, status = expand(react, seeds, arity=[1, 2],
                                     max_species=p.max_species, ordered=False, alternatives=True)
     reactions, labels = [], []
@@ -846,10 +847,12 @@ def _closure(p, seeds, amounts, react, found, table) -> Network:
                              "reachable from the initial species under the size constraints"})
 
 
-def _kinetic(p, rng, seeds, amounts, react, found, table) -> Network:
-    """MC-sampling network generator: Gillespie's SSA over the molecules present."""
+def evolve(p, rng):
+    """The MC-sampling network generator (MCNG): Gillespie's SSA over the molecules
+    present, a frame after every reaction event at the SSA time in seconds."""
+    seeds, amounts, react, found, table = _setup(p)
     if any(k is None for _, _, k, _ in table.values()):
-        raise ValueError("method='kinetic' needs rate constants; templates='fig3' publishes none")
+        raise ValueError("the kinetic generator needs rate constants; templates='fig3' publishes none")
 
     known: dict[str, Mol] = {}
     counts: Counter = Counter()
@@ -860,7 +863,12 @@ def _kinetic(p, rng, seeds, amounts, react, found, table) -> Network:
 
     cache: dict[tuple, list] = {}
     fired: dict[tuple, list] = {}
+    tally = Tally()
     time = 0.0
+
+    def frame() -> Frame:
+        return Frame(t=float(time), state={i: float(n) for i, n in sorted(counts.items()) if n},
+                     fired=tally.flush())
 
     def channels(ids: tuple[str, ...]):
         if ids not in cache:
@@ -876,6 +884,7 @@ def _kinetic(p, rng, seeds, amounts, react, found, table) -> Network:
             cache[ids] = out
         return cache[ids]
 
+    yield frame()
     for _ in range(p.steps):
         present = sorted(i for i, n in counts.items() if n > 0)
         active = []
@@ -903,6 +912,8 @@ def _kinetic(p, rng, seeds, amounts, react, found, table) -> Network:
         key = (tuple(sorted(lhs)), rhs)
         entry = fired.setdefault(key, [lhs, rhs, rate, classes, 0])
         entry[4] += 1
+        tally.add(lhs, rhs)
+        yield frame()
 
     species = [known[i] for i in sorted(known)]
     reactions = [

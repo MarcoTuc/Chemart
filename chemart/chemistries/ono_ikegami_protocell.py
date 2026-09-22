@@ -10,11 +10,12 @@ neutral) and W (water, hydrophilic). The reaction set is the book's:
     A -> Y, M -> Y, X -> Y  every particle but water decays to waste
     Y -> X                  recycling by an external energy source
 
-``mode="reactions"`` returns exactly that network. ``mode="spatial"`` runs the
-lattice and returns the reactions that actually fired with their counts, the
-lattice in ``extras["space"]``, the interaction energies in
-``extras["energies"]`` and the membrane/protocell measurements in
-``extras["analysis"]``.
+Two faces. ``generate`` returns exactly that network. ``evolve`` runs the
+lattice and yields a frame per sweep (the count of each species and the
+reactions fired in the sweep); it returns the reactions that actually fired
+with their counts, the final lattice in ``extras["space"]``, the interaction
+energies in ``extras["energies"]`` and the membrane/protocell measurements of
+the final lattice in ``extras["analysis"]``.
 
 Spatial dynamics (reconstructed; see the catalog's `decisions`): hydrophilic and
 hydrophobic particles repel each other, neutral particles couple weakly to both,
@@ -32,6 +33,7 @@ from collections import deque
 import numpy as np
 
 from chemart.network import Network, Reaction, Species
+from chemart.trajectory import Frame
 
 #: Species order used inside the lattice arrays.
 A, MEM, X, Y, W = range(5)
@@ -265,14 +267,13 @@ def _motion_pass(sp, ori, k, phase, F, p, rng):
     return sp_new, ori_new
 
 
-def _simulate(p, rng):
+def _sweeps(p, rng):
+    """Run the lattice: yield (sp, ori, fired) after each sweep, fired being the
+    reactions of that sweep by name. The first yield is the initial lattice."""
     sp, ori = _initial(p, rng)
-    initial_counts = {CODE[s]: int((sp == s).sum()) for s in range(5)}
     F = anisotropy_field(p.anisotropy, p.membrane == "isotropic")
     eps, nc, T = p.repulsion, p.neutral_coupling, p.temperature
-    fired = {name: 0 for name in
-             ("replicate", "membrane", "decay_A", "decay_M", "decay_X", "recycle")}
-    history = []
+    yield sp, ori, {}
 
     for _ in range(p.steps):
         for _ in range(p.relaxation):
@@ -302,12 +303,14 @@ def _simulate(p, rng):
         m_to_Y = is_M & (u < p.P_decay)
         y_to_X = is_Y & (u < p.X_supply)
 
-        fired["replicate"] += int(to_A.sum())
-        fired["membrane"] += int(to_M.sum())
-        fired["decay_X"] += int(x_to_Y.sum())
-        fired["decay_A"] += int(a_to_Y.sum())
-        fired["decay_M"] += int(m_to_Y.sum())
-        fired["recycle"] += int(y_to_X.sum())
+        fired = {
+            "replicate": int(to_A.sum()),
+            "membrane": int(to_M.sum()),
+            "decay_X": int(x_to_Y.sum()),
+            "decay_A": int(a_to_Y.sum()),
+            "decay_M": int(m_to_Y.sum()),
+            "recycle": int(y_to_X.sum()),
+        }
 
         sp = np.where(to_A, np.int8(A), sp)
         sp = np.where(to_M, np.int8(MEM), sp)
@@ -317,15 +320,13 @@ def _simulate(p, rng):
             fresh = rng.integers(0, 6, size=sp.shape).astype(np.int8)
             ori = np.where(to_M, fresh, ori).astype(np.int8)
 
-        history.append({c: int((sp == s).sum()) for s, c in enumerate(CODE)})
-
-    return sp, ori, initial_counts, fired, history
+        yield sp, ori, fired
 
 
 # ---------------------------------------------------------------------------
 # Measurements
 # ---------------------------------------------------------------------------
-def _analyse(sp, ori, membrane_id, history) -> dict:
+def _analyse(sp, ori, membrane_id) -> dict:
     counts = {CODE[s]: int((sp == s).sum()) for s in range(5)}
     clusters = sorted(_components(sp == MEM), key=lambda c: len(c["cells"]), reverse=True)
     sizes = [len(c["cells"]) for c in clusters]
@@ -380,14 +381,12 @@ def _analyse(sp, ori, membrane_id, history) -> dict:
         "outside_cells": outside_cells,
         "mean_membrane_coordination": round(coordination / n_m, 4) if n_m else 0.0,
         "membrane_alignment": round(in_plane / contacts, 4) if contacts else 0.0,
-        "history": {c: [h[c] for h in history] for c in CODE} if history else {},
     }
 
 
 # ---------------------------------------------------------------------------
-def generate(p, rng):
-    membrane_id = "M_a" if p.membrane == "anisotropic" else "M_i"
-    species = [
+def _species(membrane_id: str) -> list[Species]:
+    return [
         Species("A", structure="hydrophilic autocatalyst"),
         Species(membrane_id, structure=(
             "hydrophobic membrane particle, anisotropic: one of six lattice orientations"
@@ -396,7 +395,10 @@ def generate(p, rng):
         Species("Y", structure="neutral waste"),
         Species("W", structure="hydrophilic water"),
     ]
-    scheme = [
+
+
+def _scheme(membrane_id: str) -> list[tuple[str, dict, dict]]:
+    return [
         ("replicate", {"A": 1, "X": 1}, {"A": 2}),
         ("membrane", {"A": 1, "X": 1}, {"A": 1, membrane_id: 1}),
         ("decay_A", {"A": 1}, {"Y": 1}),
@@ -405,19 +407,46 @@ def generate(p, rng):
         ("recycle", {"Y": 1}, {"X": 1}),
     ]
 
-    if p.mode == "reactions":
-        return Network(
-            species=species,
-            # No rate: no accessible source publishes a rate constant for this
-            # two-dimensional scheme (see the catalog's `decisions`).
-            reactions=[Reaction(lhs, rhs) for _, lhs, rhs in scheme],
-            status="complete",
-            extras={"reference_rates": JTB2000},
-        )
 
-    sp, ori, initial_counts, fired, history = _simulate(p, rng)
+def _membrane_id(p) -> str:
+    return "M_a" if p.membrane == "anisotropic" else "M_i"
+
+
+def generate(p, rng):
+    """The book's reaction set, as a complete network."""
+    membrane_id = _membrane_id(p)
+    return Network(
+        species=_species(membrane_id),
+        # No rate: no accessible source publishes a rate constant for this
+        # two-dimensional scheme (see the catalog's `decisions`).
+        reactions=[Reaction(lhs, rhs) for _, lhs, rhs in _scheme(membrane_id)],
+        status="complete",
+        extras={"reference_rates": JTB2000},
+    )
+
+
+def evolve(p, rng):
+    """Run the lattice: a frame per sweep."""
+    membrane_id = _membrane_id(p)
+    scheme = _scheme(membrane_id)
+    ids = [membrane_id if c == "M" else c for c in CODE]
+
+    def census(sp):
+        return {ids[k]: float(n) for k, n in enumerate(np.bincount(sp.ravel(), minlength=5).tolist()) if n}
+
+    totals = {name: 0 for name, _, _ in scheme}
+    initial_counts = None
+    for t, (sp, ori, fired) in enumerate(_sweeps(p, rng)):
+        if initial_counts is None:
+            initial_counts = {ids[k]: int((sp == k).sum()) for k in range(5)}
+        for name, n in fired.items():
+            totals[name] += n
+        yield Frame(t=float(t), state=census(sp), fired=[
+            [sorted(_elements(lhs)), sorted(_elements(rhs)), fired[name]]
+            for name, lhs, rhs in scheme if fired.get(name)])
+
     reactions = [
-        Reaction(lhs, rhs, count=fired[name]) for name, lhs, rhs in scheme if fired[name]
+        Reaction(lhs, rhs, count=totals[name]) for name, lhs, rhs in scheme if totals[name]
     ]
     grid = ["".join(CODE[s] for s in row) for row in sp.tolist()]
     orientations = [
@@ -450,11 +479,10 @@ def generate(p, rng):
         "reference_rates": JTB2000,
     }
     return Network(
-        species=species,
+        species=_species(membrane_id),
         reactions=reactions,
         status="observed",
-        initial_state={(membrane_id if s == "M" else s): float(n)
-                       for s, n in initial_counts.items()},
+        initial_state={s: float(n) for s, n in initial_counts.items()},
         extras={
             "space": {
                 "dimensions": 2,
@@ -469,6 +497,10 @@ def generate(p, rng):
                 "orientations": orientations,
             },
             "energies": energies,
-            "analysis": _analyse(sp, ori, membrane_id, history),
+            "analysis": _analyse(sp, ori, membrane_id),
         },
     )
+
+
+def _elements(side: dict) -> list[str]:
+    return [s for s, n in side.items() for _ in range(n)]

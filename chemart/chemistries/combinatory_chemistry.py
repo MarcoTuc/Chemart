@@ -26,6 +26,9 @@ or condense it with the remembered expression e_LEFT (or remember e if there is
 none). ``F`` > 1 turns on reactant assemblage (Algorithm 2): a missing reactant
 of at most F atoms is built on the spot from free atoms.
 
+The chemistry is a gas with one face, ``evolve``: a frame every
+``record_every`` iterations, reporting the mean length, the share of
+reductions, the free atoms and the reactants most consumed by S-reactions.
 The network is what one run did: the distinct reactions that fired, with
 counts, and their type in ``extras["reaction_kinds"]``.
 """
@@ -35,6 +38,8 @@ from __future__ import annotations
 from collections import Counter
 
 from chemart.network import Network, Reaction, Species
+from chemart.soup import Tally
+from chemart.trajectory import Frame
 
 ATOMS = "SKI"
 ARITY = {"I": 1, "K": 2, "S": 3}
@@ -289,51 +294,54 @@ class Reactor:
         return [("condense", (left, e), (product,))]
 
 
-def generate(p, rng):
+def _key(lhs, rhs) -> tuple:
+    return (frozenset(Counter(lhs).items()), frozenset(Counter(rhs).items()))
+
+
+def evolve(p, rng):
+    """Algorithm 1 from free atoms: a frame every record_every iterations
+    (frame 0 is the initial multiset, and the last iteration ends a frame)."""
     initial = {a: n for a, n in (("I", p.n_I), ("K", p.n_K), ("S", p.n_S)) if n}
     if sum(initial.values()) < 2:
         raise ValueError("n_I + n_K + n_S must be at least 2")
     pool = Pool([a for a, n in initial.items() for _ in range(n)])
     reactor = Reactor(pool, p.F, p.max_reductions)
 
-    fired: dict[tuple, list] = {}
+    tally = Tally()
     kinds: dict[tuple, str] = {}
-    consumed: Counter = Counter()           # reactants of S-reactions, per window
-    window = Counter()                      # event kinds in the current window
-    analysis = {"iteration": [], "diversity": [], "mean_length": [], "reductions": [],
-                "free_atoms": {a: [] for a in ATOMS}, "top_reactants": []}
+    consumed: Counter = Counter()           # reactants of S-reactions, per frame
+    window = Counter()                      # event kinds in the current frame
 
-    def measure(t):
+    def frame(t):
         n = len(pool.items)
-        analysis["iteration"].append(t)
-        analysis["diversity"].append(len(pool.count))
-        analysis["mean_length"].append(round(sum(size(reactor.parsed(m)) * c for m, c in pool.count.items()) / n, 3))
         steps = sum(window.values())
         reduced = window["I"] + window["K"] + window["S"]
-        analysis["reductions"].append(round(reduced / steps, 4) if steps else 0.0)
-        for a in ATOMS:
-            analysis["free_atoms"][a].append(pool.count[a])
-        analysis["top_reactants"].append(dict(consumed.most_common(5)))
+        observables = {
+            "mean_length": round(sum(size(reactor.parsed(m)) * c for m, c in pool.count.items()) / n, 3),
+            "reductions": round(reduced / steps, 4) if steps else 0.0,
+            "free_atoms": {a: pool.count[a] for a in ATOMS},
+            "top_reactants": dict(consumed.most_common(5)),
+        }
         consumed.clear()
         window.clear()
+        return Frame(t=float(t), state={m: float(c) for m, c in pool.count.items()},
+                     fired=tally.flush(), observables=observables)
 
-    measure(0)
+    yield frame(0)
     for t in range(1, p.iterations + 1):
         events = reactor.step(rng)
         window["idle" if not events else events[-1][0]] += 1
         for kind, lhs, rhs in events:
-            key = (frozenset(Counter(lhs).items()), frozenset(Counter(rhs).items()))
-            if key not in fired:
-                fired[key] = [lhs, rhs, 0]
-                kinds[key] = kind
-            fired[key][2] += 1
+            kinds.setdefault(_key(lhs, rhs), kind)
+            tally.add(lhs, rhs)
             if kind == "S":
                 consumed[lhs[1]] += 1
         if t % p.record_every == 0 or t == p.iterations:
-            measure(t)
+            yield frame(t)
 
+    fired = tally.reactions()
     names = dict.fromkeys(initial)
-    for lhs, rhs, _ in fired.values():
+    for lhs, rhs, _ in fired:
         names.update(dict.fromkeys((*lhs, *rhs)))
     species = [Species(m, structure=bracketed(reactor.parsed(m))) for m in names]
     conservation = [
@@ -342,13 +350,12 @@ def generate(p, rng):
     ]
     return Network(
         species=species,
-        reactions=[Reaction.of(lhs, rhs, count=c) for lhs, rhs, c in fired.values()],
+        reactions=[Reaction.of(lhs, rhs, count=c) for lhs, rhs, c in fired],
         status="observed",
         initial_state={a: float(n) for a, n in initial.items()},
         extras={
-            "reaction_kinds": [kinds[k] for k in fired],
+            "reaction_kinds": [kinds[_key(lhs, rhs)] for lhs, rhs, _ in fired],
             "conservation": conservation,
             "final_state": dict(pool.count.most_common()),
-            "analysis": analysis,
         },
     )

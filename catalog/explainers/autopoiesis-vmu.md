@@ -142,8 +142,9 @@ and the `m` at the top right of the right grid were made that way.
 
 ### A worked example: reading the reactions
 
-A run records every reaction that fired, with a count. These are from the
-default run below:
+A run of the lattice records every reaction that fired, with a count. These
+are from the default run, `chemart.evolve("autopoiesis-vmu", seed=1)`
+(see *Using it*):
 
 ```
 C + 2 S -> C + L0  (x39)
@@ -162,10 +163,8 @@ substrates. Species on both sides of a reaction are the bond states of the
 links involved, which is why one physical event can appear as several
 different reactions.
 
-One recording error affects this list: when two links of the *same* species
-bond, the reaction is stored with one of each instead of two. The default run
-contains `L1S -> L2S (x7)`, which is really `2 L1S -> 2 L2S`, and likewise
-`L1 -> L2`, `L0 -> L1` and `L0S -> L1S`. The lattice itself is not affected.
+When two links of the *same* species bond, both appear on each side: the
+default run contains `2 L1S -> 2 L2S (x7)`.
 
 ### What the formal specification below means
 
@@ -179,25 +178,54 @@ been published for this model, so the reactions carry no rates.
 
 ## Using it
 
+The model has two faces. The call printed above,
+`chemart.generate_network("autopoiesis-vmu")`, returns the reaction list
+alone: the 16 reactions the chemistry defines (production, three bonding
+reactions between unloaded links, and disintegration, absorption and emission
+for each link species), with no lattice run and no parameters.
+`chemart.evolve("autopoiesis-vmu")` runs the lattice and returns a trajectory
+with a frame per time step; every parameter in the table belongs to it.
+
 The default run is the book's figure 6.3 at the start: one catalyst in the
 centre of a 30 × 30 world full of substrate. It runs 120 steps, enough to see
 the elementary reactions but not a cell; with seed 1 the only closed chain at
-the end is a three-link cluster. Everything about the run is in `net.extras`:
+the end is a three-link cluster.
 
 ```python
-a = net.extras["analysis"]
+traj = chemart.evolve("autopoiesis-vmu", seed=1)
+traj.frames[0].state      # {'C': 1.0, 'S': 899.0}
+traj.frames[1].fired      # [[['C', 'S', 'S'], ['C', 'L0'], 1]]
+traj.frames[-1].state
+# {'C': 1.0, 'L0': 2.0, 'L0S': 2.0, 'L1': 1.0, 'L1S': 5.0, 'L2S': 8.0, 'S': 832.0}
+traj.frames[-1].observables
+# {'closed_chains': 1, 'membranes': 0, 'enclosed_catalysts': 0}
+```
+
+A frame's `state` counts the particles of each species on the lattice (holes
+are not a species), and `fired` lists the reactions of that time step
+(reactants, products, count). The observables measure the membranes at that
+step: `closed_chains`, `membranes` (closed chains of six links or more, the
+threshold of Von Kamp 2002) and `enclosed_catalysts`. A catalyst counts as
+*enclosed* when some closed chain cuts it off from the rest of the torus.
+`traj.series("enclosed_catalysts")` gives one of them over the whole run.
+
+`traj.network` is the network of the reactions that fired, with counts. Its
+`extras` hold the final lattice and whole-run measurements:
+
+```python
+a = traj.network.extras["analysis"]
 a["events"]        # {'absorption': 146, 'bond': 36, 'disintegration': 21, 'emission': 116,
                    #  'motion': 2851, 'production': 39, 'substrates_released': 41}
 a["membrane"]      # closed_chains, chain_lengths, membranes (6+ links), clusters,
                    # enclosed_catalysts, first_enclosure_step, steps_enclosed, ruptures, repairs
 a["permeability"]  # substrate / link / catalyst crossings of the cell boundary
-a["per_step"]      # series: substrates, links, free_links, chain_links, closed_chains, ...
-net.extras["space"]["grid"]    # the final lattice as strings, legend in space["legend"]
+traj.network.extras["space"]["grid"]    # the final lattice as strings, legend in space["legend"]
 ```
 
-A catalyst counts as *enclosed* when some closed chain cuts it off from the
-rest of the torus. `ruptures` counts the steps at which enclosure is lost,
-`repairs` the steps at which it is regained after the first enclosure.
+`membrane` describes the final lattice, except `first_enclosure_step`,
+`steps_enclosed`, `ruptures` (the steps at which enclosure is lost) and
+`repairs` (the steps at which it is regained after the first enclosure),
+which count over the run.
 
 **Start from a cell.** `initial="cell"` places a ready-made membrane of twelve
 links around the catalyst, enclosing a 3 × 3 interior (the cell of Von Kamp's
@@ -205,13 +233,16 @@ figure 2). With a 15 × 15 world and `disintegration_probability=0.001` this is
 close to the set-up of McMullin and Varela (1997) described under Results:
 
 ```python
-net = chemart.generate_network("autopoiesis-vmu", seed=1, initial="cell",
-                               width=15, height=15, steps=2000,
-                               disintegration_probability=0.001)
-net.extras["analysis"]["membrane"]["steps_enclosed"]   # 111
-net.extras["analysis"]["permeability"]
+traj = chemart.evolve("autopoiesis-vmu", seed=1, initial="cell",
+                      width=15, height=15, steps=2000,
+                      disintegration_probability=0.001)
+sum(n > 0 for n in traj.series("enclosed_catalysts"))       # 111
+traj.network.extras["analysis"]["permeability"]
 # {'substrate_crossings': 32, 'link_crossings': 0, 'catalyst_crossings': 0}
 ```
+
+The catalyst is enclosed at 111 of the 2,001 frames (`steps_enclosed` in the
+analysis gives the same count).
 
 **Switch off the missing rule.** Add `bond_inhibition=False` to reproduce the
 failure of the published algorithm; the grids above show what it does. The
@@ -223,12 +254,12 @@ threshold, while the default 1 is SCL's.
 steps. On a 14 × 14 world with `steps=2000`, every one of seeds 0–5 closed a
 chain around the catalyst at some point, first at steps 90 to 1,443. On the
 default 30 × 30 world, seed 1 with `steps=3000` first encloses the catalyst at
-step 374.
+step 374:
 
-**The reaction list alone.** `mode="reactions"` returns the 16 reactions the
-chemistry defines, without running the lattice: production, three bonding
-reactions between unloaded links, and disintegration, absorption and emission
-for each link species.
+```python
+traj = chemart.evolve("autopoiesis-vmu", seed=1, steps=3000)
+next(f.t for f in traj.frames if f.observables["enclosed_catalysts"])   # 374.0
+```
 
 All of these are fast: about a second per thousand steps on the 30 × 30
 lattice, less on smaller ones. Disintegration does not always conserve

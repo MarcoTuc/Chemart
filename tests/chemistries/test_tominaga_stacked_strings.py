@@ -13,7 +13,7 @@ from collections import Counter
 
 import pytest
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries.tominaga_stacked_strings import (
     AB_RULES, ACETYL_COA, ADLEMAN_ANSWER, ADLEMAN_RULES, BENENSON_RULES, DETECTOR_S0, DETECTOR_S1,
     FATTY_ACID_RULES, FOK_I, TRANSCRIPTION_RULES, TRANSITIONS, Rule, acyl_coa, benenson_input,
@@ -170,7 +170,8 @@ def test_automaton_accepts_words_with_an_even_number_of_b():
 
 
 def test_soup_run_of_the_published_pool():
-    net = generate_network(ID, method="soup", steps=4000, seed=3)
+    traj = evolve(ID, steps=4000, seed=3)
+    net = traj.network
     assert net.status == "observed"
     final = Counter(net.extras["final_state"])
     fok_elements = sum(c * parse_molecule(m)[0][1].count("F") for m, c in final.items())
@@ -178,6 +179,8 @@ def test_soup_run_of_the_published_pool():
     assert net.extras["analysis"]["accepted"] == ["abb"]
     assert final[benenson_reporter("S0", 1)] >= 1
     assert sum(rx.count for rx in net.reactions) <= 4000
+    # a frame per generation: the published pool holds 220 objects
+    assert traj.times()[:3] == [0.0, 220.0, 440.0] and traj.times()[-1] == 4000.0
 
 
 # --- transcription (2009 sec. 3.2) -----------------------------------------------------------

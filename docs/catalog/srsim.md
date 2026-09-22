@@ -263,6 +263,18 @@ holds each rule's reactive volume and macroscopic constant. A species whose
 text would exceed 120 characters is named by its formula and a hash, such as
 `M10#df2d2d`.
 
+`chemart.evolve("srsim", ...)` runs the same simulation and returns it as a
+trajectory: one frame per step, timed in simulated time (step × `dt`), the unit
+the rate constants are given in. A frame's `state` counts the complexes and its
+`fired` lists the reactions of that step. In the default run the 50 monomers
+assemble into fewer, larger complexes:
+
+```python
+traj = chemart.evolve("srsim", seed=1)
+[(f.t, sum(f.state.values())) for f in traj.frames[::500]]
+# [(0.0, 50.0), (10.0, 17.0), (20.0, 13.0), (30.0, 12.0)]
+```
+
 **Geometry decides the shapes.** Vary `bond_angle` with a tighter tolerance
 (each run takes a couple of seconds):
 
@@ -319,7 +331,7 @@ shows their format.
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `chemart.evolve` (or `generate_network`, which runs the process to the end). The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
@@ -353,7 +365,7 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "11 decisions"
+??? note "12 decisions"
 
     - The book gives SRSim one paragraph, so everything is reconstructed from the 2010 paper, its supplement, its sources and its example models. LAMMPS and BioNetGen are not dependencies: the molecular dynamics, the BNGL-style rule language and the rule engine are reimplemented in numpy at the scale that fits Chemart's budget.
     - Rule language: a documented BNGL subset. A rule has one or two elementary molecules per side (SRSim executes mono- and bimolecular reactions) and performs exactly one action - form a bond, break a bond, or change one internal state - which is SRSim's set of modifying, binding and breaking rules. Patterns constrain one elementary molecule each, not larger subgraphs, so context conditions that span three or more molecules (used in the paper's microtubule and Sierpinski models) cannot be written; exchange rules, molecule creation and deletion are not supported by SRSim either.
@@ -366,6 +378,7 @@ The sources leave gaps, and sometimes contradict each other or the book. Each su
     - Species identity: the canonical text of the complex (colour refinement, then the least breadth-first text over the refined roots, sites grouped by name and bonds numbered by appearance), so isomorphic complexes are one species and components with the same name are interchangeable, as in BNGL. The refinement is exact for the complexes these models build; texts longer than 120 characters are replaced by formula#hash to keep species ids readable.
     - v1 parameters agent_rules (callable) and geometry (matrix) became the model choice plus the custom molecule_types/rules/init, in JSON and in the rule mini-language. The reactor, the tolerances and the force constants are exposed with the values the published input files use.
     - The network has status 'observed': it is the set of complex-level reactions that fired, with counts. Nothing is enumerated in advance - that is the point of rule-based modelling - so the network is a sample of an unbounded species set, and the rule set itself is kept in extras.rules and extras.bngl.
+    - chemart.evolve yields a frame per molecular-dynamics step; frame 0 is the initial placement. The clock is the simulated time (step x dt), the unit the network's rate constants are given in, so a frame can be set beside an ODE or SSA run of the observed network. A frame's state counts the complexes and its fired lists the complex-level reactions of that step; there are no observables, since the assembly statistics of extras.analysis are whole-run results (final counts and means over the second half of the run). generate_network runs the simulation and returns the network.
 
 ## Results
 

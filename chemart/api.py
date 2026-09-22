@@ -149,6 +149,12 @@ def describe_chemistry(chemistry: str, revision: str | None = None) -> dict[str,
 
 #: Parameters that chose between a closure and a soup before the two became faces.
 _REMOVED_MODES = ("method", "mode")
+#: Parameters that left an entry, with where they went.
+_MOVED = {
+    ("rbn", "model"): "RBN World is its own entry now: use the id 'rbn-world' (with chemart.evolve)",
+    ("ca-embedded-particles", "reactions"): "generate_network gives the published table and "
+                                            "chemart.evolve the observed run",
+}
 
 
 def faces(c: catalog.Chemistry) -> list[str]:
@@ -180,6 +186,8 @@ def resolve_params(c: catalog.Chemistry, given: dict[str, Any], face: str | None
                 call = "chemart.evolve" if other.face == "evolve" else "chemart.generate_network"
                 raise ValueError(f"{c.id}: parameter {name!r} belongs to the {other.face} face; "
                                  f"pass it to {call}")
+            if (c.id, name) in _MOVED:
+                raise ValueError(f"{c.id}: parameter {name!r} is gone: {_MOVED[c.id, name]}")
             if name in _REMOVED_MODES and "evolve" in faces(c):
                 raise ValueError(f"{c.id}: parameter {name!r} is gone: generate_network returns the "
                                  "network (the closure) and chemart.evolve runs the process (the soup)")

@@ -196,11 +196,30 @@ net.extras["final_assignment"]               # [4, 6, 1, 5, 2, 0, 3, 7]   a solu
 a["god_initial"], a["god_final"]             # (0, 28)
 ```
 
-`final_assignment[i]` is the column of the queen in row `i`. `a["god"]` holds
-the global order degree after every reaction, which is the curve Kanada plots.
-The network itself records each distinct accepted reaction once, with how often
-it happened, so a count like 187 reactions in the summary is the number of
-*different* swaps, while `a["reactions"]` counts every accepted one.
+`final_assignment[i]` is the column of the queen in row `i`. The network itself
+records each distinct accepted reaction once, with how often it happened, so a
+count like 187 reactions in the summary is the number of *different* swaps,
+while `a["reactions"]` counts every accepted one.
+
+To watch the run rather than its outcome, `chemart.evolve` returns a
+trajectory. It has a frame for the starting board, one after every accepted
+reaction, and a last one at the final attempt when the run ended on a streak of
+failures. Time is counted in attempted reactions (tests). Each frame holds the
+board (`state`, one species per queen), the reaction just accepted (`fired`)
+and the global order degree as the observable `god`, the curve Kanada plots:
+
+```python
+traj = chemart.evolve("ccm", seed=1)
+god = traj.series("god")
+len(traj.frames), traj.times()[-2:]          # (190, [573.0, 1637.0])
+god[:10]                                     # [0, 12, 16, 21, 25, 25, 23, 24, 25, 26]
+god[-3:]                                     # [24, 28, 28]
+traj.frames[1].fired                         # [[['q3=3', 'q4=4', 'q6=6'], ['q3=4', 'q4=3', 'q6=6'], 1]]
+```
+
+The board was solved at the 573rd attempt. The run then went on failing,
+because a solved board never changes, until the termination test stopped it at
+attempt 1,637.
 
 **Colouring the USA map.** Set `problem="graph-coloring"`. The default graph is
 the 48 contiguous states with their 106 borders, starting all one colour:
@@ -240,7 +259,7 @@ probability `edge_probability`, the model behind the DSJC benchmark graphs, and
 
 #### Parameters
 
-Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
+Pass any of these as keyword arguments to `chemart.evolve` (or `generate_network`, which runs the process to the end). The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.
 
 | name | type | default | role | what it does |
 |---|---|---|---|---|
@@ -263,7 +282,7 @@ Pass any of these as keyword arguments to `generate_network`. The *role* column 
 
 The sources leave gaps, and sometimes contradict each other or the book. Each such case, and how Chemart resolved it, is listed here: read these before quoting a number from this page.
 
-??? note "13 decisions"
+??? note "14 decisions"
 
     - Book error: 17.2.2 credits the annealing variant with frustration to [438]. [438] (SMC'95) introduces CCM*, a randomized tunnelling by dynamic rule composition, and uses no frustration; FAM is from Kanada's SWoPP'94 paper (Japanese, not used), FUZZ-IEEE'95 sec. 3-4 and the 1996 manuscript sec. 4, which are followed here. CCM* is not implemented.
     - Book wording: a rule 'may be applied if the sum of LODs on the LHS is smaller than on the RHS' (strict). Kanada's papers say the IOD must not decrease (HICSS-27 sec. 3.3, SMC'95 sec. 2.1), with the strict test as an allowed variant (HICSS-27 footnote 3). Both are offered as acceptance; the default is Kanada's non-decreasing test.
@@ -272,11 +291,12 @@ The sources leave gaps, and sometimes contradict each other or the book. Each su
     - n-queens LOD: HICSS-27 fig. 4 defines o only by diagonals, since the swap rule keeps one queen per row and column; Queens_Sort.order also sets o = 0 for a shared column, which the moving rule needs. The demo's definition is used; under swap rules the two coincide.
     - n-queens rules: swaps with 0-3 catalysts (HICSS-27 figs. 9-10 use Nc = 0..3; the demo 0..2) and the demo's variable-catalyst moving rule. Atoms are drawn uniformly without repetition, as the demos' rejection loops do. The moving rule draws a new column different from the current one (the demo can redraw the same column, which counts as a reaction with no change); this matches USAmap_color.select_color and records no empty reactions. A rule matching more than N queens is rejected (HICSS-27 sec. 5.3).
     - graph-coloring rules: the demo's recolouring with one or two random neighbours as catalysts (vertices with too few neighbours are skipped as failed tests, USAmap_color.change_color1/2), extended to three, or all neighbours (variable catalyst, FUZZ-IEEE'95 fig. 4c). The new colour is drawn uniformly among the other colours (select_color); the papers draw from all colours but a same-colour draw can never change the state. The map's graph is the demo's; its mean degree 212/48 = 4.42 matches FUZZ-IEEE'95 sec. 3.
-    - Termination as in the demos' loopTick: with threshold T (1000 + N^2 for queens, 1000 for colouring), when T tests in a row fail the run stops if fewer than 20 T tests were made, else T doubles (the 1996 manuscript's 'maximum number of trials increased to 1/20 of the total number of LHS tests'). max_tests is a hard budget. GOD is never used by the dynamics; it is only reported (analysis).
+    - Termination as in the demos' loopTick: with threshold T (1000 + N^2 for queens, 1000 for colouring), when T tests in a row fail the run stops if fewer than 20 T tests were made, else T doubles (the 1996 manuscript's 'maximum number of trials increased to 1/20 of the total number of LHS tests'). max_tests is a hard budget. GOD is never used by the dynamics; it is only reported (the frames' observable and extras.analysis).
     - Published counts: FUZZ-IEEE'95 table 2 reports 112 reactions and 4406 LHS matchings on average for the USA map with the variable-catalyst rule and FAM, run with 'a slightly modified version of the rule and LOD' in SOOC-94; Chemart's demo-based rule gives about 117 reactions and 2500 tests (10 seeds). The reaction count is checked in the tests (60-200); the matching count is not, since the modification is not described.
     - Initial states follow the demos: queens on the diagonal (the GOD minimum, HICSS-27 sec. 4.1) and all vertices colour 0 (FUZZ-IEEE'95); HICSS-27 measured fig. 7 from random layouts, offered as initial=random.
     - Not implemented: the TSP, 0-1 knapsack/integer programming and sorting casters (HICSS-27 table 1 gives only counts; SMC'95 gives the 0-1 IPP rule but its runs need CCM*), fuzzy colouring (FUZZ-IEEE'95 sec. 4-5) and parallel scheduling (1996 sec. 5). Timings (SOOC on Macintosh, C on a Cray CS6400) are not reproducible; tests check the qualitative claims and the counts.
-    - Observed network: species are the initial atom states and every atom state produced; reactions are the distinct accepted rule applications (changed atoms first, then catalysts on both sides) with counts; initial_state has one of each initial atom state. extras.analysis: tests, reactions, uphill_reactions (accepted only thanks to frustration), terminated, god_initial/final/max, mod_final, solved, first_solution_reaction, god (GOD after each reaction, first 20000), mean_frustration_final; extras.instance (N, or vertices, edges, colors, mean_degree), initial_assignment and final_assignment. No rate constants: CCM has none.
+    - Observed network: species are the initial atom states and every atom state produced; reactions are the distinct accepted rule applications (changed atoms first, then catalysts on both sides) with counts; initial_state has one of each initial atom state. extras.analysis: tests, reactions, uphill_reactions (accepted only thanks to frustration), terminated, god_initial/final/max, mod_final, solved, first_solution_reaction (index of the first reaction after which GOD is at its maximum), mean_frustration_final; extras.instance (N, or vertices, edges, colors, mean_degree), initial_assignment and final_assignment. No rate constants: CCM has none.
+    - chemart.evolve yields a frame after every accepted reaction, the only events that change the working memory; frame 0 is the initial assignment. Time is the number of rule tests so far (LHS matches; a colouring draw skipped because the vertex has too few neighbours is not a test), and a last frame at the final test is added when the run ended on failed tests. A frame's state holds one of each current atom state, its fired the reaction just accepted, and its observable god the global order degree, the curve Kanada plots against reactions (HICSS-27 fig. 8). The former extras.analysis.god series (cut at 20,000 entries) is this observable, uncut. generate_network runs the reactor to the end and returns the network.
     - v1 parameters: the LOD callable becomes the LOD fixed by the problem; catalysts (bool) becomes the rule enum; c keeps its meaning (FAM growth factor) with f0 added.
 
 ## Results

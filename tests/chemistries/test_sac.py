@@ -9,7 +9,7 @@ from collections import Counter
 
 import pytest
 
-from chemart import generate_network
+from chemart import evolve, generate_network
 from chemart.chemistries.sac import (
     MEMBRANE_BREEDER, MEMBRANE_SEED, MODEL_I_CONSTRUCTOR, MODEL_I_COPIER, MODEL_II_CONSTRUCTOR,
     MODEL_II_COPIER, MODEL_III_CONSTRUCTOR, MODEL_III_COPIER, ancestral_cell, decode, escape,
@@ -167,20 +167,22 @@ def test_closure_truncates_on_budget():
 def test_soup_grows_the_cell():
     # a copy needs ~35 consecutive effective collisions among 12 strings; 20000 collisions
     # grow the ancestral cell of model (i) to about three times its size
-    net = generate_network("sac", seed=3, method="soup", steps=20000)
+    traj = evolve("sac", seed=3, steps=20000)
+    net = traj.network
     a = net.extras["analysis"]
-    assert net.status == "observed" and a["population_size"][0] == 12
-    assert a["population_size"][-1] >= 24
-    assert all(b >= a_ for a_, b in zip(a["population_size"], a["population_size"][1:])), "catalytic: never shrinks"
+    size = [sum(f.state.values()) for f in traj.frames]
+    assert net.status == "observed" and size[0] == 12
+    assert size[-1] >= 24
+    assert all(b >= a_ for a_, b in zip(size, size[1:])), "catalytic: never shrinks"
     assert sum(r.count for r in net.reactions) <= 20000
     final = Counter(net.extras["final_state"])
-    assert sum(final.values()) == a["population_size"][-1]
+    assert sum(final.values()) == size[-1]
     assert any(c > 1 for c in a["seed_copies_final"].values())
 
 
 def test_soup_constant_dilution_keeps_size():
-    net = generate_network("sac", seed=1, method="soup", steps=500, dilution="constant")
-    assert set(net.extras["analysis"]["population_size"]) == {12}
+    traj = evolve("sac", seed=1, steps=500, dilution="constant")
+    assert {sum(f.state.values()) for f in traj.frames} == {12}
 
 
 def test_custom_strings():

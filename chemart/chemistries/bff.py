@@ -28,7 +28,9 @@ has replaced each byte with a random one with probability ``mutation_rate``.
 ``space="grid"`` is the paper's 2D variant (section 2.2): programs sit on a
 grid and pair only with a neighbour at most two cells away along each axis.
 
-The network is the record of one run: the distinct reactions A + B -> A' + B'
+The chemistry is a gas with one face, ``evolve``: a frame per epoch, whose
+observables are the paper's high-order entropy and three simpler traces. The
+network is the record of one run: the distinct reactions A + B -> A' + B'
 that changed a tape, and the mutations A -> A', with counts. A self-replicator
 S shows up as S + F -> S + S, the paper's equation (5).
 """
@@ -41,6 +43,8 @@ import brotli
 import numpy as np
 
 from chemart.network import Network, Reaction, Species
+from chemart.soup import Tally
+from chemart.trajectory import Frame
 
 TAPE = 64
 COMMANDS = "<>{}-+.,[]"
@@ -202,7 +206,12 @@ def _pairs(p, rng, neighbours) -> list[tuple[int, int]]:
     return out
 
 
-def generate(p, rng):
+def _key(lhs, rhs) -> tuple:
+    return (frozenset(Counter(lhs).items()), frozenset(Counter(rhs).items()))
+
+
+def evolve(p, rng):
+    """The primordial soup: a frame per epoch (frame 0 is the initial soup)."""
     if p.replicators > p.tapes:
         raise ValueError(f"replicators ({p.replicators}) cannot exceed tapes ({p.tapes})")
     neighbours = None
@@ -221,30 +230,23 @@ def generate(p, rng):
             soup[int(i)] = seeded
 
     initial = Counter(show(bytes(row)) for row in soup)
-    fired: dict[tuple, list] = {}
+    tally = Tally()
     kinds: dict[tuple, str] = {}
 
     def record(lhs, rhs, kind):
-        key = (frozenset(Counter(lhs).items()), frozenset(Counter(rhs).items()))
-        if key not in fired:
-            fired[key] = [lhs, rhs, 0]
-            kinds[key] = kind
-        fired[key][2] += 1
+        kinds.setdefault(_key(lhs, rhs), kind)
+        tally.add(lhs, rhs)
 
-    analysis = {"epoch": [], "high_order_entropy": [], "distinct_tapes": [],
-                "top_tape_count": [], "ops_per_run": [], "zero_bytes": []}
-
-    def measure(epoch, ops, runs):
+    def frame(epoch, ops, runs):
         flat = soup.tobytes()
-        tapes = Counter(soup[i].tobytes() for i in range(p.tapes))
-        analysis["epoch"].append(epoch)
-        analysis["high_order_entropy"].append(round(high_order_entropy(flat), 4))
-        analysis["distinct_tapes"].append(len(tapes))
-        analysis["top_tape_count"].append(tapes.most_common(1)[0][1])
-        analysis["ops_per_run"].append(round(ops / runs, 2) if runs else 0.0)
-        analysis["zero_bytes"].append(int(flat.count(0)))
+        tapes = Counter(show(soup[i].tobytes()) for i in range(p.tapes))
+        return Frame(t=float(epoch), state={s: float(n) for s, n in tapes.items()}, fired=tally.flush(),
+                     observables={"high_order_entropy": round(high_order_entropy(flat), 4),
+                                  "top_tape_count": tapes.most_common(1)[0][1],
+                                  "ops_per_run": round(ops / runs, 2) if runs else 0.0,
+                                  "zero_bytes": int(flat.count(0))})
 
-    measure(0, 0, 0)
+    yield frame(0, 0, 0)
     for epoch in range(1, p.epochs + 1):
         # Background mutation, before execution, of every byte of every program.
         if p.mutation_rate > 0:
@@ -268,19 +270,18 @@ def generate(p, rng):
             a2, b2 = show(tape[:TAPE]), show(tape[TAPE:])
             if Counter((a, b)) != Counter((a2, b2)):
                 record((a, b), (a2, b2), "execution")
-        if epoch % p.record_every == 0 or epoch == p.epochs:
-            measure(epoch, ops, len(pairs))
+        yield frame(epoch, ops, len(pairs))
 
+    fired = tally.reactions()
     final = Counter(show(soup[i].tobytes()) for i in range(p.tapes))
     names = dict.fromkeys(initial)
-    for lhs, rhs, _ in fired.values():
+    for lhs, rhs, _ in fired:
         names.update(dict.fromkeys((*lhs, *rhs)))
     names.update(dict.fromkeys(final))
 
     extras = {
-        "reaction_kinds": [kinds[k] for k in fired],
+        "reaction_kinds": [kinds[_key(lhs, rhs)] for lhs, rhs, _ in fired],
         "final_state": dict(final.most_common()),
-        "analysis": analysis,
         "notation": ("species are 64-byte programs, one character per byte: BFF commands "
                      "<>{}-+.,[] as themselves, the zero byte as '0', any other byte b as U+0100+b"),
     }
@@ -289,7 +290,7 @@ def generate(p, rng):
                            "radius": 2, "final_grid": [show(soup[i].tobytes()) for i in range(p.tapes)]}
     return Network(
         species=[Species(s) for s in names],
-        reactions=[Reaction.of(lhs, rhs, count=count) for lhs, rhs, count in fired.values()],
+        reactions=[Reaction.of(lhs, rhs, count=count) for lhs, rhs, count in fired],
         status="observed",
         initial_state={s: float(c) for s, c in initial.items()},
         extras=extras,
