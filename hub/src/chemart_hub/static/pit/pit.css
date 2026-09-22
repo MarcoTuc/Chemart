@@ -1,0 +1,32 @@
+/* The simulation pit: on top of chemart.css. */
+.pit-head { gap: 16px; }
+.pit { display: grid; grid-template-columns: minmax(300px, 380px) 1fr; gap: 28px; padding-top: 22px; padding-bottom: 60px; }
+@media (max-width: 860px) { .pit { grid-template-columns: 1fr; } }
+.pit-controls h3 { margin: 18px 0 8px; font-size: 0.95rem; }
+.pit-controls select, .pit-controls input[type=text], .pit-controls input[type=number], .pit-controls textarea { width: 100%; }
+.pit-label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--muted); margin: 10px 0 4px; }
+.pit-about { font-size: 0.85rem; margin: 6px 0 10px; }
+.pit-faces { margin: 6px 0 4px; }
+.pit-form { display: grid; gap: 8px; }
+.pit-form label, .pit-row label { display: block; font-size: 0.82rem; color: var(--muted); }
+.pit-form small { display: block; color: var(--faint); font-size: 0.75rem; line-height: 1.3; }
+.pit-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; margin: 8px 0; }
+.pit-check { display: flex; gap: 6px; align-items: center; font-size: 0.82rem; color: var(--muted); margin: 8px 0; }
+.pit-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.pit-seed { position: sticky; bottom: 0; background: var(--bg); padding: 8px 0; }
+.pit-spec { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; margin: 8px 0; }
+.pit-spec legend { font-size: 0.8rem; font-weight: 600; color: var(--muted); padding: 0 4px; }
+.pit-charts { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+.pit-chart { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; }
+.pit-chart.wide { grid-column: 1 / -1; }
+.pit-chart h4 { margin: 0 0 6px; font-size: 0.85rem; }
+.pit-output table { margin-top: 12px; }
+.pit-output td.num { text-align: right; font-family: var(--mono); }
+.pit-bar { height: 8px; background: var(--accent); border-radius: 4px; min-width: 1px; }
+.pit-id { font-family: var(--mono); font-size: 0.78rem; max-width: 26ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pit-error { color: var(--danger); white-space: pre-wrap; }
+.u-legend { font-size: 0.75rem; }
+/* Keep the results in view while the controls scroll. */
+@media (min-width: 861px) {
+  .pit-output { position: sticky; top: 76px; align-self: start; max-height: calc(100vh - 90px); overflow: auto; }
+}

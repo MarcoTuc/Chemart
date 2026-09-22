@@ -126,6 +126,8 @@ def test_the_stock_line_splits_the_chemistries(site):
     assert "<b>1</b> given network<" in home
     assert "<b>1</b> shared network<" in home
     index = {r["id"]: r for r in json.loads((site["out"] / "api/v1/index.json").read_text())["repos"]}
+    assert not (site["out"] / "static" / "pit").exists()          # the local pit is never published
+    assert not list(site["out"].rglob("pit.html"))
     assert index["chemart/brusselator"]["type"] == "given"
     assert index["chemart/gamma"]["type"] == "generator"
     assert "<b>0</b> gases" in home

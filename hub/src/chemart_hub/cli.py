@@ -2,6 +2,7 @@
 
     chemart-hub init                         create the data folder and database
     chemart-hub serve [--host --port]        run the site and API
+    chemart-hub pit [--port]                 the simulation pit, on this machine only
     chemart-hub create-user NAME [--admin]   prompts for a password
     chemart-hub set-admin NAME [--off]       grant (or revoke) superadmin
     chemart-hub set-password NAME            prompts for the new password
@@ -47,6 +48,10 @@ def main(argv: list[str] | None = None) -> int:
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8000)
     serve.add_argument("--public-url", help="URL the hub is reached at (default http://HOST:PORT)")
+
+    pit = sub.add_parser("pit", help="run the simulation pit on this machine (localhost only)")
+    pit.add_argument("--port", type=int, default=8765)
+    pit.add_argument("--no-browser", action="store_true", help="do not open a browser tab")
 
     user = sub.add_parser("create-user", help="create a user (prompts for the password)")
     user.add_argument("name")
@@ -116,6 +121,19 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "init":
             _conn(settings).close()
             print(f"initialised {settings.data_dir}")
+        elif args.command == "pit":
+            import threading
+            import webbrowser
+
+            import uvicorn
+
+            from chemart_hub.pit import create_pit_app
+
+            url = f"http://127.0.0.1:{args.port}/"
+            print(f"the pit is at {url} (Ctrl+C to stop)")
+            if not args.no_browser:
+                threading.Timer(1.0, webbrowser.open, [url]).start()
+            uvicorn.run(create_pit_app(), host="127.0.0.1", port=args.port, log_level="warning")
         elif args.command == "serve":
             import uvicorn
 

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chemart pit</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/chemart.css">
+  <link rel="stylesheet" href="/static/pit/uPlot.min.css">
+  <link rel="stylesheet" href="/static/pit/pit.css">
+  <script src="/static/pit/uPlot.iife.min.js" defer></script>
+  <script src="/static/pit/pit.js" defer></script>
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap pit-head">
+    <span class="brand"><span><span class="che">che</span><span class="mart">mart</span></span> <span class="pill">pit</span></span>
+    <span class="muted">pick a chemistry, run it, watch it, measure it · runs on this machine</span>
+  </div>
+</header>
+<main class="wrap pit">
+  <aside class="pit-controls">
+    <label class="pit-label" for="chemistry">Chemistry</label>
+    <select id="chemistry"></select>
+    <p id="about" class="muted pit-about"></p>
+
+    <div id="faces" class="chips pit-faces"></div>
+
+    <section id="network-panel" hidden>
+      <h3>Network</h3>
+      <div id="generate-params" class="pit-form"></div>
+      <h3>Simulate</h3>
+      <div class="pit-row">
+        <label>method <select id="sim-method"><option value="ode">rate equations (ODE)</option><option value="ssa">stochastic path (SSA)</option></select></label>
+        <label>t end <input id="t-end" type="number" value="40" min="0" step="any"></label>
+        <label>points <input id="points" type="number" value="200" min="2" step="1"></label>
+        <label id="volume-label" hidden>volume <input id="volume" type="number" value="100" min="0" step="any"></label>
+      </div>
+      <div id="rates-editor"></div>
+      <div id="x0-editor"></div>
+      <label class="pit-check"><input id="fill-only" type="checkbox"> rate only the reactions without a rate</label>
+      <div class="pit-buttons">
+        <button id="run-sim" class="btn-primary">Simulate</button>
+        <button id="run-measure">Measure the network</button>
+      </div>
+      <details id="sweep" hidden>
+        <summary>Sweep a generator argument</summary>
+        <div class="pit-row">
+          <label>argument <select id="sweep-param"></select></label>
+          <label>values <input id="sweep-values" type="text" placeholder="10, 20, 40"></label>
+          <label>seeds <input id="sweep-seeds" type="number" value="3" min="1" step="1"></label>
+        </div>
+        <label>plot <select id="sweep-measure"></select></label>
+        <div class="pit-buttons"><button id="run-sweep">Sweep</button></div>
+      </details>
+    </section>
+
+    <section id="process-panel" hidden>
+      <h3>Process</h3>
+      <div id="evolve-params" class="pit-form"></div>
+      <div class="pit-row">
+        <label>one frame in <input id="every" type="number" value="1" min="1" step="1"></label>
+        <label>network window <input id="window" type="number" value="5" min="1" step="1"></label>
+      </div>
+      <label class="pit-label">Track over time</label>
+      <div id="tracked" class="chips"></div>
+      <div class="pit-buttons">
+        <button id="run-evolve" class="btn-primary">Evolve</button>
+      </div>
+    </section>
+
+    <div class="pit-row pit-seed">
+      <label>seed <input id="seed" type="number" value="1" step="1"></label>
+      <button id="stop" disabled>Stop</button>
+    </div>
+  </aside>
+
+  <section class="pit-output">
+    <p id="status" class="muted">Choose a chemistry.</p>
+    <div id="charts" class="pit-charts"></div>
+    <div id="abundance"></div>
+    <div id="measures"></div>
+    <p id="download"></p>
+  </section>
+</main>
+</body>
+</html>

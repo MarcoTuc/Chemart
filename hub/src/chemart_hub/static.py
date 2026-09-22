@@ -390,7 +390,8 @@ def _render(client, c, store, settings, out: Path, base: str, report: Report) ->
         report.files += 1
 
     here = Path(__file__).resolve().parent
-    shutil.copytree(here / "static", out / "static", dirs_exist_ok=True)
+    # The pit runs chemistries on the local machine; it is never part of the public site.
+    shutil.copytree(here / "static", out / "static", dirs_exist_ok=True, ignore=shutil.ignore_patterns("pit"))
     (out / "static" / "pygments.css").write_text(client.get("/static/pygments.css").text)
     (out / ".nojekyll").write_text("")
 
