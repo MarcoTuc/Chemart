@@ -438,3 +438,8 @@ def scaling(rows: list[dict[str, Any]], y: str, x: str = "n_species") -> dict[st
 from chemart.measures import (  # noqa: E402,F401
     dynamics, graph, growth, information, kinetics, organisation, robustness, size, stoichiometry,
 )
+
+# Section order, whatever the import order: measure() and describe() list them so.
+_ordered = sorted(REGISTRY.items(), key=lambda item: item[1].section)
+REGISTRY.clear()
+REGISTRY.update(_ordered)

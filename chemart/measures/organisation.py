@@ -146,3 +146,148 @@ def scope_fraction(ctx) -> float:
 def expansion_depth(ctx) -> int:
     """Generations network expansion takes to reach the scope of the food set."""
     return len(expansion(ctx.net, ctx.food)) - 1
+
+
+# --------------------------------------------------------------------------
+# Exponential: irreducible RAFs, autocatalytic cores, organisations
+# --------------------------------------------------------------------------
+
+@register("irreducible_rafs", "D", needs="C F", cost="exponential", limit=3000)
+def irreducible_rafs(ctx, samples: int = 20) -> int:
+    """Distinct irreducible RAFs found in `samples` (20) random reduction orders
+    of the maximal RAF: a lower bound on how many different ways the network
+    can sustain itself (Hordijk & Steel 2004)."""
+    import numpy as np
+
+    reactions = raf_reactions(ctx.net)
+    rng = np.random.default_rng(ctx.seed)
+    found = {frozenset(r["id"] for r in irreducible_raf(reactions, ctx.food, rng)) for _ in range(samples)}
+    found.discard(frozenset())
+    return len(found)
+
+
+def autocatalytic_core(net, exclude: list[set[int]] = (), cap: int = 10**6):
+    """One smallest autocatalytic subnetwork (Blokhuis, Lacoste & Nghe 2020),
+    as a set of reaction indices, or None: species M and reactions R such that
+    every reaction of R has a reactant and a product in M, and some positive
+    flux on R strictly increases every species of M. A mixed-integer programme
+    minimising |R|; `exclude` rules out supersets of cores already found."""
+    import numpy as np
+    from scipy.optimize import Bounds, LinearConstraint, milp
+
+    ids = [s.id for s in net.species]
+    index = {s: i for i, s in enumerate(ids)}
+    n, r = len(ids), len(net.reactions)
+    if not r:
+        return None
+    S = np.zeros((n, r))
+    uses = np.zeros((n, r))
+    makes = np.zeros((n, r))
+    for j, rx in enumerate(net.reactions):
+        for s, k in rx.reactants.items():
+            S[index[s], j] -= k
+            uses[index[s], j] = 1
+        for s, k in rx.products.items():
+            S[index[s], j] += k
+            makes[index[s], j] = 1
+    big = 1e3
+    # variables: v (r, continuous 0..big), x (r, binary: reaction in R), y (n, binary: species in M)
+    nv = 2 * r + n
+    rows, lo, hi = [], [], []
+
+    def add(coeffs, low, high):
+        row = np.zeros(nv)
+        for k, c in coeffs:
+            row[k] += c
+        rows.append(row)
+        lo.append(low)
+        hi.append(high)
+
+    for i in range(n):          # productive: y_i = 1 -> sum_j S_ij v_j >= 1 (v = 0 off R)
+        relax = big * np.abs(S[i]).sum() + 1.0      # large enough to switch the row off when y_i = 0
+        add([(j, S[i, j]) for j in range(r)] + [(2 * r + i, -relax)], 1.0 - relax, np.inf)
+    for j in range(r):          # v_j > 0 only on R; R's reactions touch M on both sides
+        add([(j, 1.0), (r + j, -big)], -np.inf, 0.0)
+        add([(r + j, 1.0)] + [(2 * r + i, -1.0) for i in range(n) if uses[i, j]], -np.inf, 0.0)
+        add([(r + j, 1.0)] + [(2 * r + i, -1.0) for i in range(n) if makes[i, j]], -np.inf, 0.0)
+    for i in range(n):          # a species of M must be consumed within R (else nothing is autocatalytic about it)
+        add([(2 * r + i, 1.0)] + [(r + j, -1.0) for j in range(r) if uses[i, j]], -np.inf, 0.0)
+    add([(2 * r + i, 1.0) for i in range(n)], 1.0, np.inf)
+    for core in exclude:        # no-good cut: not every reaction of a known core
+        add([(r + j, 1.0) for j in core], -np.inf, len(core) - 1)
+    c = np.concatenate([np.zeros(r), np.ones(r), np.zeros(n)])
+    integrality = np.concatenate([np.zeros(r), np.ones(r), np.ones(n)])
+    bounds = Bounds(np.zeros(nv), np.concatenate([np.full(r, big), np.ones(r), np.ones(n)]))
+    res = milp(c, constraints=LinearConstraint(np.array(rows), lo, hi), integrality=integrality,
+               bounds=bounds, options={"time_limit": 30})
+    if res.status != 0 or res.x is None:
+        return None
+    return {j for j in range(r) if res.x[r + j] > 0.5}
+
+
+@register("autocatalytic_cores", "D", needs="S", cost="exponential", limit=400)
+def autocatalytic_cores(ctx, cap: int = 20) -> int:
+    """Number of minimal autocatalytic subnetworks, found one at a time by a
+    mixed-integer programme with no-good cuts, up to `cap` (20): autocatalysis
+    from stoichiometry alone, catalysts not labelled (Blokhuis, Lacoste & Nghe 2020)."""
+    cores: list[set[int]] = []
+    while len(cores) < cap:
+        core = autocatalytic_core(ctx.net, cores)
+        if core is None:
+            break
+        cores.append(core)
+    return len(cores)
+
+
+def closure_of(net, start) -> frozenset[str]:
+    """The smallest closed set containing `start`: add the products of every
+    reaction whose reactants are all present, until nothing changes."""
+    have = set(start)
+    changed = True
+    while changed:
+        changed = False
+        for r in net.reactions:
+            if set(r.reactants) <= have and not set(r.products) <= have:
+                have |= set(r.products)
+                changed = True
+    return frozenset(have)
+
+
+def self_maintaining(net, O: frozenset[str], S, index) -> bool:
+    """Whether some strictly positive flux on the reactions that can run in O
+    leaves no species of O decreasing (Dittrich & Speroni di Fenizio 2007)."""
+    import numpy as np
+    from scipy.optimize import linprog
+
+    run = [j for j, r in enumerate(net.reactions) if set(r.reactants) <= O]
+    if not run or not O:
+        return True
+    rows = [index[s] for s in O]
+    A = S[np.ix_(rows, run)]
+    res = linprog(np.zeros(len(run)), A_ub=-A, b_ub=np.zeros(len(rows)),
+                  bounds=[(1.0, None)] * len(run), method="highs")
+    return bool(res.status == 0)
+
+
+@register("organisations", "D", needs="S", cost="exponential", limit=200)
+def organisations(ctx, max_closed: int = 20000) -> dict[str, float] | None:
+    """Chemical organisations (Dittrich & Speroni di Fenizio 2007): sets of
+    species that are closed (make nothing outside themselves) and
+    self-maintaining (can run all their reactions without depleting any member).
+    Returns their number and the size of the largest as a share of all
+    species; None when more than `max_closed` closed sets would need checking."""
+    closed = {closure_of(ctx.net, ())}
+    frontier = list(closed)
+    while frontier:
+        C = frontier.pop()
+        for s in ctx.ids:
+            if s in C:
+                continue
+            D = closure_of(ctx.net, C | {s})
+            if D not in closed:
+                closed.add(D)
+                frontier.append(D)
+                if len(closed) > max_closed:
+                    return None
+    orgs = [O for O in closed if self_maintaining(ctx.net, O, ctx.S, ctx.index)]
+    return {"count": len(orgs), "largest": max(len(O) for O in orgs) / len(ctx.ids)}

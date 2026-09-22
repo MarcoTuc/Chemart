@@ -8,6 +8,7 @@ dependencies = [
     "brotli>=1.2.0",
     "networkx>=3.7",
     "numpy>=2.5.3",
+    "pycddlib-standalone>=3.0.0",
     "pyyaml>=6",
     "rdkit>=2026.3.6",
     "scipy>=1.18.1",

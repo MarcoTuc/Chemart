@@ -179,6 +179,99 @@ def test_sweep_and_scaling():
     assert fit["exponent"] == pytest.approx(2.0) and fit["r2"] == pytest.approx(1.0)
 
 
+# --- moderate and exponential ---------------------------------------------------------------
+def mx(net, *names, **kw):
+    return m(net, *names, cost="exponential", **kw)
+
+
+def test_p_invariants_and_flux_modes():
+    mm = network([("E + S -> ES", 1.0), ("ES -> E + S", 1.0), ("ES -> E + P", 1.0)])
+    assert mx(mm, "p_invariants") == 2                          # E + ES, and S + ES + P
+    chain = network([("A -> B", None), ("B -> C", None)], extras={"food": ["A"]})
+    assert mx(chain, "elementary_flux_modes") == {"count": 1, "mean_length": 2.0}
+    branch = network([("A -> B", None), ("A -> C", None), ("B -> D", None), ("C -> D", None)],
+                     extras={"food": ["A"]})
+    assert mx(branch, "elementary_flux_modes") == {"count": 2, "mean_length": 2.0}
+    assert mx(network([("A -> B", None), ("C -> D", None)], extras={"food": ["A"]}), "blocked_fraction") == 0.5
+
+
+def test_modularity_and_motifs():
+    two = network([("A -> B", None), ("B -> A", None), ("C -> D", None), ("D -> C", None)])
+    assert mx(two, "modularity") > 0.3
+    net = chemart.generate_network("random-catalytic-networks", seed=1)
+    profile = mx(net, "motif_profile")
+    assert len(profile) == 13 and sum(v * v for v in profile.values()) == pytest.approx(1.0)
+
+
+def test_irreducible_rafs_and_autocatalytic_cores():
+    two = network([("a + b + ab -> 2 ab", None), ("c + d + cd -> 2 cd", None)],
+                  extras={"food": ["a", "b", "c", "d"]})
+    assert mx(two, "irreducible_rafs") == 2
+    assert mx(network([("X + A -> 2 X", None)]), "autocatalytic_cores") == 1
+    assert mx(network([("A -> B", None), ("B -> C", None)]), "autocatalytic_cores") == 0
+    # C makes A and B back; A + B -> 2 C closes either cycle
+    cycle = network([("A + B -> 2 C", None), ("C -> A", None), ("C -> B", None)])
+    assert mx(cycle, "autocatalytic_cores") == 2
+
+
+def test_organisations_by_hand():
+    assert mx(network([("A -> B", None), ("B -> A", None)]), "organisations") == {"count": 2, "largest": 1.0}
+    # A makes B, which only decays: {A, B} is closed but not self-maintaining without a source of A
+    assert mx(network([("A -> B", None), ("B -> ", None)]), "organisations") == {"count": 1, "largest": 0.0}
+
+
+def test_kinetics_of_the_brusselator():
+    # a = 1, b = 3: the fixed point (1, 3) has trace b - 1 - a^2 = 1 and determinant a^2 = 1
+    net = chemart.generate_network("brusselator", seed=1)
+    out = mx(net, "stability", "steady_states", "oscillation", "sloppiness")
+    assert out["stability"]["max_real"] == pytest.approx(0.5, abs=1e-6)
+    assert out["steady_states"] == 1
+    assert out["oscillation"]["oscillates"] and 6 < out["oscillation"]["period"] < 9
+    assert out["sloppiness"] > 0
+    stable = chemart.generate_network("brusselator", seed=1, b=1.5)
+    assert mx(stable, "stability")["max_real"] < 0 and not mx(stable, "oscillation")["oscillates"]
+
+
+def test_entropy_production_is_zero_at_detailed_balance():
+    balanced = network([("A -> B", 1.0), ("B -> A", 2.0)], initial_state={"A": 1.0})
+    assert mx(balanced, "entropy_production") == pytest.approx(0.0, abs=1e-9)
+    driven = network([("A -> B", 2.0), ("B -> A", 1.0), ("B -> C", 2.0), ("C -> B", 1.0),
+                      ("C -> A", 2.0), ("A -> C", 1.0)], initial_state={"A": 1.0})
+    assert mx(driven, "entropy_production") > 0.1
+    assert mx(driven, "flux_concentration") >= 0
+
+
+def test_attractor_types():
+    from chemart import simulate
+
+    cycle = simulate.ode(chemart.generate_network("brusselator"), 60, points=800)
+    assert mx(cycle, "attractor_type") == "cycle"
+    settled = simulate.ode(chemart.generate_network("brusselator", b=1.5), 60, points=800)
+    assert mx(settled, "attractor_type") == "fixed point"
+
+
+def test_knockouts_and_degeneracy_by_hand():
+    # food A; B is made directly (r1) or through C (r2, r3)
+    net = network([("A -> B", None), ("A -> C", None), ("C -> B", None)], extras={"food": ["A"]})
+    assert mx(net, "knockout_tolerance") == pytest.approx(2 / 3)     # only A -> C is essential
+    assert mx(net, "synthetic_lethal_pairs") == 1.0                  # r1 and r3 back each other up
+    assert mx(net, "degeneracy") == pytest.approx((2 + 1) / 2)       # two routes to B, one to C
+
+
+def test_structure_function_mutual_information():
+    net = chemart.generate_network("alchemy", seed=1)
+    assert mx(net, "structure_function_mi") >= 0
+    small = chemart.measure(network([("A -> B", None)]), ["structure_function_mi"])
+    assert small == {}                                   # species carry no structure
+
+
+def test_limits_hold_back_expensive_measures():
+    net = chemart.generate_network("kauffman-autocatalytic-sets", seed=1)
+    why = measures.applicable(net, ["organisations"])
+    assert "exceed its limit" in why["organisations"]
+    assert chemart.measure(net, ["organisations"]) == {}
+
+
 # --- every cheap measure on every chemistry ------------------------------------------------
 from chemart import catalog  # noqa: E402
 

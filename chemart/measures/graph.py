@@ -211,3 +211,48 @@ def nodf(ctx) -> float:
 def mean_hyperedge_size(ctx) -> float:
     """Mean number of distinct species per reaction, reactions read as hyperedges."""
     return float(np.mean([len(set(r.reactants) | set(r.products)) for r in ctx.net.reactions]))
+
+
+@register("modularity", "C", cost="moderate", limit=10000)
+def modularity(ctx) -> float:
+    """Modularity Q of the Louvain communities of the undirected bipartite
+    graph: how well the network splits into semi-independent parts. Compare it
+    with its null model (zscores) before reading it."""
+    import networkx as nx
+
+    g = ctx.graph.to_undirected()
+    if g.number_of_edges() == 0:
+        return 0.0
+    parts = nx.community.louvain_communities(g, seed=ctx.seed)
+    return float(nx.community.modularity(g, parts))
+
+
+#: The 13 connected three-node patterns of a directed graph (triad census codes).
+CONNECTED_TRIADS = ("021D", "021U", "021C", "111D", "111U", "030T", "030C",
+                    "201", "120D", "120U", "120C", "210", "300")
+
+
+@register("motif_profile", "C", cost="moderate", limit=3000)
+def motif_profile(ctx, samples: int = 10) -> dict[str, float]:
+    """Significance profile of the connected triads of the substrate -> product
+    graph (Milo et al. 2004): each triad's z-score against networks randomised
+    by `measures.randomize`, the vector normalised to length 1."""
+    import networkx as nx
+
+    from chemart.measures import Context, randomize
+
+    def census(net):
+        g = Context(net).species_graph
+        g.remove_edges_from(nx.selfloop_edges(g))
+        return nx.triadic_census(g)
+
+    real = census(ctx.net)
+    rng = ctx.rng()
+    null = [census(randomize(ctx.net, rng)) for _ in range(samples)]
+    z = {}
+    for t in CONNECTED_TRIADS:
+        values = np.array([c[t] for c in null], dtype=float)
+        sd = values.std(ddof=1) if len(values) > 1 else 0.0
+        z[t] = 0.0 if sd == 0 else (real[t] - values.mean()) / sd
+    norm = np.sqrt(sum(v * v for v in z.values()))
+    return {t: float(v / norm) if norm else 0.0 for t, v in z.items()}

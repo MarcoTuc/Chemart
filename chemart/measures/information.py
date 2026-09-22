@@ -46,3 +46,26 @@ def degree_entropy(ctx) -> float:
     counts = np.array(list(Counter(species_degrees(ctx)).values()), dtype=float)
     p = counts / counts.sum()
     return float(-(p * np.log(p)).sum())
+
+
+@register("structure_function_mi", "I", needs="str", cost="moderate", limit=20000)
+def structure_function_mi(ctx, bins: int = 4) -> float | None:
+    """Mutual information (nats) between the total structure length of a
+    reaction's reactants and that of its products, each cut into `bins` (4)
+    quantile classes: whether what comes out is predictable from what goes in.
+    A crude estimate from lengths alone; None with fewer than 20 reactions."""
+    size = {s.id: len(s.structure) if s.structure else len(s.id) for s in ctx.net.species}
+    pairs = [(sum(size[s] * n for s, n in r.reactants.items()), sum(size[s] * n for s, n in r.products.items()))
+             for r in ctx.net.reactions]
+    if len(pairs) < 20:
+        return None
+    x, y = (np.array(v, dtype=float) for v in zip(*pairs))
+
+    def classes(v):
+        edges = np.unique(np.quantile(v, np.linspace(0, 1, bins + 1)[1:-1]))
+        return np.searchsorted(edges, v, side="right")
+
+    cx, cy = classes(x), classes(y)
+    joint = Counter(zip(cx, cy))
+    px, py, n = Counter(cx), Counter(cy), len(cx)
+    return float(sum(c / n * np.log((c / n) / ((px[a] / n) * (py[b] / n))) for (a, b), c in joint.items()))

@@ -136,9 +136,9 @@ reliable bridge between artificial and real chemistry.
 | `deficiency` | Feinberg's deficiency δ = n_c - ℓ - rank(S): complexes minus linkage classes minus the rank. With δ = 0 and weak reversibility, mass action has exactly one positive steady state in each stoichiometric compatibility class, and it is stable, whatever the rates. | S | network | cheap |
 | `weakly_reversible` | Whether every reaction lies on a cycle of the complex graph (each linkage class is strongly connected). | S | network | cheap |
 | `flux_dimension` | r - rank(S): the number of independent steady-state flux patterns of the closed network (dimension of the right null space of S). | S | network | cheap |
-| *p_invariants* (planned) | the semi-positive conservation laws (conserved moieties): extreme rays of {m ≥ 0, mᵀS = 0} | S | network | exponential |
-| *elementary_flux_modes* (planned) | number and mean length of the minimal pathways through the network with its food boundary | S F | network | exponential |
-| *blocked_fraction* (planned) | share of reactions that can never carry flux at steady state (flux variability analysis) | S F | network | moderate |
+| `p_invariants` | Number of minimal semi-positive conservation laws (P-invariants, conserved moieties): the extreme rays of {m >= 0, mᵀS = 0}. | S | network | exponential, up to 300 nodes |
+| `elementary_flux_modes` | Number of elementary flux modes (minimal steady-state pathways) of the network fed from its food set and drained where nothing consumes, and their mean number of internal reactions (Schuster, Fell & Dandekar 2000). | F S | network | exponential, up to 150 nodes |
+| `blocked_fraction` | Share of reactions that can carry no flux at steady state, with the food boundary of `elementary_flux_modes` (flux variability analysis, done as one linear programme: maximise the reactions that carry any flux). | F S | network | moderate, up to 3000 nodes |
 <!-- /measures -->
 
 ## C. Graph topology
@@ -163,8 +163,8 @@ relative to a null model (rule 2).
 | `catalytic_spectral_radius` | Largest eigenvalue modulus of the catalytic graph, an arrow from each catalyst to each net product of the reactions it catalyses. At least 1 exactly when the graph has a cycle: an autocatalytic set (Jain & Krishna 1998). | C | network | cheap, up to 3000 nodes |
 | `nodf` | Nestedness (NODF, Almeida-Neto et al. 2008) of the species x reaction incidence matrix, 0 to 100: whether rarer species take part only in reactions that commoner species also take part in. | T | network | cheap |
 | `mean_hyperedge_size` | Mean number of distinct species per reaction, reactions read as hyperedges. | S | network | cheap |
-| *modularity* (planned) | Louvain modularity Q of the bipartite graph, relative to the null model | T | network | moderate |
-| *motif_profile* (planned) | significance profile of the triads of the substrate -> product graph (Milo et al. 2004) | T | network | moderate |
+| `modularity` | Modularity Q of the Louvain communities of the undirected bipartite graph: how well the network splits into semi-independent parts. Compare it with its null model (zscores) before reading it. | T | network | moderate, up to 10000 nodes |
+| `motif_profile` | Significance profile of the connected triads of the substrate -> product graph (Milo et al. 2004): each triad's z-score against networks randomised by `measures.randomize`, the vector normalised to length 1. | T | network | moderate, up to 3000 nodes |
 <!-- /measures -->
 
 ## D. Catalysis, autocatalysis and organisation
@@ -180,9 +180,9 @@ chemistry means most.
 | `max_raf_fraction` | Share of the reactions that belong to the maximal RAF set. | C F | network | cheap |
 | `scope_fraction` | Share of species the network can make from its food set (its scope), catalysts not required. | F S | network | cheap |
 | `expansion_depth` | Generations network expansion takes to reach the scope of the food set. | F S | network | cheap |
-| *irreducible_rafs* (planned) | a lower bound on the number of irreducible RAFs, by sampling | C F | network | exponential |
-| *autocatalytic_cores* (planned) | minimal stoichiometric autocatalytic cores (Blokhuis, Lacoste & Nghe 2020) | S | network | exponential |
-| *organisations* (planned) | number of chemical organisations and the size of the largest (Dittrich & Speroni di Fenizio 2007) | S | network | exponential |
+| `irreducible_rafs` | Distinct irreducible RAFs found in `samples` (20) random reduction orders of the maximal RAF: a lower bound on how many different ways the network can sustain itself (Hordijk & Steel 2004). | C F | network | exponential, up to 3000 nodes |
+| `autocatalytic_cores` | Number of minimal autocatalytic subnetworks, found one at a time by a mixed-integer programme with no-good cuts, up to `cap` (20): autocatalysis from stoichiometry alone, catalysts not labelled (Blokhuis, Lacoste & Nghe 2020). | S | network | exponential, up to 400 nodes |
+| `organisations` | Chemical organisations (Dittrich & Speroni di Fenizio 2007): sets of species that are closed (make nothing outside themselves) and self-maintaining (can run all their reactions without depleting any member). Returns their number and the size of the largest as a share of all species; None when more than `max_closed` closed sets would need checking. | S | network | exponential, up to 200 nodes |
 <!-- /measures -->
 
 ## E. Constructiveness and growth
@@ -207,12 +207,12 @@ Only for chemistries with rate constants.
 |---|---|---|---|---|
 | `rate_spread` | Orders of magnitude spanned by the mass-action rate constants, log10(max k / min k). None without mass-action rates. | K | network | cheap |
 | `wegscheider_residual` | How far the reversible mass-action pairs are from allowing detailed balance (Wegscheider's conditions): the least-squares residual of ln(k+/k-) against the reactions' stoichiometry, 0 when some chemical potentials make every pair balance. None without reversible mass-action pairs. | K S | network | cheap |
-| *steady_states* (planned) | number of steady states found by multi-start root finding | K | network | moderate |
-| *stability* (planned) | largest real part of the Jacobian's eigenvalues at steady state, and the stiffness ratio | K | network | moderate |
-| *oscillation* (planned) | whether a simulation settles into sustained oscillation, and its period | K | network | moderate |
-| *flux_concentration* (planned) | Gini coefficient of the steady-state fluxes | K | network | moderate |
-| *sloppiness* (planned) | eigenvalue spread of the Fisher information of the rate constants | K | network | moderate |
-| *entropy_production* (planned) | entropy production at steady state over the reversible pairs | K | network | moderate |
+| `stability` | At the fixed point of the active species reached from the initial state: the largest real part of the Jacobian's eigenvalues (negative: stable) and the stiffness ratio (fastest over slowest relaxation rate). None without an initial state or when no fixed point is found. | K | network | moderate, up to 400 nodes |
+| `steady_states` | Distinct non-negative fixed points of the active species, found from `starts` (12) random starts that keep the initial state's conserved totals. | K | network | moderate, up to 200 nodes |
+| `oscillation` | Whether the rate equations settle into sustained oscillation from the initial state, and the period: at least three peaks of an active species in the second half of a run long enough for the fixed point's own time scales, with a swing above 0.1% of its level. | K | network | moderate, up to 400 nodes |
+| `flux_concentration` | Gini coefficient of the reaction rates at the fixed point: whether a few reactions carry most of the flux. | K | network | moderate, up to 2000 nodes |
+| `entropy_production` | Σ (J+ - J-) ln(J+/J-) over the reversible pairs at the fixed point (in units of the gas constant times temperature): 0 at detailed balance, positive when the network runs driven, away from equilibrium. | K | network | moderate, up to 2000 nodes |
+| `sloppiness` | Orders of magnitude spanned by the eigenvalues of the Fisher information of the log mass-action constants, from the sensitivity of the active species' trajectories (Gutenkunst et al. 2007): large means a few parameter combinations matter and most barely do. | K | network | moderate, up to 60 nodes |
 <!-- /measures -->
 
 ## G. Dynamics and trajectories
@@ -231,7 +231,7 @@ changed. These measures capture that.
 | `turnover` | Mean Jaccard distance between the species sets of consecutive frames: how fast the population's composition changes. None with one frame. | D | trajectory | cheap |
 | `collapse_time` | First time, after its peak, at which richness falls to `fraction` (10%) of the peak. None if it never does. | D | trajectory | cheap |
 | `final_richness_ratio` | Richness at the end over the peak richness of the run. | D | trajectory | cheap |
-| *attractor_type* (planned) | fixed point, cycle or chaos, from the recurrence of the trajectory | D | trajectory | moderate |
+| `attractor_type` | What the second half of a run settles into, judged on the species that act back on the dynamics: "fixed point" (the state stops changing, or keeps converging without turning back), "cycle" (it keeps returning close to states it has already visited) or "irregular". None with fewer than 20 frames. | D | trajectory | moderate |
 <!-- /measures -->
 
 ## H. Robustness and redundancy
@@ -244,9 +244,9 @@ same thing. They are the measures closest to the redundancy question.
 |---|---|---|---|---|
 | `production_multiplicity` | Mean number of reactions with a net production of each species. | S | network | cheap |
 | `percolation` | Area under the curve of the share of species in the largest connected piece as species are removed, at random and highest-degree first (Albert, Jeong & Barabási 2000). A robust network keeps a large area under both. | T | network | moderate, up to 3000 nodes |
-| *degeneracy* (planned) | structurally different pathways to each species from the food set | S F | network | moderate |
-| *knockout_tolerance* (planned) | share of reactions whose removal leaves the scope and the maxRAF unchanged | S F | network | moderate |
-| *synthetic_lethal_pairs* (planned) | pairs of reactions that back each other up (sampled on large networks) | S F | network | moderate |
+| `knockout_tolerance` | Share of reactions whose removal leaves the scope of the food set unchanged: how much of the network is backed up by alternatives. | F S | network | moderate, up to 1500 nodes |
+| `synthetic_lethal_pairs` | Among pairs of reactions that are each dispensable on their own, the share whose joint removal shrinks the scope: reactions that back each other up. Sampled (400 pairs) on large networks; None with fewer than two dispensable reactions. | F S | network | moderate, up to 1500 nodes |
+| `degeneracy` | Mean number of reaction-disjoint routes from the food set to a species of the scope (up to 20 species sampled): structurally different ways of making the same thing (Edelman & Gally 2001). None when the food makes nothing new. | F S | network | moderate, up to 3000 nodes |
 <!-- /measures -->
 
 ## I. Information and algorithmic complexity
@@ -256,7 +256,7 @@ same thing. They are the measures closest to the redundancy question.
 |---|---|---|---|---|
 | `compressibility` | Compressed size over raw size of the canonical reaction list (zlib, level 9): lower means more regular. | T | network | cheap |
 | `degree_entropy` | Shannon entropy (nats) of the species degree distribution. | T | network | cheap |
-| *structure_function_mi* (planned) | mutual information between reactant and product structure features | str | network | moderate |
+| `structure_function_mi` | Mutual information (nats) between the total structure length of a reaction's reactants and that of its products, each cut into `bins` (4) quantile classes: whether what comes out is predictable from what goes in. A crude estimate from lengths alone; None with fewer than 20 reactions. | str | network | moderate, up to 20000 nodes |
 <!-- /measures -->
 
 ## J. Scaling relationships
