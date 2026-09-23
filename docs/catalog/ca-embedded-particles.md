@@ -318,6 +318,8 @@ traj = chemart.evolve("ca-embedded-particles", seed=1)
 299 frames, t = 0 … 298 iterations; observables: density
 ```
 
+`steps=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve ca-embedded-particles --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 The chemistry has two faces. The call printed above,
@@ -560,7 +562,7 @@ Pass any of these as keyword arguments to `generate_network`, or to `chemart.evo
 |---|---|---|---|---|
 | `rule` | `enum` | `phi-par-a` | structural | which published radius-3 rule to use: phi-par-a and phi-par-b are the two density-classification CAs evolved by the genetic algorithm of Crutchfield, Mitchell & Das (their Tables 3 and 4 give the particle catalogs); gkl is the hand-designed Gacs-Kurdyumov-Levin rule, which has the same three domains but no published particle catalog. phi-par-b's catalog can be generated but the automaton cannot be run, and gkl can be run but has no catalog to generate (see decisions) <br>one of `phi-par-a`, `phi-par-b`, `gkl` |
 | `lattice` | `int` | `149` | spatial | *evolve only.* number of cells N of the periodic lattice <br>`12` … `5000` · *range:* the papers measure performance at N = 149, 599 and 999; the book's figure 10.14 uses 75 |
-| `steps` | `int` | `298` | population | *evolve only.* CA iterations to run; more iterations means more observed collisions <br>`1` … `20000` · *range:* the task's answer time is T_max = 2N |
+| `steps` | `int` | `298` | population | *evolve only.* CA iterations to run; more iterations means more observed collisions. 0 runs the automaton until the caller stops reading its frames <br>`0` … `20000` · *range:* the task's answer time is T_max = 2N |
 | `density` | `float` | `0.48` | population | *evolve only.* density rho_0 of the initial configuration: exactly round(rho_0 N) cells are set to 1, in random positions (this is the only use of the seed) <br>`0` … `1` · *range:* the published space-time figures use rho_0 = 0.48 and 0.51; performance is measured over ICs drawn uniformly, which is what the module's performance() does |
 | `filter_window` | `int` | `3` | structural | *evolve only.* half-width of the window used by the domain filter: a site belongs to a domain when the 2w+1 sites around it agree with one spatial phase of that domain's pattern. The default 3 is the CA radius, so the window is the neighbourhood; larger values demand wider domain patches and so report wider walls <br>`1` … `16` |
 

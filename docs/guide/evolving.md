@@ -18,8 +18,10 @@ The chemistries you can evolve are the ones with an **evolve face**:
 - **Chemistries with a reactor of their own.** For example, the lattices of
   autopoiesis-vmu and ono-ikegami-protocell, and the stochastic run of synthon.
 
-`describe_chemistry(id)["faces"]` says which faces a chemistry has, and the
-[catalog](../catalog/index.md) groups entries by type.
+`describe_chemistry(id)["faces"]` says which faces a chemistry has, its
+`clock` the unit its time is counted in and its `duration` the parameter that
+says how long it runs. The [catalog](../catalog/index.md) groups entries by
+type.
 
 ## Running one
 
@@ -58,6 +60,30 @@ uv run chemart evolve bff --seed 1 --format json > run.json    # the whole traje
 To watch a run instead, use the [simulation pit](../hub.md#the-simulation-pit)
 (`uv run chemart-hub pit`). It plots the population, the chemistry's
 observables and the measures you pick while the run is still going.
+
+## Running until you stop
+
+Every process has a parameter that says how long it runs — alchemy's
+`collisions`, bff's `epochs`, the lattices' `steps`. The catalog records which
+one it is (`duration`), and **0 means it runs until you stop reading its
+frames**:
+
+```python
+run = chemart.evolve_frames("alchemy", seed=1, collisions=0)
+for frame in run:
+    print(frame.t, len(frame.state))
+    if bored(frame):
+        break                       # closing the generator ends the process
+```
+
+In the [pit](../hub.md#the-simulation-pit) that is the **run until I stop**
+box, with the Stop button ending it; what ran is kept, so it can still be
+downloaded. `chemart.evolve` refuses an endless run, because the whole
+trajectory would never arrive — iterate `evolve_frames` instead.
+
+A process may still end on its own before you stop it: a fraglets program goes
+inert, proof-ac finds its proof, a population dies out. That is the chemistry
+finishing, not the budget running out.
 
 ## What a frame holds
 

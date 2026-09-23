@@ -39,7 +39,7 @@ from collections import Counter
 
 from chemart.network import Network, Reaction, Species
 from chemart.soup import Tally
-from chemart.trajectory import Frame
+from chemart.trajectory import Frame, ticks
 
 ATOMS = "SKI"
 ARITY = {"I": 1, "K": 2, "S": 3}
@@ -328,7 +328,7 @@ def evolve(p, rng):
                      fired=tally.flush(), observables=observables)
 
     yield frame(0)
-    for t in range(1, p.iterations + 1):
+    for t in ticks(p.iterations):
         events = reactor.step(rng)
         window["idle" if not events else events[-1][0]] += 1
         for kind, lhs, rhs in events:

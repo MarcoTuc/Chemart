@@ -319,6 +319,9 @@ def process(c, traj, error) -> list[str]:
               f"{len(t)} frames, t = {t[0]:g} … {t[-1]:g} {c.clock}; "
               f"observables: {', '.join(observables) or 'none'}",
               "```", ""]
+    if c.duration:
+        L += [f"`{c.duration}=0` runs it until you stop reading its frames "
+              f"(`chemart.evolve_frames`, or the pit's Stop button).", ""]
     L += [f"From the shell: `uv run chemart evolve {c.id} --seed 1 --track shannon`. "
           "See [Evolving a chemistry](../guide/evolving.md).", ""]
     return L

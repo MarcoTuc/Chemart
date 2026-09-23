@@ -205,6 +205,8 @@ traj = chemart.evolve("matrix-chemistry", seed=1)
 11 frames, t = 0 … 10000 collisions; observables: none
 ```
 
+`steps=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve matrix-chemistry --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 The default call above builds the book's N = 9 example: the closure of
@@ -316,7 +318,7 @@ Pass any of these as keyword arguments to `generate_network`, or to `chemart.evo
 | `destructor_elastic` | `bool` | `True` | selection | collisions producing the all-zero destructor s(0) are elastic (book 3.1); false makes s(0) an ordinary species, which then replicates with every string |
 | `max_species` | `int` | `1000` | structural | *generate only.* budget on the number of strings in the closure; the status becomes truncated when it cuts the closure off <br>`1` … `4096` · *range:* the full N = 9 system has 511 strings (261,121 reactions) |
 | `M` | `int` | `1000` | population | *evolve only.* constant number of strings in the vessel; a frame every M collisions <br>`2` … `1000000` · *range:* book: 1,000 and 100,000 |
-| `steps` | `int` | `10000` | stochastic | *evolve only.* number of collisions (draws of an operator/string pair) <br>`0` … `10000000` · *range:* book figures run 10^6 to 10^7 iterations |
+| `steps` | `int` | `10000` | stochastic | *evolve only.* number of collisions (draws of an operator/string pair). 0 collides until the caller stops reading the frames <br>`0` … `10000000` · *range:* book figures run 10^6 to 10^7 iterations |
 
 ### Implementation decisions
 

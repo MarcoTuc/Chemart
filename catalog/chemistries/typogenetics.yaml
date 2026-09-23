@@ -19,6 +19,7 @@ chemistries:
   constructive: true
   type: gas
   clock: draws
+  duration: steps
   S:
     repr: "single strands over {A, C, G, T}; species id is the strand itself, structure the enzymes it codes with their binding base ('cop-swi-rpu-ina-swi-cop:G'). Double strands exist only while enzymes work and fall apart into single strands at the end"
     definition: implicit
@@ -55,7 +56,7 @@ chemistries:
     - {name: max_species, type: int, default: 200, min: 1, max: 100000, role: structural, face: generate, meaning: "species budget of the closure; the status becomes truncated when it cuts the closure off"}
     - {name: max_branches, type: int, default: 1000, min: 1, max: 1000000, role: structural, face: generate, meaning: "binding_tiebreak all: most distinct intermediate complexes followed while enumerating binding choices for one reactant; beyond it that reactant's reactions are dropped and the status becomes truncated"}
     - {name: copies, type: int, default: 50, min: 1, max: 100000, role: population, face: evolve, meaning: "copies of each seed strand in the initial population, whose size stays constant"}
-    - {name: steps, type: int, default: 2000, min: 0, max: 10000000, role: stochastic, face: evolve, meaning: "number of draws (one strand for self, an ordered gene/target pair for pair), elastic ones included; a frame every generation (as many draws as the initial population has strands)"}
+    - {name: steps, type: int, default: 2000, min: 0, max: 10000000, role: stochastic, face: evolve, meaning: "number of draws (one strand for self, an ordered gene/target pair for pair), elastic ones included; a frame every generation (as many draws as the initial population has strands). 0 runs the draws on until the caller stops reading the frames"}
   provides: [topology, stoichiometry, catalysts, flow, initial-state, sequence-structure-function]
   fidelity: reconstructed
   sources:

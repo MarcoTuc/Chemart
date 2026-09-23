@@ -209,7 +209,10 @@ The page follows the chemistry's type and faces:
 - **Chemistries with an evolve face.** The process runs live. The page plots
   the most abundant species, the chemistry's observables and the measures
   you choose to track, against its clock, and a network window sets how many
-  frames a tracked network measure sees. **Stop** ends a run early.
+  frames a tracked network measure sees. Tick **run until I stop** and it
+  keeps going until you press **Stop**; either way what ran is kept, and the
+  download link appears as soon as the run starts. The charts hold the last
+  3000 points and the download the last 5000 frames.
 
 Each finished run can be downloaded as a
 [Trajectory](reference/record.md#the-trajectory-record) JSON file; the pit

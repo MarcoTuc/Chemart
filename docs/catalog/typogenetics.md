@@ -215,6 +215,8 @@ traj = chemart.evolve("typogenetics", seed=1)
 41 frames, t = 0 … 2000 draws; observables: none
 ```
 
+`steps=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve typogenetics --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 Typogenetics has two faces. `chemart.generate_network`, printed above,
@@ -304,7 +306,7 @@ Pass any of these as keyword arguments to `generate_network`, or to `chemart.evo
 | `max_species` | `int` | `200` | structural | *generate only.* species budget of the closure; the status becomes truncated when it cuts the closure off <br>`1` … `100000` |
 | `max_branches` | `int` | `1000` | structural | *generate only.* binding_tiebreak all: most distinct intermediate complexes followed while enumerating binding choices for one reactant; beyond it that reactant's reactions are dropped and the status becomes truncated <br>`1` … `1000000` |
 | `copies` | `int` | `50` | population | *evolve only.* copies of each seed strand in the initial population, whose size stays constant <br>`1` … `100000` |
-| `steps` | `int` | `2000` | stochastic | *evolve only.* number of draws (one strand for self, an ordered gene/target pair for pair), elastic ones included; a frame every generation (as many draws as the initial population has strands) <br>`0` … `10000000` |
+| `steps` | `int` | `2000` | stochastic | *evolve only.* number of draws (one strand for self, an ordered gene/target pair for pair), elastic ones included; a frame every generation (as many draws as the initial population has strands). 0 runs the draws on until the caller stops reading the frames <br>`0` … `10000000` |
 
 ### Implementation decisions
 

@@ -50,7 +50,7 @@ from collections import Counter
 import numpy as np
 
 from chemart.network import Network, Reaction, Species
-from chemart.trajectory import Frame
+from chemart.trajectory import Frame, ticks
 
 #: CA radius of every rule here: neighbourhood = 2r + 1 = 7 cells.
 RADIUS = 3
@@ -637,7 +637,7 @@ def evolve(p, rng):
     before = run.observe(lattice, 0)
     at_condensation = before if run.condensation == 0 else None
     yield frame(0, before)
-    for t in range(1, p.steps + 1):
+    for t in ticks(p.steps):
         lattice = step(lattice, table)
         after = run.observe(lattice, t)
         run.transition(before, after, t, n)

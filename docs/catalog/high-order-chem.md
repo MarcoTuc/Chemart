@@ -215,6 +215,8 @@ traj = chemart.evolve("high-order-chem", seed=1)
 101 frames, t = 0 … 10000 iterations; observables: prime_fraction
 ```
 
+`iterations=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve high-order-chem --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 The chemistry has two faces. `chemart.generate_network("high-order-chem")`,
@@ -327,7 +329,7 @@ Pass any of these as keyword arguments to `generate_network`, or to `chemart.evo
 | `minn` | `int` | `2` | structural | init numbers: lower bound of the uniform draw (inclusive) <br>≥ `1` |
 | `maxn` | `int` | `1000` | structural | init numbers: upper bound of the uniform draw (inclusive) <br>≥ `1` |
 | `cities` | `int` | `10` | structural | number of cities on the ring instance that the tour machines (and init tours) use; tours are permutations of 0..cities-1 <br>`3` … `1000` · *range:* MolecularTSP.py default 10 |
-| `iterations` | `int` | `10000` | population | *evolve only.* number of iterations of the algorithm (one rule drawn per iteration, elastic and idle ones included); a frame every generation of as many iterations as initial data molecules <br>`0` … `10000000` · *range:* NumberChemHO.run: 10000; MolecularTSP.py: up to 1000 generations of ceil(M * 100 / \|rules\|) iterations |
+| `iterations` | `int` | `10000` | population | *evolve only.* number of iterations of the algorithm (one rule drawn per iteration, elastic and idle ones included); a frame every generation of as many iterations as initial data molecules. 0 runs the loop until the caller stops reading its frames <br>`0` … `10000000` · *range:* NumberChemHO.run: 10000; MolecularTSP.py: up to 1000 generations of ceil(M * 100 / \|rules\|) iterations |
 | `max_species` | `int` | `1000` | structural | *generate only.* budget of data species of the closure; status truncated when exceeded <br>≥ `1` |
 
 ### Implementation decisions

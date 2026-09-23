@@ -20,6 +20,7 @@ chemistries:
   constructive: true
   type: gas
   clock: steps
+  duration: steps
   S:
     repr: "binary heteropolymers; species id p<bitstring>, structure the bitstring (first character = first monomer)"
     definition: implicit
@@ -60,7 +61,7 @@ chemistries:
     - {name: population, type: int, default: 200, min: 2, max: 1000000, range: "report: 1000 strings", role: population, face: evolve, meaning: "number of molecules, kept constant; a frame every `population` steps"}
     - {name: l, type: int, default: 19, min: 1, max: 256, range: "report section 4: random strings of length 19; about 30 on average in section 3", role: population, face: evolve, meaning: "length of the random background strings"}
     - {name: inoculum_fraction, type: float, default: 0.1, min: 0.0, max: 1.0, range: "report section 4: 10% each of replicator and parasite", role: population, face: evolve, meaning: "fraction of the population given to each string in `strings`; the rest is random strings of length l"}
-    - {name: steps, type: int, default: 5000, min: 0, max: 100000000, range: "report section 4: 1.2 x 10^6 steps with 177104 recognition collisions", role: population, face: evolve, meaning: "number of draws of a molecule placing a pattern"}
+    - {name: steps, type: int, default: 5000, min: 0, max: 100000000, range: "report section 4: 1.2 x 10^6 steps with 177104 recognition collisions", role: population, face: evolve, meaning: "number of draws of a molecule placing a pattern. 0 draws until the caller stops reading the frames"}
   provides: [topology, stoichiometry, catalysts, flow, initial-state, sequence-structure-function]
   fidelity: reconstructed
   sources:

@@ -264,6 +264,8 @@ traj = chemart.evolve("ikegami-hashimoto", seed=1)
 151 frames, t = 0 … 150 generations; observables: active_mutation, reading_length
 ```
 
+`generations=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve ikegami-hashimoto --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 Chemart runs this chemistry in two ways. `generate_network`, the call above,
@@ -428,7 +430,7 @@ Pass any of these as keyword arguments to `generate_network`, or to `chemart.evo
 | `N` | `int` | `1000` | population | *evolve only.* capacity of each population (machines, tapes); seeds share it equally <br>`1` … `10000000` · *range:* not stated in the papers |
 | `c` | `float` | `0.6` | kinetic | fraction of each population replaced by reaction products per generation (c = d_m = d_t); also the rate scale of eq. 4 <br>`0.0` … `1.0` · *range:* papers: c = d = 0.6 |
 | `noise` | `float` | `0.05` | stochastic | *evolve only.* external noise mu_P, bit-flip probability per bit of the reading frame <br>`0.0` … `1.0` · *range:* papers: 0.04 (minimal loop), 0.055 (oscillation), 0.07-0.08 (core networks), scans 0-0.1 |
-| `generations` | `int` | `150` | population | *evolve only.* number of generations; a frame every generation <br>`0` … `100000` · *range:* papers: 1600-3000 |
+| `generations` | `int` | `150` | population | *evolve only.* number of generations; a frame every generation. 0 runs the dynamics until the caller stops reading its frames <br>`0` … `100000` · *range:* papers: 1600-3000 |
 | `noise_off` | `int` | `-1` | stochastic | *evolve only.* generation at which external noise is turned off; -1 keeps it on <br>`-1` … `100000` · *range:* papers: 2000 |
 | `source` | `enum` | `random` | stochastic | *evolve only.* source of a tape whose circular pattern is new to the population: random site (papers) or the site it was written from <br>one of `random`, `inherit` |
 | `max_species` | `int` | `400` | structural | *generate only.* species budget of the closure (the noise-free closure has at most 128 tapes and 128 + seed machines) <br>`2` … `100000` |

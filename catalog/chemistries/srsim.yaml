@@ -20,6 +20,7 @@ chemistries:
   constructive: true
   type: gas
   clock: time
+  duration: steps
   S:
     repr: >
       elementary molecules (EM): spheres with a mass, a radius and a diffusion coefficient,
@@ -69,7 +70,7 @@ chemistries:
     - {name: scaffold_binding, type: float, default: 1.0, min: 0.0, max: 1000.0, range: "figure 6 compares 1 ('w-Scf', the published d2_on = 0.05) with 0 ('wo-Scf')", role: kinetic, meaning: "scaffold model only: multiplier of the published scaffold association rates d2_on and d3_on, i.e. the rate ks of figure 6"}
     - {name: rate_scale, type: float, default: 1.0, min: 0.0, role: kinetic, meaning: "multiplies every rule rate, like SRSim's preFactBindR/preFactBreakR/preFactModifyR prefactors; scaling the whole rule set rescales time, so rate_scale x simulated time reproduces a much longer published run"}
     - {name: box, type: float, default: 12.0, min: 1.0, range: "the published examples use 80^3, 100^3 and 200x30x30", role: spatial, meaning: "edge of the cubic reaction volume; the box is periodic and must be wider than twice the largest reaction distance"}
-    - {name: steps, type: int, default: 1500, min: 1, max: 200000, range: "the published runs are 100000 to 3000000 steps", role: kinetic, meaning: "molecular-dynamics steps; reactions are looked for after every one of them"}
+    - {name: steps, type: int, default: 1500, min: 0, max: 200000, range: "the published runs are 100000 to 3000000 steps", role: kinetic, meaning: "molecular-dynamics steps; reactions are looked for after every one of them. 0 runs the molecular dynamics on until the caller stops reading its frames"}
     - {name: dt, type: float, default: 0.02, min: 1.0e-9, range: "the paper's rule of thumb: sqrt(6 D dt) should be about a tenth of a particle diameter", role: kinetic, meaning: "time step of the molecular dynamics"}
     - {name: diffusion, type: float, default: 1.0, min: 0.0, range: "the paper estimates 8e-11 m^2/s for a haemoglobin-sized protein (Stokes-Einstein)", role: spatial, meaning: "diffusion coefficient of an elementary molecule (the scaffold S gets a fifth of it, being five times heavier)"}
     - {name: temperature, type: float, default: 1.0, min: 1.0e-9, role: thermodynamic, meaning: "k_B T of the Langevin thermostat; the friction is gamma_0 = k_B T / D"}

@@ -21,12 +21,24 @@ Frame fields:
 from __future__ import annotations
 
 from collections import Counter
+from itertools import count
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from chemart.network import Network, Reaction, Species
 
 METHODS = ("ode", "ssa", "evolve")
+
+
+def ticks(n: int):
+    """1, 2, 3 ... up to `n`, or without end when `n` is 0.
+
+    The step counter of an evolve face. A length of 0 means the process runs
+    until whoever is reading its frames stops: the pit's Stop button, a
+    `break`, Ctrl-C. The catalog entry names the parameter that sets it
+    (`duration`), so callers know which one to zero.
+    """
+    return count(1) if not n else range(1, n + 1)
 
 
 @dataclass

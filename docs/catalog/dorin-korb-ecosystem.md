@@ -239,6 +239,8 @@ traj = chemart.evolve("dorin-korb-ecosystem", seed=1)
 151 frames, t = 0 … 150 steps; observables: biomass_bonds, free_atoms, inorganic_bonds, sugar_bonds
 ```
 
+`steps=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve dorin-korb-ecosystem --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 The default run is not a published experiment, since there is none. It is an
@@ -335,7 +337,7 @@ Pass any of these as keyword arguments to `chemart.evolve` (or `generate_network
 |---|---|---|---|---|
 | `width` | `int` | `18` | spatial | grid width in cells (one square atom per cell) <br>`4` … `400` · *range:* paper-scale grids are hundreds of cells wide |
 | `height` | `int` | `18` | spatial | grid height in cells <br>`4` … `400` |
-| `steps` | `int` | `150` | population | simulation time steps; one step is one movement phase followed by one reaction phase <br>`0` … `100000` · *range:* long runs use thousands of steps |
+| `steps` | `int` | `150` | population | simulation time steps; one step is one movement phase followed by one reaction phase. 0 runs the world until the caller stops reading its frames <br>`0` … `100000` · *range:* long runs use thousands of steps |
 | `atoms` | `dict` | `{'A': 28, 'B': 28, 'O': 36, 'C': 24}` | structural | initial number of free atoms of each building block A, B, C, O |
 | `catalysts` | `dict` | `{'K': 4, 'EAB': 4, 'ECC': 4, 'EO': 4}` | structural | initial number of free catalyst atoms: K chlorophyll, EAB sugar-breaker, ECC organic decomposer, EO inorganic decomposer |
 | `structures` | `enum` | `all` | structural | which of the paper's organism bodies to seed: the figure 5 photosynthetic autotroph (a C box with chlorophyll and the sugar enzyme on opposite inner walls around a vacuole) and the figure 6 decomposer (a C-C body carrying ECC on a C-O spacer) <br>one of `none`, `photoautotroph`, `decomposer`, `all` |

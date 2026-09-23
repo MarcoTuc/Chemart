@@ -102,6 +102,33 @@ def _run(entry, evolve, seed):
             return frames, stop.value
 
 
+def _endless_problems(entry: Chemistry, evolve: Callable, seed: int, want: int) -> list[str]:
+    """With `duration` at 0 the process runs until the caller stops it.
+
+    It must get at least as far as it does at its default length. A process
+    that ends by itself — an inert program, a proof found, a population that
+    dies out — is allowed to stop there: that is the chemistry finishing,
+    not the budget cutting it off.
+    """
+    if not entry.duration:
+        return ["the module has an evolve face but the entry has no duration "
+                "(the parameter that says how long it runs)"]
+    run = api.run_evolver(entry, evolve, seed, {entry.duration: 0})
+    seen = 0
+    try:
+        for _ in range(want):
+            next(run)
+            seen += 1
+    except StopIteration:
+        return [f"{entry.duration}=0 stopped after {seen} frames, fewer than the {want} of a "
+                f"default run; 0 means it runs until the caller stops (chemart.trajectory.ticks)"]
+    except Exception as err:
+        return [f"{entry.duration}=0 failed: {type(err).__name__}: {err}"]
+    finally:
+        run.close()
+    return []
+
+
 def _evolve_problems(entry: Chemistry, evolve: Callable, seed: int, time_limit: float) -> list[str]:
     out: list[str] = []
     if not entry.clock:
@@ -118,6 +145,7 @@ def _evolve_problems(entry: Chemistry, evolve: Callable, seed: int, time_limit: 
                    f"{time_limit:g} s")
     if not frames:
         return out + ["evolve yielded no frames; the first frame is the initial state"]
+    out += _endless_problems(entry, evolve, seed, len(frames))
     if frames[0].fired:
         out.append("the first frame must be the initial state, with nothing fired yet")
     times = [f.t for f in frames]

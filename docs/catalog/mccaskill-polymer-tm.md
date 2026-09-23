@@ -242,6 +242,8 @@ traj = chemart.evolve("mccaskill-polymer-tm", seed=1)
 26 frames, t = 0 … 5000 steps; observables: none
 ```
 
+`steps=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve mccaskill-polymer-tm --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 The chemistry has two faces. `chemart.generate_network`, printed above, is not
@@ -334,7 +336,7 @@ Pass any of these as keyword arguments to `generate_network`, or to `chemart.evo
 | `population` | `int` | `200` | population | *evolve only.* number of molecules, kept constant; a frame every `population` steps <br>`2` … `1000000` · *range:* report: 1000 strings |
 | `l` | `int` | `19` | population | *evolve only.* length of the random background strings <br>`1` … `256` · *range:* report section 4: random strings of length 19; about 30 on average in section 3 |
 | `inoculum_fraction` | `float` | `0.1` | population | *evolve only.* fraction of the population given to each string in `strings`; the rest is random strings of length l <br>`0.0` … `1.0` · *range:* report section 4: 10% each of replicator and parasite |
-| `steps` | `int` | `5000` | population | *evolve only.* number of draws of a molecule placing a pattern <br>`0` … `100000000` · *range:* report section 4: 1.2 x 10^6 steps with 177104 recognition collisions |
+| `steps` | `int` | `5000` | population | *evolve only.* number of draws of a molecule placing a pattern. 0 draws until the caller stops reading the frames <br>`0` … `100000000` · *range:* report section 4: 1.2 x 10^6 steps with 177104 recognition collisions |
 
 ### Implementation decisions
 

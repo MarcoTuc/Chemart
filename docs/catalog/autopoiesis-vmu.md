@@ -251,6 +251,8 @@ traj = chemart.evolve("autopoiesis-vmu", seed=1)
 121 frames, t = 0 … 120 steps; observables: closed_chains, enclosed_catalysts, membranes
 ```
 
+`steps=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve autopoiesis-vmu --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 The model has two faces. The call printed above,
@@ -350,7 +352,7 @@ Pass any of these as keyword arguments to `generate_network`, or to `chemart.evo
 | `initial` | `enum` | `substrate` | structural | *evolve only.* substrate: the book's figure 6.3 at t = 0, a catalyst surrounded by substrate; cell: start from a ready-made cell, the twelve-link closed membrane around the catalyst of Von Kamp (2002) figure 2 <br>one of `substrate`, `cell` |
 | `width` | `int` | `30` | spatial | *evolve only.* lattice width (toroidal) <br>`5` … `400` · *range:* Von Kamp (2002) figure 2 uses a 30 x 30 world |
 | `height` | `int` | `30` | spatial | *evolve only.* lattice height (toroidal) <br>`5` … `400` · *range:* Von Kamp (2002) figure 2 uses a 30 x 30 world |
-| `steps` | `int` | `120` | population | *evolve only.* time steps; in each one every particle moves and acts once <br>`0` … `1000000` · *range:* spontaneous formation of a cell from a bare catalyst takes thousands of steps; Von Kamp's runs go to 50,000 |
+| `steps` | `int` | `120` | population | *evolve only.* time steps; in each one every particle moves and acts once. 0 runs the lattice until the caller stops reading its frames <br>`0` … `1000000` · *range:* spontaneous formation of a cell from a bare catalyst takes thousands of steps; Von Kamp's runs go to 50,000 |
 | `n_catalysts` | `int` | `1` | population | *evolve only.* catalysts; the first is placed at the centre of the lattice, any others at random <br>`0` … `1000` · *range:* the book's figure 6.3 starts from a single catalyst |
 | `substrate_density` | `float` | `1.0` | population | *evolve only.* fraction of the non-catalyst sites that start as substrate; the rest start as holes. Holes are also produced by the catalysis reaction <br>`0.0` … `1.0` |
 | `production_probability` | `float` | `1.0` | kinetic | *evolve only.* probability per time step that a catalyst turns two neighbouring substrates into a link and a hole (Von Kamp 2002, table 1: 1.0) <br>`0.0` … `1.0` |

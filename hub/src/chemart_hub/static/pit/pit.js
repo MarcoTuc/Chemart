@@ -222,10 +222,12 @@
   // most once per animation frame.
   const dirty = new Set();
   let scheduled = false;
+  const PLOT_POINTS = 3000;      // a run without end would otherwise fill the page's memory
 
   function push(c, t, values) {
     c.data[0].push(t);
     c.labels.forEach((l, i) => c.data[i + 1].push(values[l] ?? null));
+    if (c.data[0].length > PLOT_POINTS) for (const row of c.data) row.shift();
     dirty.add(c);
     if (!scheduled) {
       scheduled = true;
@@ -268,6 +270,15 @@
   function downloadLink(run) {
     $("download").replaceChildren(el("a", { class: "btn btn-sm", href: `/api/runs/${run}.json`,
                                             text: "Download the trajectory (JSON)" }));
+  }
+
+  // The length parameter of the process, and what ticking "run until I stop" does to it.
+  function endlessNote() {
+    const box = $("endless");
+    box.disabled = !info.duration;
+    $("endless-note").textContent = info.duration
+      ? `sets ${info.duration} = 0; Stop ends it and keeps what ran`
+      : "this chemistry has no length parameter to zero";
   }
 
   // ------------------------------------------------------------------- runs
@@ -313,7 +324,10 @@
     status("Evolving…");
     const charts = {};
     const tracked = Array.from(document.querySelectorAll("#tracked .chip.on")).map((c) => c.dataset.name);
-    const body = { chemistry: info.id, seed: seed(), params: getEvolve(), method: "evolve",
+    const params = getEvolve();
+    const endless = $("endless").checked && info.duration;
+    if (endless) params[info.duration] = 0;
+    const body = { chemistry: info.id, seed: seed(), params, method: "evolve",
                    every: parseInt($("every").value, 10), window: parseInt($("window").value, 10),
                    measures: tracked };
     let frames = 0;
@@ -327,7 +341,9 @@
           push(charts[k], m.t, { [k]: v });
         }
         if (frames % 2 === 1) abundance(m.state);
-        status(`Evolving… ${info.clock || "t"} = ${fmt(m.t)}`);
+        status(`Evolving… ${info.clock || "t"} = ${fmt(m.t)}${endless ? " (press Stop when you have seen enough)" : ""}`);
+      } else if (m.type === "start") {
+        downloadLink(m.run);
       } else if (m.type === "network") {
         measuresTable(m.measures, `Measures of the evolved network (${m.summary.species} species, ${m.summary.reactions} reactions)`);
       } else if (m.type === "done") {
@@ -413,6 +429,7 @@
     }
     if (faces.includes("evolve")) {
       getEvolve = paramForm($("evolve-params"), info.evolve_params || info.params);
+      endlessNote();
       const choices = info.measures.filter((m) => m.input === "state" ||
         (m.input === "network" && m.cost === "cheap"));
       const defaults = new Set(["richness", "shannon", "dominance", "n_reactions"]);

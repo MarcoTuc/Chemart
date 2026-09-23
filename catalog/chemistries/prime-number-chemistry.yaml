@@ -18,6 +18,7 @@ chemistries:
   constructive: true
   type: gas
   clock: collisions
+  duration: iterations
   S:
     repr: "natural numbers >= 2; species id n<k>, structure the decimal integer k"
     definition: implicit
@@ -36,7 +37,7 @@ chemistries:
     - {name: minn, type: int, default: 2, min: 2, role: structural, meaning: "lower bound of the uniform initialisation interval (inclusive)"}
     - {name: maxn, type: int, default: 1000, min: 2, range: "book 2.5.2 and appendix: 1000; paper [72] fig. 5: 10000", role: structural, meaning: "upper bound of the initialisation interval (inclusive); maxn >> M makes the run constructive"}
     - {name: numbers, type: list, default: [], range: "book fig. 2.7: each of 2..101 once", role: structural, meaning: "explicit initial multiset of integers >= 2; overrides the random draw of M numbers from [minn, maxn]"}
-    - {name: iterations, type: int, default: 10000, min: 0, max: 10000000, range: "appendix: 10000; figs. 2.8-2.9: 20000; paper [72]: 700 generations = 700 M", role: population, face: evolve, meaning: "number of collisions, elastic ones included (M collisions = one generation; a frame every generation)"}
+    - {name: iterations, type: int, default: 10000, min: 0, max: 10000000, range: "appendix: 10000; figs. 2.8-2.9: 20000; paper [72]: 700 generations = 700 M", role: population, face: evolve, meaning: "number of collisions, elastic ones included (M collisions = one generation; a frame every generation). 0 collides until the caller stops reading the frames"}
     - {name: max_species, type: int, default: 1000, min: 1, role: structural, face: generate, meaning: "species budget of the closure; the closure is finite, so it is truncated only when this is exceeded"}
   provides: [topology, stoichiometry, catalysts, initial-state, sequence-structure-function]
   fidelity: book+decisions

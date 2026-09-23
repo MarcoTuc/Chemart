@@ -20,6 +20,7 @@ chemistries:
   constructive: false
   type: given
   clock: steps
+  duration: steps
   S:
     repr: >
       One particle per site of a 2D toroidal lattice: hole, substrate (O),
@@ -59,7 +60,7 @@ chemistries:
     - {name: initial, type: enum, default: substrate, choices: [substrate, cell], role: structural, face: evolve, meaning: "substrate: the book's figure 6.3 at t = 0, a catalyst surrounded by substrate; cell: start from a ready-made cell, the twelve-link closed membrane around the catalyst of Von Kamp (2002) figure 2"}
     - {name: width, type: int, default: 30, min: 5, max: 400, range: "Von Kamp (2002) figure 2 uses a 30 x 30 world", role: spatial, face: evolve, meaning: "lattice width (toroidal)"}
     - {name: height, type: int, default: 30, min: 5, max: 400, range: "Von Kamp (2002) figure 2 uses a 30 x 30 world", role: spatial, face: evolve, meaning: "lattice height (toroidal)"}
-    - {name: steps, type: int, default: 120, min: 0, max: 1000000, range: "spontaneous formation of a cell from a bare catalyst takes thousands of steps; Von Kamp's runs go to 50,000", role: population, face: evolve, meaning: "time steps; in each one every particle moves and acts once"}
+    - {name: steps, type: int, default: 120, min: 0, max: 1000000, range: "spontaneous formation of a cell from a bare catalyst takes thousands of steps; Von Kamp's runs go to 50,000", role: population, face: evolve, meaning: "time steps; in each one every particle moves and acts once. 0 runs the lattice until the caller stops reading its frames"}
     - {name: n_catalysts, type: int, default: 1, min: 0, max: 1000, range: "the book's figure 6.3 starts from a single catalyst", role: population, face: evolve, meaning: "catalysts; the first is placed at the centre of the lattice, any others at random"}
     - {name: substrate_density, type: float, default: 1.0, min: 0.0, max: 1.0, role: population, face: evolve, meaning: "fraction of the non-catalyst sites that start as substrate; the rest start as holes. Holes are also produced by the catalysis reaction"}
     - {name: production_probability, type: float, default: 1.0, min: 0.0, max: 1.0, role: kinetic, face: evolve, meaning: "probability per time step that a catalyst turns two neighbouring substrates into a link and a hole (Von Kamp 2002, table 1: 1.0)"}

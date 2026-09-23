@@ -45,7 +45,7 @@ from itertools import product
 
 from chemart.network import Network, Reaction, Species
 from chemart.soup import Tally
-from chemart.trajectory import Frame
+from chemart.trajectory import Frame, ticks
 
 # --- the musical material (paper, section 3) -------------------------------------
 #: the diatonic scale of C major in one octave, as eighth notes (section 3)
@@ -572,7 +572,7 @@ def evolve(p, rng):
 
     reactor = Reactor(rules, pool, rng)
     yield Frame(t=0.0, state=reactor.state(), observables={"phrases": reactor.finished})
-    for n in range(1, p.steps + 1):
+    for n in ticks(p.steps):
         if p.phrases and reactor.finished >= p.phrases:
             break
         if not reactor.step():

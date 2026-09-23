@@ -19,6 +19,7 @@ chemistries:
   constructive: true
   type: gas
   clock: generations
+  duration: generations
   S:
     repr: "data strings s = (s0, s1..sN): s0 = l(s) the tour length, s1..sN a permutation of the N cities; species id t<cities joined by dots> of the canonical cycle (starting at city 0, towards the smaller neighbour), structure '(l, s1, ..., sN)'; plus the machine molecules E-machine, C-machine, I-machine, R-machine"
     definition: implicit
@@ -48,7 +49,7 @@ chemistries:
     - {name: t_C, type: float, default: 1.0, min: 0, role: kinetic, meaning: "time scale of the C-machine; 0 removes it"}
     - {name: t_I, type: float, default: 1.0, min: 0, role: kinetic, meaning: "time scale of the I-machine; 0 removes it"}
     - {name: t_R, type: float, default: 0.01, min: 0, range: "paper: 1/1000 to 1 (tables 1b, 2b); 1/100 in simulations 1-2", role: kinetic, meaning: "time scale of the R-machine, the recombination frequency: higher converges faster but collapses the population variance"}
-    - {name: generations, type: int, default: 1000, min: 0, max: 1000000, range: "book fig. 17.2 and paper fig. 3: 1000; paper tables: up to 270000", role: population, meaning: "run length in generations of c = ceil(M / sum t) operation cycles each"}
+    - {name: generations, type: int, default: 1000, min: 0, max: 1000000, range: "book fig. 17.2 and paper fig. 3: 1000; paper tables: up to 270000", role: population, meaning: "run length in generations of c = ceil(M / sum t) operation cycles each. 0 runs until the caller stops reading the frames"}
     - {name: fitness, type: enum, default: tour-length, choices: [tour-length], role: selection, meaning: "quality signal s0 hardwired in the machines: tour-length is the closed euclidean tour length of book eq. 17.1 (lower is better); other problems would add choices here"}
   provides: [topology, stoichiometry, catalysts, initial-state, sequence-structure-function]
   fidelity: reconstructed

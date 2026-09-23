@@ -192,6 +192,8 @@ traj = chemart.evolve("bff", seed=1)
 17 frames, t = 0 … 16 epochs; observables: high_order_entropy, ops_per_run, top_tape_count, zero_bytes
 ```
 
+`epochs=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve bff --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 The default call runs 128 random programs for 16 epochs, the paper's
@@ -268,7 +270,7 @@ Pass any of these as keyword arguments to `chemart.evolve` (or `generate_network
 | name | type | default | role | what it does |
 |---|---|---|---|---|
 | `tapes` | `int` | `128` | population | number of 64-byte programs in the soup <br>`2` … `10000000` · *range:* paper: 2^17 = 131,072 (soup); 32,400 on the 240 x 135 grid |
-| `epochs` | `int` | `16` | population | epochs; every program takes part in one reaction per epoch <br>`0` … `10000000` · *range:* paper: 16,000 ('long'), 128 ('short' and 'seeded') |
+| `epochs` | `int` | `16` | population | epochs; every program takes part in one reaction per epoch. 0 runs the soup until the caller stops reading its frames <br>`0` … `10000000` · *range:* paper: 16,000 ('long'), 128 ('short' and 'seeded') |
 | `mutation_rate` | `float` | `0.000244140625` | stochastic | probability that a byte is replaced by a uniformly random byte, per byte per epoch, before execution <br>`0.0` … `1.0` · *range:* paper default 0.024% (cubff: 2^-12 per byte per epoch); ablation 0 to 1% (Fig. 6) |
 | `max_steps` | `int` | `8192` | structural | bytes read before an execution is stopped <br>`1` … `1000000` · *range:* paper and cubff: 2^13 |
 | `replicators` | `int` | `0` | structural | copies of the hand-written self-replicator of the paper's Fig. 4 placed in the initial soup at random positions <br>≥ `0` · *range:* paper 'seeded' runs: 1 |

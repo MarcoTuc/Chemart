@@ -222,6 +222,8 @@ traj = chemart.evolve("sr-loops", seed=1)
 321 frames, t = 0 … 320 steps; observables: cells
 ```
 
+`steps=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve sr-loops --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 The default call above is Langton's loop replicating three times. The species'
@@ -317,7 +319,7 @@ Pass any of these as keyword arguments to `chemart.evolve` (or `generate_network
 | `rule` | `enum` | `langton` | structural | published transition table: langton = Langton 1984 (8 states, 219 transitions, 86-cell loop); byl = Byl 1989 (6 states, 12-cell loop); reggia-1 and reggia-2 = the Chou-Reggia loops of Reggia et al. 1993 (8 states, 6 and 5 cells); sdsr = Sayama's structurally dissolvable loop (9 states); evoloop = Sayama's evolvable loop (9 states) <br>one of `langton`, `byl`, `reggia-1`, `reggia-2`, `sdsr`, `evoloop` |
 | `mode` | `enum` | `macro` | structural | which reading of 'molecule' to export: macro = emergent loops and their replication/dissolution events; micro = cell states, with every CA transition that fired as a reaction <br>one of `macro`, `micro` |
 | `grid` | `int` | `60` | spatial | side of the square lattice <br>`8` … `4000` · *range:* Sayama's evolution runs use 200x200 to 1000x1000; 60 holds two Langton loops |
-| `steps` | `int` | `320` | population | synchronous updates of the lattice <br>`1` … `2000000` · *range:* one replication takes 151 steps (Langton, SDSR), 25 (Byl), 15 (Chou-Reggia), 363 (evoloop); the SDSR steady state needs a few thousand and evolution in the evoloop 10^4-10^7 |
+| `steps` | `int` | `320` | population | synchronous updates of the lattice. 0 runs the automaton on until the caller stops reading its frames (mode micro only: macro settles its species names at the end of the run) <br>`0` … `2000000` · *range:* one replication takes 151 steps (Langton, SDSR), 25 (Byl), 15 (Chou-Reggia), 363 (evoloop); the SDSR steady state needs a few thousand and evolution in the evoloop 10^4-10^7 |
 | `boundary` | `enum` | `periodic` | spatial | periodic: the lattice is a torus (Sayama's 'periodic space'); quiescent: everything outside the lattice is background <br>one of `periodic`, `quiescent` |
 | `ancestors` | `int` | `1` | population | how many copies of the ancestor to place; one is centred, several are placed at random non-overlapping positions (this is the only use of the seed) <br>`1` … `1000` · *range:* Sayama's competition runs start two ancestors at opposite ends of the space |
 | `ancestor_pattern` | `str` | `` | structural | the seed loop as a Golly RLE string ('x = 4, y = 4, rule = ...' then the run-length-encoded rows, '.' = quiescent, A = state 1); empty means the published ancestor of the chosen rule |

@@ -19,6 +19,7 @@ chemistries:
   constructive: true
   type: gas
   clock: collisions
+  duration: steps
   S:
     repr: >
       strings over the 19 symbols . 0 1 2 3 ' " ! ? % * / \ & $ M E L R
@@ -56,7 +57,7 @@ chemistries:
     - {name: organisation, type: enum, default: independent-genes, choices: [independent-genes, single-chromosome, spindle-membrane], range: "paper [823] models (i), (ii), (iii)", role: structural, meaning: "published ancestral cell: (i) six separate genes + copier (3) + constructor (3), the book's 12-string replication system; (ii) one chromosome + copier (4) + constructor (4); (iii) seven separate genes regulated by L/R spindle tags + copier (4) + constructor (3) + membrane seed EM"}
     - {name: strings, type: list, default: [], range: "e.g. the book's P0 (author's spelling, see R.scheme) with the operand 002301", role: structural, meaning: "explicit seed strings (a multiset for the soup of chemart.evolve); overrides organisation"}
     - {name: max_species, type: int, default: 2000, min: 1, range: "model (i) closes at 410 species; the closures of models (ii) and (iii) are infinite and always truncated (see decisions)", role: structural, face: generate, meaning: "species budget of the closure (status truncated when exceeded)"}
-    - {name: steps, type: int, default: 20000, min: 0, max: 10000000, range: "model (i), one copy of each string: 20000 collisions grow the cell from 12 to 30-40 strings in under a second", role: population, face: evolve, meaning: "number of collisions, elastic ones included; a frame every (initial number of strings) collisions"}
+    - {name: steps, type: int, default: 20000, min: 0, max: 10000000, range: "model (i), one copy of each string: 20000 collisions grow the cell from 12 to 30-40 strings in under a second", role: population, face: evolve, meaning: "number of collisions, elastic ones included; a frame every (initial number of strings) collisions. 0 runs the cell on until the caller stops reading its frames"}
     - {name: copies, type: int, default: 1, min: 1, max: 1000, role: population, face: evolve, meaning: "copies of every seed string in the initial cell"}
     - {name: dilution, type: enum, default: none, choices: [none, constant], role: population, face: evolve, meaning: "none lets the cell grow; constant removes random strings back to the initial size (a stand-in for the cell-size cap, not in the papers)"}
   provides: [topology, stoichiometry, catalysts, initial-state, sequence-structure-function]

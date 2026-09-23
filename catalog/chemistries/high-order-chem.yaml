@@ -19,6 +19,7 @@ chemistries:
   constructive: true
   type: gas
   clock: iterations
+  duration: iterations
   S:
     repr: "two multisets: data molecules (JSON integers or lists; species n<k> or compact JSON text such as [0,3,1,2]) and rule molecules (species rule:<name>, structure the rule text, e.g. divrule(m1, m2))"
     definition: implicit
@@ -40,7 +41,7 @@ chemistries:
     - {name: minn, type: int, default: 2, min: 1, role: structural, meaning: "init numbers: lower bound of the uniform draw (inclusive)"}
     - {name: maxn, type: int, default: 1000, min: 1, role: structural, meaning: "init numbers: upper bound of the uniform draw (inclusive)"}
     - {name: cities, type: int, default: 10, min: 3, max: 1000, range: "MolecularTSP.py default 10", role: structural, meaning: "number of cities on the ring instance that the tour machines (and init tours) use; tours are permutations of 0..cities-1"}
-    - {name: iterations, type: int, default: 10000, min: 0, max: 10000000, range: "NumberChemHO.run: 10000; MolecularTSP.py: up to 1000 generations of ceil(M * 100 / |rules|) iterations", role: population, face: evolve, meaning: "number of iterations of the algorithm (one rule drawn per iteration, elastic and idle ones included); a frame every generation of as many iterations as initial data molecules"}
+    - {name: iterations, type: int, default: 10000, min: 0, max: 10000000, range: "NumberChemHO.run: 10000; MolecularTSP.py: up to 1000 generations of ceil(M * 100 / |rules|) iterations", role: population, face: evolve, meaning: "number of iterations of the algorithm (one rule drawn per iteration, elastic and idle ones included); a frame every generation of as many iterations as initial data molecules. 0 runs the loop until the caller stops reading its frames"}
     - {name: max_species, type: int, default: 1000, min: 1, role: structural, face: generate, meaning: "budget of data species of the closure; status truncated when exceeded"}
   provides: [topology, stoichiometry, catalysts, initial-state, sequence-structure-function]
   fidelity: book+decisions

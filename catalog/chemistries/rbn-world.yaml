@@ -20,6 +20,7 @@ chemistries:
   constructive: true
   type: gas
   clock: collisions
+  duration: collisions
   S:
     repr: "an atom is a bonding RBN (bRBN: an RBN plus 2 bonding sites); a molecule is a tree of bRBNs joined at bonding sites, and each tree level carries its own node states"
     definition: implicit
@@ -44,7 +45,7 @@ chemistries:
     - {name: bonding_rule, type: enum, default: proportion-sum-one, choices: [proportion-sum-one, total-sum-zero, cycle-length-equal], role: structural, meaning: "emergent property and criterion that decide bonds. proportion-sum-one and total-sum-zero passed all low-level tests (ALife XII); cycle-length-equal is the original ECAL 2009 chemistry"}
     - {name: elements, type: int, default: 5, min: 1, max: 26, range: "Faulkner et al. (2018) seed the reactor with five atom types", role: structural, meaning: "number of random atom types (bRBNs), named A, B, C, ..."}
     - {name: copies, type: int, default: 20, min: 1, max: 1000, range: "the thesis uses 1000 copies of each element", role: population, meaning: "initial molecules of each element"}
-    - {name: collisions, type: int, default: 1000, min: 0, max: 100000, role: population, meaning: "random pairwise collisions simulated, a frame every elements * copies of them; the observed network grows with it"}
+    - {name: collisions, type: int, default: 1000, min: 0, max: 100000, role: population, meaning: "random pairwise collisions simulated, a frame every elements * copies of them; the observed network grows with it. 0 collides until the caller stops reading the frames"}
   provides: [topology, stoichiometry, catalysts, initial-state, mass-conservation, sequence-structure-function]
   fidelity: reconstructed
   sources:

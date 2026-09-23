@@ -238,6 +238,8 @@ traj = chemart.evolve("reflexive-ac", seed=1)
 41 frames, t = 0 … 2000 collisions; observables: none
 ```
 
+`collisions=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve reflexive-ac --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 The chemistry has two faces. `chemart.generate_network`, printed above,
@@ -323,7 +325,7 @@ Pass any of these as keyword arguments to `generate_network`, or to `chemart.evo
 | `symbols` | `int` | `2` | structural | random machines: input/output alphabet size k <br>`1` … `16` · *range:* the sources use the binary alphabet {0, 1} |
 | `max_states` | `int` | `64` | structural | largest product accepted: a composition with more reachable nodes is elastic <br>`1` … `100000` |
 | `max_species` | `int` | `100` | structural | *generate only.* species budget of the closure; reactions that would add more are dropped and status becomes truncated <br>`1` … `100000` |
-| `collisions` | `int` | `2000` | population | *evolve only.* number of collisions (elastic ones included); a frame every M collisions <br>`0` … `10000000` |
+| `collisions` | `int` | `2000` | population | *evolve only.* number of collisions (elastic ones included); a frame every M collisions. 0 runs the reactor until the caller stops reading its frames <br>`0` … `10000000` |
 
 ### Implementation decisions
 

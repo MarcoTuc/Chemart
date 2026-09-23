@@ -20,6 +20,7 @@ chemistries:
   constructive: true
   type: gas
   clock: collisions
+  duration: steps
   S:
     repr: "binary strings of length N, N a perfect square, named by the integer they encode (s(5) = (1,0,1,0)); |S| = 2^N - 1 (the all-zero 'destructor' s(0) is excluded from reacting)"
     definition: implicit
@@ -52,7 +53,7 @@ chemistries:
     - {name: destructor_elastic, type: bool, default: true, role: selection, meaning: "collisions producing the all-zero destructor s(0) are elastic (book 3.1); false makes s(0) an ordinary species, which then replicates with every string"}
     - {name: max_species, type: int, default: 1000, min: 1, max: 4096, range: "the full N = 9 system has 511 strings (261,121 reactions)", role: structural, face: generate, meaning: "budget on the number of strings in the closure; the status becomes truncated when it cuts the closure off"}
     - {name: M, type: int, default: 1000, min: 2, max: 1000000, range: "book: 1,000 and 100,000", role: population, face: evolve, meaning: "constant number of strings in the vessel; a frame every M collisions"}
-    - {name: steps, type: int, default: 10000, min: 0, max: 10000000, range: "book figures run 10^6 to 10^7 iterations", role: stochastic, face: evolve, meaning: "number of collisions (draws of an operator/string pair)"}
+    - {name: steps, type: int, default: 10000, min: 0, max: 10000000, range: "book figures run 10^6 to 10^7 iterations", role: stochastic, face: evolve, meaning: "number of collisions (draws of an operator/string pair). 0 collides until the caller stops reading the frames"}
   provides: [topology, stoichiometry, catalysts, rate-constants, initial-state, flow, sequence-structure-function]
   fidelity: book+decisions
   sources:

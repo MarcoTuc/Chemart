@@ -237,6 +237,8 @@ traj = chemart.evolve("ono-ikegami-protocell", seed=1)
 101 frames, t = 0 … 100 sweeps; observables: none
 ```
 
+`steps=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve ono-ikegami-protocell --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 The model has two faces. The call printed above,
@@ -360,7 +362,7 @@ Pass any of these as keyword arguments to `generate_network`, or to `chemart.evo
 | `membrane` | `enum` | `anisotropic` | structural | whether membrane particles are the anisotropic M_a or the isotropic M_i; the book's central result is that only M_a sustains protocells at low food supply <br>one of `anisotropic`, `isotropic` |
 | `width` | `int` | `24` | spatial | *evolve only.* lattice width in cells (axial r); the papers use a few hundred <br>`6` … `200` |
 | `height` | `int` | `24` | spatial | *evolve only.* lattice height in cells (axial q) <br>`6` … `200` |
-| `steps` | `int` | `100` | population | *evolve only.* lattice sweeps, a frame each; a sweep does `relaxation` Metropolis exchange passes, one rotation pass (M_a only) and one chemistry pass <br>`1` … `20000` |
+| `steps` | `int` | `100` | population | *evolve only.* lattice sweeps, a frame each; a sweep does `relaxation` Metropolis exchange passes, one rotation pass (M_a only) and one chemistry pass. 0 sweeps the lattice until the caller stops reading the frames <br>`0` … `20000` |
 | `relaxation` | `int` | `12` | spatial | *evolve only.* Metropolis exchange passes per chemistry pass; this is where the paper's separation between the mobility rates (7e-3) and the reaction rates (1e-4) enters, so particles demix long before they react <br>`1` … `200` |
 | `initial` | `enum` | `random` | population | *evolve only.* 'random' is a well-mixed start (the papers' homogeneous experiment); 'cell' prepares a membrane ring around autocatalyst and food (their cell-like experiment) <br>one of `random`, `cell` |
 | `cell_radius` | `int` | `5` | spatial | *evolve only.* radius in cells of the prepared membrane ring when initial = cell <br>`1` … `60` |

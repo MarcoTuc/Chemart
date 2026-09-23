@@ -257,6 +257,8 @@ traj = chemart.evolve("proof-ac", seed=1)
 8 frames, t = 0 … 1077 collisions; observables: none
 ```
 
+`max_collisions=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve proof-ac --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 The chemistry has two faces, the two ways of running it described above.
@@ -382,7 +384,7 @@ Pass any of these as keyword arguments to `generate_network`, or to `chemart.evo
 | `max_species` | `int` | `2000` | structural | *generate only.* species budget of the closure; the closure of a first-order theory can be infinite, so it is then truncated <br>`1` … `100000` |
 | `replacement` | `enum` | `educt` | population | *evolve only.* educt replaces one reactant (chosen with probability 1/2) by the resolvent; free overwrites a random molecule of the reactor <br>one of `educt`, `free` |
 | `multiplicity` | `int` | `20` | population | *evolve only.* copies of each start clause in the reactor (reactor size = multiplicity x number of start clauses; a frame every reactor size collisions) <br>`1` … `100000` · *range:* thesis fig. 6.1: 1-7000; fig. 6.3: 20; fig. 6.4: 14000 |
-| `max_collisions` | `int` | `20000` | population | *evolve only.* time limit in collisions, elastic ones included <br>`0` … `100000000` · *range:* thesis fig. 6.1: time limits up to 80000 collisions |
+| `max_collisions` | `int` | `20000` | population | *evolve only.* time limit in collisions, elastic ones included. 0 is no limit: the reactor runs until the target is proved or the caller stops reading the frames <br>`0` … `100000000` · *range:* thesis fig. 6.1: time limits up to 80000 collisions |
 | `elastic_inflow` | `bool` | `True` | population | *evolve only.* after every elastic collision a random start clause overwrites a random molecule (thesis 3.1.3; used in figs. 6.1-6.4) |
 | `inflow_rate` | `float` | `0.0` | population | *evolve only.* one start clause flows in every round(1/inflow_rate) collisions (thesis algorithm 3.3); 0 = none; needs elastic_inflow false <br>`0.0` … `1.0` |
 

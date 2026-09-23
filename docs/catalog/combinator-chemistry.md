@@ -258,6 +258,8 @@ traj = chemart.evolve("combinator-chemistry", seed=1)
 21 frames, t = 0 … 20 generations; observables: none
 ```
 
+`generations=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve combinator-chemistry --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 The default call above computes a *closure*: starting from the seven single
@@ -404,7 +406,7 @@ Pass any of these as keyword arguments to `generate_network`, or to `chemart.evo
 | `max_depth` | `int` | `5` | structural | maxdepth: most nested parentheses in a product <br>≥ `0` · *range:* thesis table 6.4: 5; fig. 6.4: 7; ECAL 2001 and ch. 7: 20 |
 | `max_species` | `int` | `100` | structural | *generate only.* species budget of the closure; above it the closure is cut off (status truncated) <br>≥ `1` |
 | `M` | `int` | `100` | population | *evolve only.* number of random molecules assembled at the start (ignored when molecules is given) <br>`2` … `100000` · *range:* ECAL 2001: 300; thesis ch. 7: 150 |
-| `generations` | `int` | `20` | population | *evolve only.* physical generations (collisions = population size per generation, elastic included); a frame per generation <br>`0` … `1000000` · *range:* thesis fig. 6.7: 10^4; ECAL 2001: 10^4 and 3x10^4; 2000 paper: 300 |
+| `generations` | `int` | `20` | population | *evolve only.* physical generations (collisions = population size per generation, elastic included); a frame per generation. 0 runs the reactor until the caller stops reading its frames <br>`0` … `1000000` · *range:* thesis fig. 6.7: 10^4; ECAL 2001: 10^4 and 3x10^4; 2000 paper: 300 |
 | `atoms_per_type` | `int` | `200` | population | *evolve only.* reactive reactor only: atoms of each type in the reactor (bound in molecules plus free) <br>≥ `0` · *range:* thesis table 6.4 and ECAL 2001: 2000; fig. 6.7: 600; ch. 7: 1000 |
 | `prob_destroy` | `float` | `0.00015` | kinetic | *evolve only.* reactive reactor only: probdest, probability per generation that a molecule decays into free atoms <br>`0.0` … `1.0` · *range:* thesis table 6.4: 0.00015; ch. 7: 0.01; ECAL 2001: 0 |
 | `min_molecules` | `int` | `30` | kinetic | *evolve only.* reactive reactor only: minmolecules, population at or below which a random molecule is inserted with probability 1 per generation <br>≥ `0` · *range:* thesis table 6.4: 30; ECAL 2001: 50; ch. 7: 25 |

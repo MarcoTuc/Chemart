@@ -56,7 +56,7 @@ import numpy as np
 
 from chemart.network import Network, Reaction, Species
 from chemart.soup import Tally
-from chemart.trajectory import Frame
+from chemart.trajectory import Frame, ticks
 
 MODELS = ("polymer", "dimerization", "scaffold", "custom")
 INTEGRATORS = ("langevin", "brownian")
@@ -732,10 +732,14 @@ class World:
 
     # -- the run ----------------------------------------------------------
     def run(self):
-        """Run the steps, yielding after each one."""
+        """Run the steps, yielding after each one.
+
+        `steps=0` runs on until the caller stops reading; the rate samples
+        then start at once, there being no half-way point to wait for.
+        """
         every = max(1, self.p.steps // 200)
         half = self.p.steps // 2
-        for step in range(self.p.steps):
+        for step in (t - 1 for t in ticks(self.p.steps)):
             self.integrate()
             self.time = (step + 1) * self.dt
             self.react()

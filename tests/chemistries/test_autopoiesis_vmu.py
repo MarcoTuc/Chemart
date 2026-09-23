@@ -223,4 +223,4 @@ def test_parameters_are_checked():
     with pytest.raises(ValueError, match=r"mobility\['link'\]"):
         evolve(ID, mobility={"link": 2.0})
     with pytest.raises(ValueError, match="exceeds"):
-        evolve(ID, width=5, height=5, n_catalysts=30, steps=0)
+        evolve(ID, width=5, height=5, n_catalysts=30, steps=1)   # steps=0 now means endless

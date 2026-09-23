@@ -20,6 +20,7 @@ chemistries:
   constructive: true
   type: gas
   clock: collisions
+  duration: steps
   S:
     repr: "RNA sequences over AUGC, each folded by free-energy minimisation (Vienna RNA) into a secondary structure in dot-bracket notation; Species.structure holds 'sequence dot-bracket'"
     definition: implicit
@@ -41,7 +42,7 @@ chemistries:
     - {name: seq_length, type: int, default: 30, min: 8, max: 120, role: structural, meaning: "length of each RNA sequence in the initial pool", range: "Flamm et al. (2010) use tRNA-size genes of 100 nt carried on a 5000 nt genome"}
     - {name: pool, type: int, default: 8, min: 1, max: 200, role: population, meaning: "number of random RNA sequences the closure or the run starts from", range: "chemart.evolve needs at least 3; paper-scale runs hold tens of ribozymes per cell"}
     - {name: max_species, type: int, default: 60, min: 2, max: 5000, role: structural, face: generate, meaning: "species budget for the closure; the network is reported as truncated when it is reached"}
-    - {name: steps, type: int, default: 500, min: 1, max: 200000, role: population, face: evolve, meaning: "number of collisions in the well-stirred run; a frame every (initial pool size) collisions"}
+    - {name: steps, type: int, default: 500, min: 0, max: 200000, role: population, face: evolve, meaning: "number of collisions in the well-stirred run; a frame every (initial pool size) collisions. 0 runs the collisions on until the caller stops reading the frames"}
     - {name: dilution, type: enum, default: none, choices: [none, constant], role: population, face: evolve, meaning: "whether the well-stirred population is diluted back to its initial size after every reaction"}
     - {name: its_min, type: int, default: 4, min: 2, max: 200, role: structural, meaning: "smallest ITS size (longest-loop cycle length) that is catalytic"}
     - {name: its_max, type: int, default: 12, min: 2, max: 200, role: structural, meaning: "largest ITS size that is catalytic; larger loops are treated as composite transition structures"}

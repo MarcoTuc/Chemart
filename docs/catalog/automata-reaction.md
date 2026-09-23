@@ -240,6 +240,8 @@ traj = chemart.evolve("automata-reaction", seed=1)
 11 frames, t = 0 … 10 generations; observables: innovativity, productivity
 ```
 
+`generations=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve automata-reaction --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 The automata reaction has two faces. `chemart.generate_network("automata-reaction")`,
@@ -370,7 +372,7 @@ Pass any of these as keyword arguments to `generate_network`, or to `chemart.evo
 | `forbid_exact_replication` | `bool` | `False` | selection | filter f1 of paper eq. 3: a collision whose product equals one of its reactants is elastic, so exact replication is disabled <br>*range:* paper section 5.4 (evolution): true |
 | `M` | `int` | `1000` | population | *evolve only.* soup size: number of random 32-bit words in the initial soup (ignored when words is given); a generation is M collisions <br>`2` … `1000000` · *range:* paper: 100 (fig. 3), 10^4 (figs. 2, 4), 10^5 (figs. 5-6), 10^6 (fig. 7) |
 | `n_seeds` | `int` | `10` | population | *generate only.* number of random 32-bit words whose closure is taken (ignored when words is given) <br>`1` … `1000000` |
-| `generations` | `int` | `10` | population | *evolve only.* run length in generations of M collisions each, elastic collisions included; a frame per generation <br>`0` … `100000` · *range:* paper: 10 (fig. 2), 140 (fig. 3), 280 (fig. 4), 1000 and 7000 (figs. 5-6) |
+| `generations` | `int` | `10` | population | *evolve only.* run length in generations of M collisions each, elastic collisions included; a frame per generation. 0 runs the reactor until the caller stops reading its frames <br>`0` … `100000` · *range:* paper: 10 (fig. 2), 140 (fig. 3), 280 (fig. 4), 1000 and 7000 (figs. 5-6) |
 | `words` | `list` | `[]` | structural | explicit initial multiset of the soup, or seed set of the closure, of 32-bit words as hex strings or integers; overrides the random draw of M words <br>*range:* e.g. the fig. 3 organization [7240a7ef, 7240a7ea, 7240a7eb, 7240a7ee] |
 | `max_species` | `int` | `50` | structural | *generate only.* species budget of the closure; the closure of random words is usually cut off by it (status truncated) <br>≥ `1` |
 

@@ -33,7 +33,7 @@ from collections import Counter
 
 from chemart.network import Network, Reaction, Species
 from chemart.soup import Tally
-from chemart.trajectory import Frame
+from chemart.trajectory import Frame, ticks
 
 MACHINES = ("E", "C", "I", "R")
 N_OP = {"E": 1, "C": 1, "I": 1, "R": 2}
@@ -249,7 +249,7 @@ def evolve(p, rng):
                                   "overlap": overlap(pop, n)})
 
     yield frame(0)
-    for generation in range(1, p.generations + 1):
+    for generation in ticks(p.generations):
         for _ in range(ops):
             kind = active[int(rng.choice(len(active), p=weights))] if len(active) > 1 else active[0]
             if N_OP[kind] == 1:

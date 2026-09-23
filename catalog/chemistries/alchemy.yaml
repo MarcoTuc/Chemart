@@ -20,6 +20,7 @@ chemistries:
   constructive: true
   type: gas
   clock: collisions
+  duration: collisions
   S:
     repr: "closed normal forms of untyped lambda-expressions modulo renaming of bound variables; species id is the de Bruijn string (^ abstraction, (M)N application, 1-based indices, e.g. ^^2 for λx1.λx2.x1), structure the paper's standardized form λx1.λx2.x1"
     definition: implicit
@@ -44,7 +45,7 @@ chemistries:
   params:
     - {name: M, type: int, default: 100, min: 2, max: 100000, range: "paper: 1000 (reactor capacity, 5.3), 3000 for the L2 merger (6.4.1); book: 1000..3000", role: population, face: evolve, meaning: "reactor size; without terms, the number of distinct random normal forms that seed the reactor"}
     - {name: n_seeds, type: int, default: 10, min: 1, max: 100000, role: population, face: generate, meaning: "without terms, the number of distinct random normal forms whose closure is taken"}
-    - {name: collisions, type: int, default: 2000, min: 0, max: 10000000, range: "paper figs. 4-5: 5*10^5..6*10^5; Mathis et al. 2024: 10^5..6*10^6", role: population, face: evolve, meaning: "number of collisions (elastic ones included); a frame every M collisions"}
+    - {name: collisions, type: int, default: 2000, min: 0, max: 10000000, range: "paper figs. 4-5: 5*10^5..6*10^5; Mathis et al. 2024: 10^5..6*10^6", role: population, face: evolve, meaning: "number of collisions (elastic ones included); a frame every M collisions. 0 runs the reactor until the caller stops reading its frames"}
     - {name: terms, type: list, default: [], range: "e.g. the L1 example-1 center [λx1.λx2.λx3.x1, λx1.λx2.λx3.λx4.x2, λx1.λx2.λx3.λx4.λx5.x3]", role: structural, meaning: "explicit seed molecules as closed lambda terms, written λx.(M)N (λ or \\) or as de Bruijn ids; reduced to normal form. Soup: M is split equally among them. Overrides the random generator"}
     - {name: filter, type: enum, default: none, choices: [none, no-copy], range: "none gives Level 0 (copiers, hypercycles); no-copy gives Level 1 organisations", role: selection, meaning: "functional boundary condition: no-copy declares elastic every collision whose product is identical to one of its two reactants (paper 6.2)"}
     - {name: forbidden_patterns, type: list, default: [], range: "paper 6.2.3 bans three consecutive abstractions: ['\\^\\^\\^']", role: selection, meaning: "syntactic boundary conditions: regular expressions searched in the product's de Bruijn id; a match makes the collision elastic and excludes the term from the random seed"}

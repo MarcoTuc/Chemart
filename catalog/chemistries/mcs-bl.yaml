@@ -19,6 +19,7 @@ chemistries:
   constructive: true
   type: gas
   clock: collisions
+  duration: steps
   S:
     repr: >
       Broadcast devices: strings over {0, 1, *, :, #, $, %, '} (thesis glyphs
@@ -64,7 +65,7 @@ chemistries:
     - {name: n_random, type: int, default: 0, min: 0, max: 1000000, range: "thesis 5.2: 100 random molecules; 5.3: 900", role: population, meaning: "extra seed strings drawn uniformly from the alphabet (each with initial_copies copies)"}
     - {name: random_length, type: int, default: 10, min: 1, max: 1000000, range: "thesis 5.2-5.3: 10", role: population, meaning: "length of the random seed strings"}
     - {name: n_max, type: int, default: 1000, min: 3, max: 100000000, range: "thesis 5.2-5.3: 1000; cells in 7.2: 10^6", role: population, face: evolve, meaning: "reactor capacity; below it products are added, at it each product displaces a random molecule other than the reactants"}
-    - {name: steps, type: int, default: 10000, min: 0, max: 1000000000, range: "thesis 5.2: 5x10^6 collisions per run; 7.2: over 4x10^7 per cell per hour", role: population, face: evolve, meaning: "number of collisions (elastic ones included); a frame every strings x initial_copies collisions"}
+    - {name: steps, type: int, default: 10000, min: 0, max: 1000000000, range: "thesis 5.2: 5x10^6 collisions per run; 7.2: over 4x10^7 per cell per hour", role: population, face: evolve, meaning: "number of collisions (elastic ones included); a frame every strings x initial_copies collisions. 0 runs the reactor until the caller stops reading the frames"}
     - {name: p_s, type: float, default: 1.0e-5, min: 0.0, max: 1.0, range: "book fig. 11.3 / ACS 2011: 1e-5; thesis 5.2: 1e-3; D.1: 5e-5", role: stochastic, face: evolve, meaning: "per-symbol mutation probability of each product; a mutation is a flip to another symbol, an insertion of a random symbol after it, or a deletion, with equal probability"}
   provides: [topology, stoichiometry, catalysts, rate-constants, flow, initial-state, sequence-structure-function]
   fidelity: reconstructed

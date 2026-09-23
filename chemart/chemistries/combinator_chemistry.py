@@ -542,7 +542,8 @@ def _reactive_soup(p, chem: Chemistry, basis: str, molecules: list[str], rng):
     seen = set(pop)
     yield frame(0)
     t, generation = 0.0, 0
-    while t < p.generations:
+    endless = not p.generations            # generations=0: run until the caller stops
+    while endless or t < p.generations:
         n = len(pop)
         if n < 2:
             if rng.random() < p_add(n):
@@ -572,7 +573,7 @@ def _reactive_soup(p, chem: Chemistry, basis: str, molecules: list[str], rng):
             if rng.random() < p_add(len(pop)) / max(n, 1):
                 insert()
             t += 1.0 / n
-        while generation + 1 <= t and generation < p.generations:
+        while generation + 1 <= t and (endless or generation < p.generations):
             generation += 1
             yield frame(generation)
 

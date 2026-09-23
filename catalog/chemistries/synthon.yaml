@@ -19,6 +19,7 @@ chemistries:
   constructive: true
   type: generator
   clock: s
+  duration: steps
   S:
     repr: >
       A synthon S(A) = <W, A, R, E>: atoms A (virtual atoms W are not used), explicitly modelled
@@ -72,7 +73,7 @@ chemistries:
     - {name: max_species, type: int, default: 200, min: 1, max: 5000, role: structural, face: generate, meaning: "species budget of the closure; reactions that would exceed it are dropped and the status becomes truncated"}
     - {name: densities, type: list, default: [1000.0, 0.44], range: "Duley & Williams (1984): particle density n = 1000 cm^-3 with n(O) = 0.44 cm^-3, so n(H) = 1000 cm^-3", role: population, meaning: "initial density of each initial species, in cm^-3, one per entry of `initial`; it is the network's initial_state and, for chemart.evolve, the proportion in which the molecules are drawn"}
     - {name: molecules, type: int, default: 400, min: 2, max: 100000, range: "the paper calls it Mp and does not publish its value", role: population, face: evolve, meaning: "number of molecules simulated by the SSA; the initial species get at least one each, otherwise a share proportional to their density"}
-    - {name: steps, type: int, default: 2000, min: 1, max: 1000000, range: "the paper calls it Mc and does not publish its value", role: population, face: evolve, meaning: "number of SSA reaction events; a frame after each (fewer if no reaction can fire)"}
+    - {name: steps, type: int, default: 2000, min: 0, max: 1000000, range: "the paper calls it Mc and does not publish its value", role: population, face: evolve, meaning: "number of SSA reaction events; a frame after each (fewer if no reaction can fire). 0 samples events until the caller stops reading the frames"}
   provides: [topology, stoichiometry, catalysts, rate-constants, mass-conservation, initial-state, sequence-structure-function]
   fidelity: reconstructed
   sources:

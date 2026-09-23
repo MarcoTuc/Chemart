@@ -17,6 +17,8 @@ from typing import Callable, Hashable, Iterable
 
 import numpy as np
 
+from chemart.trajectory import ticks
+
 Molecule = Hashable
 DILUTION = ("none", "constant")
 
@@ -66,7 +68,7 @@ def stir(
 ):
     """Run `steps` collisions, yielding (step, population, tally) at step 0,
     every `every` collisions (default: the initial population size, one
-    generation) and at the end.
+    generation) and at the end. `steps=0` runs until the caller stops reading.
 
     The loop is `soup`'s, draw for draw. The population yielded is the live
     list, and the tally holds the reactions fired since the previous yield
@@ -81,7 +83,8 @@ def stir(
     tally = tally if tally is not None else Tally()
     yield 0, pop, tally
     done = 0
-    for done in range(1, steps + 1):
+    for step in ticks(steps):
+        done = step
         if len(pop) < arity:
             break
         idx = _draw(rng, len(pop), arity)
@@ -101,9 +104,9 @@ def stir(
                     while len(pop) > size:
                         _swap_remove(pop, int(rng.integers(len(pop))))
                 tally.add(lhs, rhs)
-        if done % every == 0 and done < steps:
-            yield done, pop, tally
-    if steps:
+        if step % every == 0 and step != steps:
+            yield step, pop, tally
+    if steps or done:
         yield done, pop, tally
 
 

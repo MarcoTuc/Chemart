@@ -242,6 +242,8 @@ traj = chemart.evolve("mcs-bl", seed=1)
 251 frames, t = 0 … 10000 collisions; observables: none
 ```
 
+`steps=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve mcs-bl --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 MCS.bl has two faces. `chemart.generate_network("mcs-bl")`, printed above,
@@ -352,7 +354,7 @@ Pass any of these as keyword arguments to `generate_network`, or to `chemart.evo
 | `n_random` | `int` | `0` | population | extra seed strings drawn uniformly from the alphabet (each with initial_copies copies) <br>`0` … `1000000` · *range:* thesis 5.2: 100 random molecules; 5.3: 900 |
 | `random_length` | `int` | `10` | population | length of the random seed strings <br>`1` … `1000000` · *range:* thesis 5.2-5.3: 10 |
 | `n_max` | `int` | `1000` | population | *evolve only.* reactor capacity; below it products are added, at it each product displaces a random molecule other than the reactants <br>`3` … `100000000` · *range:* thesis 5.2-5.3: 1000; cells in 7.2: 10^6 |
-| `steps` | `int` | `10000` | population | *evolve only.* number of collisions (elastic ones included); a frame every strings x initial_copies collisions <br>`0` … `1000000000` · *range:* thesis 5.2: 5x10^6 collisions per run; 7.2: over 4x10^7 per cell per hour |
+| `steps` | `int` | `10000` | population | *evolve only.* number of collisions (elastic ones included); a frame every strings x initial_copies collisions. 0 runs the reactor until the caller stops reading the frames <br>`0` … `1000000000` · *range:* thesis 5.2: 5x10^6 collisions per run; 7.2: over 4x10^7 per cell per hour |
 | `p_s` | `float` | `1e-05` | stochastic | *evolve only.* per-symbol mutation probability of each product; a mutation is a flip to another symbol, an insertion of a random symbol after it, or a deletion, with equal probability <br>`0.0` … `1.0` · *range:* book fig. 11.3 / ACS 2011: 1e-5; thesis 5.2: 1e-3; D.1: 5e-5 |
 
 ### Implementation decisions

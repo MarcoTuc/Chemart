@@ -42,7 +42,7 @@ from collections import Counter
 from chemart.expand import expand
 from chemart.network import CONSTANT_TOTAL, Network, Reaction, Species
 from chemart.soup import Tally, stir
-from chemart.trajectory import Frame
+from chemart.trajectory import Frame, ticks
 
 #: Symbol order of the substitution matrix and of the mutation loop
 #: (alignment.cpp default_table / config/ALXII.mtx).
@@ -622,12 +622,13 @@ class Container:
     def run(self, steps: int, samples: int = 500):
         """Run `steps` time steps, yielding the number of steps done: 0, then after steps
         1, 1 + every, 1 + 2 every, ... with every = max(1, steps // samples), and at the
-        end (or at extinction). A time step ends with the energy influx."""
+        end (or at extinction). `steps=0` runs the reactor on until the caller stops
+        reading. A time step ends with the energy influx."""
         every = max(1, steps // samples) if steps else 1
         dominant = None
         yield 0
         t = 0
-        for t in range(steps):
+        for t in (n - 1 for n in ticks(steps)):
             self.step()
             if not self.now:
                 break

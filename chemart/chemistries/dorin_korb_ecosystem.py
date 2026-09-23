@@ -34,7 +34,7 @@ from collections import Counter
 
 from chemart.network import Network, Reaction, Species
 from chemart.soup import Tally
-from chemart.trajectory import Frame
+from chemart.trajectory import Frame, ticks
 
 #: Appendix "Known atoms": atom : shell 1 : shell 2 : shell 3.
 SHELLS = {
@@ -523,10 +523,10 @@ def evolve(p, rng):
     world.initial = Counter(world.species(m) for m in world.molecules())
     world.state = Counter(world.initial)
     yield world.frame(0)
-    for t in range(p.steps):
+    for t in ticks(p.steps):
         world.move()
-        world.react(t)
-        yield world.frame(t + 1)
+        world.react(t - 1)
+        yield world.frame(t)
     world.final = Counter(world.species(m) for m in world.molecules())
     return _network(world, p)
 

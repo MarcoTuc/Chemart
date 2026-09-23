@@ -271,6 +271,8 @@ traj = chemart.evolve("music-ac", seed=1)
 895 frames, t = 0 … 894 collisions; observables: phrases
 ```
 
+`steps=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve music-ac --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 The default call runs the published system (all 65 rules, the published
@@ -372,7 +374,7 @@ Pass any of these as keyword arguments to `chemart.evolve` (or `generate_network
 | `notes_per_bar` | `int` | `8` | structural | notes in one bar; it sizes the chord line and the wildcard runs of rules (2), (8), (9) and (10) <br>`2` … `32` · *range:* published: 8 eighth notes in a bar |
 | `bars_per_phrase` | `int` | `4` | structural | bars cut out as one phrase by rule (9) <br>`1` … `16` · *range:* published: four-bar phrases |
 | `copies` | `int` | `1` | population | multiplies every count of the published initial multiset (43 kinds, 1826 objects at 1) <br>`1` … `1000` |
-| `steps` | `int` | `20000` | population | maximum number of collisions of the recorded run; failed draws (too few copies, or products equal to reactants) are included <br>`0` … `10000000` |
+| `steps` | `int` | `20000` | population | maximum number of collisions of the recorded run; failed draws (too few copies, or products equal to reactants) are included. 0 collides until a stopping rule fires or the caller stops reading the frames <br>`0` … `10000000` |
 | `phrases` | `int` | `1` | population | stop once this many finished phrases are in the multiset; 0 runs the full number of steps <br>`0` … `1000` · *range:* the paper's runs collect three to five phrases in about an hour |
 
 ### Implementation decisions

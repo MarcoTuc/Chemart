@@ -58,6 +58,11 @@ def evolve(p, rng):
 - The first frame is the initial state and fires nothing. `t` never
   decreases, and it is counted in the entry's `clock` (required with an
   evolve face).
+- The entry's `duration` names the parameter that bounds the run, and **0
+  means no bound**: the process runs until whoever reads the frames stops.
+  `chemart.trajectory.ticks(n)` is the step counter that does this
+  (`for step in ticks(p.steps)`), and `chemart.soup.stir` already honours it.
+  Nothing may be sized from the bound up front, since there may not be one.
 - `fired` lists the reactions since the previous frame, as
   `[[reactants], [products], count]`. Summed over the frames, the counts must
   equal the `count` of each reaction in the returned network.

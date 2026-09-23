@@ -20,6 +20,7 @@ chemistries:
   constructive: true
   type: gas
   clock: steps
+  duration: steps
   S:
     repr: >
       Two readings (book 10.7.2), chosen with `mode`. (a) macro: an emergent
@@ -57,7 +58,7 @@ chemistries:
     - {name: rule, type: enum, default: langton, choices: [langton, byl, reggia-1, reggia-2, sdsr, evoloop], role: structural, meaning: "published transition table: langton = Langton 1984 (8 states, 219 transitions, 86-cell loop); byl = Byl 1989 (6 states, 12-cell loop); reggia-1 and reggia-2 = the Chou-Reggia loops of Reggia et al. 1993 (8 states, 6 and 5 cells); sdsr = Sayama's structurally dissolvable loop (9 states); evoloop = Sayama's evolvable loop (9 states)"}
     - {name: mode, type: enum, default: macro, choices: [macro, micro], role: structural, meaning: "which reading of 'molecule' to export: macro = emergent loops and their replication/dissolution events; micro = cell states, with every CA transition that fired as a reaction"}
     - {name: grid, type: int, default: 60, min: 8, max: 4000, range: "Sayama's evolution runs use 200x200 to 1000x1000; 60 holds two Langton loops", role: spatial, meaning: "side of the square lattice"}
-    - {name: steps, type: int, default: 320, min: 1, max: 2000000, range: "one replication takes 151 steps (Langton, SDSR), 25 (Byl), 15 (Chou-Reggia), 363 (evoloop); the SDSR steady state needs a few thousand and evolution in the evoloop 10^4-10^7", role: population, meaning: "synchronous updates of the lattice"}
+    - {name: steps, type: int, default: 320, min: 0, max: 2000000, range: "one replication takes 151 steps (Langton, SDSR), 25 (Byl), 15 (Chou-Reggia), 363 (evoloop); the SDSR steady state needs a few thousand and evolution in the evoloop 10^4-10^7", role: population, meaning: "synchronous updates of the lattice. 0 runs the automaton on until the caller stops reading its frames (mode micro only: macro settles its species names at the end of the run)"}
     - {name: boundary, type: enum, default: periodic, choices: [periodic, quiescent], role: spatial, meaning: "periodic: the lattice is a torus (Sayama's 'periodic space'); quiescent: everything outside the lattice is background"}
     - {name: ancestors, type: int, default: 1, min: 1, max: 1000, range: "Sayama's competition runs start two ancestors at opposite ends of the space", role: population, meaning: "how many copies of the ancestor to place; one is centred, several are placed at random non-overlapping positions (this is the only use of the seed)"}
     - {name: ancestor_pattern, type: str, default: "", role: structural, meaning: "the seed loop as a Golly RLE string ('x = 4, y = 4, rule = ...' then the run-length-encoded rows, '.' = quiescent, A = state 1); empty means the published ancestor of the chosen rule"}

@@ -7,6 +7,7 @@
     chemart simulate brusselator --method ssa --volume 100 --seed 1 --format csv
     chemart simulate kauffman-autocatalytic-sets --x0 1 --rates '{"dist": "lognormal", "mean": 0, "sigma": 1}'
     chemart evolve alchemy --seed 1 --track shannon --track n_species   # a gas, in its own time
+    chemart evolve alchemy --endless                                    # until you stop it (Ctrl-C)
     chemart evolve bff --seed 1 --format json > run.json
     chemart measure raf --seed 1 --cost moderate                        # measures of a network
     chemart measure run.json --why                                      # of a saved network or run
@@ -93,6 +94,8 @@ def _parser() -> argparse.ArgumentParser:
                         help="chemistry parameter")
     evolve.add_argument("--seed", type=int)
     evolve.add_argument("--every", type=int, default=1, help="keep one frame in EVERY")
+    evolve.add_argument("--endless", action="store_true",
+                        help="run until stopped with Ctrl-C (sets the chemistry's length to 0)")
     evolve.add_argument("--track", action="append", default=[], metavar="MEASURE",
                         help="a measure to follow frame by frame (repeatable)")
     evolve.add_argument("--window", type=int, default=1,
@@ -258,6 +261,13 @@ def _simulate(net, args) -> int:
 def _evolve(api, args, params) -> int:
     from chemart import measures
 
+    c = api._entry(args.chemistry)
+    if args.endless:
+        if not c.duration:
+            raise ValueError(f"{c.id} has no length parameter to zero, so it cannot run without end")
+        params[c.duration] = 0
+    if c.duration and api.resolve_params(c, params, "evolve").get(c.duration) == 0:
+        return _evolve_live(api, args, params)
     traj = api.evolve(args.chemistry, args.seed, every=args.every, **params)
     if args.format == "json":
         _print_json(traj.to_dict())
@@ -291,6 +301,65 @@ def _evolve(api, args, params) -> int:
     print(f"{len(traj.frames)} frames, clock: {traj.clock}")
     _table(columns)
     return 0
+
+
+def _evolve_live(api, args, params) -> int:
+    """A process running without end: print frames as they arrive, until Ctrl-C."""
+    from chemart import measures
+
+    if args.format == "json":
+        print("error: a process set to run without end has no whole trajectory; "
+              "print it with --format table or csv, or give the length a value",
+              file=sys.stderr)
+        return 2
+    run = api.evolve_frames(args.chemistry, args.seed, every=args.every, **params)
+    seen: list = []
+
+    def frames():                               # keep each frame, so its observables can be printed
+        for frame in run:
+            seen.append(frame)
+            yield frame
+
+    rows = measures.track(frames(), ["richness", "population", *args.track],
+                          window=args.window or None, seed=args.seed or 0)
+    writer = csv.writer(sys.stdout) if args.format == "csv" else None
+    columns: list[str] = []
+    printed = 0
+    try:
+        for row in rows:
+            printed += 1
+            frame = seen[-1]
+            values = {**row, **{k: v for k, v in frame.observables.items()
+                                if isinstance(v, (int, float)) and not isinstance(v, bool)}}
+            values = _flat(values)
+            if not columns:                     # the first frame fixes the columns
+                columns = list(values)
+                if writer:
+                    writer.writerow(columns)
+                else:
+                    print("  ".join(f"{k:>12}" for k in columns))
+            cells = [values.get(k) for k in columns]
+            if writer:
+                writer.writerow(cells)
+            else:
+                print("  ".join(f"{'-' if v is None else format(v, '.4g') if isinstance(v, float) else v!s:>12}"
+                                for v in cells))
+            sys.stdout.flush()
+    except KeyboardInterrupt:
+        run.close()
+        print(f"\nstopped after {printed} frames", file=sys.stderr)
+    return 0
+
+
+def _flat(values: dict) -> dict:
+    """A row with each many-valued measure spread over one column per key."""
+    out = {}
+    for name, value in values.items():
+        if isinstance(value, dict):
+            out.update({f"{name}.{k}": v for k, v in value.items()})
+        else:
+            out[name] = value
+    return out
 
 
 def _table(columns: dict[str, list], rows: int = 12) -> None:

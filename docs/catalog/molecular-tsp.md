@@ -214,6 +214,8 @@ traj = chemart.evolve("molecular-tsp", seed=1)
 1001 frames, t = 0 … 1000 generations; observables: best_length, mean_length, overlap
 ```
 
+`generations=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve molecular-tsp --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 The default run uses the settings of PyCellChemistry's `MolecularTSP.py`, the
@@ -329,7 +331,7 @@ Pass any of these as keyword arguments to `chemart.evolve` (or `generate_network
 | `t_C` | `float` | `1.0` | kinetic | time scale of the C-machine; 0 removes it <br>≥ `0` |
 | `t_I` | `float` | `1.0` | kinetic | time scale of the I-machine; 0 removes it <br>≥ `0` |
 | `t_R` | `float` | `0.01` | kinetic | time scale of the R-machine, the recombination frequency: higher converges faster but collapses the population variance <br>≥ `0` · *range:* paper: 1/1000 to 1 (tables 1b, 2b); 1/100 in simulations 1-2 |
-| `generations` | `int` | `1000` | population | run length in generations of c = ceil(M / sum t) operation cycles each <br>`0` … `1000000` · *range:* book fig. 17.2 and paper fig. 3: 1000; paper tables: up to 270000 |
+| `generations` | `int` | `1000` | population | run length in generations of c = ceil(M / sum t) operation cycles each. 0 runs until the caller stops reading the frames <br>`0` … `1000000` · *range:* book fig. 17.2 and paper fig. 3: 1000; paper tables: up to 270000 |
 | `fitness` | `enum` | `tour-length` | selection | quality signal s0 hardwired in the machines: tour-length is the closed euclidean tour length of book eq. 17.1 (lower is better); other problems would add choices here <br>one of `tour-length` |
 
 ### Implementation decisions

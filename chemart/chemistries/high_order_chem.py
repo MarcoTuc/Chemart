@@ -74,7 +74,7 @@ from typing import Any, Callable
 from chemart.expand import expand
 from chemart.network import Network, Reaction, Species
 from chemart.soup import Tally
-from chemart.trajectory import Frame
+from chemart.trajectory import Frame, ticks
 
 
 # ---------------------------------------------------------------------------
@@ -723,7 +723,8 @@ def _soup(p, rng, rules, data, graph):
         return Frame(t=float(t), state=state, fired=tally.flush(), observables=observables)
 
     yield frame(0)
-    for i in range(p.iterations):
+    for t in ticks(p.iterations):
+        i = t - 1
         rule, educts, products = chem.iterate()
         draws[rule.id] += 1
         if len(educts) < rule.arity:
@@ -731,8 +732,8 @@ def _soup(p, rng, rules, data, graph):
         elif is_effective(educts, products):
             tally.add([rule.id, *map(sid, educts)], [rule.id, *map(sid, products)])
             seen.update(dict.fromkeys(products))
-        if (i + 1) % size == 0 or i + 1 == p.iterations:
-            yield frame(i + 1)
+        if t % size == 0 or t == p.iterations:
+            yield frame(t)
 
     reactions = [Reaction.of(list(lhs), list(rhs), count=count) for lhs, rhs, count in tally.reactions()]
     start = set(data)

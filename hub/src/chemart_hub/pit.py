@@ -19,7 +19,7 @@ from __future__ import annotations
 import itertools
 import json
 import math
-from collections import OrderedDict
+from collections import OrderedDict, deque
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -36,6 +36,9 @@ CSP = ("default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' 
        "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
 #: Runs kept in memory for download.
 KEEP_RUNS = 5
+#: Frames kept for download from one run; a process asked to run until stopped
+#: would otherwise grow without bound.
+KEEP_FRAMES = 5000
 #: Species drawn per frame in a stream; the rest are summed as "(other)".
 TOP = 12
 
@@ -207,30 +210,36 @@ def _run(body: dict, run_id: str, runs: OrderedDict) -> Iterator[dict]:
             c = api._entry(body["chemistry"])
             run = api.run_evolver(c, api.evolver_for(c), body.get("seed"), body.get("params") or {},
                                   int(body.get("every", 1)))
-            frames: list[Frame] = []
+            frames: deque[Frame] = deque(maxlen=KEEP_FRAMES)
             window = body.get("window", 1)
             chosen = [m for m in tracked if m in measures.REGISTRY]
-            yield {"type": "start", "clock": c.clock}
-            while True:
-                try:
-                    frame = next(run)
-                except StopIteration as stop:
-                    net = stop.value
-                    break
-                frames.append(frame)
-                row = next(measures.track([frame], [m for m in chosen if _is_state(m)]))
-                if window and any(not _is_state(m) for m in chosen):
-                    recent = frames[-int(window):]
-                    fired = [e for f in recent for e in f.fired]
-                    if fired:
-                        sub = measures.fired_network(fired)
-                        row.update(measures.measure(sub, [m for m in chosen if not _is_state(m)
-                                                          and measures.REGISTRY[m].input == "network"]))
-                yield {"type": "frame", "t": frame.t, "state": _top(frame.state, k=int(body.get("top", TOP))),
-                       "observables": frame.observables,
-                       "measures": {k: v for k, v in row.items() if k != "t"}}
-            traj = Trajectory(network=net, frames=frames, method="evolve", clock=c.clock or "steps",
-                              settings={"seed": body.get("seed"), "params": net.params})
+            # the run id goes out first: a process running until stopped never
+            # reaches "done", and the page still has to offer its download
+            yield {"type": "start", "clock": c.clock, "run": run_id}
+            net = None
+            try:
+                while True:
+                    try:
+                        frame = next(run)
+                    except StopIteration as stop:
+                        net = stop.value
+                        break
+                    frames.append(frame)
+                    row = next(measures.track([frame], [m for m in chosen if _is_state(m)]))
+                    if window and any(not _is_state(m) for m in chosen):
+                        recent = list(frames)[-int(window):]
+                        fired = [e for f in recent for e in f.fired]
+                        if fired:
+                            sub = measures.fired_network(fired)
+                            row.update(measures.measure(sub, [m for m in chosen if not _is_state(m)
+                                                              and measures.REGISTRY[m].input == "network"]))
+                    yield {"type": "frame", "t": frame.t, "state": _top(frame.state, k=int(body.get("top", TOP))),
+                           "observables": frame.observables,
+                           "measures": {k: v for k, v in row.items() if k != "t"}}
+            finally:
+                # Stop closes this generator: keep what ran, so it is still there to download
+                traj = _keep(runs, run_id, list(frames), net, c, body)
+                run.close()
             yield {"type": "network", "summary": _summary(net), "measures": _measures(net)}
         else:
             raise ValueError(f"method must be ode, ssa or evolve, got {method!r}")
@@ -243,6 +252,26 @@ def _run(body: dict, run_id: str, runs: OrderedDict) -> Iterator[dict]:
     yield {"type": "done", "run": run_id, "frames": len(traj.frames),
            "trajectory_measures": measures.measure(traj, [m for m in measures.REGISTRY
                                                           if measures.REGISTRY[m].input == "trajectory"])}
+
+
+def _keep(runs: OrderedDict, run_id: str, frames: list, net, entry, body: dict):
+    """Store a run so it can be downloaded, finished or stopped.
+
+    A stopped process never returns its network, so the reactions its frames
+    fired stand in for it — the same observed network, up to where it got.
+    """
+    from chemart import measures
+    from chemart.trajectory import Trajectory
+
+    if net is None:
+        net = measures.fired_network([entry for f in frames for entry in f.fired])
+    traj = Trajectory(network=net, frames=frames, method="evolve", clock=entry.clock or "steps",
+                      settings={"seed": body.get("seed"), "params": body.get("params") or {},
+                                "every": int(body.get("every", 1)), "kept_frames": len(frames)})
+    runs[run_id] = traj.to_dict()
+    while len(runs) > KEEP_RUNS:
+        runs.popitem(last=False)
+    return traj
 
 
 def _sweep(body: dict) -> Iterator[dict]:

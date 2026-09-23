@@ -40,7 +40,7 @@ from functools import lru_cache
 from chemart.expand import expand
 from chemart.network import CONSTANT_TOTAL, Network, Reaction, Species
 from chemart.soup import Tally
-from chemart.trajectory import Frame
+from chemart.trajectory import Frame, ticks
 
 ALPHABET = "01*:#$%'"
 # Glyphs used in the thesis and papers -> ASCII symbols used by the book's text.
@@ -336,9 +336,9 @@ def evolve(p, rng):
         return Frame(t=float(step), state={species_id(s): float(n) for s, n in Counter(pop).items()}, fired=fired)
 
     yield frame(0)
-    for done in range(1, p.steps + 1):
+    for done in ticks(p.steps):
         collide()
-        if done % size == 0 and done < p.steps:
+        if done % size == 0 and done != p.steps:
             yield frame(done)
     if p.steps:
         yield frame(p.steps)

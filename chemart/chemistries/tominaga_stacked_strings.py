@@ -46,7 +46,7 @@ from itertools import product
 
 from chemart.network import Network, Reaction, Species
 from chemart.soup import Tally
-from chemart.trajectory import Frame
+from chemart.trajectory import Frame, ticks
 
 SYSTEMS = (
     "benenson-automaton", "transcription", "fatty-acid-oxidation",
@@ -464,7 +464,7 @@ def events(rules: list[Rule], pool: Counter, sources: list[Molecule], drains: li
     initial number of objects, one generation) and at the end; `tally` holds the
     reactions fired since the previous yield and `labels` maps each reaction's
     key to the label of the rule that first made it. Returns the species seen,
-    in order of appearance.
+    in order of appearance. `steps=0` runs on until the caller stops reading.
     """
     counts = Counter({m: c for m, c in pool.items() if c > 0})
     every = every or max(sum(counts.values()), 1)
@@ -534,11 +534,11 @@ def events(rules: list[Rule], pool: Counter, sources: list[Molecule], drains: li
 
     yield 0, counts, tally
     done = last = 0
-    for step in range(1, steps + 1):
+    for step in ticks(steps):
         if not event():
             break
         done = step
-        if done % every == 0 and done < steps:
+        if done % every == 0 and done != steps:
             yield done, counts, tally
             last = done
     if done != last:

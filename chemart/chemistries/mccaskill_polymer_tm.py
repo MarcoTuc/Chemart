@@ -36,7 +36,7 @@ from collections import Counter
 from chemart.expand import expand
 from chemart.network import CONSTANT_TOTAL, Network, Reaction, Species
 from chemart.soup import Tally
-from chemart.trajectory import Frame
+from chemart.trajectory import Frame, ticks
 
 INITIATOR = "111"
 RULE_BITS = 12
@@ -276,7 +276,7 @@ def _soup(p, inoculum, rng):
                      fired=fired)
 
     yield frame(0)
-    for done in range(1, p.steps + 1):
+    for done in ticks(p.steps):
         step()
         if done % n == 0 or done == p.steps:
             yield frame(done)

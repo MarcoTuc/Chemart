@@ -19,6 +19,7 @@ chemistries:
   constructive: true
   type: gas
   clock: steps
+  duration: steps
   S:
     repr: >
       a graph stands in for the solvent: every node is a molecule, classified as hydrophilic (i) or
@@ -60,7 +61,7 @@ chemistries:
     - {name: mean_degree, type: float, default: 3.0, min: 0.0, max: 100.0, range: "K = 10 in the published small-world measurement", role: spatial, meaning: "initial random wiring: round(n_nodes * mean_degree / 2) distinct undirected weak edges drawn uniformly"}
     - {name: polarities, type: str, default: "", range: "e.g. iiiooo", role: structural, meaning: "explicit node polarities over i (hydrophilic) and o (hydrophobic); overrides n_nodes and hydrophilic_fraction"}
     - {name: edges, type: list, default: [], range: "e.g. [[0, 1], [1, 2], [2, 3]]", role: spatial, meaning: "explicit initial wiring as [[u, v], ...] over node ids 0..n-1; overrides mean_degree"}
-    - {name: steps, type: int, default: 600, min: 0, max: 10000000, range: "the small-world measurement needs a few thousand rewirings at N = 200; the default graph has demixed after about 600 attempts", role: population, face: evolve, meaning: "number of attempted rewiring steps, cancelled ones included; a frame every n_nodes steps"}
+    - {name: steps, type: int, default: 600, min: 0, max: 10000000, range: "the small-world measurement needs a few thousand rewirings at N = 200; the default graph has demixed after about 600 attempts", role: population, face: evolve, meaning: "number of attempted rewiring steps, cancelled ones included; a frame every n_nodes steps. 0 rewires until the caller stops reading the frames"}
     - {name: polarity_constraint, type: bool, default: true, role: structural, meaning: "true: a rewiring whose new stopping node C has the other polarity is cancelled (the NAC hydrophilic/hydrophobic interaction); false: rewire regardless, which is the plain acquaintance-network rule and does not demix"}
     - {name: max_species, type: int, default: 100, min: 1, range: "8 nodes and 6 edges close at 16 clusters; 8 nodes and 8 edges pass 300 in a fraction of a second; the default graph (12 nodes, 18 edges) reaches 300 in about 2 s", role: structural, face: generate, meaning: "species budget of the closure; reactions whose new clusters would exceed it are dropped and the status becomes truncated"}
   provides: [topology, stoichiometry, initial-state, space, mass-conservation, sequence-structure-function]

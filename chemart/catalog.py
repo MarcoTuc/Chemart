@@ -206,6 +206,9 @@ class Chemistry:
     type: str | None = None
     #: The unit of time of the evolve face ("collisions", "epochs", ...).
     clock: str | None = None
+    #: The parameter that sets how long the evolve face runs; 0 means it runs
+    #: until whoever reads its frames stops.
+    duration: str | None = None
     source_file: str = ""
 
     @property
@@ -392,6 +395,18 @@ def _v2_problems(c: Chemistry, *, hub: bool = False) -> list[str]:
     if not hub and c.type is None:
         out.append("missing type: say whether the chemistry is given, a generator or a gas "
                    "(see catalog/TYPES.md)")
+    if c.duration is not None:
+        named = {p.name: p for p in c.params}.get(c.duration)
+        if named is None:
+            out.append(f"duration names {c.duration!r}, which is not a parameter of this entry")
+        elif named.type not in ("int", "float"):
+            out.append(f"duration must name an int or float parameter; {c.duration!r} is {named.type}")
+        elif named.face == "generate":
+            out.append(f"duration names {c.duration!r}, a generate-only parameter; it sets how "
+                       "long the evolve face runs")
+        elif named.min != 0:
+            out.append(f"param {c.duration!r} sets how long the process runs, so its min must be "
+                       "0, the value that runs it until the caller stops")
     for p in c.params:
         if p.type not in PARAM_TYPES:
             hint = " (seed is an argument of generate_network, not a param)" if p.type == "seed" else ""

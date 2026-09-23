@@ -20,6 +20,7 @@ chemistries:
   constructive: false
   type: gas
   clock: tests
+  duration: max_tests
   S:
     repr: >
       atoms with a type and a state, optionally connected by links; the whole working memory is ONE
@@ -69,7 +70,7 @@ chemistries:
     - {name: f0, type: float, default: 1.0e-5, min: 0.0, max: 1000.0, range: "demos and Kanada 1996 table 2: 1e-5 (down to 1e-45 on DSJC250.5); fig. 15: 0.8", role: thermodynamic, meaning: "initial frustration of every atom, restored after each reaction of the atom (must be > 0 with frustration)"}
     - {name: c, type: float, default: 2.0, min: 1.0, max: 1000.0, range: "demos and Kanada 1996: 2; figs. 16-17: 1.1-4; fig. 15: 1.05", role: thermodynamic, meaning: "frustration growth factor: f -> c f after each failed test of an instance with unsatisfied constraints"}
     - {name: initial, type: enum, default: ordered, choices: [ordered, random], role: population, meaning: "initial working memory: ordered = all queens on the diagonal (column = row, HICSS-27 sec. 4.1, Queens_Sort) or all vertices colour 0 (FUZZ-IEEE'95 sec. 3, USAmap_color); random = a random permutation of columns (HICSS-27 sec. 4.2) or random colours"}
-    - {name: max_tests, type: int, default: 200000, min: 1, max: 1000000000, role: population, meaning: "budget of rule tests (LHS matches); rules without catalysts never terminate and always stop here"}
+    - {name: max_tests, type: int, default: 200000, min: 0, max: 1000000000, role: population, meaning: "budget of rule tests (LHS matches); rules without catalysts never terminate and always stop here. 0 lifts the budget, so only the search's own termination ends the run"}
   provides: [topology, stoichiometry, catalysts, initial-state, sequence-structure-function]
   fidelity: reconstructed
   sources:

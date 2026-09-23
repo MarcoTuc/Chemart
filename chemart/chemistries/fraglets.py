@@ -40,7 +40,7 @@ from collections import Counter
 from chemart.expand import expand
 from chemart.network import Network, Reaction, Species
 from chemart.soup import Tally
-from chemart.trajectory import Frame
+from chemart.trajectory import Frame, ticks
 
 DIALECTS = ("pycellchem", "fraglets-2007")
 MATCH_OPS = frozenset({"match", "matchp"})
@@ -400,7 +400,7 @@ def ssa(chem: Chemistry, initial: Counter, steps: int, rng, tally: Tally, info: 
 
     ok = settle()
     yield 0, pop
-    for _ in range(steps if ok else 0):
+    for _ in (ticks(steps) if ok else ()):
         pairs, weights = propensities()
         total = sum(weights)
         if total <= 0:

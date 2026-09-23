@@ -33,7 +33,7 @@ from collections import deque
 import numpy as np
 
 from chemart.network import Network, Reaction, Species
-from chemart.trajectory import Frame
+from chemart.trajectory import Frame, ticks
 
 #: Species order used inside the lattice arrays.
 A, MEM, X, Y, W = range(5)
@@ -275,7 +275,7 @@ def _sweeps(p, rng):
     eps, nc, T = p.repulsion, p.neutral_coupling, p.temperature
     yield sp, ori, {}
 
-    for _ in range(p.steps):
+    for _ in ticks(p.steps):
         for _ in range(p.relaxation):
             sp, ori = _motion_pass(sp, ori, int(rng.integers(6)),
                                    int(rng.integers(2)), F, p, rng)

@@ -59,7 +59,7 @@ from chemart.expand import expand
 from chemart.helpers import params as check
 from chemart.network import Network, Reaction, Species
 from chemart.soup import Tally
-from chemart.trajectory import Frame
+from chemart.trajectory import Frame, ticks
 
 HYDROPHILIC, HYDROPHOBIC = "i", "o"
 POLARITIES = HYDROPHILIC + HYDROPHOBIC
@@ -433,7 +433,7 @@ def evolve(p, rng):
     every = max(1, len(labels))
     yield _frame(0, labels, adj, clusters, tally)
 
-    for step in range(p.steps):
+    for step in ticks(p.steps):
         kind, a, b, c = rewire(labels, adj, rng, p.polarity_constraint)
         outcome[kind] += 1
         if kind == MOVED:
@@ -447,8 +447,8 @@ def evolve(p, rng):
             rhs = tuple(sorted(clusters.of(adj, labels, part) for part in after))
             if Counter(lhs) != Counter(rhs):
                 tally.add(lhs, rhs)
-        if (step + 1) % every == 0:
-            yield _frame(step + 1, labels, adj, clusters, tally)
+        if step % every == 0:
+            yield _frame(step, labels, adj, clusters, tally)
 
     if p.steps % every:
         yield _frame(p.steps, labels, adj, clusters, tally)

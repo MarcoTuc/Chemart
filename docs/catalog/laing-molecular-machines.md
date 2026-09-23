@@ -213,6 +213,8 @@ traj = chemart.evolve("laing-molecular-machines", seed=1)
 14 frames, t = 0 … 500 collisions; observables: none
 ```
 
+`steps=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve laing-molecular-machines --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 The default run is not a published experiment: it is a Chemart example. It
@@ -293,7 +295,7 @@ Pass any of these as keyword arguments to `generate_network`, or to `chemart.evo
 | `max_steps` | `int` | `1000` | structural | instructions executed before a run is taken as non-halting; it then gives no reaction and the status becomes truncated <br>`1` … `10000000` |
 | `max_species` | `int` | `200` | structural | *generate only.* species budget of the closure; the status becomes truncated when it cuts the closure off <br>`1` … `100000` |
 | `copies` | `int` | `20` | population | *evolve only.* copies of each seed machine and tape in the initial population, whose size the soup keeps constant; a frame every generation (as many pair draws as molecules) <br>`1` … `100000` |
-| `steps` | `int` | `500` | stochastic | *evolve only.* number of pair draws <br>`0` … `10000000` |
+| `steps` | `int` | `500` | stochastic | *evolve only.* number of pair draws. 0 draws pairs until the caller stops reading the frames <br>`0` … `10000000` |
 
 ### Implementation decisions
 

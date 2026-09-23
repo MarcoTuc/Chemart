@@ -236,6 +236,8 @@ traj = chemart.evolve("fraglets", seed=1)
 2 frames, t = 0 … 1 steps; observables: none
 ```
 
+`steps=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve fraglets --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 The default run is the closure of the active CDP above. Closure is
@@ -352,7 +354,7 @@ Pass any of these as keyword arguments to `generate_network`, or to `chemart.evo
 | `program` | `str` | `a a net a b net f a[matchp cdp send b split sen…` | population | the Fraglets program: initial fraglets per node (with multiplicities) and the network topology <br>*range:* any .fra text: 'f node[symbols]mult' fraglet lines, 'a node segment' attachment lines, '#' comments, 'e' end; symbols separated by spaces or ':'. Default: the active confirmed delivery protocol of AINS 2003 sec. IV.B / book fig. 16.10 |
 | `dialect` | `enum` | `pycellchem` | structural | instruction set and edge cases: pycellchem = book table 16.1 and the book's reference interpreter (send dest tail); fraglets-2007 = upstream C interpreter fraglets0.32 and its 2007 instruction set (send seg dest tail, logic and arithmetic) <br>one of `pycellchem`, `fraglets-2007` |
 | `max_species` | `int` | `200` | structural | *generate only.* species budget of the closure; status truncated when exceeded (elongating programs never close) <br>≥ `1` |
-| `steps` | `int` | `1000` | population | *evolve only.* number of match reactions to schedule, a frame after each (the run stops earlier when the nodes are inert) <br>`0` … `10000000` |
+| `steps` | `int` | `1000` | population | *evolve only.* number of match reactions to schedule, a frame after each (the run stops earlier when the nodes are inert). 0 schedules matches until the caller stops reading its frames <br>`0` … `10000000` |
 
 ### Implementation decisions
 

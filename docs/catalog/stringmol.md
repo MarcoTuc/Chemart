@@ -226,6 +226,8 @@ traj = chemart.evolve("stringmol", seed=1)
 502 frames, t = 0 … 3000 steps; observables: complexes, energy
 ```
 
+`steps=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve stringmol --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 Stringmol has two faces. `chemart.generate_network`, whose default call is
@@ -353,7 +355,7 @@ Pass any of these as keyword arguments to `generate_network`, or to `chemart.evo
 |---|---|---|---|---|
 | `reactor` | `enum` | `container` | structural | *evolve only.* container: the authors' time-stepped container with energy and decay, observed bind-execute-dissociate events with counts; soup: chemart.soup with instantaneous pair reactions (bind test, program run to the end) and constant population (a Chemart addition) <br>one of `container`, `soup` |
 | `molecules` | `dict` | `{'OOGEOLHHHRLUEUOBBBRBXUUUDYGRHBLROORE$BLUBO^B>…` | population | initial multiset {sequence: count} of the reactor; the closure takes the distinct sequences as its seed set <br>*range:* seed replicase of spec v0.2 app. B.1 (default); upstream configs use WWGEWLHHHRLUEUWJJJRJXUUUDYGRHJLRWWRE$BLUBO^B&gt;C$=?&gt;$$BLUBO%}OYHOB x 150; ALife XII species 9 is OBEQBXUUUDYGRHBBOSEOLHHHRLUEUOBLROORE$BLUBO^B&gt;C$=?&gt;$$BLUBO%}OYHOB |
-| `steps` | `int` | `3000` | population | *evolve only.* container: time steps, a frame about every steps/500 of them; soup: collisions (elastic ones included), a frame per generation (as many collisions as molecules) <br>`0` … `100000000` · *range:* ALife XII: until extinction, modal 750000 and up to about 15e6 time steps |
+| `steps` | `int` | `3000` | population | *evolve only.* container: time steps, a frame about every steps/500 of them; soup: collisions (elastic ones included), a frame per generation (as many collisions as molecules). 0 runs the reactor on until the caller stops reading its frames <br>`0` … `100000000` · *range:* ALife XII: until extinction, modal 750000 and up to about 15e6 time steps |
 | `energy_per_step` | `int` | `25` | kinetic | *evolve only.* energy units added to the container after every time step (container only); binding and each instruction cost one unit <br>≥ `0` · *range:* ALife XII paper: 25; upstream default ESTEP 20; later spatial configs 2500 |
 | `cell_radius` | `float` | `2500.0` | spatial | *evolve only.* container radius; bind propensity 1-(1-(agent_radius/cell_radius)^2)^n with n unbound molecules not yet visited in the step (container only) <br>≥ `0.001` · *range:* upstream CELLRAD 2500; spatial configs 1 |
 | `agent_radius` | `float` | `10.0` | spatial | *evolve only.* molecule radius in the bind propensity (container only); must not exceed cell_radius <br>≥ `0.0` · *range:* upstream AGRAD 10 |

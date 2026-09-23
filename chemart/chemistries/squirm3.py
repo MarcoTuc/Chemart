@@ -53,7 +53,7 @@ from dataclasses import dataclass
 from chemart.expand import expand
 from chemart.network import Network, Reaction, Species
 from chemart.soup import Tally
-from chemart.trajectory import Frame
+from chemart.trajectory import Frame, ticks
 
 #: Atom types of the papers; |T| enters the enzyme encoding.
 ATOM_TYPES = "abcdef"
@@ -888,9 +888,10 @@ class World:
     def run(self, steps: int, *, flood_period: int, flood_sectors: int,
             cosmic_ray: float, samples: int = 200):
         """Run `steps` time steps, yielding the index of the steps after which
-        to sample: the first one and every steps // samples from there."""
+        to sample: the first one and every steps // samples from there.
+        `steps=0` runs the world on until the caller stops reading."""
         every = max(1, steps // samples) if steps else 1
-        for step in range(steps):
+        for step in (t - 1 for t in ticks(steps)):
             self.react_phase()
             self.move_phase()
             if cosmic_ray > 0.0:

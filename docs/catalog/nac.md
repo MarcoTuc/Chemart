@@ -218,6 +218,8 @@ traj = chemart.evolve("nac", seed=1)
 51 frames, t = 0 … 600 steps; observables: clustering, largest_hydrophilic_cluster, mixed_edges, path_length
 ```
 
+`steps=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve nac --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 The default call above builds the closure. It draws a random graph of 12
@@ -352,7 +354,7 @@ Pass any of these as keyword arguments to `generate_network`, or to `chemart.evo
 | `mean_degree` | `float` | `3.0` | spatial | initial random wiring: round(n_nodes * mean_degree / 2) distinct undirected weak edges drawn uniformly <br>`0.0` … `100.0` · *range:* K = 10 in the published small-world measurement |
 | `polarities` | `str` | `` | structural | explicit node polarities over i (hydrophilic) and o (hydrophobic); overrides n_nodes and hydrophilic_fraction <br>*range:* e.g. iiiooo |
 | `edges` | `list` | `[]` | spatial | explicit initial wiring as [[u, v], ...] over node ids 0..n-1; overrides mean_degree <br>*range:* e.g. [[0, 1], [1, 2], [2, 3]] |
-| `steps` | `int` | `600` | population | *evolve only.* number of attempted rewiring steps, cancelled ones included; a frame every n_nodes steps <br>`0` … `10000000` · *range:* the small-world measurement needs a few thousand rewirings at N = 200; the default graph has demixed after about 600 attempts |
+| `steps` | `int` | `600` | population | *evolve only.* number of attempted rewiring steps, cancelled ones included; a frame every n_nodes steps. 0 rewires until the caller stops reading the frames <br>`0` … `10000000` · *range:* the small-world measurement needs a few thousand rewirings at N = 200; the default graph has demixed after about 600 attempts |
 | `polarity_constraint` | `bool` | `True` | structural | true: a rewiring whose new stopping node C has the other polarity is cancelled (the NAC hydrophilic/hydrophobic interaction); false: rewire regardless, which is the plain acquaintance-network rule and does not demix |
 | `max_species` | `int` | `100` | structural | *generate only.* species budget of the closure; reactions whose new clusters would exceed it are dropped and the status becomes truncated <br>≥ `1` · *range:* 8 nodes and 6 edges close at 16 clusters; 8 nodes and 8 edges pass 300 in a fraction of a second; the default graph (12 nodes, 18 edges) reaches 300 in about 2 s |
 

@@ -22,6 +22,7 @@ Everything known about one chemistry, JSON-ready.
 | `family`, `kind`, `constructive` | classification |
 | `type` | `given`, `generator` or `gas`: where the network comes from ([How it works](../concepts.md#three-types-of-chemistry)) |
 | `faces`, `clock` | what can be called: `["generate"]`, `["evolve"]` or both; the unit of evolve time |
+| `duration` | the parameter that says how long the evolve face runs; 0 runs it until the caller stops |
 | `implemented`, `fidelity` | status |
 | `book`, `refs`, `sources` | provenance |
 | `decisions` | every gap in the sources and how it was resolved |
@@ -60,7 +61,9 @@ the reactions fired in between. See [Evolving a chemistry](../guide/evolving.md)
 
 `chemart.evolve_frames(chemistry, seed=None, *, every=1, **params)` is the same
 run as a generator of frames, for live use; its return value is the observed
-network.
+network. Setting the chemistry's `duration` parameter to 0 runs the process
+until you stop reading it; `evolve` refuses that, since the whole trajectory
+would never arrive.
 
 ### `chemart.simulate`
 
@@ -146,7 +149,7 @@ uv run chemart simulate <chemistry> [-p NAME=VALUE ...] [--seed N] [--method ode
                                     [--t-end T] [--points N] [--volume V]
                                     [--rates SPEC] [--x0 SPEC] [--fill-only]
                                     [--species S ...] [--format table|csv|json]
-uv run chemart evolve <chemistry> [-p NAME=VALUE ...] [--seed N] [--every N]
+uv run chemart evolve <chemistry> [-p NAME=VALUE ...] [--seed N] [--every N] [--endless]
                                   [--track MEASURE ...] [--window N]
                                   [--species [S ...]] [--format table|csv|json]
 uv run chemart measure <chemistry | file.json> [-p NAME=VALUE ...] [--seed N]
@@ -159,7 +162,8 @@ strings otherwise. `--rates` and `--x0` take a number, a JSON distribution or
 table, or a `.json`/`.csv` file. `evolve` prints the population, the
 chemistry's observables and each `--track` measure per frame (`--window 0`:
 the cumulative network); `--format json` writes the whole trajectory, which
-`measure` reads back. `measure --why` also lists the measures that do not apply,
+`measure` reads back. `--endless` (or the chemistry's length parameter at 0)
+runs the process until Ctrl-C, printing each frame as it arrives. `measure --why` also lists the measures that do not apply,
 with the reason. Errors go to stderr and exit with status 2 (status 3 for
 errors talking to the hub).
 

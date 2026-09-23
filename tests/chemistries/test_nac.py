@@ -12,7 +12,7 @@ from collections import Counter
 import numpy as np
 import pytest
 
-from chemart import evolve, generate_network
+from chemart import evolve, evolve_frames, generate_network
 from chemart.chemistries.nac import (
     CANCELLED, HYDROPHILIC, MOVED, NO_DISTANCE_TWO, canonical, cluster_id, clustering,
     components, distance_two, mean_path_length, mixed_edges, random_graph, rewire,
@@ -180,11 +180,20 @@ def test_hydrophilic_and_hydrophobic_nodes_demix():
 
 
 def test_given_graph_is_used_as_the_initial_state():
-    net = evolve(ID, seed=1, polarities="iioo", edges=[[0, 1], [1, 2], [2, 3]], steps=0).network
+    graph = dict(polarities="iioo", edges=[[0, 1], [1, 2], [2, 3]])
+    whole = cluster_id(tuple("iioo"), ((0, 1), (1, 2), (2, 3)))
+
+    # steps=0 rewires without end, so the graph is read off its first frame
+    run = evolve_frames(ID, seed=1, steps=0, **graph)
+    first = next(run)
+    run.close()
+    assert first.state == {whole: 1.0} and not first.fired
+
+    net = evolve(ID, seed=1, steps=1, **graph).network
     assert net.extras["space"]["nodes"] == list("iioo")
     assert net.extras["space"]["initial_edges"] == [[0, 1], [1, 2], [2, 3]]
-    assert net.initial_state == {cluster_id(tuple("iioo"), ((0, 1), (1, 2), (2, 3))): 1.0}
-    assert not net.reactions and net.status == "observed"
+    assert net.initial_state == {whole: 1.0}
+    assert net.status == "observed"
 
 
 # --- the closure -----------------------------------------------------------------------

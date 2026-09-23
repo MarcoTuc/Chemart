@@ -19,6 +19,7 @@ chemistries:
   constructive: true
   type: gas
   clock: generations
+  duration: generations
   S:
     repr: "32-bit words; species id w<8 hex digits>, structure the 32-character bitstring (most significant bit first)"
     definition: implicit
@@ -45,7 +46,7 @@ chemistries:
     - {name: forbid_exact_replication, type: bool, default: false, range: "paper section 5.4 (evolution): true", role: selection, meaning: "filter f1 of paper eq. 3: a collision whose product equals one of its reactants is elastic, so exact replication is disabled"}
     - {name: M, type: int, default: 1000, min: 2, max: 1000000, range: "paper: 100 (fig. 3), 10^4 (figs. 2, 4), 10^5 (figs. 5-6), 10^6 (fig. 7)", role: population, face: evolve, meaning: "soup size: number of random 32-bit words in the initial soup (ignored when words is given); a generation is M collisions"}
     - {name: n_seeds, type: int, default: 10, min: 1, max: 1000000, role: population, face: generate, meaning: "number of random 32-bit words whose closure is taken (ignored when words is given)"}
-    - {name: generations, type: int, default: 10, min: 0, max: 100000, range: "paper: 10 (fig. 2), 140 (fig. 3), 280 (fig. 4), 1000 and 7000 (figs. 5-6)", role: population, face: evolve, meaning: "run length in generations of M collisions each, elastic collisions included; a frame per generation"}
+    - {name: generations, type: int, default: 10, min: 0, max: 100000, range: "paper: 10 (fig. 2), 140 (fig. 3), 280 (fig. 4), 1000 and 7000 (figs. 5-6)", role: population, face: evolve, meaning: "run length in generations of M collisions each, elastic collisions included; a frame per generation. 0 runs the reactor until the caller stops reading its frames"}
     - {name: words, type: list, default: [], range: "e.g. the fig. 3 organization [7240a7ef, 7240a7ea, 7240a7eb, 7240a7ee]", role: structural, meaning: "explicit initial multiset of the soup, or seed set of the closure, of 32-bit words as hex strings or integers; overrides the random draw of M words"}
     - {name: max_species, type: int, default: 50, min: 1, role: structural, face: generate, meaning: "species budget of the closure; the closure of random words is usually cut off by it (status truncated)"}
   provides: [topology, stoichiometry, catalysts, rate-constants, flow, initial-state, sequence-structure-function]

@@ -231,6 +231,8 @@ traj = chemart.evolve("sac", seed=1)
 1668 frames, t = 0 … 20000 collisions; observables: max_membrane_M
 ```
 
+`steps=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve sac --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 SAC has two faces. `chemart.generate_network("sac")`, printed above, returns
@@ -301,7 +303,7 @@ Pass any of these as keyword arguments to `generate_network`, or to `chemart.evo
 | `organisation` | `enum` | `independent-genes` | structural | published ancestral cell: (i) six separate genes + copier (3) + constructor (3), the book's 12-string replication system; (ii) one chromosome + copier (4) + constructor (4); (iii) seven separate genes regulated by L/R spindle tags + copier (4) + constructor (3) + membrane seed EM <br>one of `independent-genes`, `single-chromosome`, `spindle-membrane` · *range:* paper [823] models (i), (ii), (iii) |
 | `strings` | `list` | `[]` | structural | explicit seed strings (a multiset for the soup of chemart.evolve); overrides organisation <br>*range:* e.g. the book's P0 (author's spelling, see R.scheme) with the operand 002301 |
 | `max_species` | `int` | `2000` | structural | *generate only.* species budget of the closure (status truncated when exceeded) <br>≥ `1` · *range:* model (i) closes at 410 species; the closures of models (ii) and (iii) are infinite and always truncated (see decisions) |
-| `steps` | `int` | `20000` | population | *evolve only.* number of collisions, elastic ones included; a frame every (initial number of strings) collisions <br>`0` … `10000000` · *range:* model (i), one copy of each string: 20000 collisions grow the cell from 12 to 30-40 strings in under a second |
+| `steps` | `int` | `20000` | population | *evolve only.* number of collisions, elastic ones included; a frame every (initial number of strings) collisions. 0 runs the cell on until the caller stops reading its frames <br>`0` … `10000000` · *range:* model (i), one copy of each string: 20000 collisions grow the cell from 12 to 30-40 strings in under a second |
 | `copies` | `int` | `1` | population | *evolve only.* copies of every seed string in the initial cell <br>`1` … `1000` |
 | `dilution` | `enum` | `none` | population | *evolve only.* none lets the cell grow; constant removes random strings back to the initial size (a stand-in for the cell-size cap, not in the papers) <br>one of `none`, `constant` |
 

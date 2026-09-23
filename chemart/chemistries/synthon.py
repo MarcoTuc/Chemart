@@ -68,7 +68,7 @@ from itertools import permutations
 from chemart.expand import expand
 from chemart.network import Network, Reaction, Species
 from chemart.soup import Tally
-from chemart.trajectory import Frame
+from chemart.trajectory import Frame, ticks
 
 TEMPLATE_SETS = ("interstellar", "fig3")
 
@@ -849,7 +849,10 @@ def generate(p, rng):
 
 def evolve(p, rng):
     """The MC-sampling network generator (MCNG): Gillespie's SSA over the molecules
-    present, a frame after every reaction event at the SSA time in seconds."""
+    present, a frame after every reaction event at the SSA time in seconds.
+
+    `steps=0` samples events until the caller stops reading the frames.
+    """
     seeds, amounts, react, found, table = _setup(p)
     if any(k is None for _, _, k, _ in table.values()):
         raise ValueError("the kinetic generator needs rate constants; templates='fig3' publishes none")
@@ -885,7 +888,7 @@ def evolve(p, rng):
         return cache[ids]
 
     yield frame()
-    for _ in range(p.steps):
+    for _ in ticks(p.steps):
         present = sorted(i for i, n in counts.items() if n > 0)
         active = []
         for a, i in enumerate(present):

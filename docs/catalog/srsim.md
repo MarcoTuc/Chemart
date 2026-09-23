@@ -249,6 +249,8 @@ traj = chemart.evolve("srsim", seed=1)
 1501 frames, t = 0 … 30 time; observables: none
 ```
 
+`steps=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve srsim --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 The default call above is the geometry study of the paper's figure 3: one
@@ -356,7 +358,7 @@ Pass any of these as keyword arguments to `chemart.evolve` (or `generate_network
 | `scaffold_binding` | `float` | `1.0` | kinetic | scaffold model only: multiplier of the published scaffold association rates d2_on and d3_on, i.e. the rate ks of figure 6 <br>`0.0` … `1000.0` · *range:* figure 6 compares 1 ('w-Scf', the published d2_on = 0.05) with 0 ('wo-Scf') |
 | `rate_scale` | `float` | `1.0` | kinetic | multiplies every rule rate, like SRSim's preFactBindR/preFactBreakR/preFactModifyR prefactors; scaling the whole rule set rescales time, so rate_scale x simulated time reproduces a much longer published run <br>≥ `0.0` |
 | `box` | `float` | `12.0` | spatial | edge of the cubic reaction volume; the box is periodic and must be wider than twice the largest reaction distance <br>≥ `1.0` · *range:* the published examples use 80^3, 100^3 and 200x30x30 |
-| `steps` | `int` | `1500` | kinetic | molecular-dynamics steps; reactions are looked for after every one of them <br>`1` … `200000` · *range:* the published runs are 100000 to 3000000 steps |
+| `steps` | `int` | `1500` | kinetic | molecular-dynamics steps; reactions are looked for after every one of them. 0 runs the molecular dynamics on until the caller stops reading its frames <br>`0` … `200000` · *range:* the published runs are 100000 to 3000000 steps |
 | `dt` | `float` | `0.02` | kinetic | time step of the molecular dynamics <br>≥ `1e-09` · *range:* the paper's rule of thumb: sqrt(6 D dt) should be about a tenth of a particle diameter |
 | `diffusion` | `float` | `1.0` | spatial | diffusion coefficient of an elementary molecule (the scaffold S gets a fifth of it, being five times heavier) <br>≥ `0.0` · *range:* the paper estimates 8e-11 m^2/s for a haemoglobin-sized protein (Stokes-Einstein) |
 | `temperature` | `float` | `1.0` | thermodynamic | k_B T of the Langevin thermostat; the friction is gamma_0 = k_B T / D <br>≥ `1e-09` |

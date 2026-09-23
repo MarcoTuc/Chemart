@@ -194,6 +194,8 @@ traj = chemart.evolve("ccm", seed=1)
 190 frames, t = 0 … 1637 tests; observables: god
 ```
 
+`max_tests=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve ccm --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 The default run is the classic experiment: eight queens on the diagonal, the
@@ -288,7 +290,7 @@ Pass any of these as keyword arguments to `chemart.evolve` (or `generate_network
 | `f0` | `float` | `1e-05` | thermodynamic | initial frustration of every atom, restored after each reaction of the atom (must be &gt; 0 with frustration) <br>`0.0` … `1000.0` · *range:* demos and Kanada 1996 table 2: 1e-5 (down to 1e-45 on DSJC250.5); fig. 15: 0.8 |
 | `c` | `float` | `2.0` | thermodynamic | frustration growth factor: f -&gt; c f after each failed test of an instance with unsatisfied constraints <br>`1.0` … `1000.0` · *range:* demos and Kanada 1996: 2; figs. 16-17: 1.1-4; fig. 15: 1.05 |
 | `initial` | `enum` | `ordered` | population | initial working memory: ordered = all queens on the diagonal (column = row, HICSS-27 sec. 4.1, Queens_Sort) or all vertices colour 0 (FUZZ-IEEE'95 sec. 3, USAmap_color); random = a random permutation of columns (HICSS-27 sec. 4.2) or random colours <br>one of `ordered`, `random` |
-| `max_tests` | `int` | `200000` | population | budget of rule tests (LHS matches); rules without catalysts never terminate and always stop here <br>`1` … `1000000000` |
+| `max_tests` | `int` | `200000` | population | budget of rule tests (LHS matches); rules without catalysts never terminate and always stop here. 0 lifts the budget, so only the search's own termination ends the run <br>`0` … `1000000000` |
 
 ### Implementation decisions
 

@@ -37,7 +37,7 @@ from chemart.expand import expand
 from chemart.helpers.params import apportion
 from chemart.network import CONSTANT_TOTAL, Network, Reaction, Species
 from chemart.soup import Tally
-from chemart.trajectory import Frame
+from chemart.trajectory import Frame, ticks
 
 TAPE_LEN = 7
 TAPE_MASK = (1 << TAPE_LEN) - 1
@@ -192,7 +192,7 @@ def generate(p, rng):
 def evolve(p, rng):
     """The papers' population dynamics: a frame per generation."""
     machines, tapes = _seeds(p, rng)
-    if p.noise_off > p.generations:
+    if p.generations and p.noise_off > p.generations:
         raise ValueError(f"noise_off ({p.noise_off}) must be -1 (never) or at most generations ({p.generations})")
     return (yield from _dynamics(p, rng, machines, tapes))
 
@@ -313,7 +313,8 @@ def _dynamics(p, rng, machines, tapes):
 
     pairs, weight, observables = _reading(mpop, tpop)
     yield Frame(t=0.0, state=_state(mpop, tpop), fired=[], observables=observables)
-    for gen in range(p.generations):
+    for step in ticks(p.generations):
+        gen = step - 1
         mu = p.noise if p.noise_off < 0 or gen < p.noise_off else 0.0
         registry = {necklace(t): t for t in tpop}
 

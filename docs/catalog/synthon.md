@@ -257,6 +257,8 @@ traj = chemart.evolve("synthon", seed=1)
 2001 frames, t = 0 … 2.35879e+13 s; observables: none
 ```
 
+`steps=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve synthon --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 The default call above is the report's figure 4 experiment: the DNG, the
@@ -366,7 +368,7 @@ Pass any of these as keyword arguments to `generate_network`, or to `chemart.evo
 | `max_species` | `int` | `200` | structural | *generate only.* species budget of the closure; reactions that would exceed it are dropped and the status becomes truncated <br>`1` … `5000` |
 | `densities` | `list` | `[1000.0, 0.44]` | population | initial density of each initial species, in cm^-3, one per entry of `initial`; it is the network's initial_state and, for chemart.evolve, the proportion in which the molecules are drawn <br>*range:* Duley & Williams (1984): particle density n = 1000 cm^-3 with n(O) = 0.44 cm^-3, so n(H) = 1000 cm^-3 |
 | `molecules` | `int` | `400` | population | *evolve only.* number of molecules simulated by the SSA; the initial species get at least one each, otherwise a share proportional to their density <br>`2` … `100000` · *range:* the paper calls it Mp and does not publish its value |
-| `steps` | `int` | `2000` | population | *evolve only.* number of SSA reaction events; a frame after each (fewer if no reaction can fire) <br>`1` … `1000000` · *range:* the paper calls it Mc and does not publish its value |
+| `steps` | `int` | `2000` | population | *evolve only.* number of SSA reaction events; a frame after each (fewer if no reaction can fire). 0 samples events until the caller stops reading the frames <br>`0` … `1000000` · *range:* the paper calls it Mc and does not publish its value |
 
 ### Implementation decisions
 

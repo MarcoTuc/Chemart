@@ -59,7 +59,7 @@ from scipy import ndimage
 
 from chemart.network import Network, Reaction, Species
 from chemart.soup import Tally
-from chemart.trajectory import Frame
+from chemart.trajectory import Frame, ticks
 
 #: 8-connectivity: a loop is one connected blob of non-quiescent cells.
 _STRUCT8 = np.ones((3, 3), dtype=int)
@@ -483,6 +483,25 @@ def evolve(p, rng):
     return (yield from _macro(p, grid, table, n_states, periodic, space))
 
 
+def _macro_frame(colony, tally) -> Frame:
+    """The newest observation as a frame, named as a run stopped here would name it.
+
+    A macro species is settled only at the end of a run: if two lineages turn
+    out to share an ancestor they merge, and the loops below them are renamed.
+    A run without end has no such end, so it names its species as they stand at
+    each observation, and a label can still be revised later.
+    """
+    names = colony.name_species()
+    latest = colony.history[-1]
+    for lhs, rhs in latest["fired"]:
+        tally.add([names[s] for s in lhs], [names[s] for s in rhs])
+    state: Counter = Counter()
+    for s, c in latest["species"].items():
+        state[names[s]] += c
+    return Frame(t=float(latest["step"]), state={n: float(c) for n, c in state.items()},
+                 fired=tally.flush(), observables={"cells": latest["cells"]})
+
+
 def _macro(p, grid, table, n_states, periodic, space):
     colony = Colony(p.min_loop_cells)
     colony.observe(grid, 0, record=False)
@@ -492,10 +511,16 @@ def _macro(p, grid, table, n_states, periodic, space):
     if not initial:
         raise ValueError(f"the ancestor of rule {p.rule!r} has fewer than min_loop_cells="
                          f"{p.min_loop_cells} cells; lower min_loop_cells")
-    for t in range(1, p.steps + 1):
+    live = Tally() if not p.steps else None
+    if live is not None:
+        colony.observe(grid, 0)         # a run without end reports its initial state first
+        yield _macro_frame(colony, live)
+    for t in ticks(p.steps):
         grid = step(grid, table, n_states, periodic)
         if t % p.track_every == 0 or t == p.steps:
             colony.observe(grid, t)
+            if live is not None:
+                yield _macro_frame(colony, live)
 
     names = colony.name_species()
     used = sorted({names[s] for s in colony.species}, key=lambda n: (int(n[1:4]), n))
@@ -562,7 +587,7 @@ def _micro(p, grid, table, n_states, periodic, space):
     sides: dict[int, tuple[list[str], list[str]]] = {}
     tally = Tally()
     yield Frame(t=0.0, state={f"s{k}": float(v) for k, v in sorted(initial_cells.items())})
-    for t in range(1, p.steps + 1):
+    for t in ticks(p.steps):
         north, east, south, west = neighbours(grid, periodic)
         after = step(grid, table, n_states, periodic)
         changed = after != grid

@@ -207,6 +207,8 @@ traj = chemart.evolve("combinatory-chemistry", seed=1)
 21 frames, t = 0 … 20000 iterations; observables: free_atoms, mean_length, reductions, top_reactants
 ```
 
+`iterations=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve combinatory-chemistry --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 The default call runs 20,000 iterations of Algorithm 1 on 1,000 atoms (334
@@ -282,7 +284,7 @@ Pass any of these as keyword arguments to `chemart.evolve` (or `generate_network
 | `n_I` | `int` | `334` | population | free I atoms in the initial multiset <br>`0` … `1000000` · *range:* paper: 10,000 atoms evenly distributed over S, K and I |
 | `n_K` | `int` | `333` | population | free K atoms in the initial multiset <br>`0` … `1000000` · *range:* paper: 10,000 atoms evenly distributed over S, K and I |
 | `n_S` | `int` | `333` | population | free S atoms in the initial multiset <br>`0` … `1000000` · *range:* paper: 10,000 atoms evenly distributed over S, K and I |
-| `iterations` | `int` | `20000` | population | iterations of Algorithm 1, one sampled expression each <br>`0` … `100000000` · *range:* paper: 10 million (Figs. 4-5); about 100,000 per second here |
+| `iterations` | `int` | `20000` | population | iterations of Algorithm 1, one sampled expression each. 0 runs Algorithm 1 until the caller stops reading its frames <br>`0` … `100000000` · *range:* paper: 10 million (Figs. 4-5); about 100,000 per second here |
 | `F` | `int` | `1` | structural | reactant assemblage size: a missing S reactant of at most F atoms is built from free atoms (Algorithm 2); 1 turns assemblage off <br>`1` … `1000` · *range:* paper: 1 to 20; Fig. 5 uses 1, 3, 6 and 8 |
 | `max_reductions` | `int` | `100` | structural | a reduction is drawn uniformly among at most this many redexes, the first ones in outer-to-inner order <br>`1` … `100000` · *range:* paper footnote 3: 100 |
 | `record_every` | `int` | `1000` | structural | iterations per frame of chemart.evolve (the last iteration always ends a frame); the share of reductions and the reactant consumption are counted over each frame <br>≥ `1` · *range:* paper Fig. 5 uses windows of 500,000 reactions |

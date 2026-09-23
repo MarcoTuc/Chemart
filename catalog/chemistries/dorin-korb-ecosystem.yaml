@@ -19,6 +19,7 @@ chemistries:
   constructive: true
   type: gas
   clock: steps
+  duration: steps
   S:
     repr: "molecules = covalently bonded clusters of square virtual atoms from {A, B, C, O} plus the four catalyst atoms {K, EAB, ECC, EO}, identified by the canonical (isomorphism-invariant) bond graph"
     definition: implicit
@@ -42,7 +43,7 @@ chemistries:
   params:
     - {name: width, type: int, default: 18, min: 4, max: 400, range: "paper-scale grids are hundreds of cells wide", role: spatial, meaning: "grid width in cells (one square atom per cell)"}
     - {name: height, type: int, default: 18, min: 4, max: 400, role: spatial, meaning: "grid height in cells"}
-    - {name: steps, type: int, default: 150, min: 0, max: 100000, range: "long runs use thousands of steps", role: population, meaning: "simulation time steps; one step is one movement phase followed by one reaction phase"}
+    - {name: steps, type: int, default: 150, min: 0, max: 100000, range: "long runs use thousands of steps", role: population, meaning: "simulation time steps; one step is one movement phase followed by one reaction phase. 0 runs the world until the caller stops reading its frames"}
     - {name: atoms, type: dict, default: {A: 28, B: 28, O: 36, C: 24}, role: structural, meaning: "initial number of free atoms of each building block A, B, C, O"}
     - {name: catalysts, type: dict, default: {K: 4, EAB: 4, ECC: 4, EO: 4}, role: structural, meaning: "initial number of free catalyst atoms: K chlorophyll, EAB sugar-breaker, ECC organic decomposer, EO inorganic decomposer"}
     - {name: structures, type: enum, default: all, choices: [none, photoautotroph, decomposer, all], role: structural, meaning: "which of the paper's organism bodies to seed: the figure 5 photosynthetic autotroph (a C box with chlorophyll and the sugar enzyme on opposite inner walls around a vacuole) and the figure 6 decomposer (a C-C body carrying ECC on a C-O spacer)"}

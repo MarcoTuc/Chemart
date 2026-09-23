@@ -19,6 +19,7 @@ chemistries:
   constructive: true
   type: gas
   clock: generations
+  duration: generations
   S:
     repr: >
       Two separate populations. Tapes: circular 7-bit strings, species
@@ -59,7 +60,7 @@ chemistries:
     - {name: N, type: int, default: 1000, min: 1, max: 10000000, range: "not stated in the papers", role: population, face: evolve, meaning: "capacity of each population (machines, tapes); seeds share it equally"}
     - {name: c, type: float, default: 0.6, min: 0.0, max: 1.0, range: "papers: c = d = 0.6", role: kinetic, meaning: "fraction of each population replaced by reaction products per generation (c = d_m = d_t); also the rate scale of eq. 4"}
     - {name: noise, type: float, default: 0.05, min: 0.0, max: 1.0, range: "papers: 0.04 (minimal loop), 0.055 (oscillation), 0.07-0.08 (core networks), scans 0-0.1", role: stochastic, face: evolve, meaning: "external noise mu_P, bit-flip probability per bit of the reading frame"}
-    - {name: generations, type: int, default: 150, min: 0, max: 100000, range: "papers: 1600-3000", role: population, face: evolve, meaning: "number of generations; a frame every generation"}
+    - {name: generations, type: int, default: 150, min: 0, max: 100000, range: "papers: 1600-3000", role: population, face: evolve, meaning: "number of generations; a frame every generation. 0 runs the dynamics until the caller stops reading its frames"}
     - {name: noise_off, type: int, default: -1, min: -1, max: 100000, range: "papers: 2000", role: stochastic, face: evolve, meaning: "generation at which external noise is turned off; -1 keeps it on"}
     - {name: source, type: enum, default: random, choices: [random, inherit], role: stochastic, face: evolve, meaning: "source of a tape whose circular pattern is new to the population: random site (papers) or the site it was written from"}
     - {name: max_species, type: int, default: 400, min: 2, max: 100000, role: structural, face: generate, meaning: "species budget of the closure (the noise-free closure has at most 128 tapes and 128 + seed machines)"}

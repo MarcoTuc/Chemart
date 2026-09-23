@@ -34,7 +34,7 @@ from math import factorial
 
 from chemart.network import Network, Reaction, Species
 from chemart.soup import Tally
-from chemart.trajectory import Frame
+from chemart.trajectory import Frame, ticks
 
 EMPTY = "[]"
 
@@ -538,8 +538,11 @@ def evolve(p, rng):
         return Frame(t=float(collisions), state={c: float(n) for c, n in Counter(pop).items()},
                      fired=tally.flush())
 
+    def running() -> bool:
+        return (not p.max_collisions or collisions < p.max_collisions) and proved_at is None
+
     yield frame()
-    while collisions < p.max_collisions and proved_at is None:
+    while running():
         i = int(rng.integers(size))
         j = int(rng.integers(size))
         while j == i:
@@ -572,7 +575,7 @@ def evolve(p, rng):
         if (p.elastic_inflow and not options) or (period and collisions % period == 0):
             inflows += 1
             pop[int(rng.integers(size))] = start[int(rng.integers(len(start)))]
-        if collisions % size == 0 and collisions < p.max_collisions and proved_at is None:
+        if collisions % size == 0 and running():
             yield frame()
     if collisions:
         yield frame()

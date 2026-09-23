@@ -18,6 +18,7 @@ chemistries:
   constructive: true
   type: gas
   clock: steps
+  duration: steps
   S:
     repr: >
       Fraglets: strings of symbols [s1 s2 ... sn] located in a network node;
@@ -65,7 +66,7 @@ chemistries:
     - {name: program, type: str, default: "a a net\na b net\nf a[matchp cdp send b split send a ack *]\nf a[cdp data]\n", range: "any .fra text: 'f node[symbols]mult' fraglet lines, 'a node segment' attachment lines, '#' comments, 'e' end; symbols separated by spaces or ':'. Default: the active confirmed delivery protocol of AINS 2003 sec. IV.B / book fig. 16.10", role: population, meaning: "the Fraglets program: initial fraglets per node (with multiplicities) and the network topology"}
     - {name: dialect, type: enum, default: pycellchem, choices: [pycellchem, fraglets-2007], role: structural, meaning: "instruction set and edge cases: pycellchem = book table 16.1 and the book's reference interpreter (send dest tail); fraglets-2007 = upstream C interpreter fraglets0.32 and its 2007 instruction set (send seg dest tail, logic and arithmetic)"}
     - {name: max_species, type: int, default: 200, min: 1, role: structural, face: generate, meaning: "species budget of the closure; status truncated when exceeded (elongating programs never close)"}
-    - {name: steps, type: int, default: 1000, min: 0, max: 10000000, role: population, face: evolve, meaning: "number of match reactions to schedule, a frame after each (the run stops earlier when the nodes are inert)"}
+    - {name: steps, type: int, default: 1000, min: 0, max: 10000000, role: population, face: evolve, meaning: "number of match reactions to schedule, a frame after each (the run stops earlier when the nodes are inert). 0 schedules matches until the caller stops reading its frames"}
   provides: [topology, stoichiometry, catalysts, compartments, initial-state, sequence-structure-function]
   fidelity: reconstructed
   sources:

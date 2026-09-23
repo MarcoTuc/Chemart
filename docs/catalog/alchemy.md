@@ -226,6 +226,8 @@ traj = chemart.evolve("alchemy", seed=1)
 21 frames, t = 0 … 2000 collisions; observables: none
 ```
 
+`collisions=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve alchemy --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 AlChemy has two faces. `chemart.generate_network("alchemy")`, printed above,
@@ -361,7 +363,7 @@ Pass any of these as keyword arguments to `generate_network`, or to `chemart.evo
 |---|---|---|---|---|
 | `M` | `int` | `100` | population | *evolve only.* reactor size; without terms, the number of distinct random normal forms that seed the reactor <br>`2` … `100000` · *range:* paper: 1000 (reactor capacity, 5.3), 3000 for the L2 merger (6.4.1); book: 1000..3000 |
 | `n_seeds` | `int` | `10` | population | *generate only.* without terms, the number of distinct random normal forms whose closure is taken <br>`1` … `100000` |
-| `collisions` | `int` | `2000` | population | *evolve only.* number of collisions (elastic ones included); a frame every M collisions <br>`0` … `10000000` · *range:* paper figs. 4-5: 5*10^5..6*10^5; Mathis et al. 2024: 10^5..6*10^6 |
+| `collisions` | `int` | `2000` | population | *evolve only.* number of collisions (elastic ones included); a frame every M collisions. 0 runs the reactor until the caller stops reading its frames <br>`0` … `10000000` · *range:* paper figs. 4-5: 5*10^5..6*10^5; Mathis et al. 2024: 10^5..6*10^6 |
 | `terms` | `list` | `[]` | structural | explicit seed molecules as closed lambda terms, written λx.(M)N (λ or \) or as de Bruijn ids; reduced to normal form. Soup: M is split equally among them. Overrides the random generator <br>*range:* e.g. the L1 example-1 center [λx1.λx2.λx3.x1, λx1.λx2.λx3.λx4.x2, λx1.λx2.λx3.λx4.λx5.x3] |
 | `filter` | `enum` | `none` | selection | functional boundary condition: no-copy declares elastic every collision whose product is identical to one of its two reactants (paper 6.2) <br>one of `none`, `no-copy` · *range:* none gives Level 0 (copiers, hypercycles); no-copy gives Level 1 organisations |
 | `forbidden_patterns` | `list` | `[]` | selection | syntactic boundary conditions: regular expressions searched in the product's de Bruijn id; a match makes the collision elastic and excludes the term from the random seed <br>*range:* paper 6.2.3 bans three consecutive abstractions: ['\^\^\^'] |

@@ -208,6 +208,8 @@ traj = chemart.evolve("rna-folding-ac", seed=1)
 64 frames, t = 0 … 500 collisions; observables: none
 ```
 
+`steps=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve rna-folding-ac --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 The chemistry has two faces. `chemart.generate_network`, printed above,
@@ -284,7 +286,7 @@ Pass any of these as keyword arguments to `generate_network`, or to `chemart.evo
 | `seq_length` | `int` | `30` | structural | length of each RNA sequence in the initial pool <br>`8` … `120` · *range:* Flamm et al. (2010) use tRNA-size genes of 100 nt carried on a 5000 nt genome |
 | `pool` | `int` | `8` | population | number of random RNA sequences the closure or the run starts from <br>`1` … `200` · *range:* chemart.evolve needs at least 3; paper-scale runs hold tens of ribozymes per cell |
 | `max_species` | `int` | `60` | structural | *generate only.* species budget for the closure; the network is reported as truncated when it is reached <br>`2` … `5000` |
-| `steps` | `int` | `500` | population | *evolve only.* number of collisions in the well-stirred run; a frame every (initial pool size) collisions <br>`1` … `200000` |
+| `steps` | `int` | `500` | population | *evolve only.* number of collisions in the well-stirred run; a frame every (initial pool size) collisions. 0 runs the collisions on until the caller stops reading the frames <br>`0` … `200000` |
 | `dilution` | `enum` | `none` | population | *evolve only.* whether the well-stirred population is diluted back to its initial size after every reaction <br>one of `none`, `constant` |
 | `its_min` | `int` | `4` | structural | smallest ITS size (longest-loop cycle length) that is catalytic <br>`2` … `200` |
 | `its_max` | `int` | `12` | structural | largest ITS size that is catalytic; larger loops are treated as composite transition structures <br>`2` … `200` |

@@ -43,7 +43,7 @@ import math
 from collections import Counter
 
 from chemart.network import Network, Reaction, Species
-from chemart.trajectory import Frame
+from chemart.trajectory import Frame, ticks
 
 HOLE, SUBSTRATE, CATALYST, LINK = 0, 1, 2, 3
 
@@ -573,7 +573,7 @@ def evolve(p, rng):
     initial = world.census()
 
     yield Frame(t=0.0, state=initial, observables=world.observe())
-    for _ in range(p.steps):
+    for _ in ticks(p.steps):
         world.step()
         yield Frame(t=float(world.time), state=world.census(), fired=world.flush(),
                     observables=world.observe())

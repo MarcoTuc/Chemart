@@ -44,7 +44,7 @@ import numpy as np
 
 from chemart.network import Network, Reaction, Species
 from chemart.soup import Tally
-from chemart.trajectory import Frame
+from chemart.trajectory import Frame, ticks
 
 TAPE = 64
 COMMANDS = "<>{}-+.,[]"
@@ -247,7 +247,7 @@ def evolve(p, rng):
                                   "zero_bytes": int(flat.count(0))})
 
     yield frame(0, 0, 0)
-    for epoch in range(1, p.epochs + 1):
+    for epoch in ticks(p.epochs):
         # Background mutation, before execution, of every byte of every program.
         if p.mutation_rate > 0:
             hit = rng.random(soup.shape) < p.mutation_rate

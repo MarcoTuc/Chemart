@@ -242,6 +242,8 @@ traj = chemart.evolve("tominaga-stacked-strings", seed=1)
 11 frames, t = 0 … 2000 events; observables: none
 ```
 
+`steps=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve tominaga-stacked-strings --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 The chemistry has two faces. `chemart.generate_network`, printed above,
@@ -345,7 +347,7 @@ Pass any of these as keyword arguments to `generate_network`, or to `chemart.evo
 | `sources` | `list` | `[]` | structural | custom only: objects supplied without limit |
 | `drains` | `list` | `[]` | structural | custom only: patterns of objects that are removed |
 | `max_species` | `int` | `2000` | structural | *generate only.* species budget of the closure; closures of ab-concatenation and adleman-hamiltonian-path are infinite and truncated <br>`1` … `100000` · *range:* benenson-automaton default closes at 47 species; adleman-hamiltonian-path first contains the answer molecule between 2000 and 5000 species (5000: about 35 s) |
-| `steps` | `int` | `2000` | population | *evolve only.* number of events (rule applications, source and drain operations), failed draws included; a frame every generation (as many events as the initial pool has objects) <br>`0` … `10000000` |
+| `steps` | `int` | `2000` | population | *evolve only.* number of events (rule applications, source and drain operations), failed draws included; a frame every generation (as many events as the initial pool has objects). 0 runs the process on until the caller stops reading its frames <br>`0` … `10000000` |
 | `copies` | `int` | `1` | population | *evolve only.* multiplies every initial count of the sampled run (benenson-automaton starts from the published 100 Fok I, 20 per transition molecule and detector, 10 per input; the other systems from one copy of each molecule) <br>`1` … `100000` |
 
 ### Implementation decisions

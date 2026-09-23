@@ -151,6 +151,8 @@ traj = chemart.evolve("rbn-world", seed=1)
 11 frames, t = 0 … 1000 collisions; observables: largest_molecule_atoms
 ```
 
+`collisions=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve rbn-world --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 RBN World has one face, a run of its reactor. The call printed above,
@@ -229,7 +231,7 @@ Pass any of these as keyword arguments to `chemart.evolve` (or `generate_network
 | `bonding_rule` | `enum` | `proportion-sum-one` | structural | emergent property and criterion that decide bonds. proportion-sum-one and total-sum-zero passed all low-level tests (ALife XII); cycle-length-equal is the original ECAL 2009 chemistry <br>one of `proportion-sum-one`, `total-sum-zero`, `cycle-length-equal` |
 | `elements` | `int` | `5` | structural | number of random atom types (bRBNs), named A, B, C, ... <br>`1` … `26` · *range:* Faulkner et al. (2018) seed the reactor with five atom types |
 | `copies` | `int` | `20` | population | initial molecules of each element <br>`1` … `1000` · *range:* the thesis uses 1000 copies of each element |
-| `collisions` | `int` | `1000` | population | random pairwise collisions simulated, a frame every elements * copies of them; the observed network grows with it <br>`0` … `100000` |
+| `collisions` | `int` | `1000` | population | random pairwise collisions simulated, a frame every elements * copies of them; the observed network grows with it. 0 collides until the caller stops reading the frames <br>`0` … `100000` |
 
 ### Implementation decisions
 

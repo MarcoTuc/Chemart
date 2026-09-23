@@ -20,6 +20,7 @@ chemistries:
   constructive: false
   type: given
   clock: sweeps
+  duration: steps
   S:
     repr: "five species A (autocatalyst, hydrophilic), M (membrane, hydrophobic, isotropic M_i or anisotropic M_a carrying one of the six lattice orientations), X (food, neutral), Y (waste, neutral), W (water, hydrophilic), one particle per cell of a hexagonal torus"
     definition: explicit
@@ -36,7 +37,7 @@ chemistries:
     - {name: membrane, type: enum, default: anisotropic, choices: [anisotropic, isotropic], role: structural, meaning: "whether membrane particles are the anisotropic M_a or the isotropic M_i; the book's central result is that only M_a sustains protocells at low food supply"}
     - {name: width, type: int, default: 24, min: 6, max: 200, role: spatial, face: evolve, meaning: "lattice width in cells (axial r); the papers use a few hundred"}
     - {name: height, type: int, default: 24, min: 6, max: 200, role: spatial, face: evolve, meaning: "lattice height in cells (axial q)"}
-    - {name: steps, type: int, default: 100, min: 1, max: 20000, role: population, face: evolve, meaning: "lattice sweeps, a frame each; a sweep does `relaxation` Metropolis exchange passes, one rotation pass (M_a only) and one chemistry pass"}
+    - {name: steps, type: int, default: 100, min: 0, max: 20000, role: population, face: evolve, meaning: "lattice sweeps, a frame each; a sweep does `relaxation` Metropolis exchange passes, one rotation pass (M_a only) and one chemistry pass. 0 sweeps the lattice until the caller stops reading the frames"}
     - {name: relaxation, type: int, default: 12, min: 1, max: 200, role: spatial, face: evolve, meaning: "Metropolis exchange passes per chemistry pass; this is where the paper's separation between the mobility rates (7e-3) and the reaction rates (1e-4) enters, so particles demix long before they react"}
     - {name: initial, type: enum, default: random, choices: [random, cell], role: population, face: evolve, meaning: "'random' is a well-mixed start (the papers' homogeneous experiment); 'cell' prepares a membrane ring around autocatalyst and food (their cell-like experiment)"}
     - {name: cell_radius, type: int, default: 5, min: 1, max: 60, role: spatial, face: evolve, meaning: "radius in cells of the prepared membrane ring when initial = cell"}

@@ -19,6 +19,7 @@ chemistries:
   constructive: true
   type: gas
   clock: collisions
+  duration: collisions
   S:
     repr: >
       finite state machines (Mealy machines) drawn as labelled directed graphs: every node has at most one
@@ -49,7 +50,7 @@ chemistries:
     - {name: symbols, type: int, default: 2, min: 1, max: 16, range: "the sources use the binary alphabet {0, 1}", role: structural, meaning: "random machines: input/output alphabet size k"}
     - {name: max_states, type: int, default: 64, min: 1, max: 100000, role: structural, meaning: "largest product accepted: a composition with more reachable nodes is elastic"}
     - {name: max_species, type: int, default: 100, min: 1, max: 100000, role: structural, face: generate, meaning: "species budget of the closure; reactions that would add more are dropped and status becomes truncated"}
-    - {name: collisions, type: int, default: 2000, min: 0, max: 10000000, role: population, face: evolve, meaning: "number of collisions (elastic ones included); a frame every M collisions"}
+    - {name: collisions, type: int, default: 2000, min: 0, max: 10000000, role: population, face: evolve, meaning: "number of collisions (elastic ones included); a frame every M collisions. 0 runs the reactor until the caller stops reading its frames"}
   provides: [topology, stoichiometry, catalysts, flow, initial-state, sequence-structure-function]
   fidelity: reconstructed
   sources:

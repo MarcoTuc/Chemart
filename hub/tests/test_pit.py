@@ -26,6 +26,25 @@ def test_serves_the_page_with_a_strict_policy(pit):
     assert pit.get("/static/pit/pit.js").status_code == 200
 
 
+def test_a_process_can_be_told_to_run_until_stopped(pit):
+    from collections import OrderedDict
+
+    from chemart_hub import pit as pit_module
+
+    assert pit.get("/api/chemistry/alchemy").json()["duration"] == "collisions"   # the knob to zero
+
+    runs: OrderedDict = OrderedDict()
+    stream = pit_module._run({"chemistry": "alchemy", "method": "evolve", "seed": 1,
+                              "params": {"collisions": 0}}, "42", runs)
+    kinds = [next(stream)["type"] for _ in range(4)]
+    assert kinds == ["start", "frame", "frame", "frame"]     # it would go on for ever
+    stream.close()                                           # the Stop button
+
+    kept = runs["42"]                                        # stopped, but not lost
+    assert len(kept["frames"]) == 3 and kept["settings"]["kept_frames"] == 3
+    assert kept["network"]["status"] == "observed" and kept["network"]["reactions"]
+
+
 def test_refuses_other_hosts_and_unmarked_posts(pit):
     assert pit.get("/", headers={"Host": "evil.example"}).status_code == 403     # DNS rebinding
     r = pit.post("/api/run", json={"chemistry": "brusselator"})

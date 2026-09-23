@@ -19,6 +19,7 @@ chemistries:
   constructive: true
   type: gas
   clock: events
+  duration: steps
   S:
     repr: >
       a molecule (object, v-molecule) is a stack of lines of elements, each line with an integer
@@ -66,7 +67,7 @@ chemistries:
     - {name: sources, type: list, default: [], role: structural, meaning: "custom only: objects supplied without limit"}
     - {name: drains, type: list, default: [], role: structural, meaning: "custom only: patterns of objects that are removed"}
     - {name: max_species, type: int, default: 2000, min: 1, max: 100000, range: "benenson-automaton default closes at 47 species; adleman-hamiltonian-path first contains the answer molecule between 2000 and 5000 species (5000: about 35 s)", role: structural, face: generate, meaning: "species budget of the closure; closures of ab-concatenation and adleman-hamiltonian-path are infinite and truncated"}
-    - {name: steps, type: int, default: 2000, min: 0, max: 10000000, role: population, face: evolve, meaning: "number of events (rule applications, source and drain operations), failed draws included; a frame every generation (as many events as the initial pool has objects)"}
+    - {name: steps, type: int, default: 2000, min: 0, max: 10000000, role: population, face: evolve, meaning: "number of events (rule applications, source and drain operations), failed draws included; a frame every generation (as many events as the initial pool has objects). 0 runs the process on until the caller stops reading its frames"}
     - {name: copies, type: int, default: 1, min: 1, max: 100000, role: population, face: evolve, meaning: "multiplies every initial count of the sampled run (benenson-automaton starts from the published 100 Fok I, 20 per transition molecule and detector, 10 per input; the other systems from one copy of each molecule)"}
   provides: [topology, stoichiometry, initial-state, sequence-structure-function]
   fidelity: reconstructed

@@ -187,6 +187,8 @@ traj = chemart.evolve("prime-number-chemistry", seed=1)
 101 frames, t = 0 … 10000 collisions; observables: prime_fraction
 ```
 
+`iterations=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve prime-number-chemistry --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 The chemistry has two faces. `chemart.generate_network`, printed above,
@@ -287,7 +289,7 @@ Pass any of these as keyword arguments to `generate_network`, or to `chemart.evo
 | `minn` | `int` | `2` | structural | lower bound of the uniform initialisation interval (inclusive) <br>≥ `2` |
 | `maxn` | `int` | `1000` | structural | upper bound of the initialisation interval (inclusive); maxn &gt;&gt; M makes the run constructive <br>≥ `2` · *range:* book 2.5.2 and appendix: 1000; paper [72] fig. 5: 10000 |
 | `numbers` | `list` | `[]` | structural | explicit initial multiset of integers &gt;= 2; overrides the random draw of M numbers from [minn, maxn] <br>*range:* book fig. 2.7: each of 2..101 once |
-| `iterations` | `int` | `10000` | population | *evolve only.* number of collisions, elastic ones included (M collisions = one generation; a frame every generation) <br>`0` … `10000000` · *range:* appendix: 10000; figs. 2.8-2.9: 20000; paper [72]: 700 generations = 700 M |
+| `iterations` | `int` | `10000` | population | *evolve only.* number of collisions, elastic ones included (M collisions = one generation; a frame every generation). 0 collides until the caller stops reading the frames <br>`0` … `10000000` · *range:* appendix: 10000; figs. 2.8-2.9: 20000; paper [72]: 700 generations = 700 M |
 | `max_species` | `int` | `1000` | structural | *generate only.* species budget of the closure; the closure is finite, so it is truncated only when this is exceeded <br>≥ `1` |
 
 ### Implementation decisions

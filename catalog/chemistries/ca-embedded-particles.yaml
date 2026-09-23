@@ -20,6 +20,7 @@ chemistries:
   constructive: false
   type: gas
   clock: iterations
+  duration: steps
   S:
     repr: >
       A molecule is a *particle*: a spatially localised, temporally periodic
@@ -61,7 +62,7 @@ chemistries:
   params:
     - {name: rule, type: enum, default: phi-par-a, choices: [phi-par-a, phi-par-b, gkl], role: structural, meaning: "which published radius-3 rule to use: phi-par-a and phi-par-b are the two density-classification CAs evolved by the genetic algorithm of Crutchfield, Mitchell & Das (their Tables 3 and 4 give the particle catalogs); gkl is the hand-designed Gacs-Kurdyumov-Levin rule, which has the same three domains but no published particle catalog. phi-par-b's catalog can be generated but the automaton cannot be run, and gkl can be run but has no catalog to generate (see decisions)"}
     - {name: lattice, type: int, default: 149, min: 12, max: 5000, range: "the papers measure performance at N = 149, 599 and 999; the book's figure 10.14 uses 75", role: spatial, face: evolve, meaning: "number of cells N of the periodic lattice"}
-    - {name: steps, type: int, default: 298, min: 1, max: 20000, range: "the task's answer time is T_max = 2N", role: population, face: evolve, meaning: "CA iterations to run; more iterations means more observed collisions"}
+    - {name: steps, type: int, default: 298, min: 0, max: 20000, range: "the task's answer time is T_max = 2N", role: population, face: evolve, meaning: "CA iterations to run; more iterations means more observed collisions. 0 runs the automaton until the caller stops reading its frames"}
     - {name: density, type: float, default: 0.48, min: 0, max: 1, range: "the published space-time figures use rho_0 = 0.48 and 0.51; performance is measured over ICs drawn uniformly, which is what the module's performance() does", role: population, face: evolve, meaning: "density rho_0 of the initial configuration: exactly round(rho_0 N) cells are set to 1, in random positions (this is the only use of the seed)"}
     - {name: filter_window, type: int, default: 3, min: 1, max: 16, role: structural, face: evolve, meaning: "half-width of the window used by the domain filter: a site belongs to a domain when the 2w+1 sites around it agree with one spatial phase of that domain's pattern. The default 3 is the CA radius, so the window is the neighbourhood; larger values demand wider domain patches and so report wider walls"}
   provides: [topology, stoichiometry, initial-state, space]

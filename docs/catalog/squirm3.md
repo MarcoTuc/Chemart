@@ -242,6 +242,8 @@ traj = chemart.evolve("squirm3", seed=1)
 202 frames, t = 0 … 3000 steps; observables: molecules
 ```
 
+`steps=0` runs it until you stop reading its frames (`chemart.evolve_frames`, or the pit's Stop button).
+
 From the shell: `uv run chemart evolve squirm3 --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
 
 Squirm3 has two faces. `chemart.generate_network`, called above, returns the
@@ -370,7 +372,7 @@ Pass any of these as keyword arguments to `generate_network`, or to `chemart.evo
 | `space` | `enum` | `lattice-vn` | spatial | *evolve only.* lattice-vn: the 2002 CA (move into the Moore neighbourhood, react in the von Neumann one, bond range 1); lattice-moore: the 2007 lattice (react over the Moore neighbourhood, bond range 2); continuous: the 2007 continuous-space physics <br>one of `lattice-vn`, `lattice-moore`, `continuous` |
 | `width` | `int` | `20` | spatial | *evolve only.* world width (lattice points, or length units in continuous space) <br>`4` … `1000` · *range:* 2002: 20x20 for experiment 1, 100x100 for experiments 2 and 3; the 2007 C++ uses 400x300 continuous |
 | `height` | `int` | `20` | spatial | *evolve only.* world height <br>`4` … `1000` |
-| `steps` | `int` | `3000` | population | *evolve only.* time steps; each is one reaction phase and one movement phase. A frame after the first step and every steps // 200 steps from there <br>`0` … `10000000` · *range:* 2002 experiment 1 ran 3544 iterations for 11 copies; the 2007 runs reach 10^6-10^7 |
+| `steps` | `int` | `3000` | population | *evolve only.* time steps; each is one reaction phase and one movement phase. A frame after the first step and every steps // 200 steps from there. 0 runs the world on until the caller stops reading its frames, a frame per step <br>`0` … `10000000` · *range:* 2002 experiment 1 ran 3544 iterations for 11 copies; the 2007 runs reach 10^6-10^7 |
 | `flood_period` | `int` | `0` | selection | *evolve only.* dissolve one sector of the world back to single atoms in state 0 every this many steps - the selection pressure; 0 turns flooding off <br>`0` … `10000000` · *range:* 2002: T = 2000, 10000 and 20000; 2007: 50000 and 200000 |
 | `flood_sectors` | `enum` | `halves` | selection | *evolve only.* flood alternating halves (2002) or rotate through quarters (2005, 2007) <br>one of `halves`, `quarters` |
 | `cosmic_ray` | `float` | `0.0` | stochastic | *evolve only.* probability per atom per step that an atom's state is randomised, leaving its type and bonds <br>`0.0` … `1.0` · *range:* 2002 experiment 3: 0.00001, which lets replicators appear spontaneously |

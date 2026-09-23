@@ -198,14 +198,15 @@ class _Run:
         return Frame(t=float(self.tests), state=state, fired=self.tally.flush(), observables={"god": god})
 
     def done(self) -> bool:
-        """Queens_Sort/USAmap_color loopTick termination test, plus the max_tests budget."""
+        """Queens_Sort/USAmap_color loopTick termination test, plus the max_tests
+        budget (0: no budget, so only the search's own termination ends the run)."""
         if self.failed >= self.threshold:
             if self.tests < self.threshold_20:
                 self.terminated = True
                 return True
             self.threshold_20 *= 2
             self.threshold = self.threshold_20 // 20
-        return self.attempts >= self.p.max_tests
+        return bool(self.p.max_tests) and self.attempts >= self.p.max_tests
 
 
 def _queens(p, rng):
