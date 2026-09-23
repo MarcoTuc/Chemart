@@ -126,9 +126,9 @@ three-molecule step needs care: its constant carries a factor `2!` because
 two of its three reactants are the same species. Chemart supplies the
 conversion as `chemart.kinetics.k_to_c`.
 
-Chemart itself only generates the network. It does not run either reactor;
-the examples below integrate or simulate the generated network with a few
-lines of NumPy and SciPy.
+`chemart.simulate` runs either reactor on the generated network: `ode`
+integrates the rate equations and `ssa` runs the Gillespie algorithm, both
+holding the buffered species fixed.
 
 ### Formal specification
 
@@ -168,6 +168,13 @@ B + X -> Y + D  [mass-action k=1.0]
 X -> E  [mass-action k=1.0]
 ```
 
+Its network carries rates and an initial state, so it simulates as it is (`t_end` is in the model's own time unit):
+
+```python
+traj = chemart.simulate.ode(net, t_end=40)                     # rate equations
+path = chemart.simulate.ssa(net, t_end=40, volume=100, seed=1)  # one stochastic path
+```
+
 The default call above gives the network of the book's figure 17.6 (left):
 `a = 1`, `b = 3`, every rate constant 1, and `X`, `Y`, `D`, `E` starting at 0
 in `net.initial_state`. The four reactions are exactly the book's reactions
@@ -177,37 +184,26 @@ and `B`. The network involves no randomness, so the `seed` changes nothing.
 #### Reproducing figure 17.6
 
 The book's figure shows `b = 3` (oscillating) next to `b = 1.7` (damped). This
-script integrates the generated network, holding the buffered species fixed:
+script integrates the generated network with `chemart.simulate.ode`, which
+holds the buffered species fixed; `run` returns the times and each species'
+curve:
 
 ```python
 import numpy as np
-from scipy.integrate import solve_ivp
 
 import chemart
+from chemart import simulate
 
 
-def simulate(net, t_end, n=6001):
-    ids, R, P = net.matrices()
-    R = R.toarray()
-    S = (P.toarray() - R).astype(float)
-    k = np.array([r.rate["k"] for r in net.reactions])
-    held = [ids.index(s) for s in net.extras["buffered"]]
-    x0 = np.array([net.initial_state[s] for s in ids])
-
-    def f(t, x):
-        v = k * np.prod(x[:, None] ** R, axis=0)  # mass action
-        dx = S @ v
-        dx[held] = 0.0  # A and B are buffered
-        return dx
-
-    t = np.linspace(0, t_end, n)
-    sol = solve_ivp(f, (0, t_end), x0, t_eval=t, rtol=1e-9, atol=1e-12)
-    return t, dict(zip(ids, sol.y))
+def run(net, t_end, n=6001):
+    traj = simulate.ode(net, t_end, points=n)
+    ids, t, X = traj.array([s.id for s in net.species])
+    return t, dict(zip(ids, X.T))
 
 
 for b in (3.0, 1.7):
     net = chemart.generate_network("brusselator", b=b)
-    t, x = simulate(net, 60)
+    t, x = run(net, 60)
     late = t >= 40
     X, Y = x["X"][late], x["Y"][late]
     print(f"b={b}: t in [40, 60]: X from {X.min():.2f} to {X.max():.2f}, "
@@ -225,7 +221,7 @@ steady state `(a, b/a) = (1, 1.7)`.
 
 #### Crossing the threshold
 
-To see the threshold, run each setting to `t = 400` with the same `simulate`
+To see the threshold, run each setting to `t = 400` with the same `run`
 and measure the swing of `X` (maximum minus minimum) over the last 100 time
 units. A swing of zero means the run has settled at the steady state:
 
@@ -233,7 +229,7 @@ units. A swing of zero means the run has settled at the steady state:
 for params in ({"b": 1.9}, {"b": 2.1}, {"b": 2.5}, {"b": 3.0}, {"b": 4.0},
                {"a": 2.0, "b": 4.5}, {"a": 2.0, "b": 5.5},
                {"k3": 2.0, "b": 2.8}, {"k3": 2.0, "b": 3.2}):
-    t, x = simulate(chemart.generate_network("brusselator", **params), 400, n=40001)
+    t, x = run(chemart.generate_network("brusselator", **params), 400, n=40001)
     X = x["X"][t >= 300]
     print(params, f"X swing {np.ptp(X):.3f}, final (X, Y) = ({x['X'][-1]:.3f}, {x['Y'][-1]:.3f})")
 ```
@@ -243,7 +239,7 @@ for params in ({"b": 1.9}, {"b": 2.1}, {"b": 2.5}, {"b": 3.0}, {"b": 4.0},
 {'b': 2.1} X swing 0.764, final (X, Y) = (1.473, 1.657)
 {'b': 2.5} X swing 2.018, final (X, Y) = (0.493, 3.119)
 {'b': 3.0} X swing 3.381, final (X, Y) = (0.403, 4.119)
-{'b': 4.0} X swing 6.177, final (X, Y) = (3.157, 4.562)
+{'b': 4.0} X swing 6.177, final (X, Y) = (3.158, 4.561)
 {'a': 2.0, 'b': 4.5} X swing 0.000, final (X, Y) = (2.000, 2.250)
 {'a': 2.0, 'b': 5.5} X swing 3.359, final (X, Y) = (3.985, 1.340)
 {'k3': 2.0, 'b': 2.8} X swing 0.000, final (X, Y) = (1.000, 1.400)
@@ -261,55 +257,37 @@ general formula puts the threshold at `b = 3` and the steady state at
 #### A stochastic run
 
 To simulate molecule by molecule, choose how many molecules make one unit of
-concentration (`omega` below, standing for Avogadro's number times the
-volume) and convert each rate constant with `k_to_c`:
+concentration: `simulate.ssa` takes it as `volume` (with `avogadro=1`, the
+default, a count is concentration × volume). It converts each rate constant
+with `chemart.kinetics.k_to_c`, which the first line prints:
 
 ```python
-from math import comb
-
 import numpy as np
 
 import chemart
+from chemart import simulate
 from chemart.kinetics import k_to_c
 
 net = chemart.generate_network("brusselator", seed=1)  # a = 1, b = 3
-omega = 200  # N_A * V: molecules per unit concentration
-held = set(net.extras["buffered"])
-n = {s: round(c * omega) for s, c in net.initial_state.items()}  # A = 200, B = 600
-c = [k_to_c(r.rate["k"], r.reactants, volume=omega, avogadro=1.0) for r in net.reactions]
-print("c:", [round(v, 8) for v in c])
+omega = 200  # N_A * V: molecules per unit concentration (A = 200, B = 600)
+print("c:", [round(k_to_c(r.rate["k"], r.reactants, volume=omega, avogadro=1.0), 8)
+             for r in net.reactions])
 
-rng = np.random.default_rng(1)
-t, t_end, events = 0.0, 60.0, 0
-samples = []
-while t < t_end:
-    # propensity = c * number of distinct reactant combinations
-    a = np.array([ci * np.prod([comb(n[s], m) for s, m in r.reactants.items()])
-                  for ci, r in zip(c, net.reactions)])
-    total = a.sum()
-    t += rng.exponential(1 / total)
-    r = net.reactions[rng.choice(len(a), p=a / total)]
-    for s, m in r.reactants.items():
-        if s not in held:
-            n[s] -= m
-    for s, m in r.products.items():
-        if s not in held:
-            n[s] += m
-    events += 1
-    if t >= 40:
-        samples.append(n["X"] / omega)
-print(f"{events} events; X/omega over t 40-60: {min(samples):.2f} to {max(samples):.2f}")
+path = simulate.ssa(net, 60, volume=omega, points=6001, seed=1)
+ids, t, X = path.array(["X"])
+late = X[t >= 40, 0]
+print(f"{path.settings['events']} events; X over t 40-60: {late.min():.2f} to {late.max():.2f}")
 ```
 
 ```
 c: [1.0, 0.005, 5e-05, 1.0]
-87573 events; X/omega over t 40-60: 0.24 to 4.68
+87572 events; X over t 40-60: 0.24 to 4.67
 ```
 
 The third constant is `2 / omega²`: the `1/omega²` for a three-molecule
 reaction, times the `2!` for the repeated `X`. The noisy run follows the
 same cycle as the ODE (compare `X` from 0.37 to 3.75 above), with extra
-scatter from the small molecule numbers. It takes about eight seconds; the
+scatter from the small molecule numbers. It takes about three seconds; the
 number of events, and so the time, grows in proportion to `omega`.
 
 The parameter table below lists the six parameters: the two buffered

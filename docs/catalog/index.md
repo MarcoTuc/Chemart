@@ -84,7 +84,7 @@ Each chemistry's own page has the full capability list, the complete attribution
 | chemistry | origin | family | grows | fidelity | S/R | beyond topology |
 |---|---|---|:--:|---|--:|---|
 | [AlChemy (lambda-calculus chemistry)](alchemy.md) | Fontana, 1991 | rewriting | yes | reconstructed | 50/1134 | kinetics, flow |
-| [Automata reaction (32-bit binary string chemistry)](automata-reaction.md) | Dittrich & Banzhaf, 1998 | automata | yes | reconstructed | 200/32804 | kinetics, flow |
+| [Automata reaction (32-bit binary string chemistry)](automata-reaction.md) | Dittrich & Banzhaf, 1998 | automata | yes | reconstructed | 50/1570 | kinetics, flow |
 | [BFF (self-modifying Brainfuck soup)](bff.md) | Agüera y Arcas, Alakuijal… | automata | yes | reconstructed | 837/646 | space |
 | [Embedded particles in cellular automata](ca-embedded-particles.md) | Hanson & Crutchfield 1992 | automata | · | reconstructed | 6/6 | space |
 | [Chemical Casting Model (CCM)](ccm.md) | Kanada, 1992-1996 | application | · | reconstructed | 64/187 | — |

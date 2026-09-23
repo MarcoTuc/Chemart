@@ -214,28 +214,19 @@ own tools:
   symmetry counts. `net.extras["analysis"]` gives the largest complex and
   whether the size budget cut the network.
 
-To run the network, integrate its mass-action equations (`chemart.simulate.ode`
-does this for any rated network). This script does so by hand and sums the
-complexes into the four observables the guide plots in its figure 3:
+To run the network, integrate its mass-action equations with
+`chemart.simulate.ode`. This script does so and sums the complexes into the
+four observables the guide plots in its figure 3:
 
 ```python
-import numpy as np
-from scipy.integrate import solve_ivp
 import chemart
-
-def simulate(net, t_eval):
-    ids, R, P = net.matrices()
-    R = R.toarray()
-    S = (P.toarray() - R).astype(float)
-    k = np.array([r.rate["k"] for r in net.reactions])
-    x0 = np.array([net.initial_state.get(s, 0.0) for s in ids])
-    f = lambda t, x: S @ (k * np.prod(x[:, None] ** R, axis=0))   # mass action
-    sol = solve_ivp(f, (0, t_eval[-1]), x0, t_eval=t_eval, method="LSODA", rtol=1e-8, atol=1e-8)
-    return dict(zip(ids, sol.y))
+from chemart import simulate
 
 net = chemart.generate_network("kappa-calculus")
 t = [1, 5, 20, 50, 100, 250]
-x = simulate(net, t)
+traj = simulate.ode(net, 250, points=251)                 # a frame every second
+ids, _, X = traj.array([s.id for s in net.species])
+x = dict(zip(ids, X[t].T))                              # rows at t = 1, 5, ..., 250
 total = lambda pred: sum(v for s, v in x.items() if pred(s))
 obs = {"AB":  total(lambda s: "B(x[1])" in s),
        "Cuu": total(lambda s: "C(x1{u}" in s and "x2{u}" in s),
@@ -265,7 +256,7 @@ the epidermal growth factor receptor (EGFR) of Blinov et al. (2006), in the
 Kappa translation shipped with KaDE's benchmarks. It has five agent types
 (the ligand `egf`, the receptor `egfr`, and the adapter and signalling proteins
 `Grb2`, `Shc` and `Sos`) and 23 rules, 16 of them reversible, labelled `R1` to
-`R23`. It is the slow setting: about 16 seconds.
+`R23`. It is the slow setting: about four seconds.
 
 ```python
 net = chemart.generate_network("kappa-calculus", model="egfr")

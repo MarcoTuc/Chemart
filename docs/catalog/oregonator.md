@@ -108,7 +108,7 @@ Here is one period of the default network (the book's rate constants,
 table starts at a peak of `X` and samples every 0.4 time units:
 
 ```
-t= 93.10   X=0.950   Y=0.587   Z=6.376
+t= 93.10   X=0.950   Y=0.587   Z=6.375
 t= 93.50   X=0.836   Y=0.727   Z=7.258
 t= 93.90   X=0.618   Y=0.932   Z=7.245
 t= 94.30   X=0.423   Y=1.152   Z=6.532
@@ -166,9 +166,9 @@ The book gives neither the diffusion coefficients nor the grid spacing.
 ### What Chemart supplies
 
 Chemart generates the network: the five reactions with their rate
-constants, the buffered species, and a record of the spatial setting. It
-does not integrate the equations or simulate space; the examples below do
-that with a few lines of NumPy and SciPy. One detail: a reaction cannot
+constants, the buffered species, and a record of the spatial setting.
+`chemart.simulate` integrates the stirred equations, as the examples below
+do; it does not simulate space. One detail: a reaction cannot
 release 1.5 molecules, so a fractional `f` is written as two reactions with
 whole numbers of products that together give exactly the same rate
 equations. The formal specification below summarises the model.
@@ -212,6 +212,15 @@ B + X -> 2 X + Z  [mass-action k=10.0]
 Z -> Y  [mass-action k=1.0]
 ```
 
+Its network carries rates and an initial state, so it simulates as it is (`t_end` is in the model's own time unit):
+
+```python
+traj = chemart.simulate.ode(net, t_end=40)                     # rate equations
+path = chemart.simulate.ssa(net, t_end=40, volume=100, seed=1)  # one stochastic path
+```
+
+The simulators treat it as well mixed and ignore its space: an approximation, not the published model. See [Simulating dynamics](../guide/simulating.md).
+
 The default call above builds the network of the book's figure 19.20:
 `k1 = k5 = 1`, `k2 = k3 = 10`, `k4 = 2.5`. The book does not give `f`, `A`,
 `B` or the diffusion coefficients, so Chemart sets `f = 1` (the "simplest
@@ -228,54 +237,42 @@ simulation.
 
 #### Oscillation at the book's constants
 
-This script integrates the generated network, holding the buffered species
-fixed, and prints the cycle shown in "How it works":
+This script integrates the generated network with `chemart.simulate.ode`,
+which holds the buffered species fixed, and prints the cycle shown in "How it
+works":
 
 ```python
 import numpy as np
-from scipy.integrate import solve_ivp
 
 import chemart
+from chemart import simulate
 
 
-def simulate(net, t_end, start, n=20001):
-    ids, R, P = net.matrices()
-    R = R.toarray()
-    S = (P.toarray() - R).astype(float)
-    k = np.array([r.rate["k"] for r in net.reactions])
-    held = [ids.index(s) for s in net.extras["buffered"]]
-    x0 = np.array([start.get(s, net.initial_state.get(s, 0.0)) for s in ids])
-
-    def rhs(t, x):
-        v = k * np.prod(x[:, None] ** R, axis=0)  # mass action
-        dx = S @ v
-        dx[held] = 0.0  # A and B are buffered
-        return dx
-
-    t = np.linspace(0, t_end, n)
-    sol = solve_ivp(rhs, (0, t_end), x0, t_eval=t, method="LSODA", rtol=1e-9, atol=1e-12)
-    return t, dict(zip(ids, sol.y))
+def run(net, t_end, start, n=20001):
+    traj = simulate.ode(net, t_end, x0=start, points=n)   # start: amounts added to A = B = 1
+    ids, t, X = traj.array([s.id for s in net.species])
+    return t, dict(zip(ids, X.T))
 
 
 net = chemart.generate_network("oregonator", seed=1)  # the book's constants, f = 1
-t, x = simulate(net, 100, start={"Y": 1.0}, n=100001)  # X, Y, Z start at 0: give Y a push
+t, x = run(net, 100, start={"Y": 1.0}, n=100001)  # X, Y, Z start at 0: give Y a push
 i0 = np.searchsorted(t, 90)
 i0 += np.argmax(x["X"][i0:i0 + 4000])  # start at a peak of X
 for i in range(i0, i0 + 4001, 400):
     print(f"t={t[i]:6.2f}   X={x['X'][i]:.3f}   Y={x['Y'][i]:.3f}   Z={x['Z'][i]:.3f}")
 ```
 
-Its output is the table in "How it works". The run takes about two seconds.
+Its output is the table in "How it works". The run takes about a second.
 
 #### Scanning `f`
 
-With the same `simulate`, run each value of `f` to `t = 400` and print the
+With the same `run`, run each value of `f` to `t = 400` and print the
 range of `Z` over the last 100 time units. A range of zero means the run has
 come to rest at the steady state:
 
 ```python
 for f in (0.85, 0.9, 1.0, 1.2, 1.4, 1.5, 2.0):
-    t, x = simulate(chemart.generate_network("oregonator", f=f), 400, start={"Y": 1.0}, n=40001)
+    t, x = run(chemart.generate_network("oregonator", f=f), 400, start={"Y": 1.0}, n=40001)
     Z = x["Z"][t >= 300]
     print(f"f={f}: Z from {Z.min():.2f} to {Z.max():.2f}")
 ```

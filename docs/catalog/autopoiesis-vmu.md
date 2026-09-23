@@ -241,6 +241,18 @@ L0S -> L0 + S
 … and 8 more
 ```
 
+It also has a process, to follow in its own time, counted in *steps*; the parameters marked *evolve only* belong to it:
+
+```python
+traj = chemart.evolve("autopoiesis-vmu", seed=1)
+```
+
+```
+121 frames, t = 0 … 120 steps; observables: closed_chains, enclosed_catalysts, membranes
+```
+
+From the shell: `uv run chemart evolve autopoiesis-vmu --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 The model has two faces. The call printed above,
 `chemart.generate_network("autopoiesis-vmu")`, returns the reaction list
 alone: the 16 reactions the chemistry defines (production, three bonding

@@ -216,6 +216,15 @@ A4 -> L4  [mass-action k=0.0001]
 … and 10192 more
 ```
 
+Its network carries rates and an initial state, so it simulates as it is (`t_end` is in the model's own time unit):
+
+```python
+traj = chemart.simulate.ode(net, t_end=40)                     # rate equations
+path = chemart.simulate.ssa(net, t_end=40, volume=100, seed=1)  # one stochastic path
+```
+
+The simulators treat it as well mixed and ignore its compartments: an approximation, not the published model. See [Simulating dynamics](../guide/simulating.md).
+
 The default call draws one random chemistry: 100 molecule types, `β` sampled
 from the seed, the kinetic constants of the published runs (`k_f = 0.01`,
 `k_b = 0.0001`, `ρ = 0.01`, `N_max = 100`). The 10,200 reactions are the

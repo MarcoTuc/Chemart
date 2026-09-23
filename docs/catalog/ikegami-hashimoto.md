@@ -254,6 +254,18 @@ M7922 + T09 -> M7922 + T09 + M1cc3 + T29  [mass-action k=0.3 frame_length=3]
 … and 3962 more
 ```
 
+It also has a process, to follow in its own time, counted in *generations*; the parameters marked *evolve only* belong to it:
+
+```python
+traj = chemart.evolve("ikegami-hashimoto", seed=1)
+```
+
+```
+151 frames, t = 0 … 150 generations; observables: active_mutation, reading_length
+```
+
+From the shell: `uv run chemart evolve ikegami-hashimoto --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 Chemart runs this chemistry in two ways. `generate_network`, the call above,
 builds the noise-free network: every machine and tape that can be reached
 from the seeds by exact reactions, with every reaction between them. This is

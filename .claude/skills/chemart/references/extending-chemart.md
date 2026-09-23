@@ -1,11 +1,12 @@
 # Adding or changing a chemistry
 
-The contract is deliberately small: one function, one catalog entry, one test
-file. There are no base classes and no registration step.
+The contract is deliberately small: one or two functions, one catalog entry,
+one test file. There are no base classes and no registration step.
 
 ## Contents
 - [The three files you own](#the-three-files-you-own)
 - [The generate contract](#the-generate-contract)
+- [The evolve contract](#the-evolve-contract)
 - [The catalog entry](#the-catalog-entry)
 - [Helpers](#helpers)
 - [Tests](#tests)
@@ -18,7 +19,7 @@ For chemistry id `<id>` (module name `<mod>` = id with `-` → `_`):
 
 | file | content |
 |---|---|
-| `chemart/chemistries/<mod>.py` | `def generate(p, rng) -> Network` |
+| `chemart/chemistries/<mod>.py` | `def generate(p, rng) -> Network`, and/or `def evolve(p, rng)` |
 | `catalog/chemistries/<id>.yaml` | the catalog entry |
 | `tests/chemistries/test_<mod>.py` | tests reproducing published results |
 
@@ -48,6 +49,37 @@ def generate(p, rng) -> Network:
 Everything in the returned network must be plain JSON: convert numpy scalars
 with `int()` / `float()`, and keep dict keys strings.
 
+## The evolve contract
+
+A chemistry whose process is worth running — a Turing gas, a lattice — defines
+an evolve face, besides `generate` or instead of it:
+
+```python
+from chemart.soup import Tally
+from chemart.trajectory import Frame
+
+def evolve(p, rng):
+    tally = Tally()
+    yield Frame(t=0, state=...)                                  # the initial population
+    ...
+    yield Frame(t=..., state=..., fired=tally.flush(), observables={...})
+    return network                                               # what fired, with counts
+```
+
+- The first frame is the initial state and fires nothing; `t` never decreases
+  and is counted in the entry's `clock` (required with an evolve face).
+- `fired` lists the reactions since the previous frame as
+  `[[reactants], [products], count]`; summed over frames, the counts must equal
+  each reaction's `count` in the returned network (`Tally` keeps them in step).
+- `observables` holds what only this chemistry can report (a fold's energy, a
+  membrane count). Generic numbers such as richness come from
+  `chemart.measures`; do not repeat them.
+- For a well-stirred soup, `chemart.soup.stir(react, population, steps, rng,
+  every=..., tally=...)` runs the loop and yields `(step, population, tally)`
+  at each frame.
+- A parameter only one face uses gets `face: evolve` (or `face: generate`) in
+  the catalog. `every` is reserved: `chemart.evolve` uses it to merge frames.
+
 ## The catalog entry
 
 One YAML file, `chemistries: [ <entry> ]`. Full field reference:
@@ -60,6 +92,9 @@ One YAML file, `chemistries: [ <entry> ]`. Full field reference:
   `structural | kinetic | thermodynamic | population | spatial | stochastic |
   selection`, and they are what lets the library scale knobs coherently across
   chemistries.
+- **`type` is required**: `given` (a network written down), `generator` (an
+  algorithm computes it) or `gas` (a Turing gas), with the reason recorded in
+  `catalog/TYPES.md`. `clock` is required when the module has `evolve`.
 - **No `seed` parameter** — it is an argument of `generate_network`.
 - **Small defaults.** A zero-argument call must finish in well under 5 seconds
   and give a readable network. Paper-scale values go in the parameter's `range`
@@ -75,7 +110,7 @@ One YAML file, `chemistries: [ <entry> ]`. Full field reference:
 from chemart.helpers.explicit import network      # written-down reactions
 from chemart.helpers import params                # list/dict validation
 from chemart.expand import expand                 # closure of a constructive rule
-from chemart.soup import soup                     # well-stirred run, records firings
+from chemart.soup import soup, stir, Tally        # well-stirred run; as frames; fired counts
 ```
 
 `chemart.helpers.params` has `vector`, `square_matrix`, `edges` and
@@ -91,9 +126,9 @@ temperature, a crowding capacity — go as extra scalar keys on the rate dict or
 in `extras`; they are data, and nothing applies them automatically.
 
 **Non-CRN mechanisms** (agents, CA, VMs, force laws) are exposed through the
-reaction events they produce: a `soup`-style run returning observed reactions
-with counts, or species plus `extras["interaction_law"]` when there genuinely
-are no reactions.
+reaction events they produce: an evolve face whose frames record what fired,
+returning the observed reactions with counts, or species plus
+`extras["interaction_law"]` when there genuinely are no reactions.
 
 ## Tests
 
@@ -116,7 +151,10 @@ coverage gate deliberately ignores it.
 The contract tests every implemented entry for: zero-argument generation under
 5 seconds, exact JSON round trip, same seed → same network, computed
 capabilities ⊆ catalog claims, and that unknown or out-of-range parameters
-raise `ValueError` naming the parameter.
+raise `ValueError` naming the parameter. A `given` entry must keep its topology
+across seeds. With an evolve face it also checks the frames: the clock, frame
+0, time order, JSON, same seed → same frames, and fired counts that add up to
+the network's.
 
 ## Definition of done
 

@@ -216,6 +216,18 @@ Its first reactions (`net.reactions`):
 2 OOGEOLHHHRLUEUOBBBRBXUUUDYGRHBLROOREsBLUBOtBmCscimssBLUBOxeOYHOB -> 3 OOGEOLHHHRLUEUOBBBRBXUUUDYGRHBLROOREsBLUBOtBmCscimssBLUBOxeOYHOB
 ```
 
+It also has a process, to follow in its own time, counted in *steps*; the parameters marked *evolve only* belong to it:
+
+```python
+traj = chemart.evolve("stringmol", seed=1)
+```
+
+```
+502 frames, t = 0 … 3000 steps; observables: complexes, energy
+```
+
+From the shell: `uv run chemart evolve stringmol --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 Stringmol has two faces. `chemart.generate_network`, whose default call is
 printed above, returns the *closure* of a set of molecules: the network of
 every reaction they and their products can take part in, with copying made

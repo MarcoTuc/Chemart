@@ -212,6 +212,18 @@ Its first reactions (`net.reactions`):
 L086aaa -> 2 L086aaa  (x3)
 ```
 
+`generate_network` runs this chemistry's process to the end and keeps what fired. To follow the process in its own time, counted in *steps*:
+
+```python
+traj = chemart.evolve("sr-loops", seed=1)
+```
+
+```
+321 frames, t = 0 … 320 steps; observables: cells
+```
+
+From the shell: `uv run chemart evolve sr-loops --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 The default call above is Langton's loop replicating three times. The species'
 `structure` is the loop's configuration, and the run is in `net.extras`:
 

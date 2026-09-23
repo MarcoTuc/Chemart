@@ -232,6 +232,18 @@ Its first reactions (`net.reactions`):
 … and 51 more
 ```
 
+It also has a process, to follow in its own time, counted in *events*; the parameters marked *evolve only* belong to it:
+
+```python
+traj = chemart.evolve("tominaga-stacked-strings", seed=1)
+```
+
+```
+11 frames, t = 0 … 2000 events; observables: none
+```
+
+From the shell: `uv run chemart evolve tominaga-stacked-strings --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 The chemistry has two faces. `chemart.generate_network`, printed above,
 returns the closure; `chemart.evolve` returns a sampled run as a trajectory
 (see *A sampled run* below).

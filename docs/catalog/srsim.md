@@ -239,6 +239,18 @@ M(a[.],b[1]),M(a[1],b[2]),M(a[2],b[3]),M(a[3],b[4]),M(a[4],b[.]) + M(a[.],b[1]),
 … and 11 more
 ```
 
+`generate_network` runs this chemistry's process to the end and keeps what fired. To follow the process in its own time, counted in *time*:
+
+```python
+traj = chemart.evolve("srsim", seed=1)
+```
+
+```
+1501 frames, t = 0 … 30 time; observables: none
+```
+
+From the shell: `uv run chemart evolve srsim --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 The default call above is the geometry study of the paper's figure 3: one
 monomer type, one polymerisation rule, with the angle between the two sites
 set by `bond_angle` (90° by default). The network has status `observed`: it

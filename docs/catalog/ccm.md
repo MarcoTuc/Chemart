@@ -184,6 +184,18 @@ q3=7 + q6=4 + q2=2 -> q3=4 + q6=7 + q2=2  (x1)
 … and 179 more
 ```
 
+`generate_network` runs this chemistry's process to the end and keeps what fired. To follow the process in its own time, counted in *tests*:
+
+```python
+traj = chemart.evolve("ccm", seed=1)
+```
+
+```
+190 frames, t = 0 … 1637 tests; observables: god
+```
+
+From the shell: `uv run chemart evolve ccm --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 The default run is the classic experiment: eight queens on the diagonal, the
 single-catalyst swap rule, and frustration on. It is solved after 188 accepted
 reactions out of 1,637 attempts. The run's history is in `net.extras`:

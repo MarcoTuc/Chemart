@@ -130,7 +130,7 @@ new places, within `r` of where they were made.
 That is the key contrast with the well-stirred case. Integrated as ordinary
 rate equations, with every rate constant 1 and every concentration starting at
 1, R1 settles to a fixed state within about 20 time units (Chemart's
-network, integrated with SciPy):
+network, integrated with `chemart.simulate.ode(net, 50, x0=1.0)`):
 
 ```
 t=   0  [a]=1.000  [b]=1.000  [c]=1.000  [d]=1.000

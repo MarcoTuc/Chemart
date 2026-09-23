@@ -225,37 +225,18 @@ die out, which the next recipes show.
 
 ### Integrating the rate equations
 
-Chemart generates networks; it does not integrate them. This helper, which
-uses SciPy, integrates any of these networks from all concentrations equal to
-1, and optionally applies the paper's constant-total decay:
+`chemart.simulate.ode` integrates the mass-action rate equations. The network
+has no initial concentrations, so pass `x0=1.0` to start every type at 1.
+This helper prints the types above 0.001 at a few times:
 
 ```python
-import numpy as np
-from scipy.integrate import solve_ivp
 import chemart
+from chemart import simulate
 
-def integrate(net, t_end, constant_total=False):
-    """Mass-action rate equations, every concentration starting at 1.
-    constant_total=True rescales decay at each instant so the total antibody
-    concentration stays fixed (generate the network with k2=0 for this)."""
-    ids, R, P = net.matrices()
-    S, R = (P - R).toarray(), R.toarray()
-    k = np.array([r.rate["k"] for r in net.reactions])
-    antibody = np.array([s.startswith("X") for s in ids])
-
-    def f(t, x):
-        dx = S @ (k * np.prod(np.maximum(x, 0.0)[:, None] ** R, axis=0))
-        if constant_total:
-            dx[antibody] -= dx[antibody].sum() / x[antibody].sum() * x[antibody]
-        return dx
-
-    sol = solve_ivp(f, (0, t_end), np.ones(len(ids)), method="LSODA",
-                    rtol=1e-9, atol=1e-12, dense_output=True)
-    return ids, sol
-
-def show(ids, sol, times):
+def show(traj, times):
+    at = {f.t: f.state for f in traj.frames}
     for t in times:
-        alive = {s: round(float(v), 3) for s, v in zip(ids, sol.sol(t)) if v > 1e-3}
+        alive = {s: round(v, 3) for s, v in at[t].items() if v > 1e-3}
         print(f"t={t:<4}", alive)
 ```
 
@@ -264,8 +245,8 @@ Each run below takes well under a second.
 **The default network.** Types below 0.001 are omitted from the output:
 
 ```python
-ids, sol = integrate(chemart.generate_network("farmer-immune", seed=1), 20)
-show(ids, sol, [1, 5, 20])
+traj = simulate.ode(chemart.generate_network("farmer-immune", seed=1), 20, x0=1.0, points=21)
+show(traj, [1, 5, 20])
 ```
 
 ```
@@ -284,9 +265,12 @@ interactions cancel in the total and, without antigens, the total antibody
 concentration simply decays as `e^(−k2·t)`:
 
 ```python
-ids, sol = integrate(chemart.generate_network("farmer-immune", seed=1, M=0), 10)
+import numpy as np
+
+traj = simulate.ode(chemart.generate_network("farmer-immune", seed=1, M=0), 10, x0=1.0, points=11)
+at = {f.t: f.state for f in traj.frames}
 for t in [0, 2, 5, 10]:
-    print(t, round(sol.sol(t).sum(), 5), round(10 * np.exp(-0.5 * t), 5))
+    print(t, round(sum(at[t].values()), 5), round(10 * np.exp(-0.5 * t), 5))
 ```
 
 ```
@@ -300,16 +284,45 @@ This is the paper's own observation (see Results), here exact.
 
 **`k1 < 1` with constant decay blows up.** When stimulation outweighs
 suppression the quadratic terms win. With `k1=0.5` and `M=0`, the total
-concentration passes 10¹⁵ at `t ≈ 0.37` and the integration fails. This is
-why the constant-total scheme matters.
+concentration runs away shortly after `t = 0.36` (it is past 400 there, from
+10 at the start) and the solution ceases to exist. Ask `simulate.ode` for a
+later time and it stops there rather than integrating a solution that is no
+longer there: `simulate.ode(net, 1.0, x0=1.0, points=101)` returns frames up
+to `t = 0.36`, and `traj.settings["stopped"]` says that a species passed 10¹²
+times the largest starting amount. Sample coarsely and the frames can end at
+the start, since only the sample times before the blow-up survive. This is why
+the constant-total scheme matters.
 
-**`k1 < 1` with constant total antibody.** Generate the network with `k2=0.0`
-and let the helper set the decay:
+**`k1 < 1` with constant total antibody.** The paper's scheme rescales the
+decay at each instant so that the total antibody concentration stays fixed.
+`simulate.ode` has the same dilution for a whole network (the
+`"constant-total"` outflow), but here it must act on the antibodies alone,
+not on the antigens. So this helper takes the network's right-hand side from
+`simulate.rhs` and adds the antibody-only decay itself. Generate the network
+with `k2=0.0` and let the helper set the decay:
 
 ```python
+from scipy.integrate import solve_ivp
+from chemart.trajectory import Frame, Trajectory
+
+def constant_total(net, t_end, points):
+    """Rate equations from all concentrations 1, with the decay rescaled so
+    that the total antibody concentration stays fixed."""
+    ids, f = simulate.rhs(net)
+    antibody = np.array([s.startswith("X") for s in ids])
+
+    def g(t, x):
+        dx = f(t, x)
+        dx[antibody] -= dx[antibody].sum() / x[antibody].sum() * x[antibody]
+        return dx
+
+    t = np.linspace(0, t_end, points)
+    sol = solve_ivp(g, (0, t_end), np.ones(len(ids)), t_eval=t, method="LSODA", rtol=1e-9, atol=1e-12)
+    return Trajectory(net, [Frame(t=float(tk), state=dict(zip(ids, map(float, sol.y[:, k]))))
+                            for k, tk in enumerate(sol.t)], method="ode")
+
 net = chemart.generate_network("farmer-immune", seed=1, M=0, k1=0.5, k2=0.0)
-ids, sol = integrate(net, 200, constant_total=True)
-show(ids, sol, [1, 10, 50, 200])
+show(constant_total(net, 200, 201), [1, 10, 50, 200])
 ```
 
 ```
@@ -328,8 +341,7 @@ and every type that could recognise it has died out.
 
 ```python
 net = chemart.generate_network("farmer-immune", seed=1, k1=0.5, k2=0.0)
-ids, sol = integrate(net, 200, constant_total=True)
-show(ids, sol, [1, 5, 20, 30, 200])
+show(constant_total(net, 200, 201), [1, 5, 20, 30, 200])
 ```
 
 ```

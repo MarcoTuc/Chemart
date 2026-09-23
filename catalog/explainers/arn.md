@@ -179,39 +179,22 @@ The bitstrings of each gene are in its species' `structure`, as shown above.
 
 #### Running the dynamics
 
-Chemart generates networks; it does not simulate them. The reactions carry
-everything needed, so a few lines with SciPy integrate them. This script
-rebuilds the two matrices of rate constants from `net.reactions` and applies
-the constant-total outflow:
+The reactions carry everything needed: each is mass action at rate
+`k × c_j × c_i`, and `net.outflow` is the constant-total outflow that keeps
+the concentrations summing to 1. `chemart.simulate.ode` integrates them as
+they come:
 
 ```python
-import numpy as np
-from scipy.integrate import solve_ivp
 import chemart
+from chemart import simulate
 
 net = chemart.generate_network("arn", seed=1)
 ids = [s.id for s in net.species]
-pos = {s: n for n, s in enumerate(ids)}
-N = len(ids)
-
-# A[i, j] and H[i, j]: rate constant of protein j on the enhancer / inhibitor of gene i
-A, H = np.zeros((N, N)), np.zeros((N, N))
-for r in net.reactions:
-    change = {s: r.products.get(s, 0) - r.reactants.get(s, 0) for s in r.reactants}
-    (i,) = [s for s, d in change.items() if d]          # the gene whose protein changes
-    j = next((s for s in r.reactants if s != i), i)     # the regulating protein
-    (A if r.rate["site"] == "enhancer" else H)[pos[i], pos[j]] = r.rate["k"]
-
-def f(t, c):
-    growth = (A @ c - H @ c) * c        # each reaction runs at k * c_j * c_i
-    return growth - c * growth.sum()   # the constant-total outflow keeps sum(c) = 1
-
-c0 = np.array([net.initial_state[s] for s in ids])
-t = np.linspace(0, 1e8, 11)
-sol = solve_ivp(f, (0, t[-1]), c0, t_eval=t, method="LSODA", rtol=1e-8, atol=1e-10)
+traj = simulate.ode(net, 1e8, points=11)
+_, t, C = traj.array(ids)
 print("time     ", "  ".join(f"{s:>5}" for s in ids))
 for k in range(len(t)):
-    print(f"{t[k]:9.1e}", "  ".join(f"{x:5.3f}" for x in sol.y[:, k]))
+    print(f"{t[k]:9.1e}", "  ".join(f"{x:5.3f}" for x in C[k]))
 ```
 
 ```
@@ -232,7 +215,7 @@ time         P1     P2     P3     P4     P5     P6     P7
 `P7`, whose enhancer is matched in 24 bits by `P2`, takes over almost at once.
 Later `P4`, which inhibits `P7` at 21 bits, rises, overshoots to 0.100 and
 settles near 0.080 after a damped swing: the system ends at a point attractor
-with two surviving proteins. The run takes a couple of seconds.
+with two surviving proteins. The run takes under a second.
 
 **Time units.** With β = δ = 1 and typical matches around 16 bits, rate
 constants are around 10⁻⁸, so the interesting changes happen over 10⁶ to 10⁸

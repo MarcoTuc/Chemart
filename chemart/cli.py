@@ -6,6 +6,10 @@
     chemart simulate brusselator --t-end 40                      # rate equations
     chemart simulate brusselator --method ssa --volume 100 --seed 1 --format csv
     chemart simulate kauffman-autocatalytic-sets --x0 1 --rates '{"dist": "lognormal", "mean": 0, "sigma": 1}'
+    chemart evolve alchemy --seed 1 --track shannon --track n_species   # a gas, in its own time
+    chemart evolve bff --seed 1 --format json > run.json
+    chemart measure raf --seed 1 --cost moderate                        # measures of a network
+    chemart measure run.json --why                                      # of a saved network or run
 
 Chemart Hub:
 
@@ -27,7 +31,9 @@ Parameter values are parsed as JSON when possible (``-p N=4``,
 from __future__ import annotations
 
 import argparse
+import csv
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -80,6 +86,33 @@ def _parser() -> argparse.ArgumentParser:
     simulate.add_argument("--revision", help="hub only: 'main' or a commit id")
     simulate.add_argument("--trust-remote-code", action="store_true",
                           help="hub only: allow the repo's own Python code to run on this machine")
+
+    evolve = sub.add_parser("evolve", help="run a chemistry's process (a Turing gas, a lattice)")
+    evolve.add_argument("chemistry", help="catalog id")
+    evolve.add_argument("-p", "--param", action="append", default=[], metavar="NAME=VALUE",
+                        help="chemistry parameter")
+    evolve.add_argument("--seed", type=int)
+    evolve.add_argument("--every", type=int, default=1, help="keep one frame in EVERY")
+    evolve.add_argument("--track", action="append", default=[], metavar="MEASURE",
+                        help="a measure to follow frame by frame (repeatable)")
+    evolve.add_argument("--window", type=int, default=1,
+                        help="frames of fired reactions a tracked network measure sees (0: all so far)")
+    evolve.add_argument("--species", nargs="*", help="csv only: species columns to add")
+    evolve.add_argument("--format", choices=("table", "csv", "json"), default="table")
+
+    measure = sub.add_parser("measure", help="measure a network or a run")
+    measure.add_argument("target", help="catalog id, hub id, or a network/trajectory .json file")
+    measure.add_argument("-p", "--param", action="append", default=[], metavar="NAME=VALUE",
+                         help="chemistry parameter")
+    measure.add_argument("--seed", type=int, help="seeds the chemistry and the measures that sample")
+    measure.add_argument("--names", nargs="*", metavar="MEASURE", help="default: all up to --cost")
+    measure.add_argument("--cost", choices=("cheap", "moderate", "exponential"), default="cheap")
+    measure.add_argument("--force", action="store_true", help="run measures past their size limit")
+    measure.add_argument("--why", action="store_true", help="also say why the others do not apply")
+    measure.add_argument("--format", choices=("table", "json"), default="table")
+    measure.add_argument("--revision", help="hub only: 'main' or a commit id")
+    measure.add_argument("--trust-remote-code", action="store_true",
+                         help="hub only: allow the repo's own Python code to run on this machine")
 
     login = sub.add_parser("login", help="save an API token for the hub")
     login.add_argument("--token", help="default: prompt")
@@ -134,6 +167,9 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         return _run(parser, args, api) or 0
+    except BrokenPipeError:                      # the reader closed the pipe, as `| head` does
+        os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+        return 0
     except HubError as err:
         print(f"error: {err}", file=sys.stderr)
         return 3
@@ -147,13 +183,12 @@ def _run(parser, args, api) -> int | None:
         _print_json(api.list_chemistries(args.all))
     elif args.command == "describe":
         _print_json(api.describe_chemistry(args.chemistry, args.revision))
+    elif args.command == "evolve":
+        return _evolve(api, args, _params(parser, args))
+    elif args.command == "measure":
+        return _measure(api, parser, args)
     elif args.command in ("generate", "simulate"):
-        params = {}
-        for item in args.param:
-            name, sep, raw = item.partition("=")
-            if not sep:
-                parser.error(f"--param expects NAME=VALUE, got {item!r}")
-            params[name] = _value(raw)
+        params = _params(parser, args)
         net = api.generate_network(args.chemistry, args.seed, revision=args.revision,
                                    trust_remote_code=args.trust_remote_code, **params)
         if args.command == "simulate":
@@ -167,6 +202,16 @@ def _run(parser, args, api) -> int | None:
     else:
         return _hub_command(args)
     return None
+
+
+def _params(parser, args) -> dict:
+    params = {}
+    for item in args.param:
+        name, sep, raw = item.partition("=")
+        if not sep:
+            parser.error(f"--param expects NAME=VALUE, got {item!r}")
+        params[name] = _value(raw)
+    return params
 
 
 def _spec(text: str | None):
@@ -208,6 +253,96 @@ def _simulate(net, args) -> int:
     for k in range(0, len(t), max(1, len(t) // 10)):
         print(f"{t[k]:>10.4g}  " + "  ".join(f"{v:>{width}.4g}" for v in X[k]))
     return 0
+
+
+def _evolve(api, args, params) -> int:
+    from chemart import measures
+
+    traj = api.evolve(args.chemistry, args.seed, every=args.every, **params)
+    if args.format == "json":
+        _print_json(traj.to_dict())
+        return 0
+    columns: dict[str, list] = {"t": traj.times()}
+    columns["richness"] = [measures.REGISTRY["richness"].fn(f.state) for f in traj.frames]
+    columns["population"] = [measures.REGISTRY["population"].fn(f.state) for f in traj.frames]
+    scalars = dict.fromkeys(k for f in traj.frames for k, v in f.observables.items()
+                            if isinstance(v, (int, float)) and not isinstance(v, bool))
+    for name in scalars:
+        columns[name] = traj.series(name)
+    if args.track:
+        tracked = measures.over(traj, args.track, window=args.window or None, seed=args.seed or 0)
+        for name, values in tracked.items():
+            if name == "t":
+                continue
+            parts = dict.fromkeys(k for v in values if isinstance(v, dict) for k in v)
+            if not parts:
+                columns[name] = values
+            for part in parts:                 # a measure with several values: a column each
+                columns[f"{name}.{part}"] = [v.get(part) if isinstance(v, dict) else None for v in values]
+    if args.format == "csv":
+        if args.species is not None:
+            names, _, X = traj.array(args.species or None)
+            columns.update({s: X[:, k].tolist() for k, s in enumerate(names)})
+        writer = csv.writer(sys.stdout)        # species ids can carry commas and quotes
+        writer.writerow(columns)
+        writer.writerows(zip(*columns.values()))
+        return 0
+    print(traj.network.summary())
+    print(f"{len(traj.frames)} frames, clock: {traj.clock}")
+    _table(columns)
+    return 0
+
+
+def _table(columns: dict[str, list], rows: int = 12) -> None:
+    width = {k: max(10, len(k)) for k in columns}
+    print("\n" + "  ".join(f"{k:>{width[k]}}" for k in columns))
+    n = len(columns["t"])
+    picks = sorted({*range(0, n, max(1, n // (rows - 1))), n - 1})
+    for i in picks:
+        cells = []
+        for k, v in columns.items():
+            x = v[i]
+            cells.append(f"{'-' if x is None else format(x, '.4g') if isinstance(x, float) else x!s:>{width[k]}}")
+        print("  ".join(cells))
+
+
+def _measure(api, parser, args) -> int:
+    from chemart import measures
+    from chemart.network import Network
+    from chemart.trajectory import Trajectory
+
+    path = Path(args.target)
+    if args.target.endswith(".json") and path.is_file():
+        if args.param:
+            parser.error("--param applies to a chemistry id, not a file")
+        data = json.loads(path.read_text())
+        obj = Trajectory.from_dict(data) if isinstance(data, dict) and "frames" in data else Network.from_dict(data)
+    else:
+        obj = api.generate_network(args.target, args.seed, revision=args.revision,
+                                   trust_remote_code=args.trust_remote_code, **_params(parser, args))
+    values = measures.measure(obj, args.names, cost=args.cost, seed=args.seed or 0, force=args.force)
+    skipped = {} if not args.why else {
+        k: why for k, why in measures.applicable(obj, args.names, cost=args.cost, force=args.force).items()
+        if why is not None and k not in values}
+    if args.format == "json":
+        _print_json(api._jsonable({"measures": values, "skipped": skipped} if args.why else values))
+        return 0
+    width = max(map(len, [*values, *skipped, "measure"]))
+    for name, value in values.items():
+        print(f"{name:<{width}}  {_show(value)}")
+    if args.why and skipped:
+        print("\nnot measured:")
+        for name, why in skipped.items():
+            print(f"{name:<{width}}  {why}")
+    return 0
+
+
+def _show(value) -> str:
+    if isinstance(value, float):
+        return format(value, ".6g")
+    if isinstance(value, dict):
+        return ", ".join(f"{k}={_show(v)}" for k, v in value.items())
+    return str(value)
 
 
 def _hub_command(args) -> int | None:

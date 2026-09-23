@@ -199,35 +199,33 @@ M1 -> M1 + P1  [mass-action k=1.0]
 … and 10 more
 ```
 
+Its network carries rates and an initial state, so it simulates as it is (`t_end` is in the model's own time unit):
+
+```python
+traj = chemart.simulate.ode(net, t_end=40)                     # rate equations
+path = chemart.simulate.ssa(net, t_end=40, volume=100, seed=1)  # one stochastic path
+```
+
 The default call above gives the network of the book's figures 19.18 and
 19.19: `n = 2`, `ke = kr = kp = 1`, `km = 5`, `mu_m = 0.5`, `mu_p = 0.1`,
 and the starting state in `net.initial_state`. `net.extras` is empty. The
-network involves no randomness, so the `seed` changes nothing. Chemart
-supplies the network, not a simulator, so each recipe below carries its own
-short integrator.
+network involves no randomness, so the `seed` changes nothing. The recipes
+below run it with `chemart.simulate`: `ode` for the rate equations, `ssa` for
+whole molecules.
 
 #### Oscillation with n = 2, none with n = 1
 
 ```python
 import numpy as np
-from scipy.integrate import solve_ivp
 
 import chemart
+from chemart import simulate
 
 
-def simulate(net, t_end, n=20001):
-    ids, R, P = net.matrices()
-    R = R.toarray()
-    S = (P.toarray() - R).astype(float)
-    k = np.array([r.rate["k"] for r in net.reactions])
-    x0 = np.array([net.initial_state[s] for s in ids])
-
-    def f(t, x):
-        return S @ (k * np.prod(x[:, None] ** R, axis=0))  # mass action
-
-    t = np.linspace(0, t_end, n)
-    sol = solve_ivp(f, (0, t_end), x0, t_eval=t, method="LSODA", rtol=1e-8, atol=1e-10)
-    return t, dict(zip(ids, sol.y))
+def run(net, t_end, n=20001):
+    traj = simulate.ode(net, t_end, points=n)
+    ids, t, X = traj.array([s.id for s in net.species])
+    return t, dict(zip(ids, X.T))
 
 
 def peaks(t, y):
@@ -236,7 +234,7 @@ def peaks(t, y):
 
 
 for n in (2, 1):
-    t, x = simulate(chemart.generate_network("repressilator", n=n), 2000)
+    t, x = run(chemart.generate_network("repressilator", n=n), 2000)
     late = t >= 1800
     P1 = x["P1"][late]
     print(f"n={n}: P1 over t 1800-2000 from {P1.min():.2f} to {P1.max():.2f}")
@@ -247,18 +245,18 @@ n=2: P1 over t 1800-2000 from 1.24 to 29.69
 n=1: P1 over t 1800-2000 from 9.51 to 9.51
 ```
 
-Both runs together take about four seconds.
+Both runs together take about five seconds.
 
 #### Finding the edge of the oscillating region
 
-With the same `simulate` and `peaks`, change one rate at a time and measure
+With the same `run` and `peaks`, change one rate at a time and measure
 the swing of `P1` (maximum minus minimum) over the last 200 time units. A
 swing of zero means the run has settled:
 
 ```python
 for params in ({"n": 3}, {"mu_p": 0.05}, {"mu_p": 0.5}, {"km": 0.5}, {"km": 0.2},
                {"mu_m": 2.0}, {"mu_m": 3.0}, {"kr": 50.0}, {"kr": 500.0}):
-    t, x = simulate(chemart.generate_network("repressilator", **params), 2000)
+    t, x = run(chemart.generate_network("repressilator", **params), 2000)
     P1 = x["P1"][t >= 1800]
     swing = np.ptp(P1)
     p = peaks(t, x["P1"])
@@ -283,56 +281,40 @@ The oscillation stops when transcription is weak (`km` between 0.5 and
 against `mu_p = 0.1`), or when repression is weak (`kr = 500` raises the
 threshold `K` to about 22). The period follows the protein lifetime most
 closely: halving `mu_p` from 0.1 to 0.05 stretches it from 81 to 145.
-This run takes about 13 seconds.
+This run takes about 15 seconds.
 
 #### A stochastic run, as in figure 19.19
 
-```python
-from math import comb
+`chemart.simulate.ssa` runs Gillespie's algorithm. Its `volume` is `N_A × V`
+(with `avogadro=1`), so `volume=m` makes a concentration of 1 worth `m`
+molecules; it reports amounts, which the script multiplies back into counts:
 
+```python
 import numpy as np
 
 import chemart
+from chemart import simulate
 from chemart.kinetics import k_to_c
 
 net = chemart.generate_network("repressilator", seed=1)
 m = 100  # gene copies; volume chosen so that N_A * V = m (book fig. 19.19)
-n = {s: round(c * m) for s, c in net.initial_state.items()}  # G1 = C2 = C3 = 100
 c = [k_to_c(r.rate["k"], r.reactants, volume=m, avogadro=1.0) for r in net.reactions]
 print("binding c:", c[0], " transcription c:", c[6])
 
-rng = np.random.default_rng(1)
-t, events, next_sample = 0.0, 0, 0.0
-samples = []
-while t < 200.0:
-    a = np.array([ci * np.prod([comb(n[s], k) for s, k in r.reactants.items()])
-                  for ci, r in zip(c, net.reactions)])
-    total = a.sum()
-    t += rng.exponential(1 / total)
-    while next_sample <= t and next_sample <= 200.0:
-        samples.append((next_sample, n["G1"], n["P1"], n["P2"], n["P3"]))
-        next_sample += 1.0
-    r = net.reactions[rng.choice(len(a), p=a / total)]
-    for s, k in r.reactants.items():
-        n[s] -= k
-    for s, k in r.products.items():
-        n[s] += k
-    events += 1
-
-s = np.array(samples)
-print(f"{events} events")
-for j, name in ((1, "G1"), (2, "P1"), (3, "P2"), (4, "P3")):
-    late = s[s[:, 0] >= 100, j]
+path = simulate.ssa(net, 200, volume=m, points=201, seed=1)   # a frame every time unit
+print(f"{path.settings['events']} events")
+ids, t, X = path.array(["G1", "P1", "P2", "P3"])
+X = X * m                                                     # amounts to molecule counts
+for j, name in enumerate(ids):
+    late = X[t >= 100, j]
     print(f"{name} over t 100-200: {late.min():.0f} to {late.max():.0f}")
-t1 = s[:, 0]; y = s[:, 2]
-hi = y > 1500
-rises = t1[1:][hi[1:] & ~hi[:-1]]
-print("P1 rises above 1500 at t =", rises)
+hi = X[:, 1] > 1500
+print("P1 rises above 1500 at t =", t[1:][hi[1:] & ~hi[:-1]])
 ```
 
 ```
 binding c: 0.0002  transcription c: 5.0
-275604 events
+275603 events
 G1 over t 100-200: 0 to 40
 P1 over t 100-200: 121 to 2745
 P2 over t 100-200: 138 to 2768
@@ -346,7 +328,7 @@ peak near 2,700 molecules, about `m` times the deterministic peak of 29, as
 in the book's figure, and `P1` crosses 1,500 on the way up at t = 60 and
 135, 75 time units apart, close to the deterministic period of 81. The
 gene counts are noisier than the protein counts because there are far
-fewer gene molecules. The run takes about 45 seconds; the number of
+fewer gene molecules. The run takes about nine seconds; the number of
 events, and so the time, grows in proportion to `m`.
 
 The parameter table below lists the Hill coefficient and the six rate

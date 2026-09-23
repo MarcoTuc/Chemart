@@ -198,6 +198,18 @@ UACGCUUUCUAGCAGUUAUUCAUUCAACUC + UAAGUAGUUUAGUCACAAUGUUUCC -> UACGCUUUCUAGCAGUUA
 CCUGUAUUAAACCAUCUUAGUAACACCGGC + GGGGUUAAGUAGUUUAGUCACAAU -> CCUGUAUUAAACCAUCUUAGUAACACCGGC + GGGGU + UAAGUAGUUUAGUCACAAU
 ```
 
+It also has a process, to follow in its own time, counted in *collisions*; the parameters marked *evolve only* belong to it:
+
+```python
+traj = chemart.evolve("rna-folding-ac", seed=1)
+```
+
+```
+64 frames, t = 0 … 500 collisions; observables: none
+```
+
+From the shell: `uv run chemart evolve rna-folding-ac --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 The chemistry has two faces. `chemart.generate_network`, printed above,
 returns the closure; `chemart.evolve` runs the well-stirred pot and returns a
 trajectory.

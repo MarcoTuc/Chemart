@@ -65,6 +65,7 @@ nav:
   - Guide:
       - Generating networks: guide/generating.md
       - Simulating dynamics: guide/simulating.md
+      - Evolving a chemistry: guide/evolving.md
       - Comparing and analysing: guide/analysing.md
       - Measures for comparison: guide/measures.md
   - Reference:

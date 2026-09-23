@@ -72,6 +72,13 @@ S144 -> 2 S144  [mass-action k=0.0822146723824421]
 … and 678 more
 ```
 
+Its network carries rates and an initial state, so it simulates as it is (`t_end` is in the model's own time unit):
+
+```python
+traj = chemart.simulate.ode(net, t_end=40)                     # rate equations
+path = chemart.simulate.ssa(net, t_end=40, volume=100, seed=1)  # one stochastic path
+```
+
 #### Parameters
 
 Pass any of these as keyword arguments to `generate_network`. The *role* column says what a parameter controls: `structural` (which molecules and reactions exist), `kinetic` (rates), `thermodynamic` (energies, temperature), `population` (sizes, budgets, initial state), `spatial`, `stochastic` or `selection`. *range* gives the values used in the published work.

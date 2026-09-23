@@ -216,6 +216,18 @@ Its first reactions (`net.reactions`):
 … and 1126 more
 ```
 
+It also has a process, to follow in its own time, counted in *collisions*; the parameters marked *evolve only* belong to it:
+
+```python
+traj = chemart.evolve("alchemy", seed=1)
+```
+
+```
+21 frames, t = 0 … 2000 collisions; observables: none
+```
+
+From the shell: `uv run chemart evolve alchemy --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 AlChemy has two faces. `chemart.generate_network("alchemy")`, printed above,
 returns the *closure* of ten random molecules, cut off at 50 species (see
 *Closure instead of a reactor* below). `chemart.evolve("alchemy")` runs the

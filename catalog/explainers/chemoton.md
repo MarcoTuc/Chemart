@@ -161,7 +161,11 @@ simulator must handle them itself:
   must be held fixed, and `net.extras["compartments"]["cell"]` describes the
   volume and division rules in words.
 
-Chemart generates the network; it does not simulate it. The parameters in the
+`chemart.simulate` integrates the network as one well-mixed volume, but it
+knows neither the gate (it runs initiation at all concentrations, like any
+plain ODE integrator) nor the growth and division of the cell; the
+[simulating guide](../guide/simulating.md) counts the chemoton among the
+networks it can run only as a mean field. The parameters in the
 table below change the template length (`N`), the nutrient level (`X`), the
 threshold (`V_threshold`) and any rate constant by the paper's name (`rates`,
 for example `rates={"k7": 100.0}` for the paper's fast-propagation experiment).
@@ -172,7 +176,8 @@ To see whether the generated network behaves like the paper's model, it was
 run through the cell cycle described above with a fixed-step Euler integrator,
 using the paper's time step of 0.0001. The function below reads everything from
 the generated network: stoichiometry, rate constants, the gate, and the
-buffered species. It is not part of Chemart.
+buffered species. It is not part of Chemart, because `chemart.simulate` has no
+gated reactions or cell division.
 
 ??? example "A cell-cycle integrator for the generated network (not part of Chemart)"
 

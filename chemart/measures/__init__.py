@@ -313,6 +313,10 @@ def track(frames: Iterable, names=None, *, window: int | None = 1, cost: str = "
     frame so far). Yields {"t": ..., name: value, ...} per frame.
     """
     chosen = _select(names, cost, ("state", "network"))
+    whole = [m.name for m in chosen if m.input == "trajectory"]
+    if whole:
+        raise ValueError(f"{', '.join(whole)}: measured on a whole run, not frame by frame; "
+                         "pass the trajectory to measure() instead")
     state_measures = [m for m in chosen if m.input == "state"]
     net_measures = [m for m in chosen if m.input == "network"]
     recent: deque = deque(maxlen=window)

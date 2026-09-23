@@ -158,6 +158,15 @@ C3_2 + X3 -> C3_2 + X2  [mass-action k=1.0]
 C4_1 + X4 -> C4_1 + X1  [mass-action k=1.0]
 ```
 
+Its network carries rates and an initial state, so it simulates as it is (`t_end` is in the model's own time unit):
+
+```python
+traj = chemart.simulate.ode(net, t_end=40)                     # rate equations
+path = chemart.simulate.ssa(net, t_end=40, volume=100, seed=1)  # one stochastic path
+```
+
+The simulators treat it as well mixed and ignore its compartments: an approximation, not the published model. See [Simulating dynamics](../guide/simulating.md).
+
 The default call returns the network of figure 17.3 with every coefficient 1,
 one unit of each catalyst, and 1,000 jobs on node 4 in `net.initial_state`.
 `net.extras["compartments"]` lists, for each node, its job species and the

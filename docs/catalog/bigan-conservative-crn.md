@@ -220,6 +220,13 @@ A5 -> 2 A1  [mass-action k=2865.976715541064]
 … and 38 more
 ```
 
+Its network carries rates and an initial state, so it simulates as it is (`t_end` is in the model's own time unit):
+
+```python
+traj = chemart.simulate.ode(net, t_end=40)                     # rate equations
+path = chemart.simulate.ssa(net, t_end=40, volume=100, seed=1)  # one stochastic path
+```
+
 The default call above builds a maximum-sized network of ten chemicals with the
 paper's rate values, mass-action kinetics, a nutrient inflow of 1 M/s into `A5`
 and every concentration starting at 1 mM, which is the setting of the paper's
@@ -245,41 +252,24 @@ five seconds.
 
 ### Running the network
 
-Chemart builds the network but has no general ODE integrator, so the
-experiments below use a short SciPy function that turns a network into its rate
-equations:
-
-```python
-import numpy as np
-from scipy.integrate import solve_ivp
-import chemart
-
-def rate_equations(net):
-    """dA/dt = S f + f_nu for mass-action or saturating rates."""
-    ids, R, P = net.matrices()
-    R, S = R.toarray(), (P - R).toarray()
-    k = np.array([r.rate["k"] for r in net.reactions])
-    K = np.array([r.rate.get("K", np.inf) for r in net.reactions])
-    f_nu = np.array([(net.inflow or {}).get(s, 0.0) for s in ids])
-    def rhs(t, x):
-        x = np.maximum(x, 0.0)[:, None]
-        return S @ (k * np.prod((x / (1 + x / K)) ** R, axis=0)) + f_nu
-    return ids, rhs
-```
+The reactions carry their rate laws, mass action or saturating, and
+`net.inflow` the nutrient flux, so `chemart.simulate.ode` integrates a network
+as it comes.
 
 ### The directed transformation machine
 
-Seed 2 gives a 63-pair network. Feed it `A5` at 1 M/s with saturating kinetics:
+Seed 2 gives a 63-pair network. Feed it `A5` at 1 M/s with saturating kinetics
+and print the concentrations (M) at t = 10, 100 and 1000 s:
 
 ```python
-net = chemart.generate_network("bigan-conservative-crn", seed=2, kinetics="saturating")
-ids, rhs = rate_equations(net)
-x0 = [net.initial_state[s] for s in ids]
-sol = solve_ivp(rhs, (0, 1000), x0, method="LSODA", rtol=1e-8, atol=1e-12,
-                t_eval=[10, 100, 1000])
-```
+import chemart
+from chemart import simulate
 
-Concentrations (M) at t = 10, 100 and 1000 s:
+net = chemart.generate_network("bigan-conservative-crn", seed=2, kinetics="saturating")
+traj = simulate.ode(net, 1000, points=101)          # a frame every 10 s
+for s in sorted(net.initial_state, key=lambda s: int(s[1:])):
+    print(s, *(f"{traj.frames[k].state.get(s, 0.0):9.3g}" for k in (1, 10, 100)))
+```
 
 ```
 A0   0.00808   0.00808   0.00808
@@ -339,9 +329,9 @@ extra mass goes to `A2`, the same chemical the fed network makes.
   `s = p = 0`, the default.
 - `N` up to 20; for `N` below 6 set `nutrient` too, since the default `A5` does
   not exist.
-- Slow settings: integrating to 10⁴ s with a small flux (0.01 M/s) did not
-  finish within two minutes for seed 1 with the solver settings above. At the
-  default flux each run takes one to two seconds.
+- Run times: integrating to 10⁴ s takes about a second for most networks,
+  with either rate law and at any flux. Stiff ones are far slower: seed 6
+  with saturating kinetics does not finish within a minute.
 
 #### Parameters
 
@@ -396,8 +386,7 @@ extra mass goes into one chemical. They also note that mass-action kinetics
 guarantees detailed balance at equilibrium, while with saturating kinetics it
 fails once the equilibrium departs from the mass-action one: some reactions
 are then balanced and others not. The seed-2 table above reproduces the
-qualitative behaviour; the tests do not check it, since Chemart does not
-integrate the network.
+qualitative behaviour; the tests do not check it.
 
 **Directed transformation under nutrient flux.** Feeding `A5` at 1 M/s into
 their reference network with saturating kinetics (their Figure 3), all

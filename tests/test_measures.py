@@ -137,6 +137,8 @@ def test_over_a_gas():
     series = measures.over(traj, ["richness", "shannon", "n_species"], window=5)
     assert len(series["richness"]) == len(traj.frames)
     assert series["richness"][0] == 100 and series["richness"][-1] == 32
+    with pytest.raises(ValueError, match="whole run"):
+        measures.over(traj, ["turnover"])
 
 
 # --- the registry and its API -----------------------------------------------------------------

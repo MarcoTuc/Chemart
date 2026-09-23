@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""Simulate a catalogued chemistry and check a published behaviour.
+"""Simulate a catalogued chemistry, evolve a gas, and check published behaviours.
 
     uv run python .claude/skills/chemart/examples/dynamics.py
 
 Shows what trips people up: finding which chemistries can be simulated as they
-come, that buffered species are meant to be flat, and how to give rates to a
-network that has none.
+come, that buffered species are meant to be flat, how to give rates to a
+network that has none, and that a Turing gas is evolved, not simulated.
 """
 
 import numpy as np
 
 import chemart
-from chemart import simulate
+from chemart import measures, simulate
 
 # ------------------------------------------------- which ones carry kinetics
 rated = [row["id"] for row in chemart.list_chemistries()
@@ -54,3 +54,17 @@ traj = simulate.ode(kauffman, t_end=10.0, x0=1.0, seed=0,
                     rates={"dist": "lognormal", "mean": 0, "sigma": 1})
 print(f"  with lognormal rates drawn for its {len(kauffman.reactions)} reactions it runs: "
       f"{len(traj.frames)} frames")
+
+# ------------------------------------------------------- a gas is evolved
+# The prime-number chemistry's published behaviour: composite numbers keep
+# being divided away, so the soup turns prime. Its process runs in collisions.
+run = chemart.evolve("prime-number-chemistry", seed=1)
+fraction = run.series("prime_fraction")
+print(f"\nprime-number-chemistry, {len(run.frames)} frames in {run.clock}: "
+      f"prime fraction {fraction[0]:.2f} -> {fraction[-1]:.2f}")
+assert fraction[-1] > 0.9, "expected the soup to turn prime"
+
+# Measures in evolutionary time: population measures read each frame's soup.
+diversity = measures.over(run, ["richness", "shannon"])
+print(f"  richness {diversity['richness'][0]} -> {diversity['richness'][-1]}, "
+      f"Shannon {diversity['shannon'][0]:.2f} -> {diversity['shannon'][-1]:.2f} nats")

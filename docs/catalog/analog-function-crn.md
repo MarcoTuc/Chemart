@@ -180,9 +180,15 @@ X1 -> X1 + Y  [mass-action k=2.0]
 2 Y -> ∅  [mass-action k=1.0]
 ```
 
+Its network carries rates and an initial state, so it simulates as it is (`t_end` is in the model's own time unit):
+
+```python
+traj = chemart.simulate.ode(net, t_end=40)                     # rate equations
+path = chemart.simulate.ssa(net, t_end=40, volume=100, seed=1)  # one stochastic path
+```
+
 The default call above builds the book's square-root network with input
-`x1 = 4`. Chemart generates the network and its starting concentrations; it
-does not integrate it. `net.initial_state` holds the inputs, with `Y` at 0, and
+`x1 = 4`. `net.initial_state` holds the inputs, with `Y` at 0, and
 `net.extras["readout"]` names the output species and the value it should
 settle at:
 
@@ -191,30 +197,18 @@ net.initial_state      # {'X1': 4.0, 'Y': 0.0}
 net.extras             # {'readout': {'species': 'Y', 'steady_state': 2.0}}
 ```
 
-To see the network compute, integrate its mass-action rate equations. This is
-a complete integrator for these networks, built from `net.matrices()`, which
-returns the species ids and the reactant and product stoichiometry matrices
-(species × reactions):
+To see the network compute, integrate its mass-action rate equations with
+`chemart.simulate.ode` and read the concentrations at the end:
 
 ```python
-import numpy as np
-from scipy.integrate import solve_ivp
 import chemart
+from chemart import simulate
 
 def steady_output(net, t_end=60.0):
-    ids, R, P = net.matrices()
-    S = (P - R).toarray()
-    Rd = R.toarray()
-    k = np.array([r.rate["k"] for r in net.reactions])
-    x0 = [net.initial_state[s] for s in ids]
-    def rhs(t, x):
-        v = k * np.prod(x[:, None] ** Rd, axis=0)   # mass action
-        return S @ v
-    sol = solve_ivp(rhs, (0, t_end), x0, rtol=1e-9, atol=1e-12)
-    return dict(zip(ids, sol.y[:, -1]))
+    return simulate.ode(net, t_end, points=2).frames[-1].state
 
 net = chemart.generate_network("analog-function-crn", seed=1)
-print(steady_output(net)["Y"])       # 1.999999999686364
+print(steady_output(net)["Y"])       # 2.0
 ```
 
 ### Recipes

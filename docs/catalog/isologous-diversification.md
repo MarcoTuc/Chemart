@@ -228,6 +228,15 @@ X0 + X8 -> 2 X8  [mass-action k=1.0]
 … and 28 more
 ```
 
+Its network carries rates and an initial state, so it simulates as it is (`t_end` is in the model's own time unit):
+
+```python
+traj = chemart.simulate.ode(net, t_end=40)                     # rate equations
+path = chemart.simulate.ssa(net, t_end=40, volume=100, seed=1)  # one stochastic path
+```
+
+The simulators treat it as well mixed and ignore its compartments: an approximation, not the published model. See [Simulating dynamics](../guide/simulating.md).
+
 The call above builds the network and also runs the cell society. For seed 1
 the first random network drawn fails the screen and the second passes
 (`network_attempts: 2`). A single cell with random starting concentrations

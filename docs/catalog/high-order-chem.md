@@ -205,6 +205,18 @@ rule:divrule + n29 + n261 -> rule:divrule + n29 + n9
 … and 1087 more
 ```
 
+It also has a process, to follow in its own time, counted in *iterations*; the parameters marked *evolve only* belong to it:
+
+```python
+traj = chemart.evolve("high-order-chem", seed=1)
+```
+
+```
+101 frames, t = 0 … 10000 iterations; observables: prime_fraction
+```
+
+From the shell: `uv run chemart evolve high-order-chem --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 The chemistry has two faces. `chemart.generate_network("high-order-chem")`,
 printed above, returns the *closure*: every reaction reachable from the
 distinct starting numbers, here the 100 random numbers of the default run (see

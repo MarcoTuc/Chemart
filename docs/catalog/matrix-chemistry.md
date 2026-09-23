@@ -195,6 +195,18 @@ s1 + s11 -> s1 + s11 + s9  [mass-action k=1.0]
 … and 367 more
 ```
 
+It also has a process, to follow in its own time, counted in *collisions*; the parameters marked *evolve only* belong to it:
+
+```python
+traj = chemart.evolve("matrix-chemistry", seed=1)
+```
+
+```
+11 frames, t = 0 … 10000 collisions; observables: none
+```
+
+From the shell: `uv run chemart evolve matrix-chemistry --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 The default call above builds the book's N = 9 example: the closure of
 `s1`...`s15` under the canonical folding, 23 strings, with the 15 seeds at
 equal concentrations of 1/15 (`net.initial_state`), as in the book's figures
@@ -222,36 +234,26 @@ n4 = chemart.generate_network("matrix-chemistry", N=4, seed_species=list(range(1
 n4.extras["analysis"]["self_replicators"]          # ['s1', 's8', 's9', 's15']
 ```
 
-**Running the rate equations.** Chemart builds networks; it does not integrate
-them. This helper, using SciPy, integrates equation 3.24 from the network's
-initial state:
+**Running the rate equations.** `chemart.simulate.ode` integrates equation
+3.24 from the network's initial state: the constant-total outflow is the flow
+Φ that keeps the fractions summing to 1. This helper prints the strings above
+0.001 at a few times:
 
 ```python
-import numpy as np
-from scipy.integrate import solve_ivp
 import chemart
+from chemart import simulate
 
-def integrate(net, t_end):
-    ids, R, P = net.matrices()
-    S, R = (P - R).toarray(), R.toarray()
-    k = np.array([r.rate["k"] for r in net.reactions])
-    x0 = np.array([net.initial_state.get(s, 0.0) for s in ids])
-    def f(t, x):
-        dx = S @ (k * np.prod(np.maximum(x, 0.0)[:, None] ** R, axis=0))
-        return dx - x * dx.sum() / x.sum()      # the flow Phi keeps sum x = 1
-    return ids, solve_ivp(f, (0, t_end), x0, method="LSODA",
-                          rtol=1e-8, atol=1e-10, dense_output=True)
-
-def show(ids, sol, times):
+def show(traj, times):
+    at = {f.t: f.state for f in traj.frames}
     for t in times:
-        print(f"t={t:<4}", {s: round(float(v), 3) for s, v in zip(ids, sol.sol(t)) if v > 1e-3})
+        print(f"t={t:<4}", {s: round(v, 3) for s, v in at[t].items() if v > 1e-3})
 ```
 
-Each of the runs below takes about a second. Strings below 0.001 are omitted.
-The default network (book figure 3.8):
+Each of the runs below takes a fraction of a second. Strings below 0.001 are omitted.
+The default network (book figure 3.8), with a frame every time unit:
 
 ```python
-show(*integrate(chemart.generate_network("matrix-chemistry", seed=1), 100), [5, 100])
+show(simulate.ode(chemart.generate_network("matrix-chemistry", seed=1), 100, points=101), [5, 100])
 ```
 
 ```

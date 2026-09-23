@@ -20,33 +20,27 @@ print(f"{len(entries)} entries: {len(with_kinetics)} carry kinetics, "
 print("  both:", ", ".join(sorted(c.id for c in both)), "\n")
 
 # --------------------------------------------------- structural profiles
-def profile(cid, seed=1):
-    net = chemart.generate_network(cid, seed=seed)
-    ids, R, P = net.matrices()
-    S = (P - R).toarray()
-    rank = int(np.linalg.matrix_rank(S)) if S.size else 0
-    return {
-        "id": cid,
-        "species": len(ids),
-        "reactions": len(net.reactions),
-        "status": net.status,
-        "rank": rank,
-        "cons_laws": len(ids) - rank,          # upper bound on independent laws
-        "catalysed": sum(1 for r in net.reactions if r.catalysts),
-    }
-
-print(f"{'chemistry':<26} {'S':>5} {'R':>6} {'rank':>5} {'laws':>5} {'cat':>5}  status")
-print("-" * 70)
+# chemart.measure computes registered measures; one that does not apply is
+# left out (shown as "-"), and measures.applicable says why.
+names = ["n_species", "n_reactions", "stoichiometric_rank", "conservation_laws",
+         "deficiency", "catalysed_fraction"]
+print(f"{'chemistry':<24} {'type':<10} {'S':>5} {'R':>6} {'rank':>5} {'laws':>5} "
+      f"{'defic':>6} {'cat':>5}  status")
+print("-" * 84)
 for cid in ["brusselator", "oregonator", "michaelis-menten",
             "matrix-chemistry", "prime-number-chemistry", "gard"]:
-    p = profile(cid)
-    print(f"{p['id']:<26} {p['species']:>5} {p['reactions']:>6} {p['rank']:>5} "
-          f"{p['cons_laws']:>5} {p['catalysed']:>5}  {p['status']}")
+    net = chemart.generate_network(cid, seed=1)
+    m = chemart.measure(net, names)
+    cells = [m.get(n, "-") for n in names]
+    cells[-1] = f"{cells[-1]:.2f}" if isinstance(cells[-1], float) else cells[-1]
+    kind = chemart.describe_chemistry(cid)["type"]
+    print(f"{cid:<24} {kind:<10} {cells[0]:>5} {cells[1]:>6} {cells[2]:>5} {cells[3]:>5} "
+          f"{cells[4]:>6} {cells[5]:>5}  {net.status}")
 
-print("\nNote: rank and 'laws' are only comparable within a status. An 'observed'")
-print("network is a sample of one run, not the chemistry's definition.")
-print("'laws' is the upper bound species - rank(S), not the number a chemistry")
-print("declares: most entries declare none, and a few declare fewer than the bound.")
+print("\nNote: these are only comparable within a status. An 'observed' network is")
+print("a sample of one run, not the chemistry's definition. 'laws' is the number")
+print("of independent conservation laws of S (species - rank), not the number a")
+print("chemistry declares: most entries declare none, and a few declare fewer.")
 
 # ------------------------------------------------------- conservation laws
 # Use a chemistry that actually declares them: many do not, and checking a

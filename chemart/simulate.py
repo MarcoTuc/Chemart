@@ -98,6 +98,11 @@ class _Rates:
             else float(self.rates[j]["k"]) for j in mass
         ])
         self.R_mass = R[:, mass].T.tocsr() if mass else None
+        if self.R_mass is not None:
+            self.R_ones = self.R_mass.copy()
+            self.R_ones.data = np.ones_like(self.R_ones.data)
+            entries = self.R_mass.tocoo()
+            self.entries = (entries.row, entries.col, entries.data)   # reaction, species, multiplicity
         self.other = [j for j in range(len(self.rates)) if j not in set(mass)]
 
     def __call__(self, x: np.ndarray) -> np.ndarray:
@@ -127,16 +132,28 @@ class _Rates:
         raise NotSimulable(f"rate law {law!r} is not supported")
 
     def jacobian(self, x: np.ndarray) -> np.ndarray | None:
-        """dv/dx for all-mass-action networks; None when another law is present."""
+        """dv/dx for all-mass-action networks; None when another law is present.
+
+        For v_j = k_j prod_i x_i^n, dv_j/dx_i = k_j n x_i^(n-1) times the other
+        reactants. A species at zero makes that product zero unless it is the
+        one being differentiated and it enters once, so the two cases are
+        counted rather than multiplied out.
+        """
         if self.other:
             return None
-        xp = np.maximum(x, 0.0)
         D = np.zeros((len(self.rates), self.n))
-        for row, j in enumerate(self.mass):
-            reac = self.reactants[j]
-            for i, n in reac:
-                rest = np.prod([xp[l] ** m for l, m in reac if l != i])
-                D[j, i] = self.k[row] * n * xp[i] ** (n - 1) * rest
+        if self.R_mass is None:
+            return D
+        xp = np.maximum(x, 0.0)
+        here = xp > 0
+        present = np.exp(self.R_mass @ np.where(here, np.log(np.where(here, xp, 1.0)), 0.0))
+        absent = np.rint(self.R_ones @ ~here)          # reactants at zero, per reaction
+        j, i, n = self.entries
+        with np.errstate(divide="ignore", invalid="ignore"):
+            D[self.mass[j], i] = np.where(
+                absent[j] == 0,
+                self.k[j] * n * present[j] / np.where(here[i], xp[i], 1.0),
+                np.where((absent[j] == 1) & ~here[i] & (n == 1), self.k[j] * present[j], 0.0))
         return D
 
 
@@ -319,11 +336,18 @@ def _prepare(net, rates, x0, rng, fill_only=False):
 # Deterministic: rate equations
 # --------------------------------------------------------------------------
 
+#: A run stops when a species passes this multiple of the largest starting amount:
+#: a solution that escapes to infinity in finite time otherwise never comes back.
+BLOWUP = 1e12
+
+
 def integrate(net: Network, t_end: float, x0: dict | None = None, t_eval=None,
               method: str = "LSODA", *, temperature=None, gas_constant=None):
     """Integrate the rate equations to t_end; return ({species: array}, times).
 
     The low-level form used by the tests; `ode` wraps it in a Trajectory.
+    Stops early where the solution blows up, and then returns the times it
+    reached.
     """
     from scipy.integrate import solve_ivp
 
@@ -332,7 +356,15 @@ def integrate(net: Network, t_end: float, x0: dict | None = None, t_eval=None,
     start = x0 if x0 is not None else (net.initial_state or {})
     x = np.array([float(start.get(s, 0.0)) for s in ids])
     jac = jacobian(net, temperature=temperature, gas_constant=gas_constant) if method != "RK45" else None
-    sol = solve_ivp(f, (0.0, t_end), x, method=method, t_eval=t_eval, jac=jac, rtol=1e-8, atol=1e-10)
+
+    ceiling = BLOWUP * max(1.0, float(np.max(np.abs(x))) if len(x) else 1.0)
+
+    def escaped(_t, y):
+        return ceiling - float(np.max(np.abs(y)))
+
+    escaped.terminal = True
+    sol = solve_ivp(f, (0.0, t_end), x, method=method, t_eval=t_eval, jac=jac, rtol=1e-8,
+                    atol=1e-10, events=escaped)
     if not sol.success:
         raise NotSimulable(f"integration failed: {sol.message}; stiff systems may need "
                            "solver='Radau' or 'BDF'")
@@ -355,10 +387,14 @@ def ode(net: Network, t_end: float, *, rates: Any = None, x0: Any = None, points
     ids = list(traj)
     frames = [Frame(t=float(t[k]), state={s: float(traj[s][k]) for s in ids if traj[s][k] != 0.0})
               for k in range(len(t))]
-    return Trajectory(network=net, frames=frames, method="ode", clock="time", settings={
+    settings: dict[str, Any] = {
         "t_end": t_end, "points": points, "solver": solver, "seed": seed,
         "rates": _describe(rates), "x0": _describe(x0),
-    })
+    }
+    if len(t) and t[-1] < t_end:
+        settings["stopped"] = (f"the solution blew up after t={t[-1]:g}: a species passed "
+                               f"{BLOWUP:g} times the largest starting amount")
+    return Trajectory(network=net, frames=frames, method="ode", clock="time", settings=settings)
 
 
 def _describe(spec: Any) -> Any:

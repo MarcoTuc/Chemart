@@ -227,6 +227,18 @@ X -> Y
 Y -> X
 ```
 
+It also has a process, to follow in its own time, counted in *sweeps*; the parameters marked *evolve only* belong to it:
+
+```python
+traj = chemart.evolve("ono-ikegami-protocell", seed=1)
+```
+
+```
+101 frames, t = 0 … 100 sweeps; observables: none
+```
+
+From the shell: `uv run chemart evolve ono-ikegami-protocell --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 The model has two faces. The call printed above,
 `chemart.generate_network("ono-ikegami-protocell")`, returns just the six
 reactions of the scheme, each with `rate` set to `None`, since no source

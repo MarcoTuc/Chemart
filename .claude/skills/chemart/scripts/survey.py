@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Survey the Chemart catalog: filter by capability, family, kind, fidelity.
+"""Survey the Chemart catalog: filter by type, capability, family, kind, fidelity.
 
+    uv run python .claude/skills/chemart/scripts/survey.py --type gas
     uv run python .claude/skills/chemart/scripts/survey.py --provides rate-constants
     uv run python .claude/skills/chemart/scripts/survey.py --provides energies mass-conservation
     uv run python .claude/skills/chemart/scripts/survey.py --family origin-of-life --verbose
@@ -21,7 +22,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from chemart.catalog import PROVIDES, active, load
+from chemart.catalog import PROVIDES, TYPES, active, load
 
 FIDELITIES = ("book", "book+decisions", "reconstructed")
 
@@ -30,6 +31,8 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--provides", nargs="+", metavar="TAG",
                     help=f"require all of these; one of {', '.join(sorted(PROVIDES))}")
+    ap.add_argument("--type", dest="ctype", choices=sorted(TYPES),
+                    help="given (written down), generator (computed) or gas (Turing gas)")
     ap.add_argument("--family")
     ap.add_argument("--kind", choices=("generator", "formalism", "framework", "analysis", "wet"))
     ap.add_argument("--fidelity", choices=FIDELITIES)
@@ -53,6 +56,8 @@ def main(argv=None) -> int:
     for c in active(load()):
         if args.provides and not set(args.provides) <= set(c.provides):
             continue
+        if args.ctype and c.type != args.ctype:
+            continue
         if args.family and c.family != args.family:
             continue
         if args.kind and c.kind != args.kind:
@@ -75,10 +80,10 @@ def main(argv=None) -> int:
     if not args.generate:
         width = max(len(c.id) for c in rows)
         print(f"{len(rows)} chemistries\n")
-        print(f"{'id':<{width}}  {'family':<22} {'kind':<10} {'fidelity':<15} constructive")
-        print("-" * (width + 62))
+        print(f"{'id':<{width}}  {'type':<10} {'family':<22} {'kind':<10} {'fidelity':<15} constructive")
+        print("-" * (width + 73))
         for c in rows:
-            print(f"{c.id:<{width}}  {c.family:<22} {c.kind:<10} "
+            print(f"{c.id:<{width}}  {str(c.type):<10} {c.family:<22} {c.kind:<10} "
                   f"{str(c.fidelity):<15} {'yes' if c.constructive else 'no'}")
             if args.verbose:
                 print(f"{'':<{width}}  {', '.join(c.provides)}")

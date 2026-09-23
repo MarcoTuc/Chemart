@@ -138,27 +138,24 @@ has 42. The species are just the names `X1` to `Xn`, `net.extras` is empty,
 and there is no initial state: the published experiments start from a random
 mixture, and you choose it.
 
-Chemart generates the network but does not integrate it. This helper does,
-from a random mixture drawn with `seed`, and returns the final concentrations
-and the dilution flux `φ`:
+`chemart.simulate.ode` integrates it, applying the `"constant-total"`
+dilution. This helper starts it from a random mixture drawn with `seed`, and
+returns the final concentrations and the dilution flux `φ`:
 
 ```python
 import numpy as np
-from scipy.integrate import solve_ivp
 import chemart
+from chemart import simulate
 
 def steady_state(net, t_end=2000.0, seed=0):
-    ids, R, P = net.matrices()
-    S, R = (P - R).toarray(), R.toarray()
-    k = np.array([r.rate["k"] for r in net.reactions])
-    def f(t, x):
-        v = k * np.prod(np.maximum(x, 0.0)[:, None] ** R, axis=0)  # mass action
-        dx = S @ v                                                   # production
-        return dx - x * dx.sum() / x.sum()                           # dilution phi
-    x0 = np.random.default_rng(seed).dirichlet(np.ones(len(ids)))
-    x = solve_ivp(f, (0, t_end), x0, method="LSODA", rtol=1e-9, atol=1e-12).y[:, -1]
-    phi = (S @ (k * np.prod(x[:, None] ** R, axis=0))).sum()
-    return dict(zip(ids, x)), phi
+    ids = [s.id for s in net.species]
+    x0 = dict(zip(ids, np.random.default_rng(seed).dirichlet(np.ones(len(ids)))))
+    state = simulate.ode(net, t_end, x0=x0, points=2).frames[-1].state
+    x = {s: state.get(s, 0.0) for s in ids}
+    # phi is the total production; every reaction makes one new molecule
+    phi = sum(r.rate["k"] * np.prod([x[s] ** n for s, n in r.reactants.items()])
+              for r in net.reactions)
+    return x, phi
 ```
 
 **The default network settles to one interior fixed point.** Three different

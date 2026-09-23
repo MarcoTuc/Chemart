@@ -208,6 +208,18 @@ iiiiiioooooo:0-1.1-2.1-3.1-10.2-3.2-6.2-7.3-6.3-8.4-6.5-7.5-9.6-7.6-10.7-10.8-9.
 … and 419 more
 ```
 
+It also has a process, to follow in its own time, counted in *steps*; the parameters marked *evolve only* belong to it:
+
+```python
+traj = chemart.evolve("nac", seed=1)
+```
+
+```
+51 frames, t = 0 … 600 steps; observables: clustering, largest_hydrophilic_cluster, mixed_edges, path_length
+```
+
+From the shell: `uv run chemart evolve nac --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 The default call above builds the closure. It draws a random graph of 12
 nodes, six of each polarity, with 18 edges (mean degree 3); here all 12 nodes
 form one cluster, which is the seed of the closure

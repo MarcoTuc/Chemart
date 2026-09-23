@@ -1,7 +1,7 @@
 # Contributing a chemistry
 
-The contract is deliberately small: one function, one catalog entry, one test
-file. No base classes, no registration step.
+The contract is deliberately small: one or two functions, one catalog entry,
+one test file. No base classes, no registration step.
 
 ## The three files you own
 
@@ -9,7 +9,7 @@ For chemistry id `<id>` (module name `<mod>` = id with `-` → `_`):
 
 | file | content |
 |---|---|
-| `chemart/chemistries/<mod>.py` | `def generate(p, rng) -> Network` |
+| `chemart/chemistries/<mod>.py` | `def generate(p, rng) -> Network`, and/or `def evolve(p, rng)` |
 | `catalog/chemistries/<id>.yaml` | the catalog entry |
 | `tests/chemistries/test_<mod>.py` | tests reproducing published results |
 
@@ -38,6 +38,41 @@ def generate(p, rng) -> Network:
 Everything in the returned network must be plain JSON: convert numpy scalars
 with `int()` / `float()`, and keep dict keys strings.
 
+## The evolve contract
+
+A chemistry whose process is worth running, such as a Turing gas or a lattice,
+defines an evolve face, besides `generate` or instead of it:
+
+```python
+from chemart.soup import Tally
+from chemart.trajectory import Frame
+
+def evolve(p, rng):
+    tally = Tally()
+    yield Frame(t=0, state=...)                                  # the initial population
+    ...
+    yield Frame(t=..., state=..., fired=tally.flush(), observables={...})
+    return network                                               # what fired, with counts
+```
+
+- The first frame is the initial state and fires nothing. `t` never
+  decreases, and it is counted in the entry's `clock` (required with an
+  evolve face).
+- `fired` lists the reactions since the previous frame, as
+  `[[reactants], [products], count]`. Summed over the frames, the counts must
+  equal the `count` of each reaction in the returned network.
+- `observables` carries what only this chemistry can report (a fold's energy,
+  a membrane count). Generic population numbers, such as richness, are
+  computed by `chemart.measures`; do not repeat them.
+- All randomness comes from `rng`, so the same seed gives the same frames.
+- A parameter only one face uses gets `face: evolve` (or `face: generate`) in
+  the catalog. `every` is reserved: `chemart.evolve` uses it to merge frames.
+- For a well-stirred soup, `chemart.soup.stir` runs the loop and yields
+  `(step, population, tally)` at each frame.
+
+The contract checks all of this, for every chemistry with the face. See
+[Evolving a chemistry](guide/evolving.md) for how the face is used.
+
 ## The catalog entry
 
 One YAML file, `chemistries: [ <entry> ]`. Field definitions are in
@@ -51,6 +86,9 @@ One YAML file, `chemistries: [ <entry> ]`. Field definitions are in
   selection`, and they are what lets the library scale knobs coherently across
   chemistries.
 - **No `seed` parameter** — it is an argument of `generate_network`.
+- **A `type`** — `given`, `generator` or `gas` — with a line in
+  `catalog/TYPES.md` giving the reason; see
+  [How it works](concepts.md#three-types-of-chemistry).
 - **Small defaults.** A zero-argument call must finish in well under five
   seconds and give a readable network. Paper-scale values go in the parameter's
   `range` note, which is prose and shows up in `describe_chemistry`.

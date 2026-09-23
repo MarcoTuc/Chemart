@@ -248,6 +248,18 @@ C + B -> CB
 … and 3260 more
 ```
 
+It also has a process, to follow in its own time, counted in *generations*; the parameters marked *evolve only* belong to it:
+
+```python
+traj = chemart.evolve("combinator-chemistry", seed=1)
+```
+
+```
+21 frames, t = 0 … 20 generations; observables: none
+```
+
+From the shell: `uv run chemart evolve combinator-chemistry --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 The default call above computes a *closure*: starting from the seven single
 atoms, it applies every molecule to every other, adds the products, and
 repeats. Most early reactions just join two atoms, such as `B + C -> BC`, and

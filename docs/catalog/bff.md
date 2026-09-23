@@ -182,6 +182,18 @@ Its first reactions (`net.reactions`):
 … and 638 more
 ```
 
+`generate_network` runs this chemistry's process to the end and keeps what fired. To follow the process in its own time, counted in *epochs*:
+
+```python
+traj = chemart.evolve("bff", seed=1)
+```
+
+```
+17 frames, t = 0 … 16 epochs; observables: high_order_entropy, ops_per_run, top_tape_count, zero_bytes
+```
+
+From the shell: `uv run chemart evolve bff --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 The default call runs 128 random programs for 16 epochs, the paper's
 settings except for scale: the paper uses 2^17 = 131,072 programs for up to
 16,000 epochs. That is enough to see the soup react, but a replicator is not

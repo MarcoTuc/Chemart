@@ -193,6 +193,15 @@ A5 + T0 -> A4  [mass-action k=0.1]
 … and 32 more
 ```
 
+Its network carries rates and an initial state, so it simulates as it is (`t_end` is in the model's own time unit):
+
+```python
+traj = chemart.simulate.ode(net, t_end=40)                     # rate equations
+path = chemart.simulate.ssa(net, t_end=40, volume=100, seed=1)  # one stochastic path
+```
+
+The simulators treat it as well mixed and ignore its compartments: an approximation, not the published model. See [Simulating dynamics](../guide/simulating.md).
+
 The default call gives model I of Fernando and Di Paolo (2004) with the
 paper's rate constants and initial concentrations: templates of length
 `N = 25`, nutrient `[X] = 100`, threshold 35. That is 13 fixed species plus the
@@ -218,7 +227,11 @@ simulator must handle them itself:
   must be held fixed, and `net.extras["compartments"]["cell"]` describes the
   volume and division rules in words.
 
-Chemart generates the network; it does not simulate it. The parameters in the
+`chemart.simulate` integrates the network as one well-mixed volume, but it
+knows neither the gate (it runs initiation at all concentrations, like any
+plain ODE integrator) nor the growth and division of the cell; the
+[simulating guide](../guide/simulating.md) counts the chemoton among the
+networks it can run only as a mean field. The parameters in the
 table below change the template length (`N`), the nutrient level (`X`), the
 threshold (`V_threshold`) and any rate constant by the paper's name (`rates`,
 for example `rates={"k7": 100.0}` for the paper's fast-propagation experiment).
@@ -229,7 +242,8 @@ To see whether the generated network behaves like the paper's model, it was
 run through the cell cycle described above with a fixed-step Euler integrator,
 using the paper's time step of 0.0001. The function below reads everything from
 the generated network: stoichiometry, rate constants, the gate, and the
-buffered species. It is not part of Chemart.
+buffered species. It is not part of Chemart, because `chemart.simulate` has no
+gated reactions or cell division.
 
 ??? example "A cell-cycle integrator for the generated network (not part of Chemart)"
 

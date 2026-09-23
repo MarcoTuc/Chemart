@@ -232,6 +232,18 @@ m_SD1CD0 + m_SD1CD1 -> 2 m_SD1CD0 + m_SD1CD1  [mass-action k=1.0]
 m_SD1CD1 + m_SD0CD1 -> m_SD1CD1 + 2 m_SD0CD1  [mass-action k=1.0]
 ```
 
+It also has a process, to follow in its own time, counted in *collisions*; the parameters marked *evolve only* belong to it:
+
+```python
+traj = chemart.evolve("mcs-bl", seed=1)
+```
+
+```
+251 frames, t = 0 … 10000 collisions; observables: none
+```
+
+From the shell: `uv run chemart evolve mcs-bl --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 MCS.bl has two faces. `chemart.generate_network("mcs-bl")`, printed above,
 returns the *closure* of a set of strings: every reaction among the strings
 they can make. `chemart.evolve("mcs-bl")` runs the thesis' single *reactor*

@@ -93,6 +93,14 @@ def test_max_events_stops_and_says_so():
 
 
 # --- assigning rates and states ----------------------------------------------------
+def test_a_solution_that_escapes_stops_and_says_so():
+    # x' = x^2 runs away at t = 1/x0; the solver would otherwise shrink its step forever
+    net = network([("2 X -> 3 X", {"law": "mass-action", "k": 1.0})], initial_state={"X": 1.0})
+    traj = simulate.ode(net, 10, points=11)
+    assert "blew up" in traj.settings["stopped"]
+    assert traj.frames[-1].t < 10
+
+
 def test_unrated_networks_need_rates():
     net = chemart.generate_network("kauffman-autocatalytic-sets", seed=1)
     with pytest.raises(NotSimulable, match="no rate constants"):

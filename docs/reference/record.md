@@ -79,8 +79,8 @@ r.to_text()                         # "2 A -> B  [mass-action k=1.0]  (x17)"
 
 ## extras
 
-Free-form JSON with six reserved keys that have fixed meaning and feed
-`provides`:
+Free-form JSON with seven reserved keys that have a fixed meaning; all but
+`food` feed `provides`:
 
 | key | holds |
 |---|---|
@@ -90,6 +90,7 @@ Free-form JSON with six reserved keys that have fixed meaning and feed
 | `conservation` | list of laws; see [Comparing and analysing](../guide/analysing.md#conservation-laws) |
 | `analysis` | measurements the generator made during its run |
 | `interaction_law` | the law, when the model has no transformational reactions |
+| `food` | the food set: species supplied from outside, which organisation measures (RAFs, scope, flux modes) start from. Without it, `chemart.measures` takes the species with inflow, then the buffered ones, then those in the initial state |
 
 Anything else is chemistry-specific and documented in that entry. Ones you will
 meet often: `buffered`, `final_state`, `events`, `rules`, `reaction_rules`,

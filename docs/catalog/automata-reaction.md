@@ -230,6 +230,18 @@ w08ec18cd + wd2ac6fd2 -> w08ec18cd + wd2ac6fd2 + wd2ac6fd3  [mass-action k=1.0]
 … and 1562 more
 ```
 
+It also has a process, to follow in its own time, counted in *generations*; the parameters marked *evolve only* belong to it:
+
+```python
+traj = chemart.evolve("automata-reaction", seed=1)
+```
+
+```
+11 frames, t = 0 … 10 generations; observables: innovativity, productivity
+```
+
+From the shell: `uv run chemart evolve automata-reaction --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 The automata reaction has two faces. `chemart.generate_network("automata-reaction")`,
 printed above, returns a *closure*: every reaction reachable from 10 random
 words, cut off at 50 species (`status=truncated`); it is mainly a tool to

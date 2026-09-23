@@ -204,6 +204,18 @@ E-machine + t0.8.2.7.4.3.1.5.6.9 -> E-machine + t0.8.2.5.4.3.1.7.6.9  (x1)
 … and 71 more
 ```
 
+`generate_network` runs this chemistry's process to the end and keeps what fired. To follow the process in its own time, counted in *generations*:
+
+```python
+traj = chemart.evolve("molecular-tsp", seed=1)
+```
+
+```
+1001 frames, t = 0 … 1000 generations; observables: best_length, mean_length, overlap
+```
+
+From the shell: `uv run chemart evolve molecular-tsp --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 The default run uses the settings of PyCellChemistry's `MolecularTSP.py`, the
 authors' re-implementation that produced book Figure 17.2: ten cities on a
 ring, M = 9 random tours, all four machines with `t_R = 1/100`, 1000

@@ -138,8 +138,8 @@ mass action would silently change the model.
 
 ### The reactor
 
-Chemart builds the network; it does not run it. The specification allows
-two reactors: deterministic rate equations (ordinary differential equations,
+The specification allows two reactors, and `chemart.simulate` runs both
+(`ode` and `ssa`): deterministic rate equations (ordinary differential equations,
 ODEs), as in the book's derivation, or Gillespie's stochastic simulation
 algorithm (SSA), which fires individual reaction events at random times.
 Nothing flows in or out; the population is bounded only by the two
@@ -181,6 +181,13 @@ Its first reactions (`net.reactions`):
 E + S -> ES  [mass-action k=1.0]
 ES -> E + S  [mass-action k=1.0]
 ES -> E + P  [mass-action k=1.0]
+```
+
+Its network carries rates and an initial state, so it simulates as it is (`t_end` is in the model's own time unit):
+
+```python
+traj = chemart.simulate.ode(net, t_end=40)                     # rate equations
+path = chemart.simulate.ssa(net, t_end=40, volume=100, seed=1)  # one stochastic path
 ```
 
 The default call gives the elementary form with every rate constant 1,

@@ -226,6 +226,13 @@ X52 -> X52 + X49  [mass-action k=1.0]
 … and 14 more
 ```
 
+Its network carries rates and an initial state, so it simulates as it is (`t_end` is in the model's own time unit):
+
+```python
+traj = chemart.simulate.ode(net, t_end=40)                     # rate equations
+path = chemart.simulate.ssa(net, t_end=40, volume=100, seed=1)  # one stochastic path
+```
+
 The default call above returns the **initial random graph**, before any
 replacement (`graph_updates = 0`). With `m = 100` and `p = 0.0025` it is the
 setting of the book's run (Figure 15.6, taken from Jain and Krishna 2003) and

@@ -197,6 +197,18 @@ I + K -> IK  (x356)
 … and 993 more
 ```
 
+`generate_network` runs this chemistry's process to the end and keeps what fired. To follow the process in its own time, counted in *iterations*:
+
+```python
+traj = chemart.evolve("combinatory-chemistry", seed=1)
+```
+
+```
+21 frames, t = 0 … 20000 iterations; observables: free_atoms, mean_length, reductions, top_reactants
+```
+
+From the shell: `uv run chemart evolve combinatory-chemistry --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 The default call runs 20,000 iterations of Algorithm 1 on 1,000 atoms (334
 `I`, 333 `K`, 333 `S`) without reactant assemblage. That is a tenth of the
 paper's atoms and a five-hundredth of its iterations, enough to see the soup

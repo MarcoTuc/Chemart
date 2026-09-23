@@ -163,8 +163,17 @@ r + b -> 2 g  [mass-action k=1.0]
 g + b -> 2 r  [mass-action k=1.0]
 ```
 
+Its network carries rates and an initial state, so it simulates as it is (`t_end` is in the model's own time unit):
+
+```python
+traj = chemart.simulate.ode(net, t_end=40)                     # rate equations
+path = chemart.simulate.ssa(net, t_end=40, volume=100, seed=1)  # one stochastic path
+```
+
 The generator returns the three reactions, the initial counts, and the
-conservation laws. It does not run a simulation; the reactor is up to you.
+conservation laws. The runs below use Chemart's multiset reactor,
+`chemart.soup.soup`, for the book's explicit simulation, and
+`chemart.simulate.ode` for the rate equations.
 
 The default is the setting of the book's figure 2.5: 5,400 chameleons, half
 red and half blue:
@@ -227,16 +236,24 @@ Green rises from zero towards 1,800 (one third), and `(r − g) mod 3` and
 few seconds.
 
 **The rate equations.** The network's rate constants give equations 2.40–2.42
-directly; the integrator in the
-[simulating guide](../guide/simulating.md#writing-your-own-integrator) works
-as is. Integrated from (0.5, 0, 0.5):
+directly, so `chemart.simulate.ode` integrates them as they come. From the
+fractions (0.5, 0, 0.5):
+
+```python
+from chemart import simulate
+
+traj = simulate.ode(net, 10, x0={"r": 0.5, "g": 0.0, "b": 0.5}, points=11)
+for t in (0, 1, 2, 4, 10):
+    x = traj.frames[t].state
+    print(f"t = {t:>2}  " + "  ".join(f"{s}={x.get(s, 0):.3f}" for s in "rgb"))
+```
 
 ```
-t =  0    0.5    0      0.5
-t =  1    0.380  0.240  0.380
-t =  2    0.349  0.302  0.349
-t =  4    0.335  0.329  0.335
-t = 10    0.333  0.333  0.333
+t =  0  r=0.500  g=0.000  b=0.500
+t =  1  r=0.380  g=0.240  b=0.380
+t =  2  r=0.349  g=0.302  b=0.349
+t =  4  r=0.335  g=0.329  b=0.335
+t = 10  r=0.333  g=0.333  b=0.333
 ```
 
 **Small colonies.** A colony of one colour is a dead end: every meeting is then
@@ -291,8 +308,8 @@ runs above; its tests check only the network and its laws.
 What Chemart does not reproduce: the book's figures come from its own Python
 code (`Chameleons.py` in the PyCellChemistry package of the book's appendix)
 with a randomised initial condition, "virtually equal" red and blue; Chemart's
-default uses exactly equal counts, and it provides no chameleon-specific
-simulator or ready-made time rescaling between the two descriptions.
+default uses exactly equal counts, and it provides no ready-made time
+rescaling between the two descriptions.
 
 The book comes back to the example once, in §2.6.1 "Measuring Time", as the
 case that shows why elastic collisions must be taken into account when the

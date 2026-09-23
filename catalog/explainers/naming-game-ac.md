@@ -141,49 +141,30 @@ No initial concentrations are attached (`net.initial_state` is `None`) and
 `net.extras` is empty; the book gives neither, so you supply them. Species
 names follow the book: `M` the meaning, `Sj` the words, `Cj` the codes.
 
-Chemart builds networks but does not simulate them. The script below
-integrates the mass-action ODEs with SciPy from a starting mixture in which
-names 1 and 2 each hold 0.4 and name 3 holds 0.2, split unevenly between words
-and codes. It prints each name's total over time, in four settings: defaults
-with `M` used up, defaults with `M` held fixed, and `kappa1` or `kappa2`
-doubled with `M` held fixed. It takes about four seconds.
+`chemart.simulate.ode` integrates the mass-action ODEs. The script below
+starts from a mixture in which names 1 and 2 each hold 0.4 and name 3 holds
+0.2, split unevenly between words and codes. To hold `M` fixed it lists `M`
+among the network's buffered species (`net.extras["buffered"]`), which the
+simulator keeps constant. It prints each name's total over time, in four
+settings: defaults with `M` used up, defaults with `M` held fixed, and
+`kappa1` or `kappa2` doubled with `M` held fixed. It takes about a second.
 
 ```python
-import numpy as np
-from scipy.integrate import solve_ivp
-
 import chemart
-
-
-def simulate(net, x0, times, hold_M=False):
-    """Integrate the mass-action rate equations of `net` from the state `x0`."""
-    ids, R, P = net.matrices()
-    R = R.toarray()
-    S = (P.toarray() - R).astype(float)
-    k = np.array([r.rate["k"] for r in net.reactions])
-    m = ids.index("M")
-
-    def f(t, x):
-        dx = S @ (k * np.prod(x[:, None] ** R, axis=0))  # mass action
-        if hold_M:
-            dx[m] = 0.0  # the meaning is kept on offer
-        return dx
-
-    x = np.array([x0.get(s, 0.0) for s in ids])
-    sol = solve_ivp(f, (0, times[-1]), x, t_eval=times, method="LSODA",
-                    rtol=1e-9, atol=1e-12)
-    return dict(zip(ids, sol.y))
-
+from chemart import simulate
 
 x0 = {"M": 1.0, "S1": 0.3, "C1": 0.1, "S2": 0.25, "C2": 0.15, "S3": 0.2}
 times = [0, 1, 5, 20, 100, 400]
 
 def report(label, net, hold_M):
-    x = simulate(net, x0, times, hold_M)
+    if hold_M:
+        net.extras["buffered"] = ["M"]                  # the meaning is kept on offer
+    traj = simulate.ode(net, 400, x0=x0, points=401)    # a frame every time unit
     print(label)
-    for i, t in enumerate(times):
-        names = "  ".join(f"name{j}={x[f'S{j}'][i] + x[f'C{j}'][i]:.3f}" for j in (1, 2, 3))
-        print(f"  t={t:<4} M={x['M'][i]:.3f}  {names}")
+    for t in times:
+        x = traj.frames[t].state
+        names = "  ".join(f"name{j}={x.get(f'S{j}', 0) + x.get(f'C{j}', 0):.3f}" for j in (1, 2, 3))
+        print(f"  t={t:<4} M={x.get('M', 0):.3f}  {names}")
 
 report("defaults, M consumed", chemart.generate_network("naming-game-ac"), False)
 report("defaults, M held", chemart.generate_network("naming-game-ac"), True)

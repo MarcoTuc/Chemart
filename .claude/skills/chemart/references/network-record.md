@@ -94,8 +94,8 @@ on top of them.
 
 ## extras
 
-Free-form JSON, with six reserved keys that have fixed meaning and feed
-`provides`:
+Free-form JSON, with seven reserved keys that have fixed meaning; all but
+`food` feed `provides`:
 
 | key | holds |
 |---|---|
@@ -105,6 +105,7 @@ Free-form JSON, with six reserved keys that have fixed meaning and feed
 | `conservation` | list of `{"name", "vector", optional "modulus"}` |
 | `analysis` | measurements the generator made during its run |
 | `interaction_law` | the law, when the model has no transformational reactions |
+| `food` | the food set, species supplied from outside; organisation measures (RAFs, scope, flux modes) start from it, and without it `chemart.measures` falls back on the inflow, then buffered, then initial species |
 
 Anything else is chemistry-specific and documented in that entry. Common ones
 you will meet: `buffered`, `final_state`, `events`, `rules`, `reaction_rules`,

@@ -269,6 +269,13 @@ bb + H -> 2 b  [mass-action k=2.5]
 … and 688 more
 ```
 
+Its network carries rates and an initial state, so it simulates as it is (`t_end` is in the model's own time unit):
+
+```python
+traj = chemart.simulate.ode(net, t_end=40)                     # rate equations
+path = chemart.simulate.ssa(net, t_end=40, volume=100, seed=1)  # one stochastic path
+```
+
 The default call above builds the full network up to length 5 with the rate
 constants of the paper's Table 2 (a), its best parameters for its 15-reaction
 test network: `kf = 649`, `kr = 2.5`, `ν = 897,000`, `ku = 50,000`,
@@ -289,33 +296,25 @@ net.extras["catalytic_links"][0]  # {'reaction': 'a + a <-> aa', 'catalyst': 'bb
 net.extras["conservation"]        # letter counts per species (monomer a, monomer b)
 ```
 
-Chemart generates the network but does not integrate it. The rate equations
-are stiff (the rate constants span more than eight orders of magnitude), so use an
-implicit solver. This helper runs the chemostat for 200 washout times and adds
-each species' free and bound amounts:
+`chemart.simulate.ode` integrates the chemostat from these fields: the
+inflow, the washout, and water held fixed. The rate equations are stiff (the
+rate constants span more than eight orders of magnitude), so use an implicit
+solver. `solver="BDF"` is the fastest at the strong flows below: about half a
+second a run, against three or four for the default `"LSODA"`. Near
+equilibrium (`delta` below about 1) it is the other way round: LSODA takes
+under a second, and BDF does not finish within two minutes.
+This helper runs the chemostat for 200 washout times and adds each species'
+free and bound amounts:
 
 ```python
-import numpy as np
-from scipy.integrate import solve_ivp
 import chemart
+from chemart import simulate
 
 def steady_state(net):
     """Run the chemostat for 200 washout times; return free + bound totals."""
-    ids, R, P = net.matrices()
-    S, R = (P - R).toarray(), R.toarray()
-    k = np.array([r.rate["k"] for r in net.reactions])
-    inflow = np.array([net.inflow.get(s, 0.0) for s in ids])
-    held = np.isin(ids, net.extras["buffered"])              # water stays fixed
-    def f(t, x):
-        v = k * np.prod(np.maximum(x, 0.0)[:, None] ** R, axis=0)   # mass action
-        dx = S @ v + inflow - net.outflow * x                        # chemostat
-        dx[held] = 0.0
-        return dx
-    x0 = [net.initial_state.get(s, 0.0) for s in ids]
-    x = solve_ivp(f, (0, 200 / net.outflow), x0, method="LSODA",
-                  rtol=1e-8, atol=1e-14).y[:, -1]
+    x = simulate.ode(net, 200 / net.outflow, points=2, solver="BDF").frames[-1].state
     total = {}
-    for s, v in zip(ids, x):
+    for s, v in x.items():
         if s != "H":
             total[s.removesuffix("_bound")] = total.get(s.removesuffix("_bound"), 0.0) + v
     return total
@@ -339,11 +338,11 @@ bbbbb  0.021 with catalysis, 0.00231 without (9.1x)
 ```
 
 Without catalysis all strings of length 5 have the same concentration; with
-it, three of them hold 30% of the total mass. This takes about 30 seconds;
-each catalysed run takes 15 to 25 seconds, the uncatalysed one under a second.
+it, three of them hold 30% of the total mass. The whole comparison takes about
+a second.
 
-Repeating the comparison over `δ` (seed 1) shows the rise and fall the paper
-describes, though on this random network the effect is weaker than in the
+Repeating the comparison over `δ` (seed 1), with the default solver for the
+slowest flow, shows the rise and fall the paper describes, though on this random network the effect is weaker than in the
 paper's hand-picked one:
 
 | `delta` | food's share of the mass | largest boost | species boosted over 10× | their share of the mass |

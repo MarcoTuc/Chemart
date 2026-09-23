@@ -141,6 +141,18 @@ B.1 + (B-B).1 -> B.2 + (B-B).1  (x2)
 … and 1 more
 ```
 
+`generate_network` runs this chemistry's process to the end and keeps what fired. To follow the process in its own time, counted in *collisions*:
+
+```python
+traj = chemart.evolve("rbn-world", seed=1)
+```
+
+```
+11 frames, t = 0 … 1000 collisions; observables: largest_molecule_atoms
+```
+
+From the shell: `uv run chemart evolve rbn-world --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 RBN World has one face, a run of its reactor. The call printed above,
 `chemart.generate_network("rbn-world", seed=1)`, runs the default reactor to
 the end and returns the network of every reaction that fired, with `count`

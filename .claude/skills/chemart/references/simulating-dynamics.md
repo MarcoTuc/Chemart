@@ -1,10 +1,10 @@
-# Simulating dynamics
+# Simulating and evolving dynamics
 
 `chemart.simulate` runs a given network, or one a generator built: `ode`
 integrates the rate equations, `ssa` samples one stochastic path (Gillespie's
-direct method). Both return a `chemart.trajectory.Trajectory`. Turing gases are
-not simulated this way: they are evolved, because their network only exists
-as the record of a run.
+direct method). Turing gases are not simulated this way: their network only
+exists as the record of a run, so they are *evolved* with `chemart.evolve`.
+All three return a `chemart.trajectory.Trajectory`.
 
 ## Contents
 - [Quick start](#quick-start)
@@ -12,6 +12,7 @@ as the record of a run.
 - [Giving a network rates and an initial state](#giving-a-network-rates-and-an-initial-state)
 - [The trajectory](#the-trajectory)
 - [What the simulators handle](#what-the-simulators-handle)
+- [Evolving a gas](#evolving-a-gas)
 - [Pitfalls](#pitfalls)
 
 ## Quick start
@@ -111,6 +112,38 @@ avogadro` (both 1 by default, so amounts are counts). Mass-action constants
 are converted with `chemart.kinetics.k_to_c`, which includes the combinatorial
 factor for identical reactants (`2A → …` gains a factor 2). `max_events`
 (10^6 by default) stops long runs; `traj.settings["stopped"]` says so.
+
+## Evolving a gas
+
+A chemistry with an evolve face (every gas, plus a few lattices and one SSA
+generator; `describe_chemistry(id)["faces"]`) runs its own process:
+
+```python
+run = chemart.evolve("alchemy", seed=1, collisions=4000)   # evolve-face params allowed
+run.clock                      # "collisions": t is counted in the chemistry's own unit
+run.frames[-1].state           # the soup at the end, {species: count}
+run.series("prime_fraction")   # a chemistry's own observable (here: prime-number-chemistry)
+run.network                    # what fired over the whole run, status "observed"
+
+for frame in chemart.evolve_frames("bff", seed=1, every=4):   # live; merges 4 frames into one
+    ...
+```
+
+Every frame carries `fired`, the reactions since the previous one, so
+`traj.window(i, w)` gives the network of a stretch of the run, and
+`chemart.measures.over(run, names, window=w)` follows measures frame by frame:
+population measures (`richness`, `shannon`, `dominance`) read each frame's
+state; network measures read the reactions fired in the last `w` frames
+(`window=None`: everything so far).
+
+```bash
+uv run chemart evolve alchemy --seed 1 --track shannon --track n_species --window 5
+uv run chemart evolve prime-number-chemistry --seed 1 --format csv --species n2 n3 n5
+```
+
+Clocks differ between gases (collisions, epochs, generations), so to compare
+two gases in time, use `traj.turnover()` (cumulative reactions fired per
+molecule) as the shared clock.
 
 ## Pitfalls
 

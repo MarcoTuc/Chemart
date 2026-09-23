@@ -240,6 +240,25 @@ HO::* -> e- + HO:**  [mass-action k=1e-17 classes=G2 units=s^-1]
 … and 153 more
 ```
 
+Its network carries rates and an initial state, so it simulates as it is (`t_end` is in the model's own time unit):
+
+```python
+traj = chemart.simulate.ode(net, t_end=2.4e+13)                     # rate equations
+path = chemart.simulate.ssa(net, t_end=2.4e+13, volume=100, seed=1)  # one stochastic path
+```
+
+It also has a process, to follow in its own time, counted in *s*; the parameters marked *evolve only* belong to it:
+
+```python
+traj = chemart.evolve("synthon", seed=1)
+```
+
+```
+2001 frames, t = 0 … 2.35879e+13 s; observables: none
+```
+
+From the shell: `uv run chemart evolve synthon --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 The default call above is the report's figure 4 experiment: the DNG, the
 eleven interstellar classes, starting from one hydrogen atom and one oxygen
 atom, with the figure's thirteen molecules as the observational constraint.

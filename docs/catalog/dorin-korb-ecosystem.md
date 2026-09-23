@@ -229,6 +229,18 @@ AO + K -> A + O + K  (x47)
 … and 38 more
 ```
 
+`generate_network` runs this chemistry's process to the end and keeps what fired. To follow the process in its own time, counted in *steps*:
+
+```python
+traj = chemart.evolve("dorin-korb-ecosystem", seed=1)
+```
+
+```
+151 frames, t = 0 … 150 steps; observables: biomass_bonds, free_atoms, inorganic_bonds, sugar_bonds
+```
+
+From the shell: `uv run chemart evolve dorin-korb-ecosystem --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 The default run is not a published experiment, since there is none. It is an
 18×18 grid seeded with both organism bodies, 116 free atoms and 16 free
 catalysts, run for 150 steps (about 2 seconds). The network it returns is the

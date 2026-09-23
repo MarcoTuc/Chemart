@@ -204,9 +204,51 @@ def test_unknown_chemistry_suggests_close_ids():
 
 def test_tool_definitions_match_functions():
     names = [t["name"] for t in chemart.tool_definitions()]
-    assert names == ["list_chemistries", "describe_chemistry", "generate_network"]
+    assert names == ["list_chemistries", "describe_chemistry", "generate_network",
+                     "simulate_network", "evolve_chemistry", "measure_network"]
     assert chemart.call_tool("list_chemistries") == chemart.list_chemistries()
     assert chemart.call_tool("describe_chemistry", {"chemistry": "gamma"}) == chemart.describe_chemistry("gamma")
+
+
+def test_tools_return_capped_json():
+    tools = {t["name"]: t for t in chemart.tool_definitions()}
+    evolvable = tools["evolve_chemistry"]["input_schema"]["properties"]["chemistry"]["enum"]
+    assert "alchemy" in evolvable and "brusselator" not in evolvable
+
+    run = chemart.call_tool("simulate_network", {"chemistry": "brusselator", "t_end": 20})
+    assert len(run["t"]) == api.TOOL_POINTS and set(run["series"]) <= {"A", "B", "X", "Y", "D", "E"}
+    json.dumps(run, allow_nan=False)
+    with pytest.raises(ValueError, match="cannot read files"):
+        chemart.call_tool("simulate_network", {"chemistry": "brusselator", "rates": "/etc/rates.json"})
+
+    run = chemart.call_tool("evolve_chemistry", {"chemistry": "alchemy", "seed": 1, "track": ["shannon"],
+                                                 "params": {"collisions": 400}})
+    assert run["clock"] == "collisions" and run["t"][0] == 0
+    assert {"richness", "population", "shannon"} <= set(run["series"])
+    assert len(run["final_top_species"]) <= api.TOOL_SPECIES
+    json.dumps(run, allow_nan=False)
+
+    out = chemart.call_tool("measure_network", {"chemistry": "michaelis-menten", "names": ["conservation_laws", "turnover"]})
+    assert out["measures"] == {"conservation_laws": 2} and "trajectory" in out["not_measured"]["turnover"]
+
+
+def test_cli_evolve_and_measure(capsys, tmp_path):
+    assert cli_main(["evolve", "alchemy", "--seed", "1", "-p", "collisions=300", "--track", "n_species"]) == 0
+    out = capsys.readouterr().out
+    assert "clock: collisions" in out and "n_species" in out
+    assert cli_main(["evolve", "alchemy", "--seed", "1", "-p", "collisions=300", "--format", "csv"]) == 0
+    assert capsys.readouterr().out.splitlines()[0].startswith("t,richness,population")
+    assert cli_main(["evolve", "brusselator"]) == 2
+    assert "no process to evolve" in capsys.readouterr().err
+
+    assert cli_main(["measure", "michaelis-menten", "--names", "conservation_laws", "deficiency"]) == 0
+    assert capsys.readouterr().out.split() == ["conservation_laws", "2", "deficiency", "0"]
+    saved = tmp_path / "run.json"
+    assert cli_main(["evolve", "alchemy", "--seed", "1", "-p", "collisions=300", "--format", "json"]) == 0
+    saved.write_text(capsys.readouterr().out)
+    assert cli_main(["measure", str(saved), "--names", "turnover", "richness", "--why", "--format", "json"]) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert set(result["measures"]) == {"turnover"} and "state" in result["skipped"]["richness"]
 
 
 def test_cli_list_and_errors(capsys):

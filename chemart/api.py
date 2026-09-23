@@ -366,17 +366,38 @@ def evolve(chemistry: str, seed: int | None = None, *, every: int = 1, **params:
 
 
 # ----------------------------------------------------------------------------
+# LLM tools: the same functions, with JSON in and capped JSON out
+
+#: Most species and time points a tool call returns per series.
+TOOL_SPECIES, TOOL_POINTS = 12, 40
+
+_PARAMS = {"type": "object", "description": "parameter values by name (see describe_chemistry)"}
+_SEED = {"type": "integer", "description": "random seed for reproducibility"}
+_SPEC = {"description": "a number for all, a table by reaction text or index (rates) or species "
+                        "(x0), '*' for the rest, or a distribution {'dist': 'lognormal', 'mean': 0, "
+                        "'sigma': 1} (also uniform low/high, normal, exponential scale, gamma "
+                        "shape/scale); default: the chemistry's own"}
+
+
 def tool_definitions() -> list[dict[str, Any]]:
-    """The three functions as JSON-Schema tool specs (name, description, input_schema)."""
-    implemented = [c.id for c in _entries().values() if c.implemented and c.archived is None]
+    """The public functions as JSON-Schema tool specs (name, description, input_schema)."""
+    implemented = [c for c in _entries().values() if c.implemented and c.archived is None]
     chemistry_arg: dict[str, Any] = {"type": "string", "description": "chemistry id from list_chemistries"}
     if implemented:
-        chemistry_arg = {**chemistry_arg, "enum": implemented}
+        chemistry_arg = {**chemistry_arg, "enum": [c.id for c in implemented]}
+    evolvable = [c.id for c in implemented if "evolve" in faces(c)]
+    evolve_arg = {"type": "string", "description": "id of a chemistry with an evolve face "
+                                                   "(describe_chemistry lists its faces)"}
+    if evolvable:
+        evolve_arg["enum"] = evolvable
+    measure_names = {"type": "array", "items": {"type": "string"},
+                     "description": "measure names (see the measures page); default: all up to cost"}
     return [
         {
             "name": "list_chemistries",
             "description": "List every artificial chemistry in the Chemart catalog with its id, "
-                           "name, a one-line summary and whether a generator is implemented.",
+                           "name, type (given, generator or gas), a one-line summary and whether "
+                           "a generator is implemented.",
             "input_schema": {
                 "type": "object",
                 "properties": {
@@ -390,8 +411,9 @@ def tool_definitions() -> list[dict[str, Any]]:
         },
         {
             "name": "describe_chemistry",
-            "description": "Describe one artificial chemistry: molecules, reaction scheme, book and "
-                           "paper sources, and the JSON Schema of its parameters.",
+            "description": "Describe one artificial chemistry: molecules, reaction scheme, type, "
+                           "faces (generate, evolve), book and paper sources, and the JSON Schema "
+                           "of its parameters for each face.",
             "input_schema": {
                 "type": "object",
                 "properties": {"chemistry": {"type": "string", "description": "chemistry id"}},
@@ -406,10 +428,61 @@ def tool_definitions() -> list[dict[str, Any]]:
                            "All parameters are optional; see describe_chemistry.",
             "input_schema": {
                 "type": "object",
+                "properties": {"chemistry": chemistry_arg, "seed": _SEED, "params": _PARAMS},
+                "required": ["chemistry"],
+            },
+        },
+        {
+            "name": "simulate_network",
+            "description": "Generate a chemistry's network and simulate it: rate equations (ode) or "
+                           "Gillespie's stochastic algorithm (ssa). Returns the time points and the "
+                           f"amounts of the {TOOL_SPECIES} most abundant species at the end, "
+                           f"thinned to {TOOL_POINTS} points.",
+            "input_schema": {
+                "type": "object",
                 "properties": {
-                    "chemistry": chemistry_arg,
-                    "seed": {"type": "integer", "description": "random seed for reproducibility"},
-                    "params": {"type": "object", "description": "parameter values by name"},
+                    "chemistry": chemistry_arg, "seed": _SEED, "params": _PARAMS,
+                    "method": {"type": "string", "enum": ["ode", "ssa"], "description": "default ode"},
+                    "t_end": {"type": "number", "exclusiveMinimum": 0, "description": "default 40"},
+                    "rates": _SPEC, "x0": _SPEC,
+                    "volume": {"type": "number", "exclusiveMinimum": 0,
+                               "description": "ssa only: counts are amount times volume (default 1)"},
+                },
+                "required": ["chemistry"],
+            },
+        },
+        {
+            "name": "evolve_chemistry",
+            "description": "Run a chemistry's own process (a Turing gas such as alchemy or bff, or "
+                           "a lattice) and follow it in its native time. Returns the clock, the "
+                           "series of richness, population, the chemistry's own observables and "
+                           "any tracked measures, thinned to "
+                           f"{TOOL_POINTS} points, the {TOOL_SPECIES} most abundant species at the "
+                           "end, and the size of the observed network.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "chemistry": evolve_arg, "seed": _SEED, "params": _PARAMS,
+                    "track": {**measure_names, "description": "cheap measures to follow frame by frame"},
+                    "window": {"type": "integer", "minimum": 0,
+                               "description": "frames of fired reactions a tracked network measure "
+                                              "sees; 0 for all so far (default 1)"},
+                },
+                "required": ["chemistry"],
+            },
+        },
+        {
+            "name": "measure_network",
+            "description": "Generate a chemistry's network and compute measures of it (size, "
+                           "stoichiometry, graph, organisation, kinetics, robustness, information). "
+                           "Returns the values and, for the measures left out, why they do not apply.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "chemistry": chemistry_arg, "seed": _SEED, "params": _PARAMS,
+                    "names": measure_names,
+                    "cost": {"type": "string", "enum": ["cheap", "moderate", "exponential"],
+                             "description": "the dearest measures to include (default cheap)"},
                 },
                 "required": ["chemistry"],
             },
@@ -424,13 +497,103 @@ def call_tool(name: str, arguments: dict[str, Any] | None = None) -> Any:
         return list_chemistries(bool(arguments.get("include_archived", False)))
     if name == "describe_chemistry":
         return describe_chemistry(arguments["chemistry"])
+    # A tool call never runs code from the hub: a model that was talked into
+    # it must not be able to switch the trust gate on via params.
+    params = dict(arguments.get("params") or {})
+    reserved = sorted(set(params) & catalog.RESERVED_PARAMS)
+    if reserved:
+        raise ValueError(f"{', '.join(reserved)} cannot be passed as chemistry parameters")
+    chemistry, seed = arguments["chemistry"], arguments.get("seed")
     if name == "generate_network":
-        # A tool call never runs code from the hub: a model that was talked
-        # into it must not be able to switch the trust gate on via params.
-        params = dict(arguments.get("params") or {})
-        reserved = sorted(set(params) & catalog.RESERVED_PARAMS)
-        if reserved:
-            raise ValueError(f"{', '.join(reserved)} cannot be passed as chemistry parameters")
-        net = generate_network(arguments["chemistry"], arguments.get("seed"), **params)
-        return net.to_dict()
+        return generate_network(chemistry, seed, **params).to_dict()
+    if name == "simulate_network":
+        return _simulate_tool(generate_network(chemistry, seed, **params), seed, arguments)
+    if name == "evolve_chemistry":
+        return _evolve_tool(chemistry, seed, params, arguments)
+    if name == "measure_network":
+        from chemart import measures
+
+        net = generate_network(chemistry, seed, **params)
+        names, cost = arguments.get("names"), arguments.get("cost", "cheap")
+        values = measures.measure(net, names, cost=cost, seed=seed or 0)
+        return {"chemistry": net.chemistry, "n_species": len(net.species), "n_reactions": len(net.reactions),
+                "measures": _jsonable(values),
+                "not_measured": {k: why for k, why in measures.applicable(net, names, cost=cost).items()
+                                 if why is not None}}
     raise ValueError(f"unknown tool {name!r}")
+
+
+def _thin(n: int, cap: int = TOOL_POINTS) -> list[int]:
+    """At most `cap` indices spread over range(n), keeping the first and the last."""
+    if n <= cap:
+        return list(range(n))
+    return sorted({round(k * (n - 1) / (cap - 1)) for k in range(cap)})
+
+
+def _jsonable(value: Any) -> Any:
+    """Plain JSON: numpy scalars as numbers, NaN and infinities as None."""
+    if isinstance(value, dict):
+        return {str(k): _jsonable(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_jsonable(v) for v in value]
+    if isinstance(value, (np.integer, np.bool_)):
+        return value.item()
+    if isinstance(value, (float, np.floating)):
+        return float(value) if np.isfinite(value) else None
+    return value
+
+
+def _top(state: dict[str, float], k: int = TOOL_SPECIES) -> dict[str, float]:
+    return dict(sorted(((s, v) for s, v in state.items() if v > 0), key=lambda sv: -sv[1])[:k])
+
+
+def _simulate_tool(net: Network, seed: int | None, arguments: dict[str, Any]) -> dict[str, Any]:
+    from chemart import simulate
+
+    for key in ("rates", "x0"):
+        if isinstance(arguments.get(key), str):
+            raise ValueError(f"{key}: a tool call cannot read files; pass a number, a table or a distribution")
+    method = arguments.get("method", "ode")
+    if method not in ("ode", "ssa"):
+        raise ValueError(f"method must be 'ode' or 'ssa', got {method!r}")
+    options = dict(rates=arguments.get("rates"), x0=arguments.get("x0"), seed=seed, points=200)
+    t_end = float(arguments.get("t_end", 40.0))
+    if method == "ode":
+        traj = simulate.ode(net, t_end, **options)
+    else:
+        traj = simulate.ssa(net, t_end, volume=float(arguments.get("volume", 1.0)), **options)
+    shown = list(_top(traj.frames[-1].state))
+    ids, t, X = traj.array(shown or None)
+    picks = _thin(len(t))
+    return _jsonable({
+        "chemistry": net.chemistry, "method": method, "n_species": len(net.species),
+        "n_reactions": len(net.reactions), "stopped": traj.settings.get("stopped"),
+        "t": [t[i] for i in picks],
+        "series": {s: [X[i, k] for i in picks] for k, s in enumerate(ids)},
+        "shown": f"{len(ids)} of {len(net.species)} species, {len(picks)} of {len(t)} points",
+    })
+
+
+def _evolve_tool(chemistry: str, seed: int | None, params: dict[str, Any], arguments: dict[str, Any]) -> dict[str, Any]:
+    from chemart import measures
+
+    traj = evolve(chemistry, seed, **params)
+    picks = _thin(len(traj.frames))
+    series: dict[str, list] = {
+        "richness": [measures.REGISTRY["richness"].fn(traj.frames[i].state) for i in picks],
+        "population": [measures.REGISTRY["population"].fn(traj.frames[i].state) for i in picks],
+    }
+    for key in dict.fromkeys(k for f in traj.frames for k, v in f.observables.items()
+                             if isinstance(v, (int, float)) and not isinstance(v, bool)):
+        values = traj.series(key)
+        series[key] = [values[i] for i in picks]
+    if arguments.get("track"):
+        tracked = measures.over(traj, arguments["track"], window=arguments.get("window", 1) or None,
+                                seed=seed or 0)
+        series.update({k: [v[i] for i in picks] for k, v in tracked.items() if k != "t"})
+    return _jsonable({
+        "chemistry": traj.network.chemistry, "clock": traj.clock, "n_frames": len(traj.frames),
+        "t": [traj.frames[i].t for i in picks], "series": series,
+        "final_top_species": _top(traj.frames[-1].state),
+        "observed_network": {"n_species": len(traj.network.species), "n_reactions": len(traj.network.reactions)},
+    })

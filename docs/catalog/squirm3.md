@@ -232,6 +232,18 @@ a3-a7-b1-e2-e2-f1/0.1,0.3,1.2,1.4,2.5,3.4 -> a3-a4-b1-e2-e2-f1/0.1,0.3,1.2,1.4,2
 … and 90 more
 ```
 
+It also has a process, to follow in its own time, counted in *steps*; the parameters marked *evolve only* belong to it:
+
+```python
+traj = chemart.evolve("squirm3", seed=1)
+```
+
+```
+202 frames, t = 0 … 3000 steps; observables: molecules
+```
+
+From the shell: `uv run chemart evolve squirm3 --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 Squirm3 has two faces. `chemart.generate_network`, called above, returns the
 *closure*: it ignores the grid, lets any molecules meet, and collects every
 molecule-level reaction reachable from the seed molecule and one loose atom of

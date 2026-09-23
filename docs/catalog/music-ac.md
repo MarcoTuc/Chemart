@@ -261,6 +261,18 @@ Its first reactions (`net.reactions`):
 … and 711 more
 ```
 
+`generate_network` runs this chemistry's process to the end and keeps what fired. To follow the process in its own time, counted in *collisions*:
+
+```python
+traj = chemart.evolve("music-ac", seed=1)
+```
+
+```
+895 frames, t = 0 … 894 collisions; observables: phrases
+```
+
+From the shell: `uv run chemart evolve music-ac --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 The default call runs the published system (all 65 rules, the published
 starting pot) until one phrase is finished. With `seed=1` that takes 893
 reactions, 705 of them growing melodies, and about 2 seconds. The 772 species

@@ -21,7 +21,7 @@ chemart.generate_network("ada/hypercycle-lite",            # a chemistry someone
 Everything on the hub lives in a **repo** named `namespace/name`, where the
 namespace is a user or an organisation.
 
-| | a **chemistry** (generator repo) | a **network** (network repo) |
+| | a **chemistry** (code repo) | a **network** (network repo) |
 |---|---|---|
 | holds | a catalog entry and the Python that builds its network | one reaction network, as plain JSON |
 | you load it with | `chemart.generate_network(id, ...)`, choosing your own parameters and seed | `chemart.load_network(id)` |
@@ -181,6 +181,45 @@ be reached, `main` falls back to the last commit you resolved, with a warning.
 | `CHEMART_HOME` | cache and credentials (default `~/.cache/chemart`) |
 | `CHEMART_HUB_TOKEN` | a token, overriding the one saved by `chemart login` |
 | `CHEMART_HUB_OFFLINE=1` | never touch the network; use the cache only |
+
+## The simulation pit
+
+The pit is a local app for trying chemistries out: pick one, run it, and watch
+what happens. It ships in the `chemart-hub` package but has nothing to do with
+a hub's repos. It has no database and no accounts, and it runs only on your
+machine.
+
+```bash
+uv sync --all-packages
+uv run chemart-hub pit                  # opens http://127.0.0.1:8765
+uv run chemart-hub pit --port 9000 --no-browser
+```
+
+The page follows the chemistry's type and faces:
+
+- **Given and generator chemistries.**
+    - A form for the chemistry's parameters.
+    - Editors for rates and initial amounts: the chemistry's own, a constant,
+      a distribution, a JSON table or a file.
+    - A choice of rate equations or a stochastic path. The species are
+      plotted as the result streams in.
+    - **Measure the network**, for its cheap and moderate measures.
+    - A sweep of one argument over values and seeds, with a measure plotted
+      against it.
+- **Chemistries with an evolve face.** The process runs live. The page plots
+  the most abundant species, the chemistry's observables and the measures
+  you choose to track, against its clock, and a network window sets how many
+  frames a tracked network measure sees. **Stop** ends a run early.
+
+Each finished run can be downloaded as a
+[Trajectory](reference/record.md#the-trajectory-record) JSON file; the pit
+keeps the last five. The same work can be scripted with `chemart simulate`,
+`chemart evolve` and `chemart measure` (see [API and CLI](reference/api.md#command-line)).
+
+The pit binds to 127.0.0.1 only. It refuses requests addressed to any other
+host, and runs nothing for a request without its own header, so another
+website open in your browser cannot start runs on your machine. The static
+build of a hub never includes it.
 
 ## A hub on GitHub Pages
 

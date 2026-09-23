@@ -125,8 +125,8 @@ or changes it.
 
 ### The reactor
 
-Chemart builds the network; it does not run it. The specification allows
-two reactors: deterministic rate equations (ordinary differential equations,
+The specification allows two reactors, and `chemart.simulate` runs both
+(`ode` and `ssa`): deterministic rate equations (ordinary differential equations,
 ODEs), which the book uses for its figure, or Gillespie's stochastic
 simulation algorithm (SSA), which fires individual reaction events at random
 times and is the right tool when there is one gene and a handful of proteins.
@@ -167,6 +167,13 @@ Its first reactions (`net.reactions`):
 G + 2 P -> C  [mass-action k=1.0]
 C -> G + 2 P  [mass-action k=1.0]
 C -> C + X  [mass-action k=1.0]
+```
+
+Its network carries rates and an initial state, so it simulates as it is (`t_end` is in the model's own time unit):
+
+```python
+traj = chemart.simulate.ode(net, t_end=40)                     # rate equations
+path = chemart.simulate.ssa(net, t_end=40, volume=100, seed=1)  # one stochastic path
 ```
 
 The default call gives the elementary, activating network with `n = 2`,

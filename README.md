@@ -24,8 +24,9 @@
 # Chemart — the one stop shop for artificial chemistry
 
 Chemart makes the artificial chemistries of the literature available behind one
-interface, so you can generate a chemistry's reaction network, look at it,
-simulate it, and compare it with any other — without reimplementing the papers.
+interface, so you can generate a chemistry's reaction network, simulate it,
+evolve it, measure it, and compare it with any other — without reimplementing
+the papers.
 
 The chemistries come from the field's reference survey — Wolfgang Banzhaf &
 Lidia Yamamoto, *Artificial Chemistries* (MIT Press, 2015) — and every one is
@@ -94,15 +95,18 @@ The catalog is the **only** parameter specification. There is no second copy in
 Python that could drift from it: `describe_chemistry` builds a JSON Schema from
 the YAML, and `generate_network` validates your arguments against the same YAML.
 
-### One function per chemistry
+### One or two functions per chemistry
 
-Each chemistry is a module defining exactly one function:
+Each chemistry is a module defining one function, or two:
 
 ```python
 def generate(p, rng) -> Network
+def evolve(p, rng):              # yields Frames of a run, returns the observed Network
 ```
 
-`p` holds the validated parameters; `rng` is a seeded NumPy generator. No base
+These are the chemistry's **faces**. Most gases have both: `generate` returns
+the closure of their rule and `evolve` runs the soup. `p` holds the validated
+parameters; `rng` is a seeded NumPy generator. No base
 classes, no registration, no plugin system — the id `matrix-chemistry` resolves
 to `chemart.chemistries.matrix_chemistry` by naming convention, imported lazily.
 Adding a chemistry means adding three files and touching nothing else.
@@ -130,6 +134,10 @@ net.to_text()                    # one reaction per line
 ids, R, P = net.matrices()       # sparse; net stoichiometry S = P - R
 net.provides                     # capability tags computed from content
 ```
+
+Simulations and runs return a `Trajectory`, also plain JSON: the network,
+then frames of time, amounts, the reactions fired since the last frame and the
+chemistry's own observables.
 
 ### `status` is the field people skip
 
@@ -197,6 +205,10 @@ uv run chemart list                     # every chemistry, as JSON (--all adds t
 uv run chemart describe brusselator     # metadata + parameter JSON Schema
 uv run chemart generate brusselator --format text
 uv run chemart generate matrix-chemistry -p N=4 --seed 0 --format summary
+uv run chemart simulate brusselator --method ssa --volume 100 --seed 1
+uv run chemart evolve alchemy --seed 1 --track shannon
+uv run chemart measure raf --seed 1 --cost moderate
+uv sync --all-packages && uv run chemart-hub pit    # the simulation pit, in your browser
 ```
 
 ```python
@@ -216,17 +228,22 @@ assert chemart.generate_network("gard", seed=0).to_dict() == net.to_dict()
 ### A notebook to start from
 
 [`examples/simulating-chemistries.ipynb`](examples/simulating-chemistries.ipynb)
-simulates a given network (the Brusselator, integrated as rate equations) and
-a generator (the prime-number chemistry, whose run generates its network).
+simulates a given network (the Brusselator, by rate equations and as
+stochastic paths), evolves two gases (the prime-number chemistry and AlChemy,
+whose diversity it follows over the run) and compares chemistries of all
+three types by their measures.
 Open it with `uv run --group notebooks jupyter lab examples/`.
 
 ### For LLM agents
 
-The whole interface is three functions, exposed as JSON-Schema tool specs:
+The interface is exposed as six JSON-Schema tool specs: list, describe,
+generate, simulate, evolve and measure. Their answers are capped to fit a
+model's context.
 
 ```python
-chemart.tool_definitions()               # list/describe/generate, ready to register
+chemart.tool_definitions()               # ready to register
 chemart.call_tool("generate_network", {"chemistry": "brusselator", "seed": 1})
+chemart.call_tool("evolve_chemistry", {"chemistry": "bff", "seed": 1})
 ```
 
 There is also a bundled Claude Code skill at `.claude/skills/chemart/` with
@@ -303,22 +320,27 @@ dependency group is in `default-groups`).
 
 ```
 chemart/
-  api.py           list_chemistries / describe_chemistry / generate_network
+  api.py           list / describe / generate_network / evolve, and the LLM tools
   catalog.py       loader, validator, index generator
   network.py       the Network / Species / Reaction record
+  trajectory.py    the Trajectory / Frame record
+  simulate.py      rate equations (ode), Gillespie (ssa), rates and states (assign)
+  measures/        every measure of the measures page, in a registry
   kinetics.py      the rate-law vocabulary, and k -> c conversion
   expand.py        closure of a constructive rule (the generating operator)
-  soup.py          well-stirred run that records which reactions fired
-  contract.py      the checks every generator must pass (tests, `chemart check`, push)
+  soup.py          the well-stirred soup (stir) and the tally of what fired
+  contract.py      the checks every chemistry must pass (tests, `chemart check`, push)
   cli.py           the `chemart` command
-  chemistries/     one module per chemistry, each defining `generate(p, rng)`
+  chemistries/     one module per chemistry: `generate(p, rng)` and/or `evolve(p, rng)`
   helpers/         explicit reaction syntax, parameter validation
   hub/             Chemart Hub client: ids, cache, trust gate, push/load (stdlib only)
 hub/               the Chemart Hub server (package `chemart-hub`)
-  src/chemart_hub/ FastAPI app, SQLite + blob store, web UI, `chemart-hub` CLI
+  src/chemart_hub/ FastAPI app, SQLite + blob store, web UI, `chemart-hub` CLI,
+                   and the simulation pit (pit.py)
   tests/           API, web, and end-to-end client <-> server tests
 catalog/
   SCHEMA.md        field definitions
+  TYPES.md         the type of each entry (given, generator, gas), with the reason
   chemistries/     one YAML entry per chemistry - the specification
   explainers/      the prose of each chemistry's documentation page
 docs/              the documentation site
@@ -340,7 +362,10 @@ The contract (`chemart/contract.py`, run by `tests/test_contract.py`) checks, fo
 zero-argument call finishes in under five seconds, that the record round-trips
 through JSON, that the same seed reproduces the same network, that the
 capabilities it computes are covered by what the catalog claims, and that bad
-parameters raise an error naming the parameter. Per-chemistry tests then
+parameters raise an error naming the parameter. For an evolve face it also
+checks that the first frame is the initial state, that time never runs
+backwards, that a seed reproduces the frames, and that the reactions fired
+frame by frame add up to the network's counts. Per-chemistry tests then
 reproduce published numbers — tables, counts, closures, steady states.
 
 ## Open questions

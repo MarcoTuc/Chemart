@@ -149,9 +149,9 @@ The runs under "Using it" agree with this.
 
 ### What Chemart generates
 
-Chemart builds the network, not the simulation. `generate_network` returns
-the one species, the two reactions with their mass-action rate coefficients
-`r` and `r/K`, and the initial concentration. The specification below lists
+`generate_network` returns the one species, the two reactions with their
+mass-action rate coefficients `r` and `r/K`, and the initial concentration;
+`chemart.simulate` runs it as an ODE (`ode`) or an SSA (`ssa`). The specification below lists
 the molecules (S), the reactions (R) and the two reactor algorithms (A), ODE
 and SSA, that the book applies to them.
 
@@ -181,69 +181,49 @@ Reaction(reactants={'X': 2}, products={'X': 1}, rate={'law': 'mass-action', 'k':
 
 The fight coefficient is `r/K = 2/50 = 0.04`.
 
-**Integrating the ODE.** This produced the table in "How it works":
+**Integrating the ODE.** `chemart.simulate.ode` produced the table in "How
+it works":
 
 ```python
 import numpy as np
-from scipy.integrate import solve_ivp
 import chemart
+from chemart import simulate
 
 net = chemart.generate_network("logistic-chemistry", seed=1)
-ids, R, P = net.matrices()
-M, Rin = (P - R).toarray(), R.toarray()        # stoichiometry, reactant counts
-k = np.array([r.rate["k"] for r in net.reactions])
-f = lambda t, x: M @ (k * np.prod(x[:, None] ** Rin, axis=0))   # mass action
+traj = simulate.ode(net, 10, points=11)                 # a frame every time unit
 ts = [0, 1, 2, 3, 4, 5, 6, 8, 10]
-sol = solve_ivp(f, (0, 10), [net.initial_state["X"]], t_eval=ts, rtol=1e-9, atol=1e-12)
 exact = 1 / (1 + (1 / 0.1 - 1) * np.exp(-np.array(ts)))
-for t, x, e in zip(ts, sol.y[0], exact):
-    print(f"t={t:>2}  X={x:.4f}  formula={e:.4f}")
+for t, e in zip(ts, exact):
+    print(f"t={t:>2}  X={traj.frames[t].state['X']:.4f}  formula={e:.4f}")
 ```
 
 **A stochastic run, as in `Logistic.py`.** `Logistic.py` sets `NAV = 100`
-and starts from a single molecule (`x = 0.01`), then runs to `t = 50`. The
-script below does the same with Chemart's network: it converts each `k` to
-`c` with `chemart.kinetics.k_to_c`, computes propensities with the pair count
-`n(n−1)/2`, and runs Gillespie's direct method. It prints the concentration
-every 5 time units and statistics over `t = 20` to 50, weighted by how long
-each state lasted:
+and starts from a single molecule (`x = 0.01`), then runs to `t = 50`.
+`chemart.simulate.ssa` does the same with Chemart's network: its `volume` is
+`NAV` (with the default `avogadro=1`), it converts each `k` to `c` with
+`chemart.kinetics.k_to_c`, and it computes propensities with the pair count
+`n(n−1)/2`. The function below prints `c`, the concentration every 5 time
+units, and statistics over `t = 20` to 50. The frames are 0.001 apart, so
+the statistics weigh each state by how long it lasted:
 
 ```python
-import sys
-from math import comb
 import numpy as np
 import chemart
-from chemart.kinetics import k_to_c, AVOGADRO
+from chemart import simulate
+from chemart.kinetics import k_to_c
 
-NAV = float(sys.argv[1]) if len(sys.argv) > 1 else 100   # molecules per unit concentration
-x0 = float(sys.argv[2]) if len(sys.argv) > 2 else 0.01
-seed = int(sys.argv[3]) if len(sys.argv) > 3 else 1
+def run(NAV=100, x0=0.01, seed=1):
+    net = chemart.generate_network("logistic-chemistry", x0=x0)   # r = K = 1
+    print("c =", [k_to_c(r.rate["k"], r.reactants, volume=NAV, avogadro=1.0) for r in net.reactions])
+    path = simulate.ssa(net, 50, volume=NAV, points=50001, seed=seed)   # a frame every 0.001
+    ids, t, X = path.array(["X"])
+    x = X[:, 0]
+    print("  ".join(f"t={t[i]:g}:{x[i]:.2f}" for i in range(0, len(t), 5000)))
+    late = x[t >= 20]
+    print(f"t in [20,50]: mean={late.mean():.3f} std={late.std():.3f} "
+          f"max={late.max():.2f} fraction of time above K={(late > 1.0).mean():.2f}")
 
-net = chemart.generate_network("logistic-chemistry", x0=x0)   # r = K = 1
-V = NAV / AVOGADRO
-c = [k_to_c(r.rate["k"], r.reactants, V) for r in net.reactions]
-print("c =", c)
-
-rng = np.random.default_rng(seed)
-n = round(x0 * NAV)                     # 1 molecule for NAV = 100, x0 = 0.01
-t, T = 0.0, 50.0
-grid, trace, i = np.arange(0, T + 1e-9, 5.0), [], 0
-weighted, above = [], 0.0
-while t < T:
-    a = np.array([c[0] * n, c[1] * comb(n, 2)])   # propensities: r*n and c*n(n-1)/2
-    dt = rng.exponential(1 / a.sum())
-    while i < len(grid) and grid[i] < t + dt:
-        trace.append((grid[i], n / NAV)); i += 1
-    if t + dt > 20:                               # time-weighted statistics after t = 20
-        w = min(t + dt, T) - max(t, 20)
-        weighted.append((n / NAV, w)); above += w * (n / NAV > 1.0)
-    t += dt
-    n += 1 if rng.random() < a[0] / a.sum() else -1
-print("  ".join(f"t={g:g}:{x:.2f}" for g, x in trace))
-x, w = np.array(weighted).T
-m = np.average(x, weights=w)
-print(f"t in [20,50]: mean={m:.3f} std={np.sqrt(np.average((x-m)**2, weights=w)):.3f} "
-      f"max={x.max():.2f} fraction of time above K={above / w.sum():.2f}")
+run()
 ```
 
 ```
@@ -257,22 +237,22 @@ the population reaches the capacity in about 10 time units, then wanders:
 it spends about half its time above `K = 1` and reaches 1.36, 36% over the
 bound the ODE never crosses.
 
-**How the vessel size sets the overshoot.** Running the same script with
-`x0 = 0.1` and four vessel sizes (`python ssa.py <NAV> 0.1`) shows the
+**How the vessel size sets the overshoot.** Running the same function with
+`x0 = 0.1` and four vessel sizes (`run(NAV, 0.1)`) shows the
 fluctuations shrinking as the number of molecules grows, close to the
 `√(1/NAV)` standard deviation of the Poisson distribution:
 
 | `NAV` | mean after t = 20 | standard deviation | `√(1/NAV)` | maximum | time above `K` | run time |
 |---|---|---|---|---|---|---|
-| 10 | 1.087 | 0.348 | 0.316 | 2.00 | 59% | 3 s |
+| 10 | 1.087 | 0.348 | 0.316 | 2.00 | 59% | 2 s |
 | 100 | 1.025 | 0.111 | 0.100 | 1.35 | 58% | 3 s |
-| 1,000 | 1.010 | 0.031 | 0.032 | 1.10 | 61% | 4 s |
-| 10,000 | 0.999 | 0.008 | 0.010 | 1.03 | 42% | 15 s |
+| 1,000 | 1.010 | 0.031 | 0.032 | 1.10 | 61% | 11 s |
+| 10,000 | 0.999 | 0.008 | 0.010 | 1.03 | 42% | 65 s |
 
 These are single runs of 30 time units, so the means and fractions carry
-sampling noise. With this plain Python loop the cost grows in proportion to
-`NAV`; `NAV = 10000` takes about 15 seconds of computation and larger vessels
-become slow.
+sampling noise. The cost grows in proportion to `NAV`: `NAV = 10000` takes
+about a minute (almost a million reaction events), and larger vessels become
+slow.
 
 ## Results
 
@@ -295,11 +275,10 @@ solution to four decimals.
 and shows the stochastic population fluctuating around `K`, "often exceeding
 it". The book gives no numbers and does not state the settings; they are in
 `Logistic.py` (`r = K = 1`, `NAV = 100`, one starting molecule, run to
-`t = 50`). Chemart has no stochastic simulator of its own and no test of
-this behaviour; it supplies the network and the rate conversion
-`chemart.kinetics.k_to_c`, which `tests/test_core.py` checks on small cases.
-The recipe under "Using it" reproduces the behaviour with `Logistic.py`'s
-settings: the population spent about half of the time from `t = 20` to 50
+`t = 50`). No test checks this behaviour. `chemart.simulate.ssa` runs it,
+with the rate conversion `chemart.kinetics.k_to_c`, which `tests/test_core.py`
+checks on small cases. The recipe under "Using it" reproduces the behaviour
+with `Logistic.py`'s settings: the population spent about half of the time from `t = 20` to 50
 above `K` and peaked 36% above it. The book's conclusion is that for small
 populations the reversible reaction cannot enforce a strict bound, and that a
 dilution outflow, which caps the total number of molecules directly, "also

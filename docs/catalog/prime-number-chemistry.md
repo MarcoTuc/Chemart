@@ -177,6 +177,18 @@ n29 + n261 -> n29 + n9
 … and 1087 more
 ```
 
+It also has a process, to follow in its own time, counted in *collisions*; the parameters marked *evolve only* belong to it:
+
+```python
+traj = chemart.evolve("prime-number-chemistry", seed=1)
+```
+
+```
+101 frames, t = 0 … 10000 collisions; observables: prime_fraction
+```
+
+From the shell: `uv run chemart evolve prime-number-chemistry --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 The chemistry has two faces. `chemart.generate_network`, printed above,
 returns the *closure* of a bag of numbers; `chemart.evolve` runs the book's
 *soup* and returns a trajectory.

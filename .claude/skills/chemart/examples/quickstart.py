@@ -64,19 +64,28 @@ restored = chemart.Network.from_dict(json.loads(json.dumps(data)))
 assert restored == net
 print("\nrecord round-trips through JSON exactly")
 
-# ------------------------------------------------ a constructive chemistry
-# Species are not fixed up front; they are discovered as reactions produce them.
-prime = chemart.generate_network("prime-number-chemistry", seed=1)
-print(f"\nprime-number-chemistry: {len(prime.species)} species, "
-      f"{len(prime.reactions)} reactions, status={prime.status}")
+# ------------------------------------------------ a gas: two faces
+# The prime-number chemistry is a Turing gas: numbers collide and divide. It
+# has two faces. generate_network returns the closure of its rule from the
+# seed numbers (every reaction they and their quotients can undergo);
+# chemart.evolve runs the book's soup itself.
+info = chemart.describe_chemistry("prime-number-chemistry")
+print(f"\nprime-number-chemistry: type={info['type']}, faces={info['faces']}, clock={info['clock']}")
 
-# Always read `status` before interpreting the reaction list. This default is
-# an *observed* run: these are the reactions that actually fired in one
-# simulated soup, each with a firing count. A reaction's absence says something
-# about this run, not about the chemistry.
-assert prime.status == "observed"
-busiest = max(prime.reactions, key=lambda r: r.count or 0)
-print(f"  busiest reaction: {busiest.to_text()}")
-print(f"  'complete' would mean the whole defined network or a finished closure;")
-print(f"  'truncated' would mean a size budget stopped a closure early.")
-print("  See references/comparing-and-analysing.md for computing closures with expand().")
+closure = chemart.generate_network("prime-number-chemistry", seed=1)
+print(f"  closure: {len(closure.species)} species, {len(closure.reactions)} reactions, "
+      f"status={closure.status}")
+
+run = chemart.evolve("prime-number-chemistry", seed=1)
+print(f"  one run: {len(run.frames)} frames up to {run.times()[-1]:g} {run.clock}; "
+      f"prime fraction {run.series('prime_fraction')[0]:.2f} -> {run.series('prime_fraction')[-1]:.2f}")
+
+# Always read `status` before interpreting a reaction list. The run's network
+# is *observed*: the reactions that actually fired, each with a firing count.
+# A reaction's absence says something about this run, not about the chemistry.
+observed = run.network
+assert observed.status == "observed"
+busiest = max(observed.reactions, key=lambda r: r.count or 0)
+print(f"  busiest reaction in the run: {busiest.to_text()}")
+print("  'complete' means the whole defined network or a finished closure;")
+print("  'truncated' would mean a size budget stopped a closure early.")

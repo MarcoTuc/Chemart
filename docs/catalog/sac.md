@@ -221,6 +221,18 @@ s_00d0d0c1c1c0c2c2c0s0011c0c2c2c0 + s_0000bpbbb0bbb2bbb0bbb2bpbbbbbzbpbsbcbbbbbc
 … and 402 more
 ```
 
+It also has a process, to follow in its own time, counted in *collisions*; the parameters marked *evolve only* belong to it:
+
+```python
+traj = chemart.evolve("sac", seed=1)
+```
+
+```
+1668 frames, t = 0 … 20000 collisions; observables: max_membrane_M
+```
+
+From the shell: `uv run chemart evolve sac --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 SAC has two faces. `chemart.generate_network("sac")`, printed above, returns
 the *closure* of a cell's strings; `chemart.evolve("sac")` runs random
 collisions inside one growing cell and returns a trajectory.

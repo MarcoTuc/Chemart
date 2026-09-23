@@ -174,39 +174,40 @@ x2 + x4 -> x6  [mass-action k=1.0]
 … and 1 more
 ```
 
+Its network carries rates and an initial state, so it simulates as it is (`t_end` is in the model's own time unit):
+
+```python
+traj = chemart.simulate.ode(net, t_end=40)                     # rate equations
+path = chemart.simulate.ssa(net, t_end=40, volume=100, seed=1)  # one stochastic path
+```
+
 The default network starts from 100 single triangles, the starting count of
 the book's simulation (figure 20.3a), with every rate constant equal to 1.
 `net.initial_state` is `{"x": 100}`. The only extra is
 `net.extras["conservation"]`, the weights `x=1, x2=2, … x6=6` whose weighted
 sum, the number of triangles, stays constant.
 
-Chemart supplies the network, not a simulator. This script integrates the
-mass-action equations with SciPy:
+`chemart.simulate.ode` integrates the mass-action equations. This script
+prints the counts at a few times, with the number of triangles in the last
+column:
 
 ```python
 import numpy as np
-from scipy.integrate import solve_ivp
 import chemart
+from chemart import simulate
 
 net = chemart.generate_network("mechanical-self-assembly", seed=1)
-ids, R, P = net.matrices()                  # species order: x, x2, ..., x6
-M = (P - R).toarray()                       # net stoichiometry
-k = np.array([r.rate["k"] for r in net.reactions])
-Rin = R.toarray()                           # reactant multiplicities
-
-def f(t, x):
-    return M @ (k * np.prod(x[:, None] ** Rin, axis=0))
-
-x0 = [net.initial_state.get(s, 0) for s in ids]
-sol = solve_ivp(f, (0, 10), x0, t_eval=[0, 0.005, 0.01, 0.02, 0.05, 0.1, 1, 10],
-                method="LSODA", rtol=1e-9, atol=1e-12)
+ids = [s.id for s in net.species]                   # x, x2, ..., x6
+traj = simulate.ode(net, 10, points=2001)           # a frame every 0.005
+_, t, X = traj.array(ids)
+print("t    " + "".join(f"{s:>8}" for s in ids) + f"{'monomers':>10}")
+for ti in [0, 0.005, 0.01, 0.02, 0.05, 0.1, 1, 10]:
+    row = X[round(ti / 0.005)]
+    print(f"{ti:<5g}" + "".join(f"{v:8.2f}" for v in row) + f"{row @ np.arange(1, 7):10.2f}")
 ```
 
-Printing the counts at each time, with the number of triangles in the last
-column:
-
 ```
-t           x      x2      x3      x4      x5      x6   monomers
+t           x      x2      x3      x4      x5      x6  monomers
 0      100.00    0.00    0.00    0.00    0.00    0.00    100.00
 0.005   47.09   18.23    3.34    1.23    0.22    0.07    100.00
 0.01    28.71   17.71    5.29    3.13    0.93    0.47    100.00
@@ -214,8 +215,10 @@ t           x      x2      x3      x4      x5      x6   monomers
 0.05     4.58    5.57    4.03    5.78    4.16    4.71    100.00
 0.1      1.51    2.42    2.51    5.18    4.89    6.83    100.00
 1        0.00    0.02    0.41    3.85    5.28    9.49    100.00
-10      -0.00    0.00    0.05    3.84    5.28    9.68    100.00
+10      -0.00   -0.00    0.05    3.84    5.28    9.68    100.00
 ```
+
+The `-0.00` entries are round-off of amounts that have gone to zero.
 
 Singles are used up first, pairs and triples rise and fall, and the run ends
 with about 3.8 `x4`, 5.3 `x5` and 9.7 hexagons. That is the pattern of the
@@ -247,14 +250,28 @@ factor. Making two singles slow to pair raises the yield to 14.4 hexagons,
 because most triangles then join existing pieces one at a time instead of
 starting new ones.
 
-**Counting pieces one by one.** The ODE treats counts as continuous. A run
-with whole pieces, using Gillespie's stochastic simulation algorithm with the
-same rate constants (propensity `k·n(n−1)` for `2 x -> x2` and `k·n_a·n_b`
-for two different species, so that it matches the ODE on average), gives over
-1,000 runs from 100 triangles a mean of 9.43 hexagons, 3.81 `x4` and 5.36
-`x5`. The number of hexagons varies from 3 to 15 between runs (standard
-deviation 1.98). The 1,000 runs take about five seconds; the script is not
-part of Chemart.
+**Counting pieces one by one.** The ODE treats counts as continuous.
+`chemart.simulate.ssa` runs Gillespie's stochastic simulation algorithm on
+whole pieces with the same rate constants. With the default `volume=1` the
+amounts are counts, and the propensities (`k·n(n−1)` for `2 x -> x2`,
+`k·n_a·n_b` for two different species) match the ODE on average. A thousand
+runs from 100 triangles, each to `t = 1000`, when no piece can join another:
+
+```python
+ends = np.array([simulate.ssa(net, 1000, points=2, seed=i).array(ids)[2][-1]
+                 for i in range(1000)])
+print({s: round(float(v), 2) for s, v in zip(ids, ends.mean(axis=0))})
+print("hexagons from", ends[:, 5].min(), "to", ends[:, 5].max(), "sd", ends[:, 5].std().round(2))
+```
+
+```
+{'x': 0.0, 'x2': 0.01, 'x3': 0.45, 'x4': 3.83, 'x5': 5.16, 'x6': 9.58}
+hexagons from 4.0 to 16.0 sd 2.02
+```
+
+On average whole pieces make 9.58 hexagons, a little below the ODE's 9.71,
+and the number varies from 4 to 16 between runs. The 1,000 runs take about
+nine seconds.
 
 #### Parameters
 

@@ -247,6 +247,18 @@ has(john,m) + ~cat(X1),~has(X2,X1),~has(X2,X3),~mice(X3) -> has(john,m) + ~cat(X
 … and 394 more
 ```
 
+It also has a process, to follow in its own time, counted in *collisions*; the parameters marked *evolve only* belong to it:
+
+```python
+traj = chemart.evolve("proof-ac", seed=1)
+```
+
+```
+8 frames, t = 0 … 1077 collisions; observables: none
+```
+
+From the shell: `uv run chemart evolve proof-ac --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 The chemistry has two faces, the two ways of running it described above.
 `chemart.generate_network("proof-ac")`, printed above, returns the *closure*;
 `chemart.evolve("proof-ac")` runs RESAC's *reactor* and returns a trajectory.

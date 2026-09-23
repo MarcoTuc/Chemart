@@ -248,27 +248,20 @@ What to read in the result:
 
 **Changing what the robot sees.** Pass `sensor_readings`, by sensor name.
 Unlisted sensors read 0. The following script integrates the default network
-as a one-compartment ODE, with mass action, catalysts as above, inhibitors
-ignored and the actuator drain applied at all concentrations. It prints the
-motor substance after 200 time units for five situations:
+with `chemart.simulate.ode` as a one-compartment ODE, with mass action,
+catalysts as above, inhibitors ignored (the simulator reads only the rate law
+and `k`) and the actuator drain applied at all concentrations. The network
+has no initial state, so every substance starts at 0. It prints the motor
+substance after 200 time units for five situations:
 
 ```python
-import numpy as np
-from scipy.integrate import solve_ivp
 import chemart
+from chemart import simulate
 
 def steady_a(readings, seed=1, t_end=200.0):
     net = chemart.generate_network("metabolic-robot-controller", seed=seed, sensor_readings=readings)
-    ids, R, P = net.matrices()
-    S, R = (P - R).toarray(), R.toarray()
-    k = np.array([r.rate["k"] for r in net.reactions])       # inhibitors ignored
-    inflow = np.array([net.inflow.get(s, 0.0) for s in ids])
-    outflow = np.array([net.outflow.get(s, 0.0) for s in ids])
-    def f(t, x):
-        v = k * np.prod(np.maximum(x, 0)[:, None] ** R, axis=0)   # mass action
-        return S @ v + inflow - outflow * x
-    sol = solve_ivp(f, (0, t_end), np.zeros(len(ids)), method="LSODA")
-    return round(float(sol.y[ids.index("a"), -1]), 3)
+    x = simulate.ode(net, t_end, x0=0.0, points=2).frames[-1].state
+    return round(x.get("a", 0.0), 3)
 
 print("no obstacle   ", steady_a({}))
 print("wall in front ", steady_a({"front1": 1023, "front2": 1023}))

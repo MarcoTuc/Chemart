@@ -185,6 +185,13 @@ X4 -> ∅  [mass-action k=10.0]
 I1 -> I2  [mass-action k=0.006]
 ```
 
+Its network carries rates and an initial state, so it simulates as it is (`t_end` is in the model's own time unit):
+
+```python
+traj = chemart.simulate.ode(net, t_end=40)                     # rate equations
+path = chemart.simulate.ssa(net, t_end=40, volume=100, seed=1)  # one stochastic path
+```
+
 The default call above gives the book's figure 17.5 (top): rate constants and
 initial concentrations as the book gives them for its simulation
 (`X1 = X3 = 0`, `X2 = X4 = 8`, `A = 1`, `B = 0`), inputs starting at 100 and
@@ -193,34 +200,24 @@ rate at which inputs make substrate, is not in the book; its default of 1 is
 Chemart's choice. The network is deterministic, so `seed` changes nothing, and
 `net.extras` is empty. `net.initial_state` holds the starting concentrations.
 
-Chemart only generates the network; it does not integrate it. This script
-integrates it with SciPy under mass action. It printed the table in *How it
-works*, and takes a few seconds:
+`chemart.simulate.ode` integrates the network under mass action. This script
+printed the table in *How it works*, and takes a few seconds:
 
 ```python
 import numpy as np
-from scipy.integrate import solve_ivp
 
 import chemart
+from chemart import simulate
 
 
-def simulate(net, t_end, n=20001):
-    ids, R, P = net.matrices()
-    R = R.toarray()
-    S = (P.toarray() - R).astype(float)
-    k = np.array([r.rate["k"] for r in net.reactions])
-    x0 = np.array([net.initial_state[s] for s in ids])
-
-    def f(t, x):
-        return S @ (k * np.prod(x[:, None] ** R, axis=0))  # mass action
-
-    t = np.linspace(0, t_end, n)
+def run(net, t_end, n=20001):
     # the network is stiff (k1 = k2 = 5e4), so use an implicit solver
-    sol = solve_ivp(f, (0, t_end), x0, t_eval=t, method="Radau", rtol=1e-8, atol=1e-10)
-    return t, dict(zip(ids, sol.y))
+    traj = simulate.ode(net, t_end, points=n, solver="Radau")
+    ids, t, X = traj.array([s.id for s in net.species])
+    return t, dict(zip(ids, X.T))
 
 
-t, x = simulate(chemart.generate_network("okamoto-switch"), 120)
+t, x = run(chemart.generate_network("okamoto-switch"), 120)
 for s in (0, 10, 17.5, 30, 35, 36, 40, 120):
     i = np.argmin(abs(t - s))
     print(f"t={s:5.1f}  I1={x['I1'][i]:6.2f} I2={x['I2'][i]:6.2f}  A={x['A'][i]:.3f} "
@@ -233,7 +230,7 @@ The book's second experiment slows the conversion `I1 -> I2`, so the inputs
 cross later and the switch flips later. The book does not give the slower
 rate; its close-up shows the flip between 68 and 70 s, and a `k_conv` of
 0.0015 (a quarter of the default) puts the crossing at about 70 s.
-With the `simulate` above, this runs three conversion rates and compares the
+With the `run` above, this runs three conversion rates and compares the
 flip with the moment the stored surplus of `X1` is used up. With `I1(0) = 100`
 and `I1 + I2 = 180`, that moment is the time `T` at which
 `200 (1 − e^(−k_conv T)) / k_conv = 180 T`:
@@ -242,7 +239,7 @@ and `I1 + I2 = 180`, that moment is the time `T` at which
 from scipy.optimize import brentq
 
 for k_conv in (0.006, 0.003, 0.0015):
-    t, x = simulate(chemart.generate_network("okamoto-switch", k_conv=k_conv), 200)
+    t, x = run(chemart.generate_network("okamoto-switch", k_conv=k_conv), 200)
     a = x["A"]
     cross = t[np.argmax(x["I1"] <= x["I2"])]
     flip = t[np.argmax(a < 0.5)]
@@ -264,7 +261,7 @@ Slowing the conversion delays the flip, as in the book. But in every case the
 flip falls where the surplus runs out, at about twice the crossing time, so a
 slower drift means a longer lag after the crossing (73 s at `k_conv = 0.0015`),
 where the book's figure shows the flip close to the crossing. This run
-takes about 8 seconds.
+takes about five seconds.
 
 #### Held inputs, and the input rate
 
@@ -274,13 +271,13 @@ input grows without limit, at `k_in × (I1 − I2)`, 20 per second here:
 
 ```python
 for I1, I2 in ((100, 80), (80, 100)):
-    t, x = simulate(chemart.generate_network("okamoto-switch", k_conv=0, I1_0=I1, I2_0=I2), 60)
+    t, x = run(chemart.generate_network("okamoto-switch", k_conv=0, I1_0=I1, I2_0=I2), 60)
     print(f"I1={I1}, I2={I2}: A(60)={x['A'][-1]:.3f}  X1 at 30 s, 60 s: "
           f"{x['X1'][10000]:.0f}, {x['X1'][-1]:.0f}  X3 at 30 s, 60 s: "
           f"{x['X3'][10000]:.0f}, {x['X3'][-1]:.0f}")
 
 for k_in in (0.1, 1.0, 10.0):
-    t, x = simulate(chemart.generate_network("okamoto-switch", k_in=k_in), 60)
+    t, x = run(chemart.generate_network("okamoto-switch", k_in=k_in), 60)
     print(f"k_in={k_in}: A flips at {t[np.argmax(x['A'] < 0.5)]:.1f} s")
 ```
 

@@ -1,11 +1,14 @@
 # Comparing and analysing networks
 
 The reason different models share one record is so you can ask questions
-across them. This file covers the analyses that the record supports directly.
+across them. `chemart.measures` implements the questions: dozens of registered
+measures, from stoichiometric rank to autocatalytic cores. This file covers
+using them, and the analyses the record supports directly.
 
 ## Contents
 - [Surveying the catalog](#surveying-the-catalog)
-- [Structural comparison](#structural-comparison)
+- [Measures](#measures)
+- [Measures across arguments, seeds and null models](#measures-across-arguments-seeds-and-null-models)
 - [Conservation laws](#conservation-laws)
 - [Closures and constructive chemistries](#closures-and-constructive-chemistries)
 - [Observed runs](#observed-runs)
@@ -26,33 +29,67 @@ real sizes and computed capabilities rather than catalog claims. It is slower
 (seconds per chemistry) but it is the honest version, and it is the quickest
 way to find, say, every chemistry that yields under 200 reactions by default.
 
-## Structural comparison
+## Measures
 
 ```python
-import chemart, numpy as np
+import chemart
+from chemart import measures
 
-def profile(cid, seed=1):
-    net = chemart.generate_network(cid, seed=seed)
-    ids, R, P = net.matrices()
-    S = (P - R).toarray()
-    return {
-        "id": cid,
-        "species": len(ids),
-        "reactions": len(net.reactions),
-        "status": net.status,
-        "rank": int(np.linalg.matrix_rank(S)) if S.size else 0,
-        "conservation_laws": len(ids) - (int(np.linalg.matrix_rank(S)) if S.size else 0),
-        "catalysed": sum(1 for r in net.reactions if r.catalysts),
-        "provides": net.provides,
-    }
+net = chemart.generate_network("kauffman-autocatalytic-sets", seed=1)
+chemart.measure(net)                                   # every cheap measure that applies
+chemart.measure(net, ["deficiency", "max_raf_fraction", "conservation_laws"])
+chemart.measure(net, cost="moderate")                  # add the dearer tiers
+measures.applicable(net)                               # {name: None, or why it does not apply}
+measures.describe()                                    # name, section, input, needs, cost, meaning
 ```
 
-The **deficiency** of a CRN and its rank are computable from `S` directly, and
-`len(species) − rank(S)` bounds the number of independent conservation laws —
-a quick sanity check against the laws an entry declares in
-`extras["conservation"]`.
+```bash
+uv run chemart measure kauffman-autocatalytic-sets --seed 1 --cost moderate --why
+uv run chemart measure run.json          # a saved network, or a trajectory from `chemart evolve`
+```
 
-Beware comparing raw counts across `status` values; see `network-record.md`.
+What to know before reading the numbers:
+
+- **Sections.** A size, B stoichiometry (rank, conservation laws, deficiency,
+  P-invariants, flux modes), C graph (degree statistics, bow-tie, spectra,
+  modularity, motifs), D organisation (maxRAF, scope, autocatalytic cores,
+  chemical organisations), E growth, F kinetics (stability, steady states,
+  oscillation), G dynamics (diversity, turnover, attractor type), H
+  robustness (knockouts, degeneracy), I information (compressibility).
+- **Inputs.** A measure takes a network, a population state (one frame's
+  `{species: amount}`) or a whole trajectory. `chemart.measure(traj)` gives the
+  trajectory measures plus the network measures of what fired.
+- **Needs.** Kinetic measures need a rate on every reaction; organisation
+  measures need a food set (`extras["food"]`, else the inflow, buffered or
+  initial species). A measure that does not apply is **left out**, never
+  filled with a default: absence is information, and `applicable` says why.
+- **Cost.** `cheap` runs by default; `moderate` (LPs, many shortest paths,
+  steady-state searches) and `exponential` (extreme rays, organisations,
+  cores) on request. Dear measures have a node limit and are skipped above it
+  unless `force=True`.
+- **Status still matters.** A measure of an `observed` network describes one
+  run, not the chemistry, and a `truncated` closure is a lower bound.
+
+## Measures across arguments, seeds and null models
+
+```python
+rows = measures.sweep("raf", {"n": [4, 5, 6]}, seeds=range(3),
+                      names=["n_species", "n_reactions", "max_raf_fraction"])
+measures.scaling(rows, "n_reactions")          # log-log exponent against n_species
+measures.zscores(net, ["clustering", "reciprocity"], samples=20)   # against the null model
+```
+
+A **generator** is studied across its arguments (`sweep`, one row per grid
+point and seed). A graph measure means little on its own: compare it with its
+null model (`zscores`: reactant and product slots swapped between reactions,
+keeping every species' degree and every reaction's arity) before calling it a
+property of the chemistry. A **gas** is studied in evolutionary time with
+`measures.over(traj, names, window=w)`; see `simulating-dynamics.md`.
+
+The same questions by hand, from `S`, are a few lines if you need a variant:
+`ids, R, P = net.matrices()`, `S = (P - R)`, and `len(ids) − rank(S)` bounds the
+number of independent conservation laws — a quick sanity check against the
+laws an entry declares in `extras["conservation"]`.
 
 ## Conservation laws
 
@@ -103,14 +140,16 @@ A `truncated` status means the budget stopped it, not that the chemistry is
 finite. Raise `max_species` (or the entry's own size parameter) to see more.
 
 **Organisations** (closed and self-maintaining sets, in the sense of chemical
-organisation theory) are a natural next step from a closure, and several
-entries compute them in `extras["analysis"]` — `matrix-chemistry` is the
-worked example.
+organisation theory) are a natural next step from a closure:
+`chemart.measure(net, ["organisations"])` counts them (an exponential measure,
+limited to small networks), and `matrix-chemistry` also reports its own in
+`extras["analysis"]`.
 
 ## Observed runs
 
-For chemistries that are simulated rather than enumerated, use
-`chemart.soup.soup`:
+To run a catalogued gas, use `chemart.evolve` (see `simulating-dynamics.md`).
+For a rule of your own, `chemart.soup.soup` runs a well-stirred population and
+records what fired:
 
 ```python
 import numpy as np
@@ -131,6 +170,8 @@ busiest = max(fired, key=lambda f: f[2])
 `dilution="constant"` removes random molecules after each reaction to hold the
 population at its initial size — the book's flow reactor. `alternatives=True`
 draws one outcome per collision (where `expand` would record them all).
+`chemart.soup.stir` is the same loop as a generator of frames, which is what an
+evolve face is built from (`extending-chemart.md`).
 
 Set `alternatives` deliberately: molecules only have to be hashable, so tuples
 are legal molecules, and a list of alternatives passed without the flag is
@@ -147,10 +188,11 @@ autocatalytic = [r for r in net.reactions
 
 `r.catalysts` gives species on both sides with the multiplicity that survives.
 A reaction is autocatalytic in the loose sense when a reactant comes out with
-higher multiplicity than it went in. For the rigorous notions — reflexively
-autocatalytic and food-generated sets — use the `raf` entry, which implements
-the Hordijk-Steel RAF algorithm and can run on a supplied system, not only on
-its own generated one.
+higher multiplicity than it went in. For the rigorous notions use the
+measures: `max_raf_fraction` and `irreducible_rafs` (Hordijk–Steel RAF sets,
+on any network with catalysts and a food set) and `autocatalytic_cores`
+(Blokhuis et al.'s stoichiometric cores). The `raf` entry generates the
+Hordijk–Steel model itself.
 
 ## Exporting to graph tools
 
@@ -166,6 +208,6 @@ for i, r in enumerate(net.reactions):
 ```
 
 That is the standard bipartite species/reaction graph. For the substrate graph
-(species connected when they appear in a common reaction), project it. Several
-entries report graph statistics of their own networks in `extras["analysis"]`,
-which is worth reading before recomputing them.
+(species connected when they appear in a common reaction), project it. The
+graph measures (section C) already work on this graph, so reach for them
+before recomputing statistics yourself.

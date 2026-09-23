@@ -178,6 +178,9 @@ net.extras["analysis"]["substrate_graph"]  # network statistics, see Results
 Each reaction carries its rate law, `A exp(−Ea/RT)` with `Ea` in kcal/mol, so
 the network can go to an ODE solver or a stochastic simulator. `A` is 1 and no
 initial concentrations are set, because the papers give neither.
+`chemart.simulate` runs it once you choose them and a temperature, with the
+gas constant in kcal/(mol·K): for example
+`simulate.ode(net, 10, x0=1.0, temperature=298.15, gas_constant=0.0019872)`.
 
 **The Diels-Alder network.** `network="diels-alder"` starts from the five
 molecules of the 2003 paper's figure 7 (cyclobutadiene, ethenol, phthalic

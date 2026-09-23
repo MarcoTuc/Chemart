@@ -308,6 +308,18 @@ eta + mu -> ∅
 gamma + delta -> ∅
 ```
 
+It also has a process, to follow in its own time, counted in *iterations*; the parameters marked *evolve only* belong to it:
+
+```python
+traj = chemart.evolve("ca-embedded-particles", seed=1)
+```
+
+```
+299 frames, t = 0 … 298 iterations; observables: density
+```
+
+From the shell: `uv run chemart evolve ca-embedded-particles --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 The chemistry has two faces. The call printed above,
 `chemart.generate_network("ca-embedded-particles")`, runs nothing: it returns
 φ_par^a's published interaction table as a complete network

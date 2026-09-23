@@ -5,7 +5,7 @@ never written down here: compute them (below), or read `docs/CATALOG.md`,
 which is generated from the catalog.
 
 ## Contents
-- [The four axes](#the-four-axes)
+- [The five axes](#the-five-axes)
 - [The archive](#the-archive)
 - [Querying from Python](#querying-from-python)
 - [Querying from the CLI](#querying-from-the-cli)
@@ -13,7 +13,13 @@ which is generated from the catalog.
 - [Families](#families)
 - [Reading a describe_chemistry result](#reading-a-describe_chemistry-result)
 
-## The four axes
+## The five axes
+
+**`type`** — how you work with it: `given` (a network written down; simulate
+it), `generator` (an algorithm computes the network from its arguments; sweep
+them), `gas` (a Turing gas; evolve it and follow its measures in time). The
+reason for each entry's type is in `catalog/TYPES.md`. Not to be confused with
+`kind`, below, which is about what the entry models.
 
 **`provides`** — what the generator can actually hand you. This is the axis
 that matters most for analysis: if you need rate constants to simulate, filter

@@ -1,36 +1,38 @@
 # Comparing and analysing
 
 The reason unrelated models share one record is so you can ask questions
-across them. For the full list of measures you can compare chemistries by,
-see [Measures for comparison](measures.md).
+across them. `chemart.measure` answers most of them; this page is about the
+record underneath it, and about the questions it does not answer.
+[Measures for comparison](measures.md) is the full list.
 
 ## Structural profiles
 
 ```python
-import chemart, numpy as np
-
-def profile(cid, seed=1):
-    net = chemart.generate_network(cid, seed=seed)
-    ids, R, P = net.matrices()
-    S = (P - R).toarray()
-    rank = int(np.linalg.matrix_rank(S)) if S.size else 0
-    return dict(
-        id=cid,
-        species=len(ids),
-        reactions=len(net.reactions),
-        status=net.status,
-        rank=rank,
-        conservation_bound=len(ids) - rank,      # upper bound on independent laws
-        catalysed=sum(1 for r in net.reactions if r.catalysts),
-    )
+import chemart
+from chemart import measures
 
 for cid in ["michaelis-menten", "brusselator", "oregonator", "matrix-chemistry"]:
-    print(profile(cid))
+    net = chemart.generate_network(cid, seed=1)
+    print(cid, net.status, chemart.measure(net, ["n_species", "n_reactions",
+                                                 "stoichiometric_rank", "conservation_laws",
+                                                 "catalysed_fraction"]))
 ```
 
-`rank(S)` and the deficiency of a CRN come straight off the stoichiometric
-matrix, and `len(species) − rank(S)` bounds the number of independent
-conservation laws — a quick sanity check against the laws an entry declares.
+Leave `names` out for every cheap measure that applies, and pass
+`cost="moderate"` or `"exponential"` for the dearer ones. For a generator, a
+profile is a curve rather than a number:
+
+```python
+rows = measures.sweep("random-catalytic-networks", {"n": [10, 20, 40]}, seeds=range(5))
+measures.scaling(rows, "n_reactions")            # how it grows with size
+```
+
+The stoichiometric matrix itself is one call away when you want to compute
+something the registry does not have:
+
+```python
+ids, R, P = net.matrices()                       # sparse; S = P - R
+```
 
 !!! warning "Only compare within a status"
     A `complete` network is a definition; an `observed` one is a sample from a
@@ -95,33 +97,30 @@ species, reactions, status = expand(divide, seed=[12, 2, 3])
   then returns an iterable of right-hand sides, each becoming its own reaction.
 
 **Organisations** — closed and self-maintaining sets, in the sense of chemical
-organisation theory — are the natural next step from a closure. Several entries
-compute them into `extras["analysis"]`; `matrix-chemistry` is the worked
-example.
+organisation theory — are the natural next step from a closure:
+`chemart.measure(net, ["organisations"], cost="exponential")` counts them and
+gives the largest. Several entries also compute their own into
+`extras["analysis"]`; `matrix-chemistry` is the worked example.
 
 ## Observed runs
 
-For chemistries that are simulated rather than enumerated:
+A chemistry whose process is the point — a Turing gas, or a lattice — is run
+rather than enumerated, and what you measure changes as it runs:
 
 ```python
-import numpy as np
-from chemart.soup import soup
-
-fired, final_population = soup(
-    divide, list(range(2, 40)), steps=2000, rng=np.random.default_rng(0),
-    arity=2, dilution="constant",
-)
-# fired: [(reactants, products, count), ...] in order of first firing
+traj = chemart.evolve("prime-number-chemistry", seed=1)
+traj.network                                     # what fired, with counts
+measures.over(traj, ["richness", "shannon", "n_reactions"], window=5)
 ```
 
-`dilution="constant"` removes random molecules after each reaction to hold the
-population at its starting size — the book's flow reactor. `alternatives=True`
-draws one outcome per collision, where `expand` would record them all.
+[Evolving a chemistry](evolving.md) covers the frames, the clocks and the
+sampling caveat: an observed network is what one run happened to visit, so it
+must be compared with another observed network of the same window size, not
+with a closure.
 
-!!! note "Set `alternatives` deliberately"
-    Molecules only have to be hashable, so tuples are legal molecules. A list of
-    alternatives passed without the flag is indistinguishable from a right-hand
-    side of tuple-valued molecules, and gets injected into the population as-is.
+To run a soup of your own molecules, `chemart.soup.stir` is the same
+well-stirred loop the chemistries use, as a generator of frames; `soup()` runs
+it to the end and returns what fired.
 
 ## Catalysis and autocatalysis
 
@@ -134,10 +133,21 @@ autocatalytic = [r for r in net.reactions
 
 `r.catalysts` gives the species on both sides with the multiplicity that
 survives. A reaction is autocatalytic in the loose sense when a reactant comes
-out amplified. For the rigorous notions — reflexively autocatalytic and
-food-generated (RAF) sets — use the `raf` entry, which implements the
-Hordijk–Steel algorithm and can run on a system you supply rather than only on
-its own.
+out amplified. The rigorous notions are measures of any network:
+
+```python
+net = chemart.generate_network("raf", seed=1)
+chemart.measure(net, ["max_raf_fraction", "irreducible_rafs"], cost="exponential")
+# {'max_raf_fraction': 0.764…, 'irreducible_rafs': 20}
+```
+
+`max_raf_fraction` is the Hordijk–Steel maxRAF as a share of the reactions and
+`irreducible_rafs` counts the smallest RAFs inside it (up to 20).
+`autocatalytic_cores` finds Blokhuis cores, on networks of at most 400 species
+and reactions — `applicable` says so when a network is too big for it. The RAF
+measures start from the food set:
+`extras["food"]`, or, without it, the species with inflow, the buffered ones,
+or those in the initial state. Pass `food=` to choose it yourself.
 
 ## As a graph
 
@@ -154,6 +164,8 @@ for i, r in enumerate(net.reactions):
 ```
 
 That is the standard bipartite species/reaction graph; project it for the
-substrate graph. Several entries already report graph statistics of their own
-networks in `extras["analysis"]`, which is worth checking before recomputing
-them.
+substrate graph. `chemart.measures.Context(net).graph` builds the same graph,
+cached, and `species_graph` the projection — the graph measures (degrees,
+assortativity, modularity, motifs, spectra) read them. Several entries also
+report graph statistics of their own networks in `extras["analysis"]`, which is
+worth checking before recomputing them.

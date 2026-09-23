@@ -152,8 +152,9 @@ def test_trust_gate_runs_nothing(fake):
 
 
 def test_tool_calls_never_trust_remote_code(fake):
-    with pytest.raises(ValueError, match="trust_remote_code=True"):
-        chemart.call_tool("generate_network", {"chemistry": "alice/tiny"})
+    for tool in ("generate_network", "simulate_network", "measure_network"):
+        with pytest.raises(ValueError, match="trust_remote_code=True"):
+            chemart.call_tool(tool, {"chemistry": "alice/tiny"})
 
 
 def test_saved_tokens_are_per_hub_and_private(fake, tmp_path):

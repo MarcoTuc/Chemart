@@ -3,9 +3,11 @@
 
     uv run python .claude/skills/chemart/examples/llm_tools.py
 
-Chemart exposes its whole interface as three JSON-Schema tools, so a model can
-discover and generate chemistries without any bespoke glue. `call_tool` returns
-JSON-ready data, and `generate_network` comes back as the plain record dict.
+Chemart exposes its interface as six JSON-Schema tools, so a model can
+discover, generate, simulate, evolve and measure chemistries without any
+bespoke glue. `call_tool` returns JSON-ready data: `generate_network` comes
+back as the plain record dict, and the simulate, evolve and measure tools
+return capped summaries sized for a model's context.
 """
 
 import json
@@ -45,6 +47,25 @@ print(f"generate_network -> {len(record['species'])} species, "
 # Everything is plain JSON, so it can go straight back into a model context.
 print(f"\nserialises cleanly: {len(json.dumps(record))} bytes")
 
+# ------------------------------------------- simulate, evolve, measure
+# These return summaries, not records: at most 12 species and 40 time points.
+sim = chemart.call_tool("simulate_network", {"chemistry": "brusselator", "method": "ssa",
+                                             "volume": 100, "seed": 1, "t_end": 20})
+print(f"\nsimulate_network -> {sim['shown']}, {len(json.dumps(sim))} bytes")
+
+run = chemart.call_tool("evolve_chemistry", {"chemistry": "prime-number-chemistry", "seed": 1,
+                                             "track": ["shannon"]})
+print(f"evolve_chemistry -> {run['n_frames']} frames in {run['clock']}, series {sorted(run['series'])}")
+print(f"  prime fraction: {run['series']['prime_fraction'][0]} -> {run['series']['prime_fraction'][-1]}")
+
+# The evolve tool's chemistry enum lists only chemistries with an evolve face.
+evo = next(t for t in tools if t["name"] == "evolve_chemistry")
+print(f"  {len(evo['input_schema']['properties']['chemistry']['enum'])} chemistries can be evolved")
+
+out = chemart.call_tool("measure_network", {"chemistry": "michaelis-menten",
+                                            "names": ["conservation_laws", "deficiency", "turnover"]})
+print(f"measure_network -> {out['measures']}; not measured: {out['not_measured']}")
+
 # The tool path and the direct path agree exactly — useful when mixing both.
 direct = chemart.generate_network("brusselator", seed=1, b=3.0).to_dict()
 assert record == direct
@@ -66,11 +87,12 @@ print(" ", handle("generate_network", {"chemistry": "brusselator",
 
 # A practical hint for agent loops: keep records small before returning them to
 # a model. Several chemistries carry genomes or sequences in Species.structure,
-# and a default network can run to megabytes of JSON.
-big = chemart.generate_network("automata-reaction", seed=1).to_dict()
+# and a default network can run to megabytes of JSON (aevol is archived, but
+# generate_network still runs it by id).
+big = chemart.generate_network("aevol", seed=1).to_dict()
 size = len(json.dumps(big))
-print(f"\nautomata-reaction default record is {size/1e6:.1f} MB of JSON — summarise before "
+print(f"\naevol default record is {size/1e6:.1f} MB of JSON — summarise before "
       f"returning records like this to a model")
 print("  e.g. drop structures:",
-      len(json.dumps({**big, "species": [{"id": s["id"]} for s in big["species"]]}))/1e6,
+      round(len(json.dumps({**big, "species": [{"id": s["id"]} for s in big["species"]]}))/1e6, 2),
       "MB")

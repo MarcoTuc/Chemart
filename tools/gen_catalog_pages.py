@@ -296,6 +296,65 @@ def default_network(c, net, error) -> list[str]:
     return L
 
 
+def process(c, traj, error) -> list[str]:
+    """How to run the chemistry's evolve face, and what one run at defaults gives."""
+    from chemart.api import faces
+
+    if not c.implemented or c.archived or "evolve" not in faces(c):
+        return []
+    if _gas_only(c):
+        lead = ("`generate_network` runs this chemistry's process to the end and keeps what "
+                f"fired. To follow the process in its own time, counted in *{c.clock}*:")
+    else:
+        lead = f"It also has a process, to follow in its own time, counted in *{c.clock}*"
+        lead += ("; the parameters marked *evolve only* belong to it:"
+                 if any(p.face == "evolve" for p in c.params) else ":")
+    L = [lead, "", "```python", f'traj = chemart.evolve("{c.id}", seed=1)', "```", ""]
+    if error:
+        L += ["!!! failure \"This page was built without running the process\"", f"    `{error}`", ""]
+    elif traj is not None:
+        observables = sorted({k for f in traj.frames for k in f.observables})
+        t = traj.times()
+        L += ["```",
+              f"{len(t)} frames, t = {t[0]:g} … {t[-1]:g} {c.clock}; "
+              f"observables: {', '.join(observables) or 'none'}",
+              "```", ""]
+    L += [f"From the shell: `uv run chemart evolve {c.id} --seed 1 --track shannon`. "
+          "See [Evolving a chemistry](../guide/evolving.md).", ""]
+    return L
+
+
+def dynamics(c, net, traj=None) -> list[str]:
+    """A one-line simulation snippet, for a written-down network that carries its own kinetics.
+
+    The horizon is 40 time units, or, when the chemistry's own process runs in
+    physical time, as long as that process ran.
+    """
+    from chemart import simulate
+
+    if net is None or c.type == "gas" or net.status == "observed" or net.initial_state is None:
+        return []
+    try:
+        simulate.check(net)
+    except simulate.NotSimulable:
+        return []
+    t_end = "40"
+    if traj is not None and c.clock in ("s", "time") and traj.frames[-1].t > 0:
+        t_end = f"{traj.frames[-1].t:.1e}"
+    L = ["Its network carries rates and an initial state, so it simulates as it is "
+         "(`t_end` is in the model's own time unit):", "",
+         "```python",
+         f"traj = chemart.simulate.ode(net, t_end={t_end})                     # rate equations",
+         f"path = chemart.simulate.ssa(net, t_end={t_end}, volume=100, seed=1)  # one stochastic path",
+         "```", ""]
+    lost = [tag for tag in ("space", "compartments") if tag in net.provides]
+    if lost:
+        L += [f"The simulators treat it as well mixed and ignore its {' and '.join(lost)}: "
+              "an approximation, not the published model. See "
+              "[Simulating dynamics](../guide/simulating.md).", ""]
+    return L
+
+
 def parameters(c) -> list[str]:
     L = ["#### Parameters", ""]
     if not c.params:
@@ -395,7 +454,7 @@ def test_files(cid: str) -> list[str]:
             if f'"{cid}"' in p.read_text()]
 
 
-def page(c, net, error, ex=None) -> str:
+def page(c, net, error, ex=None, traj=None, traj_error=None) -> str:
     """One chemistry's page: Introduction > How it works > Results > References."""
     source = f"catalog/chemistries/{c.id}.yaml"
     if ex:
@@ -441,6 +500,8 @@ def page(c, net, error, ex=None) -> str:
     L.append("### Using it in Chemart")
     L.append("")
     L += default_network(c, net, error)
+    L += dynamics(c, net, traj)
+    L += process(c, traj, traj_error)
     if ex:
         L.append(ex["Using it"])
         L.append("")
@@ -617,8 +678,10 @@ def main(argv=None) -> int:
         for stale in OUT.glob("*.md"):
             stale.unlink()
 
-    nets, errors = {}, {}
+    nets, errors, runs, run_errors = {}, {}, {}, {}
     if not args.fast:
+        from chemart.api import faces
+
         t0 = time.perf_counter()
         for i, c in enumerate(entries, 1):
             print(f"\r[{i:>3}/{len(entries)}] {c.id:<32}", end="", file=sys.stderr, flush=True)
@@ -626,11 +689,17 @@ def main(argv=None) -> int:
                 nets[c.id] = chemart.generate_network(c.id, seed=1)
             except Exception as err:                        # noqa: BLE001
                 errors[c.id] = f"{type(err).__name__}: {err}"
-        print(f"\rgenerated {len(nets)}/{len(entries)} networks in "
+            if c.implemented and not c.archived and "evolve" in faces(c):
+                try:
+                    runs[c.id] = chemart.evolve(c.id, seed=1)
+                except Exception as err:                    # noqa: BLE001
+                    run_errors[c.id] = f"{type(err).__name__}: {err}"
+        print(f"\rgenerated {len(nets)}/{len(entries)} networks and ran {len(runs)} processes in "
               f"{time.perf_counter() - t0:.0f}s{' ' * 20}", file=sys.stderr)
 
     for c in entries:
-        (OUT / f"{c.id}.md").write_text(page(c, nets.get(c.id), errors.get(c.id), explainers[c.id]))
+        (OUT / f"{c.id}.md").write_text(page(c, nets.get(c.id), errors.get(c.id), explainers[c.id],
+                                             runs.get(c.id), run_errors.get(c.id)))
     if not args.only:
         (OUT / "index.md").write_text(index_page(entries, nets))
 
@@ -641,6 +710,10 @@ def main(argv=None) -> int:
     if errors:
         print(f"{len(errors)} chemistries failed to generate:", file=sys.stderr)
         for cid, err in errors.items():
+            print(f"  {cid}: {err}", file=sys.stderr)
+    if run_errors:
+        print(f"{len(run_errors)} processes failed to run:", file=sys.stderr)
+        for cid, err in run_errors.items():
             print(f"  {cid}: {err}", file=sys.stderr)
     return 0
 

@@ -226,6 +226,18 @@ b[split,send,a,ack,*,data] -> b[send,a,ack] + b[data]
 b[send,a,ack] -> a[ack]
 ```
 
+It also has a process, to follow in its own time, counted in *steps*; the parameters marked *evolve only* belong to it:
+
+```python
+traj = chemart.evolve("fraglets", seed=1)
+```
+
+```
+2 frames, t = 0 … 1 steps; observables: none
+```
+
+From the shell: `uv run chemart evolve fraglets --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 The default run is the closure of the active CDP above. Closure is
 deterministic, so `seed` has no effect on it. Besides the reactions, the
 network records which node each species is in and how the nodes are wired:

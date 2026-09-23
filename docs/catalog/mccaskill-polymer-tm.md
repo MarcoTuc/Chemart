@@ -232,6 +232,18 @@ p1111111111111111111 + p0000000100100010111 -> p1111111111111111111 + p000000010
 … and 4 more
 ```
 
+It also has a process, to follow in its own time, counted in *steps*; the parameters marked *evolve only* belong to it:
+
+```python
+traj = chemart.evolve("mccaskill-polymer-tm", seed=1)
+```
+
+```
+26 frames, t = 0 … 5000 steps; observables: none
+```
+
+From the shell: `uv run chemart evolve mccaskill-polymer-tm --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 The chemistry has two faces. `chemart.generate_network`, printed above, is not
 a simulation: it returns the *closure* of the two published strings: every reaction that can happen, starting from the
 replicator and the parasite, and then among everything they make, until

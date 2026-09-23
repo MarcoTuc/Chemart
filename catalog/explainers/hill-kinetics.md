@@ -109,8 +109,8 @@ or changes it.
 
 ### The reactor
 
-Chemart builds the network; it does not run it. The specification allows
-two reactors: deterministic rate equations (ordinary differential equations,
+The specification allows two reactors, and `chemart.simulate` runs both
+(`ode` and `ssa`): deterministic rate equations (ordinary differential equations,
 ODEs), which the book uses for its figure, or Gillespie's stochastic
 simulation algorithm (SSA), which fires individual reaction events at random
 times and is the right tool when there is one gene and a handful of proteins.

@@ -84,7 +84,7 @@ away from the fixed point `(1, 1)`. Integrating the three generated reactions
 ```
 X1 from 0.025 to 5.380; X2 from 0.025 to 5.380
 X1 peaks at t = [9.16, 18.49, 27.81, 37.14]
-V = x - ln x + y - ln y: start 4.697415, end 4.697415
+V = x - ln x + y - ln y: start 4.697415, end 4.697414
 ```
 
 With `x` = 5 and `y` = 2, foxes are born at a rate `x·y = 10` and die at
@@ -94,8 +94,9 @@ Then the foxes starve, the few rabbits left recover, and the cycle repeats with
 a period of about 9.3 time units, each lap an exact copy of the last.
 
 The cycle does not decay or grow because the system conserves a quantity. With
-all constants 1 it is `V = x − ln x + y − ln y` (the third output line), and
-each orbit is a curve of constant `V`. The size of the swing is therefore set
+all constants 1 it is `V = x − ln x + y − ln y` (the third output line, where
+the last digit moves only through the integrator's rounding), and each orbit
+is a curve of constant `V`. The size of the swing is therefore set
 by the starting point, not by the parameters. Starting at `(1.5, 1)` the
 rabbits swing only between 0.626 and 1.5; starting at `(1, 1)` nothing moves.
 
@@ -157,38 +158,31 @@ fox gains), and `x0 = [5, 2]`. Species are named `X1`, `X2`, ... in the order
 of `r`; `net.initial_state` holds `x0`, and `net.extras` is empty. The network
 involves no randomness, so `seed` changes nothing.
 
-Chemart builds the network; it does not simulate it. The runs on this page use
-short scripts of your own.
+`chemart.simulate` integrates the network. The stochastic runs below use a
+short loop of their own instead of `chemart.simulate.ssa`, because they stop
+as soon as a species dies out.
 
 #### The deterministic cycle
 
-This script integrates the generated network under mass action and produced
-the output shown under "Walking through a cycle". It takes about a second.
+This script integrates the generated network under mass action with
+`chemart.simulate.ode` and produced the output shown under "Walking through a
+cycle". It takes well under a second.
 
 ```python
 import numpy as np
-from scipy.integrate import solve_ivp
 
 import chemart
+from chemart import simulate
 
 
-def simulate(net, t_end, n=4001):
-    ids, R, P = net.matrices()
-    R = R.toarray()
-    S = (P.toarray() - R).astype(float)
-    k = np.array([r.rate["k"] for r in net.reactions])
-    x0 = np.array([net.initial_state[s] for s in ids])
-
-    def f(t, x):
-        return S @ (k * np.prod(x[:, None] ** R, axis=0))  # mass action
-
-    t = np.linspace(0, t_end, n)
-    sol = solve_ivp(f, (0, t_end), x0, t_eval=t, rtol=1e-10, atol=1e-12)
-    return t, dict(zip(ids, sol.y))
+def run(net, t_end, n=4001):
+    traj = simulate.ode(net, t_end, points=n)
+    ids, t, X = traj.array([s.id for s in net.species])
+    return t, dict(zip(ids, X.T))
 
 
 net = chemart.generate_network("lotka-volterra")
-t, x = simulate(net, 40)
+t, x = run(net, 40)
 X1, X2 = x["X1"], x["X2"]
 print(f"X1 from {X1.min():.3f} to {X1.max():.3f}; X2 from {X2.min():.3f} to {X2.max():.3f}")
 peaks = [t[i] for i in range(1, len(t) - 1) if X1[i - 1] < X1[i] > X1[i + 1]]

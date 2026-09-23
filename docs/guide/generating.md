@@ -5,13 +5,21 @@
 ```python
 import chemart
 
-chemart.list_chemistries()                  # [{id, name, summary, implemented, fidelity}]
+chemart.list_chemistries()                  # [{id, name, summary, implemented, fidelity, type}]
 chemart.describe_chemistry("brusselator")   # metadata + JSON Schema of the parameters
 net = chemart.generate_network("brusselator", seed=1)
 ```
 
-That is the whole public API. Anything else you need is a property or method of
-the returned [network record](../reference/record.md).
+These three find a chemistry and give you its network. Anything else about the
+network is a property or method of the returned
+[network record](../reference/record.md). What you do next depends on the
+chemistry's [type](../concepts.md#three-types-of-chemistry):
+[simulate](simulating.md) a given or generated network,
+[evolve](evolving.md) a gas, and [measure](measures.md) either.
+
+`generate_network` works for every type. For a gas it returns the closure of
+its rule if the gas has a generate face, and otherwise the network observed in
+one run of its process.
 
 ## Parameters
 

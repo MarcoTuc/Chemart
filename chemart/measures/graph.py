@@ -179,6 +179,20 @@ def catalytic_spectral_radius(ctx) -> float:
     return float(np.abs(np.linalg.eigvals(A)).max()) if n else 0.0
 
 
+def _fold(X):
+    """Identical rows of the incidence matrix, kept once with how many there are.
+
+    Two rows of equal degree contribute nothing to NODF (neither is the poorer
+    of the pair), so duplicates only have to be counted — and reaction sets
+    repeat a lot, which is what makes the pair sum affordable on big networks.
+    """
+    groups: dict[bytes, list[int]] = {}
+    for k, row in enumerate(X):
+        groups.setdefault(row.tobytes(), []).append(k)
+    keep = [rows[0] for rows in groups.values()]
+    return X[keep], np.array([len(rows) for rows in groups.values()], dtype=float)
+
+
 @register("nodf", "C")
 def nodf(ctx) -> float:
     """Nestedness (NODF, Almeida-Neto et al. 2008) of the species x reaction
@@ -189,18 +203,24 @@ def nodf(ctx) -> float:
         for s in set(r.reactants) | set(r.products):
             M[ctx.index[s], j] = 1.0
 
-    def paired(X):
+    def paired(X, block: int = 256):
+        # the pair sum in blocks of rows: the whole overlap matrix would be
+        # 10^8 entries on the larger networks, and only the poorer row of each
+        # pair contributes
+        pairs = len(X) * (len(X) - 1) // 2
+        X, counts = _fold(X)
         deg = X.sum(axis=1)
-        overlap = X @ X.T
-        n = len(deg)
-        if n < 2:
-            return 0.0, 0
-        i, j = np.triu_indices(n, k=1)
-        hi = np.where(deg[i] >= deg[j], i, j)
-        lo = np.where(deg[i] >= deg[j], j, i)
-        ok = (deg[hi] > deg[lo]) & (deg[lo] > 0)
-        values = np.where(ok, overlap[hi, lo] / np.where(deg[lo] > 0, deg[lo], 1), 0.0)
-        return 100.0 * values.sum(), len(i)
+        order = np.argsort(-deg)
+        X, counts, deg = X[order], counts[order], deg[order]
+        share = np.where(deg > 0, 1.0 / np.where(deg > 0, deg, 1.0), 0.0)
+        total = 0.0
+        for start in range(0, len(X), block):
+            stop = min(start + block, len(X))
+            overlap = X[start:stop] @ X.T
+            poorer = deg[None, :] < deg[start:stop, None]
+            total += float((np.where(poorer, overlap * share[None, :], 0.0)
+                            * counts[start:stop, None] * counts[None, :]).sum())
+        return 100.0 * total, pairs
 
     rows, nr = paired(M)
     cols, nc = paired(M.T)

@@ -203,6 +203,18 @@ m:CT1.W1.H.TT1.W0.R.CT1.W1 + t:111 -> m:CT1.W1.H.TT1.W0.R.CT1.W1 + t:0001
 … and 7 more
 ```
 
+It also has a process, to follow in its own time, counted in *collisions*; the parameters marked *evolve only* belong to it:
+
+```python
+traj = chemart.evolve("laing-molecular-machines", seed=1)
+```
+
+```
+14 frames, t = 0 … 500 collisions; observables: none
+```
+
+From the shell: `uv run chemart evolve laing-molecular-machines --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 The default run is not a published experiment: it is a Chemart example. It
 takes the incrementer machine above and the tape `t:0`, and computes the
 closure. The result is a binary counter. Each reaction adds 1 to a tape, so the

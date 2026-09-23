@@ -120,10 +120,10 @@ reaction needs to bring together, and the larger the vessel, the smaller `c`.
 
 ### What Chemart generates
 
-Chemart builds the network, not the simulation. `generate_network` returns
-the three species, the two reactions with their mass-action rate
-coefficients, and the initial concentrations. Integrating it, or running an
-SSA on it, is done by the caller; the recipes below show both. The
+`generate_network` returns the three species, the two reactions with their
+mass-action rate coefficients, and the initial concentrations.
+`chemart.simulate` integrates the network (`ode`) or runs an SSA on it
+(`ssa`); the recipes below show both. The
 specification that follows lists the molecules (S), the reactions (R) and the
 two reactor algorithms (A) that the book applies to them.
 
@@ -138,27 +138,16 @@ parameter table below. The vessel size `NAV` is deliberately not a parameter:
 it belongs to a stochastic run, not to the network (see the implementation
 decisions).
 
-**Integrating the ODE.** The stoichiometric matrix from `net.matrices()` and
-the mass-action law are all that is needed:
+**Integrating the ODE.** `chemart.simulate.ode` integrates the mass-action
+rate equations and returns the concentrations over time:
 
 ```python
-import numpy as np
-from scipy.integrate import solve_ivp
 import chemart
+from chemart import simulate
 
 net = chemart.generate_network("dimerization", seed=1)
-ids, R, P = net.matrices()                     # species order: A, B, C
-M = (P - R).toarray()                          # stoichiometric matrix
-k = np.array([r.rate["k"] for r in net.reactions])
-Rin = R.toarray()                              # reactant multiplicities
-
-def f(t, x):
-    v = k * np.prod(x[:, None] ** Rin, axis=0)  # mass-action speeds
-    return M @ v
-
-x0 = [net.initial_state[s] for s in ids]
-sol = solve_ivp(f, (0, 10), x0, rtol=1e-8, atol=1e-10)
-A, B, C = sol.y[:, -1]
+x = simulate.ode(net, 10).frames[-1].state
+A, B, C = x["A"], x["B"], x["C"]
 print(f"t=10: A={A:.4f} B={B:.4f} C={C:.4f}  C/(A*B)={C/(A*B):.4f}")
 ```
 
@@ -179,62 +168,49 @@ t=10: A=0.7623 B=0.1623 C=1.2377  C/(A*B)=10.0000
 
 B, the scarcer monomer, is now almost used up.
 
-**A stochastic run.** Convert each `k` to `c` with `chemart.kinetics.k_to_c`,
-turn concentrations into molecule counts with `NAV`, and run Gillespie's
-direct method. This short version computes propensities as `c` times the
-product of the reactant counts, which is right here because no reaction uses
-two copies of the same species:
+**A stochastic run.** `chemart.simulate.ssa` runs Gillespie's direct method
+on molecule counts. Its `volume` is the number of molecules per unit
+concentration (`NAV`, with the default `avogadro=1`), and it converts each `k`
+to a per-molecule constant `c` with `chemart.kinetics.k_to_c`, which the first
+line prints:
 
 ```python
-import numpy as np
 import chemart
-from chemart.kinetics import k_to_c, AVOGADRO
+from chemart import simulate
+from chemart.kinetics import k_to_c
 
 net = chemart.generate_network("dimerization", seed=1)
 NAV = 1000                                   # molecules per unit concentration
-V = NAV / AVOGADRO                           # the matching vessel volume
-c = [k_to_c(r.rate["k"], r.reactants, V) for r in net.reactions]
-print("c =", c)
+print("c =", [k_to_c(r.rate["k"], r.reactants, volume=NAV, avogadro=1.0) for r in net.reactions])
 
-ids, R, P = net.matrices()
-M, Rin = (P - R).toarray(), R.toarray()
-n = np.array([round(net.initial_state[s] * NAV) for s in ids])   # [2000, 1400, 0]
-
-rng = np.random.default_rng(1)
-t, samples = 0.0, []
-while t < 50:
-    a = np.array(c) * np.prod(n[:, None] ** Rin, axis=0)   # propensities
-    t += rng.exponential(1 / a.sum())
-    n = n + M[:, rng.choice(len(a), p=a / a.sum())]
-    if t > 10:
-        samples.append(n / NAV)
-s = np.array(samples)
-print("mean after t=10:", s.mean(axis=0).round(4))
-print("std  after t=10:", s.std(axis=0).round(4))
-print("events:", len(samples))
+path = simulate.ssa(net, 50, volume=NAV, points=5001, seed=1)   # a frame every 0.01
+ids, t, X = path.array(["A", "B", "C"])
+late = X[t > 10]
+print("mean after t=10:", late.mean(axis=0).round(4))
+print("std  after t=10:", late.std(axis=0).round(4))
+print("events:", path.settings["events"])
 ```
 
 ```
 c = [0.001, 1.0]
 mean after t=10: [1.2261 0.6261 0.7739]
-std  after t=10: [0.016 0.016 0.016]
-events: 61677
+std  after t=10: [0.0159 0.0159 0.0159]
+events: 77451
 ```
 
-The mean (taken over the states after each reaction event) matches the ODE's
-1.2283, 0.6283, 0.7717 to within the fluctuations. Changing `NAV` in the same
-script shows how the fluctuations shrink as the vessel grows, roughly as
-`1/√NAV`:
+The mean (over the 4,000 frames after t = 10) matches the ODE's 1.2283,
+0.6283, 0.7717 to within the fluctuations. Changing `NAV` in the same script
+shows how the fluctuations shrink as the vessel grows, roughly as `1/√NAV`:
 
-| `NAV` | mean `[C]` after t = 10 | standard deviation | events |
+| `NAV` | mean `[C]` after t = 10 | standard deviation | events (t = 0 to 50) |
 |---|---|---|---|
-| 10 | 0.7624 | 0.1645 | 607 |
-| 100 | 0.7761 | 0.0581 | 6,217 |
-| 1,000 | 0.7739 | 0.0160 | 61,677 |
-| 10,000 | 0.7712 | 0.0050 | 617,431 |
+| 10 | 0.7717 | 0.1723 | 754 |
+| 100 | 0.7779 | 0.0575 | 7,738 |
+| 1,000 | 0.7739 | 0.0159 | 77,451 |
+| 10,000 | 0.7712 | 0.0050 | 775,197 |
 
-With this plain Python loop the run with `NAV = 1000` takes about 6 seconds
-and `NAV = 10000` about 30, and the cost grows in proportion to `NAV`.
+The run with `NAV = 1000` takes about 6 seconds and `NAV = 10000` about 50;
+the cost grows in proportion to `NAV`.
 
 ## Results
 
@@ -255,11 +231,13 @@ default settings.
 reports that the Gillespie version of `Dimer.py` fluctuates but reaches
 "essentially" the ODE's equilibrium, and explains that the size of the
 fluctuations depends on `NAV`. The book gives no figure or numbers for this.
-Chemart has no stochastic simulator of its own and no test of this behaviour;
-it supplies the rate conversion instead. `chemart.kinetics.k_to_c` implements
-the Wolkenhauer relation, and `tests/test_core.py` checks it on small cases,
-including the factor 2 for a reaction with two copies of one reactant. The
-recipe in "Using it" shows the behaviour with that conversion.
+`chemart.simulate.ssa` shows the behaviour (the recipe in "Using it"). Its
+rate conversion, `chemart.kinetics.k_to_c`, implements the Wolkenhauer
+relation, and `tests/test_core.py` checks it on small cases, including the
+factor 2 for a reaction with two copies of one reactant. No test checks this
+chemistry's fluctuations; `tests/test_simulate.py` checks that stochastic runs
+agree with the rate equations on a birth–death process and on
+[Michaelis–Menten](michaelis-menten.md) at a large volume.
 
 **What Chemart does not reproduce.** PyCellChemistry's own reactors, its
 Euler-method ODE integrator and its Gillespie vessel, are not part of

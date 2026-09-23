@@ -205,6 +205,18 @@ CGATTCGAATCG -> 2 CGATTCGAATCG
 CGAATCG -> CGAATCG + T
 ```
 
+It also has a process, to follow in its own time, counted in *draws*; the parameters marked *evolve only* belong to it:
+
+```python
+traj = chemart.evolve("typogenetics", seed=1)
+```
+
+```
+41 frames, t = 0 … 2000 draws; observables: none
+```
+
+From the shell: `uv run chemart evolve typogenetics --seed 1 --track shannon`. See [Evolving a chemistry](../guide/evolving.md).
+
 Typogenetics has two faces. `chemart.generate_network`, printed above,
 returns the *closure* of the seed strands; `chemart.evolve` runs a
 *population* of strands and returns a trajectory (see *A population* below).
