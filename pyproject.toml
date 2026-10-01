@@ -4,8 +4,8 @@ version = "0.1.0"
 description = "A mart of artificial chemistries: catalog, generators and CRN interop"
 readme = "README.md"
 requires-python = ">=3.12"
-authors = [{ name = "MarcoTuc", email = "marco.tuccio95@gmail.com" }]
-license = "CC-BY-NC-4.0"
+authors = [{ name = "Marco Tuccio", email = "marco.tuccio95@gmail.com" }]
+license = "MIT"
 license-files = ["LICENSE"]
 keywords = [
     "artificial-chemistry", "artificial-life", "chemical-reaction-networks",
@@ -13,7 +13,6 @@ keywords = [
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
-    "License :: Free for non-commercial use",
     "Intended Audience :: Science/Research",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.12",
@@ -40,8 +39,9 @@ Catalog = "https://marcotuc.github.io/Chemart/catalog/"
 
 [project.optional-dependencies]
 # pycddlib-standalone publishes no wheels, so it compiles from source on every
-# platform. Only the exponential-cost invariant measures import it, and lazily;
-# measure() defaults to cost="cheap" and never touches it.
+# platform. Only two exponential-cost measures import it, lazily: p_invariants
+# and elementary_flux_modes. measure() defaults to cost="cheap" and never
+# reaches them.
 invariants = ["pycddlib-standalone>=3.0.0"]
 all = ["chemart[invariants]"]
 
@@ -53,8 +53,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 # The source distribution carries the library and the catalog it reads. It
-# deliberately leaves out tests/ (which vendors GPL-2 Core War warriors from
-# pMARS), hub/ (a separate workspace package), docs/, tools/ and research/.
+# leaves out tests/, hub/ (a separate workspace package), docs/, tools/ and
+# research/.
 [tool.hatch.build.targets.sdist]
 only-include = ["chemart", "catalog/chemistries", "README.md"]
 

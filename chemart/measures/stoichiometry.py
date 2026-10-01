@@ -94,7 +94,7 @@ def extreme_rays(A: np.ndarray) -> np.ndarray:
         import cdd
     except ModuleNotFoundError as exc:  # an optional dependency: it has no wheels
         raise ModuleNotFoundError(
-            "the invariant measures (p_invariants, t_invariants) need pycddlib: "
+            "p_invariants and elementary_flux_modes need pycddlib: "
             "install it with  pip install 'chemart[invariants]'"
         ) from exc
 

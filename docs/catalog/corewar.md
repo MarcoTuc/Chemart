@@ -342,7 +342,7 @@ The sources leave gaps, and sometimes contradict each other or the book. Each su
 
 ??? note "10 decisions"
 
-    - Standard: the ICWS'94 draft (v3.3), which contains the whole instruction set of the book's table 10.2, as implemented by pMARS 0.9.2 with EXT94 (the MARS used by the KotH hills). The Python machine is a port of pMARS sim.c and agrees with the compiled pMARS (instrumented to dump steps, survivors, tasks and the whole core at the end of every round) exactly on Imp vs Dwarf at all 601 load positions in an 800 core, on Validate 1.1R (which self-ties only on a compliant, in-register MARS), on Rave, on the book's imp avalanche, and on several hundred battles of random warriors using every opcode, modifier and addressing mode, including P-space over several rounds.
+    - Standard: the ICWS'94 draft (v3.3), which contains the whole instruction set of the book's table 10.2, as implemented by pMARS 0.9.2 with EXT94 (the MARS used by the KotH hills). The Python machine is a port of pMARS sim.c and agrees with the compiled pMARS (instrumented to dump steps, survivors, tasks and the whole core at the end of every round) exactly on Imp vs Dwarf at all 601 load positions in an 800 core, on the book's imp avalanche, and on several hundred battles of random warriors using every opcode, modifier and addressing mode, including P-space over several rounds.
     - Where pMARS and the draft's example interpreter EMI94.c differ, pMARS wins because it is the de-facto reference: (1) operands are evaluated in-register, so an immediate B-operand sees the instruction as fetched, before any A-operand side effect on the same cell; (2) DIV.A and MOD.A by zero kill the task (EMI94 omits the goto noqueue); (3) a single operand of JMP, SPL or NOP assembles to B = $0 (the draft text says #0); other opcodes need two operands; (4) SEQ and CMP are distinct opcodes that behave identically, so SEQ.I/CMP.I/SNE.I see a CMP cell and a SEQ cell as different instructions. Read and write limits (a draft run-time variable) are not implemented, as in pMARS (limits = core size).
     - Cycle counting follows pMARS: a round runs warriors x max_cycles single steps, and when a warrior dies its share of the remaining steps is removed (cycle = cycle - 1 - (cycle - 1)/warriorsLeft). The starter of round r is warrior r mod n; warrior 1 is loaded at 0; two warriors: warrior 2 at min_distance + U(core_size + 1 - 2 min_distance) (pMARS simulator1), more: pMARS posit with backtracking, then npos, with numpy's generator in place of pMARS's Park-Miller rng. P-space: pMARS unshared P-space (no PIN), cell 0 is the last result (core_size - 1 before the first round, then the number of survivors, or 0 for a dead warrior).
     - Scoring (extras.analysis.score) is pMARS's default formula (W*W-1)/S per round survived, W warriors and S survivors: 3 for a win and 1 for a tie between two warriors.
@@ -396,12 +396,17 @@ with several survivors at the cycle limit is a tie (Core War Guidelines, and
 section 5 of the 1994 draft standard). The tests check division by zero under
 several modifiers, the task limit on `SPL`, and the tie scoring.
 
-**A conforming simulator.** Validate 1.1R, a test program distributed with
-pMARS, loops for ever on a simulator that follows the standard's operand
-evaluation rules and destroys itself otherwise. In Chemart it survives to the
-cycle limit, and the whole core at the end matches pMARS's. The tests also
-match pMARS's final core, step counts and task counts on Rave against Dwarf in
-an 8,000-cell core, and on three randomly generated three-warrior battles over
+**A conforming simulator.** The machine carries a conformance probe: a warrior
+that performs eleven of the standard's operand-evaluation rules in turn — the
+`.X` modifier crossing the operand pairs, `.I` copying a whole instruction,
+post-increment writing before it increments, pre-decrement incrementing before
+it writes, arithmetic modulo the core size, `DJN` decrementing before it tests,
+`SLT`'s skip condition — and compares each result against the value the
+standard requires, jumping to a `DAT` when they differ. It survives only if
+every check passes, so the oracle is the standard rather than this
+implementation; a companion test corrupts each expected value in turn to show
+that no check passes vacuously. The tests also match pMARS's final core, step
+counts and task counts on three randomly generated three-warrior battles over
 four rounds, which between them use every opcode, modifier and addressing mode
 and P-space. The implementation decisions report that several hundred random
 battles were compared in the same way. This is the strongest claim the entry

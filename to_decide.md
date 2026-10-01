@@ -147,25 +147,34 @@ obtaining one PDF would materially extend the mart.
 
 ## 6. Licensing
 
-`tests/chemistries/test_corewar.py` embeds two Redcode warriors verbatim from
-the pMARS distribution — Validate 1.1R and Rave, both by Stefan Strack, GPL-2
-— with attribution in the file. They are what make the pMARS cross-checks
-readable (Validate is *the* MARS conformance program).
+**Settled (2026-10-01).** Chemart is licensed **MIT** (`LICENSE`, declared as
+`License-Expression: MIT`). CC BY-NC 4.0 was chosen first, earlier the same
+day, and replaced.
 
-The repository currently declares no license at all, so there is no conflict
-yet. Before Chemart is published, decide one of:
+`tests/chemistries/test_corewar.py` used to embed two Redcode warriors verbatim
+from the pMARS distribution — Validate 1.1R and Rave, both by Stefan Strack,
+GPL-2. GPL-2 code cannot be redistributed under another licence, so they were
+removed while CC BY-NC was in force. Under MIT they could have stayed as
+separately licensed GPL-2 fixtures, but the replacements keep the whole
+repository under one licence:
 
-1. license Chemart GPL-2-or-later (simplest, but it is the strongest copyleft
-   of anything vendored so far);
-2. keep the warriors in a separate `tests/fixtures/pmars/` directory with its
-   own GPL-2 notice, and license Chemart itself permissively;
-3. drop the two warriors and keep only the recorded pMARS core hashes, losing
-   readability in two tests.
+- a **conformance probe** written for Chemart, which performs eleven ICWS'94
+  operations and compares each against the value the standard requires,
+  destroying itself if any differs — so surviving means the machine conforms.
+  A companion test corrupts each expected value in turn, proving no check
+  passes vacuously;
+- **Quarry**, a stone whose stride is coprime to the core, which therefore
+  walks onto its own pointer where Dwarf's stride-4 walk never does.
 
-Also worth a pass at the same time: every chemistry ported from upstream
-source (`stringmol`, `tierra`, `avida`, `corewar`, `coreworld`,
-`high-order-chem`) should say in `sources` which upstream license its port
-derives from.
+The pMARS cross-checks that remain (Imp v. Dwarf over all 601 load positions,
+and three randomly generated three-warrior battles over four rounds using
+every opcode, modifier and addressing mode with P-space) use no vendored code.
+
+**Still open.** Every chemistry ported from upstream source (`stringmol`,
+`tierra`, `avida`, `corewar`, `coreworld`, `high-order-chem`) should say in
+`sources` which upstream licence its port derives from: a port that is a
+derivative work of GPL upstream cannot be redistributed as MIT. Audit before
+any public release.
 
 ## 7. Conventions the genome-carrying chemistries disagree on
 

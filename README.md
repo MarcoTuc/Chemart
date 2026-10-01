@@ -374,8 +374,8 @@ Implementation is finished; what remains is judgement, collected in
 [`to_decide.md`](to_decide.md):
 
 - the generative vs algorithmic classification of the chemistries;
-- **licensing** — the Core War tests vendor two GPL-2 warriors from pMARS, and
-  Chemart itself declares no license yet;
+- **licensing** — Chemart is MIT; the chemistries ported from upstream source
+  still need their upstream licences checked;
 - two record conventions the genome-carrying chemistries disagree on;
 - a proposed catalysed Michaelis-Menten rate law, and the `arrhenius` gap in the
   ODE helper;

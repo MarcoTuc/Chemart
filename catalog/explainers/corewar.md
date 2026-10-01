@@ -295,12 +295,17 @@ with several survivors at the cycle limit is a tie (Core War Guidelines, and
 section 5 of the 1994 draft standard). The tests check division by zero under
 several modifiers, the task limit on `SPL`, and the tie scoring.
 
-**A conforming simulator.** Validate 1.1R, a test program distributed with
-pMARS, loops for ever on a simulator that follows the standard's operand
-evaluation rules and destroys itself otherwise. In Chemart it survives to the
-cycle limit, and the whole core at the end matches pMARS's. The tests also
-match pMARS's final core, step counts and task counts on Rave against Dwarf in
-an 8,000-cell core, and on three randomly generated three-warrior battles over
+**A conforming simulator.** The machine carries a conformance probe: a warrior
+that performs eleven of the standard's operand-evaluation rules in turn — the
+`.X` modifier crossing the operand pairs, `.I` copying a whole instruction,
+post-increment writing before it increments, pre-decrement incrementing before
+it writes, arithmetic modulo the core size, `DJN` decrementing before it tests,
+`SLT`'s skip condition — and compares each result against the value the
+standard requires, jumping to a `DAT` when they differ. It survives only if
+every check passes, so the oracle is the standard rather than this
+implementation; a companion test corrupts each expected value in turn to show
+that no check passes vacuously. The tests also match pMARS's final core, step
+counts and task counts on three randomly generated three-warrior battles over
 four rounds, which between them use every opcode, modifier and addressing mode
 and P-space. The implementation decisions report that several hundred random
 battles were compared in the same way. This is the strongest claim the entry

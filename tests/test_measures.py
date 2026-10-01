@@ -187,6 +187,7 @@ def mx(net, *names, **kw):
 
 
 def test_p_invariants_and_flux_modes():
+    pytest.importorskip("cdd", reason="needs the optional pycddlib: uv sync --extra invariants")
     mm = network([("E + S -> ES", 1.0), ("ES -> E + S", 1.0), ("ES -> E + P", 1.0)])
     assert mx(mm, "p_invariants") == 2                          # E + ES, and S + ES + P
     chain = network([("A -> B", None), ("B -> C", None)], extras={"food": ["A"]})
