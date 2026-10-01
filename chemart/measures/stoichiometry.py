@@ -90,7 +90,13 @@ def flux_dimension(ctx) -> int:
 def extreme_rays(A: np.ndarray) -> np.ndarray:
     """The extreme rays of the pointed cone {x >= 0, A x = 0}, one per row
     (double description method, pycddlib)."""
-    import cdd
+    try:
+        import cdd
+    except ModuleNotFoundError as exc:  # an optional dependency: it has no wheels
+        raise ModuleNotFoundError(
+            "the invariant measures (p_invariants, t_invariants) need pycddlib: "
+            "install it with  pip install 'chemart[invariants]'"
+        ) from exc
 
     m, n = A.shape
     rows = [[0.0, *map(float, A[i])] for i in range(m)] + \

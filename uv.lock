@@ -470,11 +470,18 @@ dependencies = [
     { name = "brotli" },
     { name = "networkx" },
     { name = "numpy" },
-    { name = "pycddlib-standalone" },
     { name = "pyyaml" },
     { name = "rdkit" },
     { name = "scipy" },
     { name = "viennarna" },
+]
+
+[package.optional-dependencies]
+all = [
+    { name = "pycddlib-standalone" },
+]
+invariants = [
+    { name = "pycddlib-standalone" },
 ]
 
 [package.dev-dependencies]
@@ -495,14 +502,16 @@ notebooks = [
 [package.metadata]
 requires-dist = [
     { name = "brotli", specifier = ">=1.2.0" },
+    { name = "chemart", extras = ["invariants"], marker = "extra == 'all'" },
     { name = "networkx", specifier = ">=3.7" },
     { name = "numpy", specifier = ">=2.5.3" },
-    { name = "pycddlib-standalone", specifier = ">=3.0.0" },
+    { name = "pycddlib-standalone", marker = "extra == 'invariants'", specifier = ">=3.0.0" },
     { name = "pyyaml", specifier = ">=6" },
     { name = "rdkit", specifier = ">=2026.3.6" },
     { name = "scipy", specifier = ">=1.18.1" },
     { name = "viennarna", specifier = ">=2.7.2" },
 ]
+provides-extras = ["invariants", "all"]
 
 [package.metadata.requires-dev]
 dev = [

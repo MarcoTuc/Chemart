@@ -1,5 +1,9 @@
 """Core War / Redcode (book 10.6.2): ICWS'94 as implemented by pMARS 0.9.2.
 
+No warrior here is taken from pMARS: Imp, Dwarf and the Imp avalanche are
+Dewdney's and the book's, the conformance probe and Quarry are written for
+Chemart, and the three-warrior battles use randomly generated warriors.
+
 Reference numbers marked "pMARS" come from pMARS 0.9.2 compiled with
 -DEXT94 -DSERVER and instrumented to print, at the end of every round, the
 steps executed, the survivors, the task counts and the whole core
@@ -153,147 +157,150 @@ def test_task_death_and_split_limit():
     assert res["tasks"] == [5] and res["survivors"] == [0]      # the queue fills to the task limit
 
 
-VALIDATE = """;redcode
-;name Validate 1.1R
-;author Stefan Strack
-;strategy System validation program - based on Mark Durham's validation suite
-;assert MAXLENGTH >= 90
-start   spl l1,count+1
-        jmz <start,0
-count   djn count,#36      ;time cycles
-        sub #1,@start
-clear   mov t1,<last+2     ;autodestruct if stuck
-        jmp clear
-t1      dat #0,#1
-t2      dat #0,#3
-l1      spl l2
-        dat <t2,<t2
-l2      cmp t1,t2
-        jmp fail
-        spl l4
-        jmz l3,<0
-t3      dat #0,#1
-t4      dat #0,#2
-l3      jmp @0,<0
-l4      jmp <t5,#0
-        jmp l5
-t5      dat #0,#0
-t6      dat #0,#-1
-l5      cmp t3,t4
-        jmp fail
-        cmp t5,t6
-        jmp fail
-        jmp <t7,<t7
-        jmp l6
-t7      dat #0,#0
-t8      dat #0,#-2
-l6      cmp t7,t8
-        jmp fail
-        mov t9,<t9         ;test in-memory evaluation
-t9      jmn l7,1
-t10     jmn l7+1,1
-l7      cmp t9,t10
-        jmp fail
-        mov @0,<t11
-t11     jmn l8,1
-t12     jmn l8+1,1
-l8      cmp t11,t12
-        jmp fail
-        spl l9
-        mov <t13,t14
-t13     dat <0,#1
-t14     dat <0,#1
-t15     dat <0,#-1
-l9      mov <t16,t16
-t16     jmz l10,1
-        jmp fail
-l10     cmp t13,t15
-        jmp fail
-        add t17,<t17
-t17     jmp 1,1
-t18     jmp 2,1
-        cmp t17,t18
-        jmp fail
-        add @0,<t19
-t19     jmp 1,1
-        jmp fail
-        cmp t18,t19
-        jmp fail
-        spl l11            ;ICWS86 SPL will fail here
-        cmp t20,t21
-        jmp l12
-        jmp fail
-l11     sub <t20,t20
-t20     dat #2,#1
-t21     dat #0,#0
-l12     cmp t20,t21
-        jmp fail
-t22     sub <t23,<t23
-t23     jmp l13,1
-t24     sub <-2,<1
-t25     jmp l13+2,-1
-l13     cmp t22,t24
-        jmp fail
-        cmp t23,t25
-        jmp fail
-        cmp start-1,t26    ;Core initialization dat 0,0
-        jmp l14
-        jmp fail
-t26     dat #0,#0
-l14     slt #0,count       ;check cycle timer
-        jmp success
-fail    mov count,flag     ;save counter for post-mortem debugging
-        mov t1,count       ;kill counter
-        jmp clear          ;and auto-destruct
-flag    dat #0
-success mov flag,clear     ;cancel autodestruct
-last    jmp 0              ;and loop forever
-
-        end start
+# --- a self-checking conformance probe ---------------------------------------------------
+# Each check performs one ICWS'94 operation and compares the result against a cell holding
+# the value the standard requires, jumping to a DAT when they differ. Surviving means every
+# check passed, so the oracle is the standard rather than this MARS.
+CONFORMANCE = """;redcode-94
+;name Conformance
+;author Chemart
+;strategy Self-checking ICWS'94 probe: any failed check jumps to a DAT.
+;assert CORESIZE >= 256
+        ORG    start
+start   MOV.X  xsrc, xdst
+        SEQ.I  xdst, xwant
+        JMP    fail
+        MOV.I  isrc, idst
+        SEQ.I  idst, iwant3
+        JMP    fail
+        SNE.I  nsrc, ndst
+        JMP    fail
+        MOV.AB #9, abdst
+        SEQ.I  abdst, abwant
+        JMP    fail
+        MOV.AB #9, >iptr
+        SEQ.I  iptr, iwant
+        JMP    fail
+        SEQ.I  itgt, iwant2
+        JMP    fail
+        MOV.AB #7, <dptr
+        SEQ.I  dptr, dwant
+        JMP    fail
+        SEQ.I  dtgt, dwant2
+        JMP    fail
+        ADD.AB #1, wrap
+        SEQ.I  wrap, wwant
+        JMP    fail
+        DJN.B  fail, dcount
+        SEQ.I  dcount, dcwant
+        JMP    fail
+        SLT.AB #1, sltv
+        JMP    fail
+        SLT.AB #9, sltv
+        JMP    done
+        JMP    fail
+done    JMP    done
+fail    DAT.F  #0, #0
+xsrc    DAT.F  #1, #2
+xdst    DAT.F  #0, #0
+xwant   DAT.F  #2, #1
+isrc    SPL.B  #7, <3
+idst    DAT.F  #0, #0
+iwant3  SPL.B  #7, <3
+nsrc    DAT.F  #0, #1
+ndst    DAT.F  $0, #1
+abdst   DAT.F  #5, #6
+abwant  DAT.F  #5, #9
+iptr    DAT.F  #0, $2
+iwant   DAT.F  #0, $3
+itgt    DAT.F  #0, #0
+iwant2  DAT.F  #0, #9
+dptr    DAT.F  #0, $3
+dwant   DAT.F  #0, $2
+dtgt    DAT.F  #0, #0
+dwant2  DAT.F  #0, #7
+wrap    DAT.F  #0, #799
+wwant   DAT.F  #0, #0
+dcount  DAT.F  #0, #1
+dcwant  DAT.F  #0, #0
+sltv    DAT.F  #0, #5
+        END
 """
 
-RAVE = """;redcode-94
-;name Rave
-;author Stefan Strack
-;strategy Carpet-bombing scanner based on Agony and Medusa's
-;assert CORESIZE==8000
-CDIST   equ 12
-IVAL    equ 42
-FIRST   equ scan+OFFSET+IVAL
-OFFSET  equ (2*IVAL)
-DJNOFF  equ -431
-BOMBLEN equ CDIST+2
-        org comp
-scan    sub.f  incr,comp
-comp    cmp.i  FIRST,FIRST-CDIST        ;larger number is A
-        slt.a  #incr-comp+BOMBLEN,comp  ;compare to A-number
-        djn.f  scan,<FIRST+DJNOFF       ;decrement A- and B-number
-        mov.ab #BOMBLEN,count
-split   mov.i  bomb,>comp               ;post-increment
-count   djn.b  split,#0
-        sub.ab #BOMBLEN,comp
-        jmn.b  scan,scan
-bomb    spl.a  0,0
-        mov.i  incr,<count
-incr    dat.f  <0-IVAL,<0-IVAL
-        end
+# (expected value, a wrong value) for every check the probe makes
+CONFORMANCE_CHECKS = [
+    ("xwant   DAT.F  #2, #1", "xwant   DAT.F  #1, #2", ".X crosses the operand pairs"),
+    ("iwant3  SPL.B  #7, <3", "iwant3  DAT.F  #7, <3", ".I copies the opcode, not only the numbers"),
+    ("ndst    DAT.F  $0, #1", "ndst    DAT.F  #0, #1", ".I comparison is sensitive to modes"),
+    ("abwant  DAT.F  #5, #9", "abwant  DAT.F  #9, #9", ".AB writes the A-number into the B-number"),
+    ("iwant   DAT.F  #0, $3", "iwant   DAT.F  #0, $2", "'>' increments after the operand is used"),
+    ("iwant2  DAT.F  #0, #9", "iwant2  DAT.F  #0, #0", "'>' writes through the un-incremented pointer"),
+    ("dwant   DAT.F  #0, $2", "dwant   DAT.F  #0, $3", "'<' decrements before the operand is used"),
+    ("dwant2  DAT.F  #0, #7", "dwant2  DAT.F  #0, #0", "'<' writes through the decremented pointer"),
+    ("wwant   DAT.F  #0, #0", "wwant   DAT.F  #0, #799", "arithmetic is modulo CORESIZE"),
+    ("dcwant  DAT.F  #0, #0", "dcwant  DAT.F  #0, #1", "DJN decrements before it tests"),
+    ("sltv    DAT.F  #0, #5", "sltv    DAT.F  #0, #0", "SLT skips when the A-value is lower"),
+]
+
+
+def test_conformance_probe_survives_only_on_a_standard_mars():
+    m = mars([CONFORMANCE], 800, 5000, 100)
+    assert m.play([0]) == {"steps": 5000, "survivors": [0], "tasks": [1], "death_step": [None]}
+
+
+@pytest.mark.parametrize("expected, wrong, what", CONFORMANCE_CHECKS, ids=[c[2] for c in CONFORMANCE_CHECKS])
+def test_every_conformance_check_is_live(expected, wrong, what):
+    """Corrupting one expected value must kill the probe, or that check passes vacuously."""
+    assert expected in CONFORMANCE
+    res = mars([CONFORMANCE.replace(expected, wrong)], 800, 5000, 100).play([0])
+    assert res["survivors"] == [], f"check passes vacuously: {what}"
+
+
+# --- a stone whose stride is coprime to the core ----------------------------------------
+QUARRY = """;redcode-94
+;name Quarry
+;author Chemart
+;strategy A stone dropping DAT bombs in strides of 7. Unlike Dwarf's stride of 4,
+;strategy 7 does not divide the core, so the walk comes around onto its own pointer.
+;assert CORESIZE % 7 != 0
+step    EQU    7
+        ORG    start
+bomb    DAT.F  #0, #0
+start   MOV.I  bomb, @ptr
+        ADD.AB #step, ptr
+        JMP    start, $0
+ptr     DAT.F  #0, #100
+        END
 """
+QUARRY_PTR = 4          # index of the `ptr` cell
+QUARRY_LEN = 5
 
 
-def test_validate_self_ties_as_on_a_compliant_mars():
-    # pMARS warriors/validate.red: loops forever on an ICWS'88-compliant in-register MARS, suicides otherwise
-    m = mars([VALIDATE], 8000, 20000, 8000)
-    res = m.play([0])
-    assert len(m.warriors[0].code) == 90
-    assert res == {"steps": 20000, "survivors": [0], "tasks": [1], "death_step": [None]}
-    assert pmars_core_sha1(m.core) == "e626d6b2385961c52fa1ac0423fba1cf238f82c9"      # pMARS
+def test_quarry_drops_bombs_exactly_where_the_stride_predicts():
+    # 100 loops of MOV/ADD/JMP, each dropping at ptr + ptr.B before ptr.B advances by 7
+    m = mars([QUARRY], 800, 300, 800)
+    assert m.play([0])["survivors"] == [0]
+    empty_dat = cell("DAT.F #0, #0")
+    bombs = sorted(i for i, c in enumerate(m.core) if c == empty_dat and i >= QUARRY_LEN)
+    assert bombs == sorted((QUARRY_PTR + 100 + 7 * k) % 800 for k in range(100))
+    assert m.core[:QUARRY_PTR] == cw.assemble(QUARRY, 800).code[:QUARRY_PTR]   # its code is untouched
+    assert m.core[QUARRY_PTR] == cell("DAT.F #0, #0")                          # 100 + 700 = 0 mod 800
 
 
-def test_rave_vs_dwarf_core_matches_pmars():
-    m = mars([RAVE, DWARF], 8000, 3000, 8000)
-    res = m.play([0, 4000])
-    assert res["steps"] == 6000 and res["tasks"] == [1, 2146]                       # pMARS
-    assert pmars_core_sha1(m.core) == "e58cbcec6aa8e52da4f693bc98f57bc7e9b24cc5"
+def test_quarry_bombs_itself_where_dwarf_never_does():
+    # gcd(7, 800) = 1, so drop 100 lands on the pointer at address 4 and the walk collapses;
+    # Dwarf's stride divides the core, so it loops around its own code unharmed forever.
+    assert [k for k in range(800) if (QUARRY_PTR + 100 + 7 * k) % 800 < QUARRY_LEN][0] == 100
+    res = mars([QUARRY], 800, 4000, 800).play([0])
+    assert res["survivors"] == [] and res["death_step"][0] > 3 * 100
+    assert mars([DWARF], 800, 4000, 800).play([0])["survivors"] == [0]
+
+
+@pytest.mark.slow
+def test_quarry_vs_dwarf_is_a_contest_over_every_load_position():
+    ws = [cw.assemble(QUARRY, 800), cw.assemble(DWARF, 800)]
+    outcomes = Counter(tuple(cw.Mars(ws, 800, 8000, 800).play([0, f])["survivors"]) for f in range(100, 701))
+    assert outcomes == {(0,): 291, (1,): 293, (0, 1): 17}
 
 
 RANDOM_BATTLES = [
